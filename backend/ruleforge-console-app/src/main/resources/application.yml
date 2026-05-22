@@ -55,3 +55,12 @@ lazy-load:
   enabled: true
   base-url: ${LAZY_LOAD_BASE_URL:}
   timeout: 5000
+
+logging:
+  file:
+    name: ${LOG_FILE:/tmp/ruleforge-console.log}
+  level:
+    root: INFO
+    com.ruleforge: DEBUG
+    org.springframework.jdbc: DEBUG
+    com.zaxxer.hikari: DEBUG

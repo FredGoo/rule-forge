@@ -7,7 +7,7 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Load environment variables
 if [ -f "$PROJECT_DIR/.env" ]; then
-    set -a && source "$PROJECT_DIR/.env" && set +a
+    export $(grep -v '^#' "$PROJECT_DIR/.env" | grep -v '^$' | xargs)
     echo "Loaded .env"
 else
     echo "Warning: .env not found, using defaults from .env.example"
