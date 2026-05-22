@@ -16,5 +16,6 @@ public class FastTestDto {
     private String projectId;
     private String filePath;
     private String ruleName;
+    private String flowId;
     private List<Map<String, Object>> data;
 }

@@ -186,15 +186,23 @@ public class TestControllerV2 {
             }
         }
         ExecutionResponse response = null;
-        if (parameters == null) {
+        String flowId = fastTestDto.getFlowId();
+        if (StringUtils.isNotEmpty(flowId)) {
+            if (parameters != null) {
+                response = session.startProcess(flowId, parameters);
+            } else {
+                response = session.startProcess(flowId);
+            }
+        } else if (parameters == null) {
             response = session.fireRules();
         } else {
             response = session.fireRules(parameters);
         }
 
         List<VariableCategory> resultVc = new ArrayList<>();
+        boolean isFlow = StringUtils.isNotEmpty(flowId);
         for (VariableCategory vc : facts.keySet()) {
-            if (categorySet.contains(vc.getClazz())) {
+            if (!isFlow && categorySet.contains(vc.getClazz())) {
                 continue;
             }
 
