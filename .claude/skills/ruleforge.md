@@ -20,21 +20,21 @@ Set `RULEFORGE_URL` environment variable if the server is not at localhost:8081.
 ### Project Management
 
 ```
-POST /frame/createProject?projectName=xxx&classify=true
-GET  /frame/loadProjects
-POST /frame/deleteProject?project=xxx
+POST /frame/createProject?newProjectName=xxx&classify=true
+POST /frame/loadProjects
+POST /frame/deleteProject?path=/xxx
 POST /frame/projectExistCheck?projectName=xxx
 ```
 
 ### File Operations
 
 ```
-POST /frame/createFile?path=/projectName/dir&fileType=Ruleset
+POST /frame/createFile?path=/projectName/filename.rs.xml&type=Ruleset
 POST /frame/createFolder?path=/projectName/dirName
-POST /frame/saveFile?path=/projectName/file.rs.xml&newVersion=true&versionComment=xxx
-  Body: rule XML content (text/plain)
+POST /common/saveFile?file=/projectName/file.rs.xml&newVersion=true
+  Body: url-encoded content=xxx
 POST /frame/deleteFile?path=/projectName/file.rs.xml
-GET  /frame/loadXml?file=/projectName/file.rs.xml&version=
+POST /common/loadXml?files=/projectName/file.rs.xml
 POST /frame/fileExistCheck?fullFileName=/projectName/file.rs.xml
 POST /frame/fileRename?path=xxx&newPath=xxx
 ```
@@ -54,7 +54,7 @@ GET  /test/load/test?project=xxx
 ### Knowledge Package
 
 ```
-GET  /packageeditor/loadPackages?project=xxx
+POST /packageeditor/loadPackages?project=xxx
 POST /packageeditor/saveResourcePackages
 POST /packageeditor/loadPackageConfig?project=xxx
 POST /packageeditor/refreshKnowledgeCache?packageId=xxx
@@ -144,11 +144,11 @@ end
 
 ## Typical Agent Workflow
 
-1. **Create project**: `POST /frame/createProject?projectName=myProject&classify=true`
-2. **Check libraries exist**: `GET /frame/loadXml?file=/myProject/___varlib.xml`
-3. **Create variable library if needed**: `POST /frame/createFile?path=/myProject&fileType=VariableLibrary`
-4. **Create rule file**: `POST /frame/createFile?path=/myProject&fileType=Ruleset`
-5. **Author rule content**: `POST /frame/saveFile?path=/myProject/rules.rs.xml` with rule XML body
+1. **Create project**: `POST /frame/createProject?newProjectName=myProject&classify=true`
+2. **Check libraries exist**: `POST /common/loadXml?files=/myProject/___varlib.xml`
+3. **Create variable library if needed**: `POST /frame/createFile?path=/myProject/___varlib.xml&type=VariableLibrary`
+4. **Create rule file**: `POST /frame/createFile?path=/myProject/rules.rs.xml&type=Ruleset`
+5. **Author rule content**: `POST /common/saveFile?file=/myProject/rules.rs.xml&newVersion=true` with url-encoded content
 6. **Validate script**: `POST /common/scriptValidation` if using UL scripts
 7. **Test rule**: `POST /test/doTest` with test data
 8. **Configure knowledge package**: `POST /packageeditor/loadPackageConfig`
