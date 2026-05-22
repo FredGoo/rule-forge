@@ -132,9 +132,6 @@ public class CommonController extends BaseController {
             } else {
                 String[] paths = files.split(";");
                 for (String path : paths) {
-                    if (path.startsWith(RepositoryResourceProvider.JCR)) {
-                        path = path.substring(4);
-                    }
                     String[] subpaths = path.split(":");
                     path = Utils.decodeURL(subpaths[0]);
                     String version = null;

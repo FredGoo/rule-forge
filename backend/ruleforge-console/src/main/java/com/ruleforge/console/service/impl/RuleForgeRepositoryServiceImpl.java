@@ -874,8 +874,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
 
         versionEntityList.forEach(version -> {
             String versionName = version.getVersionNum();
-            if (versionName.startsWith("jcr:")) {
-                // skip root version
+            if (versionName == null || versionName.isEmpty()) {
                 return;
             }
 

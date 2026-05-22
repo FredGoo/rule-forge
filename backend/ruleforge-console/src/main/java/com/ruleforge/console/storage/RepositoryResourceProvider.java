@@ -15,18 +15,16 @@ import java.nio.charset.StandardCharsets;
 @Component
 @RequiredArgsConstructor
 public class RepositoryResourceProvider implements ResourceProvider {
-    public static final String JCR = "jcr:";
     private final RuleForgeRepositoryService ruleforgeRepositoryService;
 
     @Override
     public Resource provide(String path, String version, String projectVersion, boolean containSnapshot) {
-        String newPath = path.substring(4);
         InputStream inputStream;
         try {
             if (StringUtils.isEmpty(version) || version.equalsIgnoreCase("latest")) {
-                inputStream = ruleforgeRepositoryService.readFile(newPath, null, projectVersion, containSnapshot);
+                inputStream = ruleforgeRepositoryService.readFile(path, null, projectVersion, containSnapshot);
             } else {
-                inputStream = ruleforgeRepositoryService.readFile(newPath, version);
+                inputStream = ruleforgeRepositoryService.readFile(path, version);
             }
             String content = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
             IOUtils.closeQuietly(inputStream);
@@ -37,6 +35,6 @@ public class RepositoryResourceProvider implements ResourceProvider {
     }
 
     public boolean support(String path) {
-        return path.startsWith(JCR);
+        return path.startsWith("/");
     }
 }

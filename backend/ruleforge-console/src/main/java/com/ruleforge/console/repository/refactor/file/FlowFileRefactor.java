@@ -8,8 +8,8 @@ public class FlowFileRefactor extends FileRefactor {
 
     @Override
     public String doRefactor(String oldPath, String newPath, String content) {
-        String oldPathStr = "jcr:" + this.perfectPath(oldPath);
-        String newPathStr = "jcr:" + this.perfectPath(newPath);
+        String oldPathStr = this.perfectPath(oldPath);
+        String newPathStr = this.perfectPath(newPath);
         content = content.replaceAll(oldPathStr, newPathStr);
         String oldProjectName = this.fetchProjectName(oldPath);
         String newProjectName = this.fetchProjectName(newPath);

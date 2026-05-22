@@ -24,17 +24,16 @@ public class ExecResourceProvider implements ResourceProvider {
     @Override
     public Resource provide(String path, String version, String projectVersion, boolean containSnapshot) {
         log.info("ExecResourceProvider path: {} version: {} projectVersion: {}", path, version, projectVersion);
-        String newPath = path.substring(4);
         if (StringUtils.hasText(version)) {
-            return new Resource(sendRequest(newPath + ":" + version, projectVersion), path, projectVersion);
+            return new Resource(sendRequest(path + ":" + version, projectVersion), path, projectVersion);
         } else {
-            return new Resource(sendRequest(newPath, projectVersion), path, projectVersion);
+            return new Resource(sendRequest(path, projectVersion), path, projectVersion);
         }
     }
 
     @Override
     public boolean support(String path) {
-        return path.startsWith("jcr:");
+        return path.startsWith("/");
     }
 
     private String sendRequest(String path, String projectVersion) {

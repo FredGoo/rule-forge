@@ -16,7 +16,7 @@ public abstract class ContentRefactor implements Refactor {
     public abstract String doRefactor(String var1, String var2, Item var3);
 
     protected String doXmlContentRefactor(String path, String content, Item item) {
-        String pathstr = "jcr:" + this.perfectPath(path);
+        String pathstr = this.perfectPath(path);
         boolean contains = content.contains(pathstr);
         if (!contains) {
             return null;
@@ -74,7 +74,7 @@ public abstract class ContentRefactor implements Refactor {
     }
 
     public String doScriptContentRefactor(String path, String content, Item item) {
-        String pathstr = "jcr:" + this.perfectPath(path);
+        String pathstr = this.perfectPath(path);
         boolean contains = content.contains(pathstr);
         if (!contains) {
             return null;

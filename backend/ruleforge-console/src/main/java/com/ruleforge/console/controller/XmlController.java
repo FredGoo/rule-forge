@@ -77,9 +77,6 @@ public class XmlController {
                 String[] paths = files.split(";");
                 for (String path : paths) {
                     path = Utils.toUTF8(path);
-                    if (path.startsWith(RepositoryResourceProvider.JCR)) {
-                        path = path.substring(4);
-                    }
                     String[] subpaths = path.split(",");
                     path = subpaths[0];
                     String version = null;

@@ -158,18 +158,18 @@ public class PackageController extends BaseController {
             Map<String, String> pathNodeNameMap = new HashMap<>();
 
             if (path.endsWith(FileType.RuleFlow.toString())) {
-                InputStream inputStream = this.ruleforgeRepositoryService.readFile(path.replace("jcr:", ""));
+                InputStream inputStream = this.ruleforgeRepositoryService.readFile(path);
                 Element element = parseXml(inputStream);
 
                 FlowDefinition flowDefinition = flowDefinitionParser.parse(element);
                 for (FlowNode flowNode : flowDefinition.getNodes()) {
                     if (flowNode.getType() == FlowNodeType.Rule) {
-                        pathList.add(((RuleNode) flowNode).getFile().replace("jcr:", ""));
-                        pathNodeNameMap.put(((RuleNode) flowNode).getFile().replace("jcr:", ""), flowNode.getName());
+                        pathList.add(((RuleNode) flowNode).getFile());
+                        pathNodeNameMap.put(((RuleNode) flowNode).getFile(), flowNode.getName());
                     }
                 }
             } else {
-                pathList.add(path.replace("jcr:", ""));
+                pathList.add(path);
             }
 
             List<RefFile> versionDiff = this.ruleforgeRepositoryService.getFlowRefs(pathList);

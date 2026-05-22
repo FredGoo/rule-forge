@@ -46,9 +46,16 @@ public class KnowledgeBuilder extends AbstractBuilder {
     }
 
     public KnowledgeBase buildKnowledgeBase(ResourceBase resourceBase) throws RuleException {
-        KnowledgePackageService knowledgePackageService = (KnowledgePackageService) this.applicationContext.getBean("ruleforgeKnowledgePackageService");
+        KnowledgePackageService knowledgePackageService = null;
+        try {
+            knowledgePackageService = (KnowledgePackageService) this.applicationContext.getBean("ruleforgeKnowledgePackageService");
+        } catch (Exception ignored) {
+        }
         if (knowledgePackageService == null) {
-            knowledgePackageService = (KnowledgePackageService) this.applicationContext.getBean("ruleforge.knowledgePackageService");
+            try {
+                knowledgePackageService = (KnowledgePackageService) this.applicationContext.getBean("ruleforge.knowledgePackageService");
+            } catch (Exception ignored) {
+            }
         }
         List<Rule> rules = new ArrayList<>();
         Map<String, Library> libMap = new HashMap<>();

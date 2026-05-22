@@ -8,8 +8,8 @@ public class RulesetFileRefactor extends FileRefactor {
 
     @Override
     public String doRefactor(String oldPath, String newPath, String content) {
-        oldPath = "jcr:" + this.perfectPath(oldPath);
-        newPath = "jcr:" + this.perfectPath(newPath);
+        oldPath = this.perfectPath(oldPath);
+        newPath = this.perfectPath(newPath);
         return content.replaceAll(oldPath, newPath);
     }
 
