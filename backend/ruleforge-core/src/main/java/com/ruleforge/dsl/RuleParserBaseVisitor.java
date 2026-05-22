@@ -1,4 +1,4 @@
-// Generated from RuleParser.g4 by ANTLR 4.5.3
+// Generated from RuleParser.g4 by ANTLR 4.13.2
 package com.ruleforge.dsl;
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
@@ -10,6 +10,7 @@ import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
  * @param <T> The return type of the visit operation. Use {@link Void} for
  * operations with no return type.
  */
+@SuppressWarnings("CheckReturnValue")
 public class RuleParserBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements RuleParserVisitor<T> {
 	/**
 	 * {@inheritDoc}
