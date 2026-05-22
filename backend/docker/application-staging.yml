@@ -1,0 +1,119 @@
+# RuleForge Console 配置文件
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 10
+
+spring:
+  application:
+    name: ruleforge-prod-console
+  profiles:
+    active: default
+
+  # 数据库配置
+  datasource:
+    app:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      jdbcUrl: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ruleforge_dev}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+      username: ${DB_USERNAME:root}
+      password: ${DB_PASSWORD:password}
+      # HikariCP连接池配置 - 针对Cloud SQL优化
+      hikari:
+        # 连接有效性检测
+        connection-test-query: SELECT 1
+        # 连接池名称
+        pool-name: AppCloudSqlCP
+        # Cloud SQL推荐的连接池大小（避免超过连接限制）
+        maximum-pool-size: 10
+        # 最小空闲连接数
+        minimum-idle: 2
+        # 连接超时时间(毫秒) - Cloud SQL网络延迟考虑
+        connection-timeout: 60000
+        # 空闲连接存活时间(毫秒) - Cloud SQL会自动关闭长时间空闲连接
+        idle-timeout: 300000
+        # 连接最大存活时间(毫秒) - 避免Cloud SQL连接超时
+        max-lifetime: 1200000
+        # 连接泄漏检测时间(毫秒)
+        leak-detection-threshold: 30000
+        # 验证连接有效性
+        validation-timeout: 3000
+    ruleforge:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      jdbcUrl: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:nova_decision}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+      username: ${DB_USERNAME:root}
+      password: ${DB_PASSWORD:password}
+      # HikariCP连接池配置 - 针对Cloud SQL优化
+      hikari:
+        # 连接有效性检测
+        connection-test-query: SELECT 1
+        # 连接池名称
+        pool-name: RuleForgeCloudSqlCP
+        # Cloud SQL推荐的连接池大小（避免超过连接限制）
+        maximum-pool-size: 10
+        # 最小空闲连接数
+        minimum-idle: 2
+        # 连接超时时间(毫秒) - Cloud SQL网络延迟考虑
+        connection-timeout: 60000
+        # 空闲连接存活时间(毫秒) - Cloud SQL会自动关闭长时间空闲连接
+        idle-timeout: 300000
+        # 连接最大存活时间(毫秒) - 避免Cloud SQL连接超时
+        max-lifetime: 1200000
+        # 连接泄漏检测时间(毫秒)
+        leak-detection-threshold: 30000
+        # 验证连接有效性
+        validation-timeout: 3000
+
+  # Flyway配置
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 3.0.0
+    validate-on-migrate: true
+    out-of-order: false
+    clean-disabled: true
+    table: flyway_schema_history
+    encoding: UTF-8
+
+# MyBatis配置
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.ruleforge.console.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 日志配置
+logging:
+  level:
+    com.ruleforge: DEBUG
+    org.flywaydb: INFO
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /app/logs/ruleforge-prod-console.log
+    max-size: 100MB
+    max-history: 30
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# 自定义配置
+ruleforge:
+  console:
+    name: RuleForge Console
+    version: 3.5.3-SNAPSHOT
+    environment: development
+    debug: true

@@ -1,0 +1,51 @@
+package com.ruleforge.runtime.cache;
+
+import com.ruleforge.runtime.KnowledgePackage;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class MemoryKnowledgeCache implements KnowledgeCache {
+
+    private final Map<String, KnowledgePackage> map = new ConcurrentHashMap<>();
+
+    @Override
+    public KnowledgePackage getKnowledge(String packageId) {
+        if (packageId.startsWith("/")) {
+            packageId = packageId.substring(1);
+        }
+        return this.map.get(packageId);
+    }
+
+    @Override
+    public void putKnowledge(String packageId, KnowledgePackage knowledgePackage) {
+        if (packageId.startsWith("/")) {
+            packageId = packageId.substring(1);
+        }
+        this.map.put(packageId, knowledgePackage);
+    }
+
+    @Override
+    public void removeKnowledge(String packageId) {
+        this.map.remove(packageId);
+    }
+
+    @Override
+    public void removeKnowledgeByProjectName(String projectName) {
+        this.map.keySet().forEach(key -> {
+            if (key.startsWith(projectName)) {
+                removeKnowledge(key);
+            }
+        });
+    }
+
+    @Override
+    public void markKnowledgeDirty(String fullPackageId) {
+
+    }
+
+    @Override
+    public boolean isKnowledgeDirty(String fullPackageId) {
+        return false;
+    }
+}

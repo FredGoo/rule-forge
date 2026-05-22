@@ -1,0 +1,35 @@
+package com.ruleforge.console.app.service.impl;
+
+import com.ruleforge.console.app.entity.RuleVariableDef;
+import com.ruleforge.console.app.mapper.RuleVariableDefMapper;
+import com.ruleforge.console.app.service.IRuleVariableDefService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * 规则变量定义服务
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class RuleVariableDefServiceImpl implements IRuleVariableDefService {
+
+    private final RuleVariableDefMapper ruleVariableDefMapper;
+
+    @Override
+    public List<RuleVariableDef> findAll() {
+        return ruleVariableDefMapper.selectList(null);
+    }
+
+    @Override
+    public Map<String, List<RuleVariableDef>> groupByClazz() {
+        List<RuleVariableDef> allDefs = findAll();
+        return allDefs.stream()
+                .collect(Collectors.groupingBy(RuleVariableDef::getClazz));
+    }
+}

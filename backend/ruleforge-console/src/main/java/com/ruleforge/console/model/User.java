@@ -1,0 +1,26 @@
+package com.ruleforge.console.model;
+
+/**
+ * @author Jacky.gao
+ * 2015年5月7日
+ */
+public interface User {
+    /**
+     * @return 用户名
+     */
+    String getUsername();
+
+    /**
+     * @return 所在公司ID
+     */
+    String getCompanyId();
+
+    /**
+     * @return 是否为管理员
+     */
+    boolean isAdmin();
+
+    boolean isImport();
+
+    boolean isExport();
+}

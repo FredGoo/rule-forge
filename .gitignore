@@ -1,0 +1,43 @@
+# IDE
+.idea/
+*.iml
+.claude/
+.vscode/
+
+# Java / Maven
+target/
+.flattened-pom.xml
+*.class
+*.jar
+*.war
+
+# ANTLR generated (urule-core dsl)
+/RuleLexer.java
+/RuleLexer.tokens
+/RuleParser.tokens
+/RuleParserBaseVisitor.java
+/RuleParserLexer.java
+/RuleParserLexer.tokens
+/RuleParserParser.java
+/RuleParserVisitor.java
+
+# Node / Frontend
+node_modules/
+dist/
+package-lock.json
+
+# Python / Data generator
+__pycache__/
+output/
+data_generator.log
+
+# Runtime data
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+env/

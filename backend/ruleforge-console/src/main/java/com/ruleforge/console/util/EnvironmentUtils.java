@@ -1,0 +1,43 @@
+package com.ruleforge.console.util;
+
+import com.ruleforge.Utils;
+import com.ruleforge.console.DefaultEnvironmentProvider;
+import com.ruleforge.console.EnvironmentProvider;
+import com.ruleforge.console.servlet.RequestContext;
+import com.ruleforge.console.model.User;
+import org.springframework.context.ApplicationContext;
+
+import java.util.Collection;
+
+
+/**
+ * @author Jacky.gao
+ * 2015年1月6日
+ */
+public class EnvironmentUtils {
+    private static EnvironmentProvider environmentProvider;
+
+    public static User getLoginUser(RequestContext context) {
+        if (environmentProvider == null) {
+            initEnvironmentProvider();
+        }
+        return environmentProvider.getLoginUser(context);
+    }
+
+    public static void initEnvironmentProvider() {
+        ApplicationContext context = Utils.getApplicationContext();
+        Collection<EnvironmentProvider> providers = context.getBeansOfType(EnvironmentProvider.class).values();
+        if (providers.isEmpty()) {
+            environmentProvider = new DefaultEnvironmentProvider();
+        } else {
+            environmentProvider = providers.iterator().next();
+        }
+    }
+
+    public static EnvironmentProvider getEnvironmentProvider() {
+        if (environmentProvider == null) {
+            initEnvironmentProvider();
+        }
+        return environmentProvider;
+    }
+}

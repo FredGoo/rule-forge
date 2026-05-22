@@ -1,0 +1,447 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="ruleforge.props" class="com.ruleforge.RuleForgePropertyPlaceholderConfigurer" abstract="true"/>
+
+    <bean id="ruleforge.core.propertyPlaceholderConfigurer"
+          class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="ignoreUnresolvablePlaceholders" value="true"/>
+        <property name="location" value="classpath:ruleforge-core-context.properties"/>
+    </bean>
+
+    <bean id="ruleforge.crosstableDeserializer" class="com.ruleforge.parse.deserializer.CrosstableDeserializer">
+        <property name="crosstabParser" ref="ruleforge.crosstabParser"/>
+    </bean>
+
+    <bean id="ruleforge.crosstabResourceBuilder" class="com.ruleforge.builder.resource.CrosstabResourceBuilder">
+        <property name="crosstableDeserializer" ref="ruleforge.crosstableDeserializer"/>
+    </bean>
+
+    <bean id="ruleforge.propertyConfigurer" class="com.ruleforge.PropertyConfigurer">
+    </bean>
+
+    <bean id="ruleforge.crosstabParser" class="com.ruleforge.parse.crosstab.CrosstabParser">
+        <property name="crossRowParser" ref="ruleforge.crossRowParser"/>
+        <property name="crossColumnParser" ref="ruleforge.crossColumnParser"/>
+        <property name="headerCellParser" ref="ruleforge.headerCellParser"/>
+        <property name="conditionCrossCellParser" ref="ruleforge.conditionCrossCellParser"/>
+        <property name="valueCrossCellParser" ref="ruleforge.valueCrossCellParser"/>
+    </bean>
+
+    <bean id="ruleforge.crossRowParser" class="com.ruleforge.parse.crosstab.CrossRowParser"/>
+    <bean id="ruleforge.crossColumnParser" class="com.ruleforge.parse.crosstab.CrossColumnParser"/>
+    <bean id="ruleforge.headerCellParser" class="com.ruleforge.parse.crosstab.HeaderCellParser"/>
+    <bean id="ruleforge.conditionCrossCellParser" class="com.ruleforge.parse.crosstab.ConditionCrossCellParser">
+        <property name="jointParser" ref="ruleforge.jointParser"/>
+    </bean>
+    <bean id="ruleforge.valueCrossCellParser" class="com.ruleforge.parse.crosstab.ValueCrossCellParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+    </bean>
+
+    <bean id="ruleforge.defaultHtmlFileDebugWriter" class="com.ruleforge.debug.DefaultHtmlFileDebugWriter">
+        <property name="path" value="${ruleforge.defaultHtmlFileDebugPath:ruleforge}"/>
+    </bean>
+
+    <bean id="ruleforge.crosstabRulesBuilder" class="com.ruleforge.builder.table.CrosstabRulesBuilder"/>
+
+    <bean id="ruleforge.knowledgeBuilder" class="com.ruleforge.builder.KnowledgeBuilder">
+        <property name="reteBuilder" ref="ruleforge.reteBuilder"/>
+        <property name="rulesRebuilder" ref="ruleforge.rulesRebuilder"/>
+        <property name="scriptDecisionTableRulesBuilder" ref="ruleforge.scriptDecisionTableRulesBuilder"/>
+        <property name="resourceLibraryBuilder" ref="ruleforge.resourceLibraryBuilder"/>
+        <property name="decisionTableRulesBuilder" ref="ruleforge.decisionTableRulesBuilder"/>
+        <property name="dslRuleSetBuilder" ref="ruleforge.dslRuleSetBuilder"/>
+        <property name="decisionTreeRulesBuilder" ref="ruleforge.decisionTreeRulesBuilder"/>
+        <property name="crosstabRulesBuilder" ref="ruleforge.crosstabRulesBuilder"/>
+    </bean>
+
+    <bean id="ruleforge.builtInActionLibraryBuilder" class="com.ruleforge.runtime.BuiltInActionLibraryBuilder"/>
+
+    <bean id="ruleforge.rulesRebuilder" class="com.ruleforge.builder.RulesRebuilder">
+        <property name="resourceLibraryBuilder" ref="ruleforge.resourceLibraryBuilder"/>
+    </bean>
+    <bean id="ruleforge.activeRuleFunctionDescriptor"
+          class="com.ruleforge.model.function.ActiveRuleFunctionDescriptor"/>
+    <bean id="ruleforge.activeAgendaFunctionDescriptor"
+          class="com.ruleforge.model.function.ActiveAgendaFunctionDescriptor"/>
+    <bean id="ruleforge.sinFunctionDescriptor" class="com.ruleforge.model.function.impl.SinFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.sinFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.cosFunctionDescriptor" class="com.ruleforge.model.function.impl.CosFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.cosFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.tanFunctionDescriptor" class="com.ruleforge.model.function.impl.TanFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.tanFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.lnFunctionDescriptor" class="com.ruleforge.model.function.impl.LnFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.lnFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.expFunctionDescriptor" class="com.ruleforge.model.function.impl.ExpFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.expFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.updateFactFunctionDescriptor"
+          class="com.ruleforge.model.function.impl.UpdateFactFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.updateFactFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.updateParameterFunctionDescriptor"
+          class="com.ruleforge.model.function.impl.UpdateParameterFunctionDescriptor"/>
+    <bean id="ruleforge.trimFunctionDescriptor" class="com.ruleforge.model.function.impl.TrimFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.trimFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.stringLengthFunctionDescriptor"
+          class="com.ruleforge.model.function.impl.StringLengthFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.stringLengthFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.absFunctionDescriptor" class="com.ruleforge.model.function.impl.AbsFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.absFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.avgFunctionDescriptor" class="com.ruleforge.model.function.impl.AvgFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.avgFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.minValueFunctionDescriptor" class="com.ruleforge.model.function.impl.MinValueFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.minValueFunctionDisabled:false}"/>
+    </bean>
+
+    <bean id="ruleforge.maxValueFunctionDescriptor" class="com.ruleforge.model.function.impl.MaxValueFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.maxValueFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.maxFunctionDescriptor" class="com.ruleforge.model.function.impl.MaxFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.maxFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.minFunctionDescriptor" class="com.ruleforge.model.function.impl.MinFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.minFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.sumFunctionDescriptor" class="com.ruleforge.model.function.impl.SumFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.sumFunctionDisabled:false}"/>
+    </bean>
+    <bean id="ruleforge.CountFunctionDescriptor" class="com.ruleforge.model.function.impl.CountFunctionDescriptor">
+        <property name="disabled" value="${ruleforge.countFunctionDisabled:false}"/>
+    </bean>
+
+    <bean id="ruleforge.configure" class="com.ruleforge.Configure">
+        <property name="dateFormat" value="${ruleforge.dateFormat:}"/>
+        <property name="tempStorePath" value="${ruleforge.tempStorePath:}"/>
+    </bean>
+
+    <bean id="ruleforge.actionContextBuilder" class="com.ruleforge.dsl.builder.ActionContextBuilder"/>
+
+    <bean id="ruleforge.criteriaContextBuilder" class="com.ruleforge.dsl.builder.CriteriaContextBuilder"/>
+
+    <bean id="ruleforge.libraryContextBuilder" class="com.ruleforge.dsl.builder.LibraryContextBuilder"/>
+
+    <bean id="ruleforge.dslRuleSetBuilder" class="com.ruleforge.dsl.DSLRuleSetBuilder">
+        <property name="rulesRebuilder" ref="ruleforge.rulesRebuilder"/>
+    </bean>
+
+    <bean id="ruleforge.resourceLibraryBuilder" class="com.ruleforge.builder.ResourceLibraryBuilder">
+        <property name="builtInActionLibraryBuilder" ref="ruleforge.builtInActionLibraryBuilder"/>
+    </bean>
+
+    <bean id="ruleforge.knowledgeService" class="com.ruleforge.runtime.service.KnowledgeServiceImpl"/>
+
+    <bean id="ruleforge.dateAction" class="com.ruleforge.runtime.builtinaction.DateAction"/>
+    <bean id="ruleforge.stringAction" class="com.ruleforge.runtime.builtinaction.StringAction"/>
+    <bean id="ruleforge.mathAction" class="com.ruleforge.runtime.builtinaction.MathAction"/>
+    <bean id="ruleforge.listAction" class="com.ruleforge.runtime.builtinaction.ListAction"/>
+    <bean id="ruleforge.mapAction" class="com.ruleforge.runtime.builtinaction.MapAction"/>
+    <bean id="ruleforge.loopAction" class="com.ruleforge.runtime.builtinaction.LoopAction"/>
+
+    <bean id="ruleforge.cacheUtils" class="com.ruleforge.runtime.cache.CacheUtils"/>
+
+    <bean id="ruleforge.fileResourceProvider" class="com.ruleforge.builder.resource.FileResourceProvider"/>
+
+    <bean id="ruleforge.valueCompute" class="com.ruleforge.runtime.rete.ValueCompute"/>
+
+    <bean id="ruleforge.utils" class="com.ruleforge.Utils">
+        <property name="debug" value="${ruleforge.debug:true}"/>
+        <property name="debugToFile" value="${ruleforge.debugToFile:false}"/>
+    </bean>
+
+    <bean id="ruleforge.flowResourceBuilder" class="com.ruleforge.builder.resource.FlowResourceBuilder">
+        <property name="flowDeserializer" ref="ruleforge.flowDeserializer"/>
+    </bean>
+
+    <bean class="com.ruleforge.builder.resource.DecisionTableResourceBuilder">
+        <property name="decisionTableDeserializer" ref="ruleforge.decisionTableDeserializer"/>
+    </bean>
+
+    <bean id="ruleforge.parameterLibraryResourceBuilder"
+          class="com.ruleforge.builder.resource.ParameterLibraryResourceBuilder">
+        <property name="parameterLibraryDeserializer" ref="ruleforge.parameterLibraryDeserializer"/>
+    </bean>
+
+    <bean id="ruleforge.constantLibraryResourceBuilder"
+          class="com.ruleforge.builder.resource.ConstantLibraryResourceBuilder">
+        <property name="constantLibraryDeserializer" ref="ruleforge.constantLibraryDeserializer"/>
+    </bean>
+
+    <bean id="ruleforge.actionLibraryResourceBuilder" class="com.ruleforge.builder.resource.ActionLibraryResourceBuilder">
+        <property name="actionLibraryDeserializer" ref="ruleforge.actionLibraryDeserializer"/>
+    </bean>
+
+    <bean id="ruleforge.ruleSetResourceBuilder" class="com.ruleforge.builder.resource.RuleSetResourceBuilder">
+        <property name="ruleSetDeserializer" ref="ruleforge.ruleSetDeserializer"/>
+    </bean>
+
+    <bean id="ruleforge.variableLibraryResourceBuilder"
+          class="com.ruleforge.builder.resource.VariableLibraryResourceBuilder">
+        <property name="variableLibraryDeserializer" ref="ruleforge.variableLibraryDeserializer"/>
+    </bean>
+
+    <bean id="ruleforge.cellContentBuilder" class="com.ruleforge.builder.table.CellContentBuilder"/>
+    <bean id="ruleforge.decisionTableRulesBuilder" class="com.ruleforge.builder.table.DecisionTableRulesBuilder">
+        <property name="cellContentBuilder" ref="ruleforge.cellContentBuilder"/>
+    </bean>
+
+    <bean id="ruleforge.scriptDecisionTableResourceBuilder"
+          class="com.ruleforge.builder.resource.ScriptDecisionTableResourceBuilder">
+        <property name="scriptDecisionTableDeserializer" ref="ruleforge.scriptDecisionTableDeserializer"/>
+    </bean>
+
+    <bean id="ruleforge.flowDeserializer" class="com.ruleforge.parse.deserializer.FlowDeserializer">
+        <property name="flowDefinitionParser" ref="ruleforge.flowDefinitionParser"/>
+    </bean>
+
+    <bean id="ruleforge.scriptDecisionTableDeserializer"
+          class="com.ruleforge.parse.deserializer.ScriptDecisionTableDeserializer">
+        <property name="scriptDecisionTableParser" ref="ruleforge.scriptDecisionTableParser"/>
+    </bean>
+
+    <bean id="ruleforge.cellScriptDSLBuilder" class="com.ruleforge.builder.table.CellScriptDSLBuilder"/>
+
+    <bean id="ruleforge.scriptDecisionTableRulesBuilder"
+          class="com.ruleforge.builder.table.ScriptDecisionTableRulesBuilder">
+        <property name="cellScriptDSLBuilder" ref="ruleforge.cellScriptDSLBuilder"/>
+        <property name="dslRuleSetBuilder" ref="ruleforge.dslRuleSetBuilder"/>
+    </bean>
+
+    <bean id="ruleforge.scriptDecisionTableParser" class="com.ruleforge.parse.table.ScriptDecisionTableParser">
+        <property name="rowParser" ref="ruleforge.rowParser"/>
+        <property name="columnParser" ref="ruleforge.columnParser"/>
+        <property name="scriptCellParser" ref="ruleforge.scriptCellParser"/>
+    </bean>
+
+    <bean id="ruleforge.actionLibraryDeserializer" class="com.ruleforge.parse.deserializer.ActionLibraryDeserializer">
+        <property name="actionLibraryParser" ref="ruleforge.actionLibraryParser"/>
+    </bean>
+
+    <bean id="ruleforge.constantLibraryDeserializer" class="com.ruleforge.parse.deserializer.ConstantLibraryDeserializer">
+        <property name="constantLibraryParser" ref="ruleforge.constantLibraryParser"/>
+    </bean>
+
+    <bean id="ruleforge.assertorEvaluator" class="com.ruleforge.runtime.assertor.AssertorEvaluator"/>
+
+    <bean id="ruleforge.variableLibraryDeserializer" class="com.ruleforge.parse.deserializer.VariableLibraryDeserializer">
+        <property name="variableLibraryParser" ref="ruleforge.variableLibraryParser"/>
+    </bean>
+
+    <bean id="ruleforge.parameterLibraryDeserializer"
+          class="com.ruleforge.parse.deserializer.ParameterLibraryDeserializer">
+        <property name="parameterLibraryParser" ref="ruleforge.parameterLibraryParser"/>
+    </bean>
+
+    <bean id="ruleforge.jointParser" class="com.ruleforge.parse.table.JointParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+    </bean>
+    <bean id="ruleforge.cellParser" class="com.ruleforge.parse.table.CellParser">
+        <property name="jointParser" ref="ruleforge.jointParser"/>
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+    </bean>
+    <bean id="ruleforge.complexColumnParser" class="com.ruleforge.parse.scorecard.ComplexColumnParser"/>
+    <bean id="ruleforge.scriptCellParser" class="com.ruleforge.parse.table.ScriptCellParser"/>
+    <bean id="ruleforge.rowParser" class="com.ruleforge.parse.table.RowParser"/>
+    <bean id="ruleforge.columnParser" class="com.ruleforge.parse.table.ColumnParser"/>
+    <bean id="ruleforge.decisionTableParser" class="com.ruleforge.parse.table.DecisionTableParser">
+        <property name="rowParser" ref="ruleforge.rowParser"/>
+        <property name="columnParser" ref="ruleforge.columnParser"/>
+        <property name="cellParser" ref="ruleforge.cellParser"/>
+        <property name="rulesRebuilder" ref="ruleforge.rulesRebuilder"/>
+    </bean>
+    <bean id="ruleforge.decisionTableDeserializer" class="com.ruleforge.parse.deserializer.DecisionTableDeserializer">
+        <property name="decisionTableParser" ref="ruleforge.decisionTableParser"/>
+    </bean>
+    <bean id="ruleforge.parameterLibraryParser" class="com.ruleforge.parse.ParameterLibraryParser">
+        <property name="variableParser" ref="ruleforge.variableParser"/>
+    </bean>
+    <bean id="ruleforge.parenParser" class="com.ruleforge.parse.ParenParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+        <property name="arithmeticParser" ref="ruleforge.complexArithmeticParser"/>
+    </bean>
+    <bean id="ruleforge.constantLibraryParser" class="com.ruleforge.parse.ConstantLibraryParser"/>
+    <bean id="ruleforge.actionNodeParser" class="com.ruleforge.parse.flow.ActionNodeParser"/>
+    <bean id="ruleforge.decisionNodeParser" class="com.ruleforge.parse.flow.DecisionNodeParser">
+        <property name="lhsParser" ref="ruleforge.lhsParser"/>
+    </bean>
+    <bean id="ruleforge.endNodeParser" class="com.ruleforge.parse.flow.EndNodeParser"/>
+    <bean id="ruleforge.flowDefinitionParser" class="com.ruleforge.parse.flow.FlowDefinitionParser"/>
+    <bean id="ruleforge.forkNodeParser" class="com.ruleforge.parse.flow.ForkNodeParser"/>
+    <bean id="ruleforge.joinNodeParser" class="com.ruleforge.parse.flow.JoinNodeParser"/>
+    <bean id="ruleforge.startNodeParser" class="com.ruleforge.parse.flow.StartNodeParser"/>
+    <bean id="ruleforge.scriptNodeParser" class="com.ruleforge.parse.flow.ScriptNodeParser"/>
+    <bean id="ruleforge.ruleNodeParser" class="com.ruleforge.parse.flow.RuleNodeParser"/>
+    <bean id="ruleforge.rulePackageNodeParser" class="com.ruleforge.parse.flow.RulePackageNodeParser"/>
+
+    <bean id="ruleforge.endWithAssertor" class="com.ruleforge.runtime.assertor.EndWithAssertor"/>
+    <bean id="ruleforge.equalsAssertor" class="com.ruleforge.runtime.assertor.EqualsAssertor"/>
+    <bean id="ruleforge.greaterThenAssertor" class="com.ruleforge.runtime.assertor.GreaterThenAssertor"/>
+    <bean id="ruleforge.greaterThenEqualsAssertor"
+          class="com.ruleforge.runtime.assertor.GreaterThenEqualsAssertor"/>
+    <bean id="ruleforge.inAssertor" class="com.ruleforge.runtime.assertor.InAssertor"/>
+    <bean id="ruleforge.lessThenAssertor" class="com.ruleforge.runtime.assertor.LessThenAssertor"/>
+    <bean id="ruleforge.lessThenEqualsAssertor" class="com.ruleforge.runtime.assertor.LessThenEqualsAssertor"/>
+    <bean id="ruleforge.notEndWithAssertor" class="com.ruleforge.runtime.assertor.NotEndWithAssertor"/>
+    <bean id="ruleforge.notEqualsAssertor" class="com.ruleforge.runtime.assertor.NotEqualsAssertor"/>
+    <bean id="ruleforge.notInAssertor" class="com.ruleforge.runtime.assertor.NotInAssertor"/>
+    <bean id="ruleforge.notStartWithAssertor" class="com.ruleforge.runtime.assertor.NotStartWithAssertor"/>
+    <bean id="ruleforge.startWithAssertor" class="com.ruleforge.runtime.assertor.StartWithAssertor"/>
+    <bean id="ruleforge.notMatchAssertor" class="com.ruleforge.runtime.assertor.NotMatchAssertor"/>
+    <bean id="ruleforge.matchAssertor" class="com.ruleforge.runtime.assertor.MatchAssertor"/>
+    <bean id="ruleforge.nullAssertor" class="com.ruleforge.runtime.assertor.NullAssertor"/>
+    <bean id="ruleforge.notNullAssertor" class="com.ruleforge.runtime.assertor.NotNullAssertor"/>
+    <bean id="ruleforge.equalsIgnoreCaseAssertor" class="com.ruleforge.runtime.assertor.EqualsIgnoreCaseAssertor"/>
+    <bean id="ruleforge.notEqualsIgnoreCaseAssertor"
+          class="com.ruleforge.runtime.assertor.NotEqualsIgnoreCaseAssertor"/>
+    <bean id="ruleforge.containAssertor" class="com.ruleforge.runtime.assertor.ContainAssertor"/>
+    <bean id="ruleforge.notContainAssertor" class="com.ruleforge.runtime.assertor.NotContainAssertor"/>
+
+    <bean id="ruleforge.reteBuilder" class="com.ruleforge.model.rete.builder.ReteBuilder"/>
+
+    <bean id="ruleforge.criteriaBuilder" class="com.ruleforge.model.rete.builder.CriteriaBuilder"/>
+    <bean id="ruleforge.andBuilder" class="com.ruleforge.model.rete.builder.AndBuilder"/>
+    <bean id="ruleforge.orBuilder" class="com.ruleforge.model.rete.builder.OrBuilder"/>
+
+    <bean id="ruleforge.ruleSetDeserializer" class="com.ruleforge.parse.deserializer.RuleSetDeserializer">
+        <property name="ruleSetParser" ref="ruleforge.ruleSetParser"/>
+    </bean>
+
+    <bean id="ruleforge.commonFunctionActionParser" class="com.ruleforge.parse.CommonFunctionActionParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+    </bean>
+
+    <bean id="ruleforge.consolePrintActionParser" class="com.ruleforge.parse.ConsolePrintActionParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+    </bean>
+    <bean id="ruleforge.executeMethodActionParser" class="com.ruleforge.parse.ExecuteMethodActionParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+    </bean>
+    <bean id="ruleforge.lhsParser" class="com.ruleforge.parse.LhsParser"/>
+
+    <bean id="ruleforge.leftParser" class="com.ruleforge.parse.LeftParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+        <property name="complexArithmeticParser" ref="ruleforge.complexArithmeticParser"/>
+        <property name="simpleArithmeticParser" ref="ruleforge.simpleArithmeticParser"/>
+    </bean>
+
+    <bean id="ruleforge.criteriaParser" class="com.ruleforge.parse.CriteriaParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+        <property name="leftParser" ref="ruleforge.leftParser"/>
+    </bean>
+    <bean id="ruleforge.junctionParser" class="com.ruleforge.parse.JunctionParser"/>
+
+    <bean id="ruleforge.variableLibraryParser" class="com.ruleforge.parse.VariableLibraryParser">
+        <property name="variableCategoryParser" ref="ruleforge.variableCategoryParser"/>
+    </bean>
+    <bean id="ruleforge.actionLibraryParser" class="com.ruleforge.parse.ActionLibraryParser"/>
+    <bean id="ruleforge.rhsParser" class="com.ruleforge.parse.RhsParser"/>
+    <bean id="ruleforge.ruleParser" class="com.ruleforge.parse.RuleParser">
+        <property name="lhsParser" ref="ruleforge.lhsParser"/>
+        <property name="rhsParser" ref="ruleforge.rhsParser"/>
+        <property name="otherParser" ref="ruleforge.otherParser"/>
+    </bean>
+    <bean id="ruleforge.loopRuleParser" class="com.ruleforge.parse.LoopRuleParser">
+        <property name="lhsParser" ref="ruleforge.lhsParser"/>
+        <property name="rhsParser" ref="ruleforge.rhsParser"/>
+        <property name="otherParser" ref="ruleforge.otherParser"/>
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+    </bean>
+    <bean id="ruleforge.otherParser" class="com.ruleforge.parse.OtherParser"/>
+    <bean id="ruleforge.ruleSetParser" class="com.ruleforge.parse.RuleSetParser">
+        <property name="ruleParser" ref="ruleforge.ruleParser"/>
+        <property name="loopRuleParser" ref="ruleforge.loopRuleParser"/>
+        <property name="rulesRebuilder" ref="ruleforge.rulesRebuilder"/>
+    </bean>
+    <bean id="ruleforge.variableAssignActionParser" class="com.ruleforge.parse.VariableAssignActionParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+    </bean>
+    <bean id="ruleforge.simpleArithmeticParser" class="com.ruleforge.parse.SimpleArithmeticParser"/>
+    <bean id="ruleforge.complexArithmeticParser" class="com.ruleforge.parse.ComplexArithmeticParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+        <property name="parenParser" ref="ruleforge.parenParser"/>
+    </bean>
+    <bean id="ruleforge.valueParser" class="com.ruleforge.parse.ValueParser">
+        <property name="arithmeticParser" ref="ruleforge.complexArithmeticParser"/>
+    </bean>
+    <bean id="ruleforge.variableParser" class="com.ruleforge.parse.VariableParser"/>
+    <bean id="ruleforge.variableCategoryParser" class="com.ruleforge.parse.VariableCategoryParser">
+        <property name="variableParser" ref="ruleforge.variableParser"/>
+    </bean>
+
+    <bean id="ruleforge.decisionTreeParser" class="com.ruleforge.parse.decisiontree.DecisionTreeParser">
+        <property name="variableTreeNodeParser" ref="ruleforge.variableTreeNodeParser"/>
+        <property name="rulesRebuilder" ref="ruleforge.rulesRebuilder"/>
+    </bean>
+
+    <bean id="ruleforge.scorecardParser" class="com.ruleforge.parse.scorecard.ScorecardParser">
+        <property name="cardCellParser" ref="ruleforge.cardCellParser"/>
+        <property name="rulesRebuilder" ref="ruleforge.rulesRebuilder"/>
+    </bean>
+
+    <bean id="ruleforge.cardCellParser" class="com.ruleforge.parse.scorecard.CardCellParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+        <property name="jointParser" ref="ruleforge.jointParser"/>
+    </bean>
+
+    <bean id="ruleforge.scorecardDeserializer" class="com.ruleforge.parse.deserializer.ScorecardDeserializer">
+        <property name="scorecardParser" ref="ruleforge.scorecardParser"/>
+    </bean>
+
+    <bean id="ruleforge.complexScorecardDeserializer"
+          class="com.ruleforge.parse.deserializer.ComplexScorecardDeserializer">
+        <property name="complexScorecardParser" ref="ruleforge.complexScorecardParser"/>
+    </bean>
+
+    <bean id="ruleforge.actionTreeNodeParser" class="com.ruleforge.parse.decisiontree.ActionTreeNodeParser"/>
+    <bean id="ruleforge.variableTreeNodeParser" class="com.ruleforge.parse.decisiontree.VariableTreeNodeParser">
+        <property name="leftParser" ref="ruleforge.leftParser"/>
+        <property name="conditionTreeNodeParser" ref="ruleforge.conditionTreeNodeParser"/>
+    </bean>
+    <bean id="ruleforge.conditionTreeNodeParser" class="com.ruleforge.parse.decisiontree.ConditionTreeNodeParser">
+        <property name="valueParser" ref="ruleforge.valueParser"/>
+        <property name="variableTreeNodeParser" ref="ruleforge.variableTreeNodeParser"/>
+        <property name="actionTreeNodeParser" ref="ruleforge.actionTreeNodeParser"/>
+    </bean>
+    <bean id="ruleforge.complexScorecardParser" class="com.ruleforge.parse.scorecard.ComplexScorecardParser">
+        <property name="rowParser" ref="ruleforge.rowParser"/>
+        <property name="columnParser" ref="ruleforge.complexColumnParser"/>
+        <property name="cellParser" ref="ruleforge.cellParser"/>
+        <property name="rulesRebuilder" ref="ruleforge.rulesRebuilder"/>
+    </bean>
+
+    <bean id="ruleforge.decisionTreeRulesBuilder" class="com.ruleforge.builder.DecisionTreeRulesBuilder"/>
+
+    <bean id="ruleforge.scorecardResourceBuilder" class="com.ruleforge.builder.resource.ScorecardResourceBuilder">
+        <property name="reteBuilder" ref="ruleforge.reteBuilder"/>
+        <property name="resourceLibraryBuilder" ref="ruleforge.resourceLibraryBuilder"/>
+        <property name="scorecardDeserializer" ref="ruleforge.scorecardDeserializer"/>
+        <property name="rulesRebuilder" ref="ruleforge.rulesRebuilder"/>
+    </bean>
+
+    <bean id="ruleforge.complexScorecardRulesBuilder" class="com.ruleforge.builder.resource.ComplexScorecardRulesBuilder">
+        <property name="reteBuilder" ref="ruleforge.reteBuilder"/>
+        <property name="resourceLibraryBuilder" ref="ruleforge.resourceLibraryBuilder"/>
+        <property name="rulesRebuilder" ref="ruleforge.rulesRebuilder"/>
+        <property name="cellContentBuilder" ref="ruleforge.cellContentBuilder"/>
+        <property name="complexScorecardDeserializer" ref="ruleforge.complexScorecardDeserializer"/>
+    </bean>
+
+    <bean id="ruleforge.decisionTreeDeserializer" class="com.ruleforge.parse.deserializer.DecisionTreeDeserializer">
+        <property name="decisionTreeParser" ref="ruleforge.decisionTreeParser"/>
+    </bean>
+
+    <bean id="ruleforge.decisionTreeResourceBuilder" class="com.ruleforge.builder.resource.DecisionTreeResourceBuilder">
+        <property name="decisionTreeDeserializer" ref="ruleforge.decisionTreeDeserializer"/>
+    </bean>
+
+</beans>
