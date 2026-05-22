@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚙️ RuleForge
+# RuleForge
 
 **基于 RETE 算法的高性能 Java 规则引擎**
 
