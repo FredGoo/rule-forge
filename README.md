@@ -1,65 +1,105 @@
+<div align="center">
+
 # RuleForge
 
-基于 RETE 算法的 Java 规则引擎，支持多种规则定义方式和可视化规则设计器。
+基于 RETE 算法的高性能 Java 规则引擎
+
+[![Java](https://img.shields.io/badge/Java-17-blue.svg)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.6-green.svg)](https://spring.io/projects/spring-boot)
+[![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](LICENSE)
+
+</div>
+
+---
 
 ## 特性
 
-- 向导式规则集、脚本式规则集、决策表、决策树、评分卡、决策流
-- 可视化 Web 规则设计器
-- RETE 算法高性能规则执行
-- 规则热部署和动态更新
-- 基于 Spring Boot 4.0，Java 17
+- **多类型规则定义** — 向导式规则集、脚本式规则集、决策表、决策树、评分卡、决策流
+- **可视化设计器** — 基于 React 的 Web 规则编辑器，所见即所得
+- **RETE 算法** — 高性能规则匹配与执行
+- **热部署** — 规则动态更新，无需重启服务
+- **标准 Java** — 纯 Java 实现，Spring Boot 4.0，易于集成
 
 ## 模块结构
 
-| 模块 | 说明 |
-|------|------|
-| ruleforge-core | 规则引擎核心：RETE 算法、规则解析、知识库 |
-| ruleforge-console | 编辑器业务：REST API、项目管理、知识包管理 |
-| ruleforge-executor | 执行器业务：规则执行、知识包接收 |
-| ruleforge-console-app | 可部署的编辑器应用（端口 8081） |
-| ruleforge-executor-app | 可部署的执行器应用（端口 8082） |
-| frontend | React 可视化规则设计器 |
+```
+ruleforge-core            规则引擎核心（RETE 算法、规则解析、知识库）
+ruleforge-console         编辑器业务（REST API、项目管理、知识包管理）
+ruleforge-executor        执行器业务（规则执行、知识包接收）
+ruleforge-console-app     可部署的编辑器应用 → 端口 8081
+ruleforge-executor-app    可部署的执行器应用 → 端口 8082
+frontend                  React 可视化规则设计器
+```
+
+依赖链：
+
+```
+core ← console ← console-app
+core ← executor ← executor-app
+```
 
 ## 快速开始
 
 ### 环境要求
 
-- JDK 17+
-- Maven 3.8+
-- MySQL 8.0+
-- Node.js 18+
+| 依赖 | 版本 |
+|------|------|
+| JDK | 17+ |
+| Maven | 3.8+ |
+| MySQL | 8.0+ |
+| Node.js | 18+ |
 
-### 编译
+### 1. 配置
+
+```bash
+cp .env.example .env
+# 编辑 .env，填入数据库连接信息
+```
+
+### 2. 编译
 
 ```bash
 cd backend
-mvn clean compile
+mvn compile
 ```
 
-### 配置
-
-编辑 `backend/ruleforge-console-app/src/main/resources/application.yml`，填入数据库连接信息。
-
-### 启动
+### 3. 启动
 
 ```bash
-# 启动编辑器
-cd backend/ruleforge-console-app
-mvn spring-boot:run
+# 使用启动脚本（推荐）
+./scripts/start-backend.sh    # Console + Executor
+./scripts/start-frontend.sh   # Frontend
 
-# 启动执行器
-cd backend/ruleforge-executor-app
-mvn spring-boot:run
-
-# 启动前端
-cd frontend
-npm install
-npm start
+# 或单独启动
+./scripts/start-console.sh    # 仅编辑器
+./scripts/start-executor.sh   # 仅执行器
+./scripts/start-all.sh        # 全部服务
 ```
 
-编辑器 `http://localhost:8081`，执行器 `http://localhost:8082`。
+| 服务 | 地址 |
+|------|------|
+| 编辑器 API | http://localhost:8081 |
+| 执行器 API | http://localhost:8082 |
+| 前端设计器 | http://localhost:3000 |
+
+## 规则类型
+
+| 类型 | 说明 |
+|------|------|
+| 向导式规则集 | 可视化条件-动作规则 |
+| 脚本式规则集 (UL) | DSL 脚本语法定义规则 |
+| 决策表 | 表格化条件匹配 |
+| 脚本决策表 | 脚本驱动的决策表 |
+| 决策树 | 树形结构决策 |
+| 评分卡 | 加权评分模型 |
+| 决策流 | 流程编排多规则 |
+
+## 技术栈
+
+**后端：** Java 17 · Spring Boot 4.0.6 · MyBatis-Plus · MySQL · ANTLR4 · RETE
+
+**前端：** React
 
 ## License
 
-Apache-2.0
+[Apache-2.0](LICENSE)
