@@ -51,7 +51,7 @@ public class DecisionLogServiceImpl implements IDecisionLogService {
     private final DecisionNodeLogMapper nodeLogMapper;
     private final DecisionRuleLogMapper ruleLogMapper;
     private final DecisionMessageLogMapper messageLogMapper;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 异步保存决策流执行日志

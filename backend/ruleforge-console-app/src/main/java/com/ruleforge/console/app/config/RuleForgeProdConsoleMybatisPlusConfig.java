@@ -17,6 +17,7 @@ import javax.sql.DataSource;
 public class RuleForgeProdConsoleMybatisPlusConfig {
 
     @Bean
+    @org.springframework.context.annotation.Primary
     public SqlSessionFactory appSqlSessionFactory(@Qualifier("appDataSource") DataSource appDataSource) throws Exception {
         MybatisSqlSessionFactoryBean sessionFactory = new MybatisSqlSessionFactoryBean();
         sessionFactory.setDataSource(appDataSource);

@@ -12,8 +12,11 @@ else
     echo "Warning: .env not found, using defaults from .env.example"
 fi
 
-echo "Compiling backend..."
-cd backend && mvn compile -q
+cd backend
+
+# Install dependencies to local repo
+echo "Installing dependencies to local Maven repo..."
+mvn install -DskipTests -q
 
 echo "Starting Console (${CONSOLE_PORT:-8081}) and Executor (${EXECUTOR_PORT:-8082})..."
 mvn spring-boot:run -pl ruleforge-console-app &

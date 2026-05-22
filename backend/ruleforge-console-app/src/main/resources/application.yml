@@ -2,6 +2,8 @@ server:
   port: ${CONSOLE_PORT:8081}
 
 spring:
+  main:
+    allow-circular-references: true
   application:
     name: ruleforge-console
   datasource:
@@ -36,7 +38,7 @@ spring:
         connection-test-query: SELECT 1
         pool-name: UruleCloudSqlCP
   servlet:
-        multipart:
+    multipart:
       max-file-size: 50MB
       max-request-size: 50MB
 

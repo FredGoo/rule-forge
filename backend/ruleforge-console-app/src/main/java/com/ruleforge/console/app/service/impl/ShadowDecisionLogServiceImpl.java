@@ -50,7 +50,7 @@ public class ShadowDecisionLogServiceImpl implements IShadowDecisionLogService {
     private final ShadowNodeLogMapper nodeLogMapper;
     private final ShadowRuleLogMapper ruleLogMapper;
     private final ShadowMessageLogMapper messageLogMapper;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     @Transactional

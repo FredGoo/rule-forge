@@ -2,8 +2,6 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
-    <import resource="classpath:ruleforge-core-context.xml"/>
-
     <bean id="ruleforge.consoleDebugWriter" class="com.ruleforge.console.servlet.console.ConsoleDebugWriter">
         <property name="debugMessageHolder" ref="ruleforge.debugMessageHolder"/>
     </bean>
@@ -92,11 +90,6 @@
         <property name="location">
             <value>classpath:ruleforge-console-context.properties</value>
         </property>
-    </bean>
-
-    <bean id="ruleforge.repositoryService" class="com.ruleforge.console.repository.RepositoryServiceImpl">
-        <!--        <property name="repositoryBuilder" ref="ruleforge.repositoryBuilder"/>-->
-        <!--<property name="permissionService" ref="ruleforge.permissionService"/>-->
     </bean>
 
 </beans>

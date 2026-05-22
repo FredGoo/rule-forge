@@ -51,9 +51,9 @@ import static com.ruleforge.console.storage.impl.DatabaseProjectStorageServiceIm
 
 
 @Slf4j
-@Component
+@Component("ruleforge.repositoryService")
 @RequiredArgsConstructor
-public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryService {
+public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryService, RepositoryService {
 
     private final PermissionService permissionService;
     private final ProjectMapper projectMapper;
@@ -64,14 +64,35 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
     private final LockMapper lockMapper;
     private final ProjectVersionMapper projectVersionMapper;
     private final ProjectVersionMappingMapper projectVersionMappingMapper;
-    private final RepositoryService repositoryService;
     private final ProjectStorageService projectStorageService;
     private final RepositoryInterceptor repositoryInterceptor;
     private final ProjectRuntimeConfigMapper projectRuntimeConfigMapper;
 
+
+
     @Override
     public List<RepositoryFile> loadProjects(String companyId) throws Exception {
         return null;
+    }
+
+    @Override
+    public List<String> loadProjectNames() throws Exception {
+        List<ProjectEntity> projects = projectMapper.selectList(null);
+        List<String> names = new ArrayList<>();
+        for (ProjectEntity project : projects) {
+            names.add(project.getName());
+        }
+        return names;
+    }
+
+    @Override
+    public List<com.ruleforge.console.model.ClientConfig> loadClientConfigs(String project) throws Exception {
+        return new ArrayList<>();
+    }
+
+    @Override
+    public List<com.ruleforge.console.servlet.permission.UserPermission> loadResourceSecurityConfigs(String companyId) throws Exception {
+        return new ArrayList<>();
     }
 
     @Override
@@ -1072,7 +1093,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
 
     private void syncVersionFileLatestFromLocal(RepositoryFile repositoryFile, long projectId) {
         try {
-            String fileContent = IOUtils.toString(this.repositoryService.readFile(repositoryFile.getFullPath(), null));
+            String fileContent = IOUtils.toString(this.readFile(repositoryFile.getFullPath(), null));
             VersionFile latestFile = new VersionFile();
             latestFile.setPath(repositoryFile.getFullPath());
             latestFile.setName("latest");
@@ -1188,6 +1209,33 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
     @Override
     public boolean fileExist(String var1) throws Exception {
         return false;
+    }
+
+    @Override
+    public String getProject(String path) {
+        if (path == null) {
+            return null;
+        }
+        String processedPath = path;
+        if (processedPath.startsWith("/")) {
+            processedPath = processedPath.substring(1);
+        }
+        int slashPos = processedPath.indexOf("/");
+        if (slashPos == -1) {
+            return processedPath;
+        }
+        return processedPath.substring(0, slashPos);
+    }
+
+    @Override
+    public List<RepositoryFile> loadTemplates(String project) throws Exception {
+        return new ArrayList<>();
+    }
+
+    @Override
+    public String saveTemplateFile(String path, String content) throws Exception {
+        // Template save not implemented in DB-backed storage
+        return null;
     }
 
     private RepositoryFile buildProjectFile(ProjectEntity projectNode, FileType[] types, boolean classify, String searchFileName) throws Exception {
