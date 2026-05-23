@@ -200,12 +200,7 @@ public class TestControllerV2 {
         }
 
         List<VariableCategory> resultVc = new ArrayList<>();
-        boolean isFlow = StringUtils.isNotEmpty(flowId);
         for (VariableCategory vc : facts.keySet()) {
-            if (!isFlow && categorySet.contains(vc.getClazz())) {
-                continue;
-            }
-
             Object obj = facts.get(vc);
             if (obj == null || (obj instanceof GeneralEntity && ((GeneralEntity) obj).isEmpty())) {
                 continue;
