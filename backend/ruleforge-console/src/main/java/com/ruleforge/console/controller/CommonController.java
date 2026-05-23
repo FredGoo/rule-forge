@@ -17,6 +17,7 @@ import com.ruleforge.dsl.RuleParserLexer;
 import com.ruleforge.dsl.RuleParserParser;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.model.flow.*;
+import com.ruleforge.model.rule.RuleSet;
 import com.ruleforge.model.function.FunctionDescriptor;
 import com.ruleforge.model.library.Datatype;
 import com.ruleforge.model.library.action.ActionLibrary;
@@ -607,6 +608,42 @@ public class CommonController extends BaseController {
         } else {
             return Utils.decodeURL(path);
         }
+    }
+
+    @PostMapping("/findRuleByKey")
+    public List<com.ruleforge.model.rule.Rule> findRuleByKey(@RequestParam String ruleKey,
+                                                              @RequestParam String projectName) throws Exception {
+        List<com.ruleforge.model.rule.Rule> ruleList = new ArrayList<>();
+        User user = EnvironmentUtils.getLoginUser(null);
+        FileType[] types = new FileType[]{FileType.RulesetLib};
+        Repository repo = this.ruleforgeRepositoryService.loadRepository(projectName, user, false, types, "");
+        List<RepositoryFile> repositoryFileList = fetchRsl(repo.getRootFile());
+        for (RepositoryFile repositoryFile : repositoryFileList) {
+            try (InputStream inputStream = this.ruleforgeRepositoryService.readFile(repositoryFile.getFullPath(), null)) {
+                Element element = parseXml(inputStream);
+                RuleSet ruleSet = ruleSetDeserializer.deserialize(element);
+                for (com.ruleforge.model.rule.Rule rule : ruleSet.getRules()) {
+                    if (ruleKey.equals(rule.getName())) {
+                        ruleList.add(rule);
+                    }
+                }
+            } catch (Exception ex) {
+                throw new RuleException(ex);
+            }
+        }
+        return ruleList;
+    }
+
+    private List<RepositoryFile> fetchRsl(RepositoryFile repositoryFile) {
+        List<RepositoryFile> list = new ArrayList<>();
+        if (repositoryFile.getType() == com.ruleforge.console.repository.model.Type.rule) {
+            list.add(repositoryFile);
+        } else if (repositoryFile.getChildren() != null) {
+            for (RepositoryFile child : repositoryFile.getChildren()) {
+                list.addAll(fetchRsl(child));
+            }
+        }
+        return list;
     }
 
     private List<ErrorInfo> scriptValidationText(String content, String type) {

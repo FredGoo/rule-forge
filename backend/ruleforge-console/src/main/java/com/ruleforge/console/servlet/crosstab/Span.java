@@ -1,6 +1,6 @@
 package com.ruleforge.console.servlet.crosstab;
 
-class Span {
+public class Span {
     private int row;
     private int col;
 
