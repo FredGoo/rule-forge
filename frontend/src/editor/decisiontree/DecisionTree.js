@@ -84,16 +84,16 @@ DecisionTree.prototype.initToolbar = function () {
         }
         var xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
         xml += "<decision-tree>";
-        $.each(parameterLibraries, function (index, item) {
+        parameterLibraries.forEach(function (item) {
             xml += "<import-parameter-library path=\"" + item + "\"/>";
         });
-        $.each(variableLibraries, function (index, item) {
+        variableLibraries.forEach(function (item) {
             xml += "<import-variable-library path=\"" + item + "\"/>";
         });
-        $.each(constantLibraries, function (index, item) {
+        constantLibraries.forEach(function (item) {
             xml += "<import-constant-library path=\"" + item + "\"/>";
         });
-        $.each(actionLibraries, function (index, item) {
+        actionLibraries.forEach(function (item) {
             xml += "<import-action-library path=\"" + item + "\"/>";
         });
         try {
@@ -106,51 +106,45 @@ DecisionTree.prototype.initToolbar = function () {
         xml = encodeURI(xml);
         var url = (ruleforgeServer || "") + "ruleforge?action=savexml&file=" + file + "";
         var dialog = $("<div style='width:100px;height:50px'>文件保存中...</div>");
-        $.ajax({
-            cache: false,
-            url: url,
-            type: "POST",
-            data: {xml: xml, newVersion: newVersion},
-            beforeSend: function (req) {
-                dialog.dialog({
-                    modal: true,
-                    height: 80,
-                    width: 50,
-                    open: function (event, ui) {
-                        $(".ui-dialog-titlebar", $(this).parent()).hide();
-                    }
+        dialog.dialog({
+            modal: true,
+            height: 80,
+            width: 50,
+            open: function (event, ui) {
+                $(".ui-dialog-titlebar", $(this).parent()).hide();
+            }
+        });
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({xml: xml, newVersion: newVersion}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            cancelDirty();
+            dialog.dialog("close");
+        }).catch(function (response) {
+            dialog.dialog("close");
+            if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>保存失败：" + text + "</span>");
                 });
-            },
-            error: function (response) {
-                dialog.dialog("close");
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>保存失败：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>保存失败,服务端出错</span>");
-                }
-            },
-            success: function (data) {
-                cancelDirty();
-                dialog.dialog("close");
+            } else {
+                bootbox.alert("<span style='color: red'>保存失败,服务端出错</span>");
             }
         });
     };
 
     function _loadDecisionTreeFileData() {
         var url = (ruleforgeServer || "") + "ruleforge?action=loadxml&files=" + file + "," + version + "";
-        $.ajax({
-            cache: false,
-            dataType: "json",
-            type: 'POST',
-            url: url,
-            error: function (response) {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>加载文件失败：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>加载文件失败,服务端出错</span>");
-                }
-            },
-            success: function (data) {
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
                 var treeData = data[0];
                 var libraries = treeData["libraries"];
                 if (libraries) {
@@ -181,6 +175,16 @@ DecisionTree.prototype.initToolbar = function () {
                 refreshFunctionLibraries();
                 self.topNode.initData(treeData["variableTreeNode"]);
                 cancelDirty();
+            }
+        }).catch(function (response) {
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>加载文件失败：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>加载文件失败,服务端出错</span>");
             }
         });
     };

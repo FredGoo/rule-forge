@@ -108,42 +108,40 @@ ReteNode.prototype.getId=function(){
 };
 var _drawReteTree=function(container,filelist){
 	var url = "ruleforge?action=loadrete";
-	$.ajax({
-		cache : false,
-		url : url,
-		type : "POST",
-		data : {
-			files : filelist
-		},
-		error : function(req, error) {
-			alert("规则树加载失败!");
-		},
-		success : function(data) {
-			var width=data["width"];
-			var height=data["height"];
-			var winWidth=$(window).height();
-			var winHeight=$(window).width();
-			if(winWidth>width){
-				width=winWidth;
-			}
-			if(winHeight>height){
-				height=winHeight;
-			}
-			r = Raphael(container, width, height);
-			new ReteNode(data["rootNode"],r);
-			var edges=data["edges"];
-			if(!edges){
-				return;
-			}
-			for(var i=0;i<edges.length;i++){
-				var edge=edges[i];
-				var fromId=edge["from"];
-				var toId=edge["to"];
-				var fromNode=_findNode(fromId);
-				var toNode=_findNode(toId);
-				connections.push(r.connection(fromNode.getRect(),toNode.getRect()));
-			}
+	fetch(url, {
+		method: 'POST',
+		headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+		body: new URLSearchParams({files: filelist}).toString()
+	}).then(function(response) {
+		if (!response.ok) throw response;
+		return response.json();
+	}).then(function(data) {
+		var width=data["width"];
+		var height=data["height"];
+		var winWidth=$(window).height();
+		var winHeight=$(window).width();
+		if(winWidth>width){
+			width=winWidth;
 		}
+		if(winHeight>height){
+			height=winHeight;
+		}
+		r = Raphael(container, width, height);
+		new ReteNode(data["rootNode"],r);
+		var edges=data["edges"];
+		if(!edges){
+			return;
+		}
+		for(var i=0;i<edges.length;i++){
+			var edge=edges[i];
+			var fromId=edge["from"];
+			var toId=edge["to"];
+			var fromNode=_findNode(fromId);
+			var toNode=_findNode(toId);
+			connections.push(r.connection(fromNode.getRect(),toNode.getRect()));
+		}
+	}).catch(function(response) {
+		alert("规则树加载失败!");
 	});
 };
 var _findNode=function(id){

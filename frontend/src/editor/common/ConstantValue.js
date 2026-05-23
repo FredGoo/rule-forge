@@ -43,14 +43,14 @@ ruleforge.ConstantValue.prototype.initMenu = function (constantLibraries) {
         });
     };
     config = {menuItems: []};
-    $.each(data, function (index, item) {
+    data.forEach(function(item) {
         var categories = item["categories"];
-        $.each(categories, function (i, category) {
+        categories.forEach(function(category) {
             var menuItem = {
                 label: category.label
             }
             var constants = category["constants"];
-            $.each(constants, function (j, constant) {
+            constants.forEach(function(constant) {
                 if (!menuItem.subMenu) {
                     menuItem.subMenu = {menuItems: []};
                 }

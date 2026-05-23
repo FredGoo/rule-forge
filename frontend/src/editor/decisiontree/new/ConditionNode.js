@@ -83,7 +83,7 @@ export default class ConditionNode extends BaseNode{
         if(this.inputType){
             xml+=this.inputType.toXml();
         }
-        $.each(this.children,function(i,connection){
+        this.children.forEach(function(connection) {
             xml+=connection.node.toXml();
         });
         xml+="</condition-tree-node>";

@@ -12,22 +12,23 @@ class LoginPage extends Component {
         e.preventDefault();
         this.setState({loading: true, error: ''});
         const {username, password} = this.state;
-        $.ajax({
-            url: window._server + '/frame/login',
-            type: 'POST',
-            data: {username, password},
-            success: (result) => {
-                this.setState({loading: false});
-                if (result.status) {
-                    const redirect = new URLSearchParams(window.location.search).get('redirect') || 'index.html';
-                    window.location.href = redirect;
-                } else {
-                    this.setState({error: '登录失败'});
-                }
-            },
-            error: () => {
-                this.setState({loading: false, error: '登录失败，请检查用户名和密码'});
+        fetch(window._server + '/frame/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({username, password}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then((result) => {
+            this.setState({loading: false});
+            if (result.status) {
+                const redirect = new URLSearchParams(window.location.search).get('redirect') || 'index.html';
+                window.location.href = redirect;
+            } else {
+                this.setState({error: '登录失败'});
             }
+        }).catch(() => {
+            this.setState({loading: false, error: '登录失败，请检查用户名和密码'});
         });
     };
 

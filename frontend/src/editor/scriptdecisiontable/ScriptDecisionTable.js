@@ -546,7 +546,7 @@ window._setDirty=function(){
 		createCellDataByCopyNextCol:function(col){
 			var self=this,
 			cellDatas=self.getCellDataByCol(col+1);
-			$.each(cellDatas,function(index,cellData){
+			cellDatas.forEach(function(cellData){
 				var cell=self.createCellData(cellData.row,col);
 				cell.rowspan=cellData.rowspan;
 			});
@@ -811,28 +811,28 @@ window._setDirty=function(){
 				libraries=[],
 				self=this,
 				xml;
-			$.each(constantLibraries,function(index,path){
+			constantLibraries.forEach(function(path){
 				libraries.push({
 					type:"Constant",
 					path:path
 				});
 			});
 			
-			$.each(actionLibraries,function(index,path){
+			actionLibraries.forEach(function(path){
 				libraries.push({
 					type:"Action",
 					path:path
 				});
 			});
 			
-			$.each(variableLibraries,function(index,path){
+			variableLibraries.forEach(function(path){
 				libraries.push({
 					type:"Variable",
 					path:path
 				});
 			});
 
-			$.each(parameterLibraries,function(index,path){
+			parameterLibraries.forEach(function(path){
 				libraries.push({
 					type:"Parameter",
 					path:path
@@ -841,7 +841,7 @@ window._setDirty=function(){
 			
 			xml="<script-decision-table>";
 			
-			$.each(libraries,function(index,library){
+			libraries.forEach(function(library){
 				var type=library.type,
 					path=library.path;
 				if(type=="Variable"){
@@ -855,18 +855,18 @@ window._setDirty=function(){
 				}
 			});
 			
-			$.each(cells,function(index,cell){
+			cells.forEach(function(cell){
 				xml+="<script-cell row=\""+cell.row+"\" col=\""+cell.col+"\" rowspan=\""+cell.rowspan+"\">";
 				xml+="<![CDATA[" + (cell.script || "")+ "]]>";
 				xml+="</script-cell>"
 				
 			});
 			
-			$.each(rows,function(index,row){
+			rows.forEach(function(row){
 				xml+="<row num=\""+row.num+"\" height=\""+row.height+"\"/>"
 			});
 			
-			$.each(cols,function(index,col){
+			cols.forEach(function(col){
 				var variableName=col.variableName;
 				if(variableName){
 					xml+="<col num=\""+col.num+"\" width=\""+col.width+"\" type=\""+col.type+"\" var-category=\""+(col.variableCategory=="parameter"?"参数":col.variableCategory)+"\" var-label=\""+col.variableLabel+"\" var=\""+col.variableName+"\" datatype=\""+col.datatype+"\"/>"
@@ -883,18 +883,15 @@ window._setDirty=function(){
 			self=this;
 			files=self.getRequestParameter("file");
 			url=window._server+'/common/loadXml';
-			$.ajax({
-				url,
-				async:false,
-				type:'POST',
-				data:{files},
-				error:function(req,error){
-					alert("加载文件失败！");
-				},
-				success:function(data){
+			var xhr = new XMLHttpRequest();
+				xhr.open("POST", url, false);
+				xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				xhr.send(new URLSearchParams({files}).toString());
+				if (xhr.status === 200) {
+					var data = JSON.parse(xhr.responseText);
 					var decisionTable=data[0];
 					var libraries=decisionTable.libraries||[];
-					$.each(libraries,function(index,library){
+					libraries.forEach(function(library){
 						var type,path;
 						type=library.type;
 						path=library.path;
@@ -922,7 +919,6 @@ window._setDirty=function(){
 						callback();
 					}
 				}
-			});
 		},getRequestParameter:function(name){
 			var value=null;
 			var params=window.location.search.substring(1).split("&");
@@ -941,14 +937,14 @@ window._setDirty=function(){
 			return value;
 		},initMenu:function(){
 			const self=this,variableLibrary=[],project=getParameter("project"),oldVariableLibrary=window._ruleforgeEditorVariableLibraries || [];
-			$.each(oldVariableLibrary,function(index,lib){
+			oldVariableLibrary.forEach(function(lib){
 				if(lib.type!="parameter"){
 					variableLibrary.push(lib);
 				}
 			});
 			const parameter=window._ruleforgeEditorParameterLibraries||[];
 			if(parameter.length>0){
-				$.each(parameter,function(index,p){
+				parameter.forEach(function(p){
 					variableLibrary.push([{
 						name:"parameter",
 						type:"parameter",
@@ -1115,14 +1111,14 @@ window._setDirty=function(){
 				self.invoke("render");
 			};
 			const variabeMenuItem=[];
-			$.each(variableLibrary,function(index,categories){
-				$.each(categories,function(i,category){
+			variableLibrary.forEach(function(categories){
+				categories.forEach(function(category){
 					var menuItem={
 						label:category.name=="parameter"?"参数":category.name,
 						icon:category.type=="parameter"?"glyphicon glyphicon-th-list":"glyphicon glyphicon-tasks"
 					};
 					var variables=category.variables;
-					$.each(variables||[],function(j,variable){
+					(variables||[]).forEach(function(variable){
 						if(!menuItem.subMenu){
 							menuItem.subMenu={menuItems:[]};
 						}

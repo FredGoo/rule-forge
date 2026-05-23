@@ -1,13 +1,12 @@
 isAdmin = function() {
 	if(window._isAdmin === undefined) {
-		$.ajax({
-			url:"ruleforge?action=checkadmin",
-			async: false,
-			type : "POST",
-			success:function(data){
-				window._isAdmin = data;
-			}
-		});
+		var xhr = new XMLHttpRequest();
+		xhr.open("POST", "ruleforge?action=checkadmin", false);
+		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		xhr.send();
+		if (xhr.status === 200) {
+			window._isAdmin = JSON.parse(xhr.responseText);
+		}
 	}
 	return window._isAdmin;
 };
@@ -30,19 +29,17 @@ hasPermission = function(type) {
 
 getPermissions = function(type) {
 	var path = getRequestParameter("file");
-	$.ajax({
-		url:"ruleforge?action=loadpermission",
-		async: false,
-		type : "POST",
-		data : {
-			path : path.substring(0, path.lastIndexOf("/")),
-			type : type || "Mod" + getRequestParameter("type")
-		},
-		success:function(data){
-			_permissions = data || [];
-		}
-	});
-	
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", "ruleforge?action=loadpermission", false);
+	xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+	xhr.send(new URLSearchParams({
+		path : path.substring(0, path.lastIndexOf("/")),
+		type : type || "Mod" + getRequestParameter("type")
+	}).toString());
+	if (xhr.status === 200) {
+		_permissions = JSON.parse(xhr.responseText) || [];
+	}
+
 	return _permissions;
 };
 

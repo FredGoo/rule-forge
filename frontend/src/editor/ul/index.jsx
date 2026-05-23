@@ -59,27 +59,32 @@ function buildScriptLintFunction(type) {
             return;
         }
         const url = window._server + '/common/scriptValidation';
-        $.ajax({
-            url,
-            type: 'POST',
-            data: {type, content: text},
-            success: function (result) {
-                if (result) {
-                    for (let item of result) {
-                        item.from = {line: item.line - 1};
-                        item.to = {line: item.line - 1};
-                    }
-                    updateLinting(editor, result);
-                } else {
-                    updateLinting(editor, []);
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({type, content: text}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (result) {
+            if (result) {
+                for (let item of result) {
+                    item.from = {line: item.line - 1};
+                    item.to = {line: item.line - 1};
                 }
-            },
-            error: function (response) {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>语法检查操作失败：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>语法检查操作失败,服务端出错</span>");
-                }
+                updateLinting(editor, result);
+            } else {
+                updateLinting(editor, []);
+            }
+        }).catch(function (response) {
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>语法检查操作失败：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>语法检查操作失败,服务端出错</span>");
             }
         });
     };
@@ -181,25 +186,30 @@ function init() {
 
     window._dirty = false;
     var url = window._server + '/uleditor/loadUL';
-    $.ajax({
-        url: url,
-        type: "POST",
-        data: {file},
-        error: function (response) {
-            if (response && response.responseText) {
-                bootbox.alert("<span style='color: red'>文件加载失败：" + response.responseText + "</span>");
-            } else {
-                bootbox.alert("<span style='color: red'>文件加载失败,服务端出错</span>");
-            }
-        },
-        success: function (data) {
-            codeMirror.setValue(data);
-            $("#saveButton").addClass("disabled");
-            // $("#saveButtonNewVersion").addClass("disabled");
-            codeMirror.on("change", function () {
-                setDirty();
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({file}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        codeMirror.setValue(data);
+        $("#saveButton").addClass("disabled");
+        // $("#saveButtonNewVersion").addClass("disabled");
+        codeMirror.on("change", function () {
+            setDirty();
+        });
+        loadResLib();
+    }).catch(function (response) {
+        if (response && response.status === 401) {
+            bootbox.alert("权限不足，不能进行此操作.");
+        } else if (response && response.text) {
+            response.text().then(function(text) {
+                bootbox.alert("<span style='color: red'>文件加载失败：" + text + "</span>");
             });
-            loadResLib();
+        } else {
+            bootbox.alert("<span style='color: red'>文件加载失败,服务端出错</span>");
         }
     });
 };
@@ -217,19 +227,24 @@ function loadResLib() {
         return;
     }
     var url = window._server + '/uleditor/loadULLibs';
-    $.ajax({
-        url: url,
-        type: "POST",
-        data: {content: content},
-        error: function (response) {
-            if (response && response.responseText) {
-                bootbox.alert("<span style='color: red'>资源库加载失败：" + response.responseText + "</span>");
-            } else {
-                bootbox.alert("<span style='color: red'>资源库加载失败,服务端出错</span>");
-            }
-        },
-        success: function (data) {
-            codeMirror._library = data;
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({content: content}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        codeMirror._library = data;
+    }).catch(function (response) {
+        if (response && response.status === 401) {
+            bootbox.alert("权限不足，不能进行此操作.");
+        } else if (response && response.text) {
+            response.text().then(function(text) {
+                bootbox.alert("<span style='color: red'>资源库加载失败：" + text + "</span>");
+            });
+        } else {
+            bootbox.alert("<span style='color: red'>资源库加载失败,服务端出错</span>");
         }
     });
 };

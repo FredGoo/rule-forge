@@ -32,18 +32,20 @@ export default class PackageTool extends BaseTool {
                 self.packageId = $(this).val();
             });
             if (!_this.packages) {
-                $.ajax({
-                    url: window._server + '/ruleflowdesigner/loadPackages?project=' + window._project,
-                    success: function (packages) {
-                        _this.packages = packages;
-                        for (let p of packages) {
-                            packageIdSelect.append(`<option>${p.id}</option>`);
-                        }
-                        packageIdSelect.val(self.packageId);
-                    },
-                    error: function () {
-                        alert('加载知识包出错！');
+                fetch(window._server + '/ruleflowdesigner/loadPackages?project=' + window._project, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+                }).then(function(response) {
+                    if (!response.ok) throw response;
+                    return response.json();
+                }).then(function (packages) {
+                    _this.packages = packages;
+                    for (let p of packages) {
+                        packageIdSelect.append(`<option>${p.id}</option>`);
                     }
+                    packageIdSelect.val(self.packageId);
+                }).catch(function () {
+                    alert('加载知识包出错！');
                 });
             } else {
                 for (let p of _this.packages) {

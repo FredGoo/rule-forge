@@ -5,12 +5,6 @@ import * as event from '../../components/componentEvent.js';
 
 (function ($) {
     $.fn.ruleforge = function () {
-        // this.on('click', function(e) {
-        //     e.stopImmediatePropagation();
-        //     e.preventDefault();
-        //     return false;
-        // }).css("pointer-events", "none");
-        
         this._dirty = false;
         this.rules = [];
         var file = getParameter("file");
@@ -63,22 +57,24 @@ import * as event from '../../components/componentEvent.js';
                 var url = window._server + '/common/findRuleByKey';
                 var projectName = file.split('/')[1];
 
-                $.ajax({
-                    url: url,
-                    type: 'POST',
-                    data: {
+                fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
                         ruleKey: ruleKey,
                         projectName: projectName
-                    },
-                    success: function (res) {
-                        if (res != null && res.length > 0) {
-                            _addRule(res[0]);
-                        } else {
-                            var rule = _addRule();
-                            rule.initTopJoin();
-                        }
+                    }).toString()
+                }).then(function(response) {
+                    if (!response.ok) throw response;
+                    return response.json();
+                }).then(function (res) {
+                    if (res != null && res.length > 0) {
+                        _addRule(res[0]);
+                    } else {
+                        var rule = _addRule();
+                        rule.initTopJoin();
                     }
-                })
+                }).catch(function() {});
             }
         });
 
@@ -137,7 +133,6 @@ import * as event from '../../components/componentEvent.js';
         saveButtonNewVersion.click(function () {
             save(true);
         });
-        // saveButtonNewVersion.addClass("disabled");
         const saveButtonNotNew = $("#saveButton");
         saveButtonNotNew.click(function () {
             save(false);
@@ -179,16 +174,16 @@ import * as event from '../../components/componentEvent.js';
             }
             var xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
             xml += "<rule-set>";
-            $.each(parameterLibraries, function (index, item) {
+            parameterLibraries.forEach(function (item) {
                 xml += "<import-parameter-library path=\"" + item + "\"/>";
             });
-            $.each(variableLibraries, function (index, item) {
+            variableLibraries.forEach(function (item) {
                 xml += "<import-variable-library path=\"" + item + "\"/>";
             });
-            $.each(constantLibraries, function (index, item) {
+            constantLibraries.forEach(function (item) {
                 xml += "<import-constant-library path=\"" + item + "\"/>";
             });
-            $.each(actionLibraries, function (index, item) {
+            actionLibraries.forEach(function (item) {
                 xml += "<import-action-library path=\"" + item + "\"/>";
             });
             xml += self.remark.toXml();
@@ -258,57 +253,60 @@ import * as event from '../../components/componentEvent.js';
 
         function _loadRulesetFileData() {
             var url = window._server + '/common/loadXml';
-            $.ajax({
-                url: url,
-                type: 'POST',
-                data: {files: file},
-                error: function (response) {
-                    if (response && response.responseText) {
-                        bootbox.alert("<span style='color: red'>加载文件失败，服务端错误：" + response.responseText + "</span>");
+            fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({files: file}).toString()
+            }).then(function(response) {
+                if (!response.ok) throw response;
+                return response.json();
+            }).then(function (data) {
+                var ruleset = data[0];
+                var libraries = ruleset["libraries"];
+                self.remark.setData(ruleset["remark"]);
+                if (libraries) {
+                    for (var i = 0; i < libraries.length; i++) {
+                        var lib = libraries[i];
+                        var type = lib["type"];
+                        var path = lib["path"];
+                        switch (type) {
+                            case "Constant":
+                                constantLibraries.push(path);
+                                break;
+                            case "Action":
+                                actionLibraries.push(path);
+                                break;
+                            case "Variable":
+                                variableLibraries.push(path);
+                                break;
+                            case "Parameter":
+                                parameterLibraries.push(path);
+                                break;
+                        }
+                    }
+                }
+                refreshActionLibraries();
+                refreshConstantLibraries();
+                refreshVariableLibraries();
+                refreshParameterLibraries();
+                refreshFunctionLibraries();
+                var rules = ruleset["rules"];
+                for (var i = 0; i < rules.length; i++) {
+                    var rule = rules[i];
+                    if (rule.loopRule) {
+                        _addLoopRule(rule);
                     } else {
-                        bootbox.alert("<span style='color: red'>加载文件失败,服务端出错</span>");
+                        _addRule(rule);
                     }
-                },
-                success: function (data) {
-                    var ruleset = data[0];
-                    var libraries = ruleset["libraries"];
-                    self.remark.setData(ruleset["remark"]);
-                    if (libraries) {
-                        for (var i = 0; i < libraries.length; i++) {
-                            var lib = libraries[i];
-                            var type = lib["type"];
-                            var path = lib["path"];
-                            switch (type) {
-                                case "Constant":
-                                    constantLibraries.push(path);
-                                    break;
-                                case "Action":
-                                    actionLibraries.push(path);
-                                    break;
-                                case "Variable":
-                                    variableLibraries.push(path);
-                                    break;
-                                case "Parameter":
-                                    parameterLibraries.push(path);
-                                    break;
-                            }
-                        }
-                    }
-                    refreshActionLibraries();
-                    refreshConstantLibraries();
-                    refreshVariableLibraries();
-                    refreshParameterLibraries();
-                    refreshFunctionLibraries();
-                    var rules = ruleset["rules"];
-                    for (var i = 0; i < rules.length; i++) {
-                        var rule = rules[i];
-                        if (rule.loopRule) {
-                            _addLoopRule(rule);
-                        } else {
-                            _addRule(rule);
-                        }
-                    }
-                    cancelDirty();
+                }
+                cancelDirty();
+            }).catch(function (response) {
+                if (response && response.text) {
+                    response.text().then(function(text) {
+                        bootbox.alert("<span style='color: red'>加载文件失败，服务端错误：" + text + "</span>");
+                    });
+                } else {
+                    bootbox.alert("<span style='color: red'>加载文件失败,服务端出错</span>");
                 }
             });
         }

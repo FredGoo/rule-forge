@@ -43,15 +43,15 @@ ruleforge.MethodValue.prototype.initMenu = function (actionLibraries) {
         });
     };
     config = {menuItems: []};
-    $.each(data || [], function (index, item) {
+    data || [].forEach(function(item) {
         var springBeans = item.springBeans || [];
-        $.each(springBeans, function (i, springBean) {
+        springBeans.forEach(function(springBean) {
             var menuItem = {
                 name: springBean.id,
                 label: springBean.name
             };
             var methods = springBean.methods || [];
-            $.each(methods, function (j, method) {
+            methods.forEach(function(method) {
                 if (!menuItem.subMenu) {
                     menuItem.subMenu = {menuItems: []};
                 }

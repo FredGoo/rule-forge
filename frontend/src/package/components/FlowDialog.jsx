@@ -129,49 +129,51 @@ export default class FlowDialog extends Component {
                             bootbox.alert(JSON.stringify(errorList));
 
                             // 展示流程图
-                            $.ajax({
-                                url: window._server + '/ruleflowdesigner/loadFlowDefinition',
-                                data: {file: files.split(':')[1].split(',')[0]},
-                                success: function (flowJson) {
-                                    $('#' + containerId).html('');
+                            fetch(window._server + '/ruleflowdesigner/loadFlowDefinition', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                body: new URLSearchParams({file: files.split(':')[1].split(',')[0]}).toString()
+                            }).then(function(response) {
+                                if (!response.ok) throw response;
+                                return response.json();
+                            }).then(function (flowJson) {
+                                $('#' + containerId).html('');
 
-                                    const designer = new RuleFlowDesigner(containerId);
-                                    delete flowJson.libraries;
-                                    designer.addTool(new StartTool());
-                                    designer.addTool(new RuleTool());
-                                    designer.addTool(new PackageTool());
-                                    designer.addTool(new ActionTool());
-                                    designer.addTool(new ScriptTool());
-                                    designer.addTool(new DecisionTool());
-                                    designer.addTool(new ForkTool());
-                                    designer.addTool(new JoinTool());
-                                    designer.addTool(new RulesPackageTool());
-                                    designer.buildDesigner();
+                                const designer = new RuleFlowDesigner(containerId);
+                                delete flowJson.libraries;
+                                designer.addTool(new StartTool());
+                                designer.addTool(new RuleTool());
+                                designer.addTool(new PackageTool());
+                                designer.addTool(new ActionTool());
+                                designer.addTool(new ScriptTool());
+                                designer.addTool(new DecisionTool());
+                                designer.addTool(new ForkTool());
+                                designer.addTool(new JoinTool());
+                                designer.addTool(new RulesPackageTool());
+                                designer.buildDesigner();
 
-                                    $('.fd-toolbar').hide();
-                                    $('.fd-property-panel').remove();
-                                    $('.fd-node-toolbar').hide();
+                                $('.fd-toolbar').hide();
+                                $('.fd-property-panel').remove();
+                                $('.fd-node-toolbar').hide();
 
-                                    for (const index in flowJson.nodes) {
-                                        const num = testResult['flowMap'][flowJson.nodes[index].name];
-                                        if (num != null) {
-                                            flowJson.nodes[index].text = flowJson.nodes[index].name + ' (' + num + ')';
-                                        }
+                                for (const index in flowJson.nodes) {
+                                    const num = testResult['flowMap'][flowJson.nodes[index].name];
+                                    if (num != null) {
+                                        flowJson.nodes[index].text = flowJson.nodes[index].name + ' (' + num + ')';
                                     }
-                                    designer.fromJson(flowJson);
-
-                                    const datetime = new Date();
-                                    const filePrefix = '' + datetime.getFullYear() + (datetime.getMonth() + 1) + datetime.getDate()
-                                        + datetime.getHours() + datetime.getMinutes() + datetime.getSeconds() + '_';
-                                    // 下载excel
-                                    document.getElementById("input-prefix").value = filePrefix;
-                                    document.getElementById(formId).submit();
-                                    // 下载图片
-                                    downloadSvg('.fd-canvas-container', filePrefix)
-                                },
-                                error: function () {
-                                    alert(`加载决策流${files}失败！`);
                                 }
+                                designer.fromJson(flowJson);
+
+                                const datetime = new Date();
+                                const filePrefix = '' + datetime.getFullYear() + (datetime.getMonth() + 1) + datetime.getDate()
+                                    + datetime.getHours() + datetime.getMinutes() + datetime.getSeconds() + '_';
+                                // 下载excel
+                                document.getElementById("input-prefix").value = filePrefix;
+                                document.getElementById(formId).submit();
+                                // 下载图片
+                                downloadSvg('.fd-canvas-container', filePrefix);
+                            }).catch(function () {
+                                alert(`加载决策流${files}失败！`);
                             });
                         });
                     }

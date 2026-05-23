@@ -108,39 +108,51 @@ export default class ComplexScoreCard {
             const saveUrl = window._server + '/common/saveFile';
 
             if (isNewVersion) {
-                $.ajax({
-                    url: window._server + '/common/checkFileDirty',
-                    type: 'post',
-                    data: {
+                fetch(window._server + '/common/checkFileDirty', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
                         filePath: file,
                         content: encodeURIComponent(xml)
-                    },
-                    success: function (res) {
-                        if (res.status) {
-                            if (res.data) {
-                                let decodedFileName = decodeURIComponent(file);
-                                if (decodedFileName.includes('%')) {
-                                    decodedFileName = decodeURIComponent(decodedFileName);
-                                }
-                                bootbox.confirm('是否对【' + decodedFileName + '】生成新版本?', function (confirmed) {
-                                    if (confirmed) {
-                                        ajaxSave(saveUrl, postData, function (res) {
-                                            if (res.status) {
-                                                bootbox.alert('保存成功!', function () {
-                                                    self.resetState();
-                                                });
-                                            } else {
-                                                bootbox.alert(res.message || '保存失败');
-                                            }
-                                        });
-                                    }
-                                });
-                            } else {
-                                bootbox.alert('与最新版本无差异，无需生成新版本');
+                    }).toString()
+                }).then(function(response) {
+                    if (!response.ok) throw response;
+                    return response.json();
+                }).then(function (res) {
+                    if (res.status) {
+                        if (res.data) {
+                            let decodedFileName = decodeURIComponent(file);
+                            if (decodedFileName.includes('%')) {
+                                decodedFileName = decodeURIComponent(decodedFileName);
                             }
+                            bootbox.confirm('是否对【' + decodedFileName + '】生成新版本?', function (confirmed) {
+                                if (confirmed) {
+                                    ajaxSave(saveUrl, postData, function (res) {
+                                        if (res.status) {
+                                            bootbox.alert('保存成功!', function () {
+                                                self.resetState();
+                                            });
+                                        } else {
+                                            bootbox.alert(res.message || '保存失败');
+                                        }
+                                    });
+                                }
+                            });
                         } else {
-                            bootbox.alert("<span style='color: red'>服务端出错</span>");
+                            bootbox.alert('与最新版本无差异，无需生成新版本');
                         }
+                    } else {
+                        bootbox.alert("<span style='color: red'>服务端出错</span>");
+                    }
+                }).catch(function (response) {
+                    if (response && response.status === 401) {
+                        bootbox.alert("权限不足，不能进行此操作.");
+                    } else if (response && response.text) {
+                        response.text().then(function(text) {
+                            bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+                        });
+                    } else {
+                        bootbox.alert("<span style='color: red'>服务端出错</span>");
                     }
                 });
             } else {
@@ -417,81 +429,84 @@ export default class ComplexScoreCard {
             loadUrl += '?doImport=true';
         }
 
-        $.ajax({
-            url: loadUrl,
-            type: 'POST',
-            data: {files: file},
-            error: function (error) {
-                $(window.document.body).empty();
-                if (error && error.status === 401) {
-                    bootbox.alert('权限不足，不能进行此操作.');
-                } else if (error && error.responseText) {
+        fetch(loadUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({files: file}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (response) {
+            const data = response[0];
+            self.remark.setData(data.remark);
+
+            // Load properties
+            const salience = data.salience;
+            if (salience) {
+                self.addProperty(new urule.RuleProperty(self, 'salience', salience, 1));
+            }
+            const loop = data.loop;
+            if (loop != null) {
+                self.addProperty(new urule.RuleProperty(self, 'loop', loop, 3));
+            }
+            const effectiveDate = data.effectiveDate;
+            if (effectiveDate) {
+                self.addProperty(new urule.RuleProperty(self, 'effective-date', effectiveDate, 2));
+            }
+            const expiresDate = data.expiresDate;
+            if (expiresDate) {
+                self.addProperty(new urule.RuleProperty(self, 'expires-date', expiresDate, 2));
+            }
+            const enabled = data.enabled;
+            if (enabled != null) {
+                self.addProperty(new urule.RuleProperty(self, 'enabled', enabled, 3));
+            }
+            const debug = data.debug;
+            if (debug != null) {
+                self.addProperty(new urule.RuleProperty(self, 'debug', debug, 3));
+            }
+
+            // Load libraries
+            const libraries = data.libraries || [];
+            libraries.forEach(function (lib) {
+                const type = lib.type;
+                const path = lib.path;
+                switch (type) {
+                    case 'Constant':
+                        constantLibraries.push(path);
+                        break;
+                    case 'Action':
+                        actionLibraries.push(path);
+                        break;
+                    case 'Variable':
+                        variableLibraries.push(path);
+                        break;
+                    case 'Parameter':
+                        parameterLibraries.push(path);
+                }
+            });
+            refreshActionLibraries();
+            refreshConstantLibraries();
+            refreshVariableLibraries();
+            refreshParameterLibraries();
+            refreshFunctionLibraries();
+
+            if (callback) callback(data);
+        }).catch(function (error) {
+            $(window.document.body).empty();
+            if (error && error.status === 401) {
+                bootbox.alert('权限不足，不能进行此操作.');
+            } else if (error && error.text) {
+                error.text().then(function(text) {
                     try {
-                        const result = JSON.parse(error.responseText);
+                        const result = JSON.parse(text);
                         bootbox.alert("<span style='color: red'>服务端错误：" + result.errorMsg + '</span>');
                     } catch (e) {
-                        bootbox.alert("<span style='color: red'>服务端错误：" + error.responseText + '</span>');
-                    }
-                } else {
-                    bootbox.alert("<span style='color: red'>服务端出错</span>");
-                }
-            },
-            success: function (response) {
-                const data = response[0];
-                self.remark.setData(data.remark);
-
-                // Load properties
-                const salience = data.salience;
-                if (salience) {
-                    self.addProperty(new urule.RuleProperty(self, 'salience', salience, 1));
-                }
-                const loop = data.loop;
-                if (loop != null) {
-                    self.addProperty(new urule.RuleProperty(self, 'loop', loop, 3));
-                }
-                const effectiveDate = data.effectiveDate;
-                if (effectiveDate) {
-                    self.addProperty(new urule.RuleProperty(self, 'effective-date', effectiveDate, 2));
-                }
-                const expiresDate = data.expiresDate;
-                if (expiresDate) {
-                    self.addProperty(new urule.RuleProperty(self, 'expires-date', expiresDate, 2));
-                }
-                const enabled = data.enabled;
-                if (enabled != null) {
-                    self.addProperty(new urule.RuleProperty(self, 'enabled', enabled, 3));
-                }
-                const debug = data.debug;
-                if (debug != null) {
-                    self.addProperty(new urule.RuleProperty(self, 'debug', debug, 3));
-                }
-
-                // Load libraries
-                const libraries = data.libraries || [];
-                $.each(libraries, function (index, lib) {
-                    const type = lib.type;
-                    const path = lib.path;
-                    switch (type) {
-                        case 'Constant':
-                            constantLibraries.push(path);
-                            break;
-                        case 'Action':
-                            actionLibraries.push(path);
-                            break;
-                        case 'Variable':
-                            variableLibraries.push(path);
-                            break;
-                        case 'Parameter':
-                            parameterLibraries.push(path);
+                        bootbox.alert("<span style='color: red'>服务端错误：" + text + '</span>');
                     }
                 });
-                refreshActionLibraries();
-                refreshConstantLibraries();
-                refreshVariableLibraries();
-                refreshParameterLibraries();
-                refreshFunctionLibraries();
-
-                if (callback) callback(data);
+            } else {
+                bootbox.alert("<span style='color: red'>服务端出错</span>");
             }
         });
     }
@@ -653,14 +668,14 @@ export default class ComplexScoreCard {
 
         // Rows
         const allCells = [];
-        $.each(this.contentRows, function (index, row) {
+        this.contentRows.forEach(function (row, index) {
             row.num = index;
             xml += '<row num="' + row.num + '" height="30"/>';
             allCells.push(...row.conditionCells, ...row.actionCells);
         });
 
         // Condition columns
-        $.each(this.conditionColumns, function (index, col) {
+        this.conditionColumns.forEach(function (col, index) {
             col.num = index;
             if (!col.variableCategory) {
                 throw '第[' + (col.num + 1) + ']条件列未定义具体变量或参数！';
@@ -671,7 +686,7 @@ export default class ComplexScoreCard {
 
         // Action columns
         const conditionColCount = this.conditionColumns.length;
-        $.each(this.actionColumns, function (index, col) {
+        this.actionColumns.forEach(function (col, index) {
             col.num = conditionColCount + index;
             const variableName = col.variableName;
             const actionType = col.actionType;
@@ -691,7 +706,7 @@ export default class ComplexScoreCard {
         });
 
         // Cells
-        $.each(allCells, function (index, cell) {
+        allCells.forEach(function (cell) {
             const rowspan = cell.td.prop('rowspan');
             if (cell.conditionCol) {
                 if (!cell.variableLabel) {
@@ -718,16 +733,16 @@ export default class ComplexScoreCard {
      */
     _buildLibraries() {
         const libraries = [];
-        $.each(constantLibraries, function (index, path) {
+        constantLibraries.forEach(function (path) {
             libraries.push({type: 'Constant', path: path});
         });
-        $.each(actionLibraries, function (index, path) {
+        actionLibraries.forEach(function (path) {
             libraries.push({type: 'Action', path: path});
         });
-        $.each(variableLibraries, function (index, path) {
+        variableLibraries.forEach(function (path) {
             libraries.push({type: 'Variable', path: path});
         });
-        $.each(parameterLibraries, function (index, path) {
+        parameterLibraries.forEach(function (path) {
             libraries.push({type: 'Parameter', path: path});
         });
         return libraries;

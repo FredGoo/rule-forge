@@ -111,18 +111,20 @@ $(document).ready(function () {
         </div>,
 );
 
-    $.ajax({
-        url: window._server + '/ruleflowdesigner/loadFlowDefinition',
-        data: {file},
-        success: function (json) {
-            // 确保画布尺寸已确定
-            setTimeout(() => {
-                designer.fromJson(json);
-                Event.eventEmitter.emit(Event.CANVAS_SELECTED);
-            }, 0);
-        },
-        error: function () {
-            alert(`加载决策流${file}失败！`);
-        }
+    fetch(window._server + '/ruleflowdesigner/loadFlowDefinition', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({file}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (json) {
+        // 确保画布尺寸已确定
+        setTimeout(() => {
+            designer.fromJson(json);
+            Event.eventEmitter.emit(Event.CANVAS_SELECTED);
+        }, 0);
+    }).catch(function () {
+        alert(`加载决策流${file}失败！`);
     });
 });

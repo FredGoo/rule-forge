@@ -14,13 +14,10 @@
  * @param {string} xml - The XML representation of the cell data
  */
 export function copyCellData(type, xml) {
-    $.ajax({
-        url: window._server + '/common/parseCellData',
-        type: 'POST',
-        data: {
-            type: type,
-            xml: xml
-        }
+    fetch(window._server + '/common/parseCellData', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({type: type, xml: xml}).toString()
     });
 }
 
@@ -31,23 +28,22 @@ export function copyCellData(type, xml) {
  * @param {Function} callback - Called with the parsed data on success
  */
 export function pasteCellData(type, callback) {
-    $.ajax({
-        url: window._server + '/common/loadCellData',
-        type: 'POST',
-        data: {
-            type: type
-        },
-        success: function (data) {
-            if (data) {
-                callback(data);
-            } else {
-                bootbox.alert('当前没有数据可供粘贴！');
-            }
-        },
-        error: function (error) {
-            if (error) {
-                bootbox.alert('粘贴失败: ' + (error.message || error));
-            }
+    fetch(window._server + '/common/loadCellData', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({type: type}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        if (data) {
+            callback(data);
+        } else {
+            bootbox.alert('当前没有数据可供粘贴！');
+        }
+    }).catch(function (error) {
+        if (error) {
+            bootbox.alert('粘贴失败: ' + (error.message || error));
         }
     });
 }

@@ -115,40 +115,46 @@ export function addSlave() {
 export function generateFields(rowIndex, clazz) {
     return function (dispatch) {
         let url = window._server + '/variableeditor/generateFields';
-        $.ajax({
-            url,
-            type: 'POST',
-            data: {clazz},
-            success: function (result) {
-                dispatch({rowIndex, variables: result, type: GENERATED_FIELDS});
-            },
-            error: function (response) {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>生成字段失败,服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>生成字段失败,服务端出错</span>");
-                }
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({clazz}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (result) {
+            dispatch({rowIndex, variables: result, type: GENERATED_FIELDS});
+        }).catch(function (response) {
+            if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>生成字段失败,服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>生成字段失败,服务端出错</span>");
             }
-        })
+        });
     }
 }
 
 export function loadMasterData(files) {
     return function (dispatch) {
         var url = window._server + "/xml";
-        $.ajax({
-            url,
-            type: 'POST',
-            data: {files},
-            success: function (data) {
-                dispatch({type: LOAD_MASTER_COMPLETED, masterData: data[0]});
-            },
-            error: function (response) {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>加载数据失败,服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>加载数据失败,服务端出错</span>");
-                }
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({files}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            dispatch({type: LOAD_MASTER_COMPLETED, masterData: data[0]});
+        }).catch(function (response) {
+            if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>加载数据失败,服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>加载数据失败,服务端出错</span>");
             }
         });
     }

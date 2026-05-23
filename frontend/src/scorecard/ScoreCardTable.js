@@ -173,16 +173,16 @@ export default class ScoreCardTable {
         var xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
         xml += "<scorecard weight-support=\"" + this.weightSupport + "\" " + this.propertyConfig.toXml() + this.attributeCol.toXml() + this.conditionCol.toXml() + this.scoreCol.toXml() + this.tableAction.toXml() + ">";
         xml += this.remark.toXml();
-        $.each(window.parameterLibraries, function (index, item) {
+        window.parameterLibraries.forEach(function(item) {
             xml += "<import-parameter-library path=\"" + item + "\"/>";
         });
-        $.each(window.variableLibraries, function (index, item) {
+        window.variableLibraries.forEach(function(item) {
             xml += "<import-variable-library path=\"" + item + "\"/>";
         });
-        $.each(window.constantLibraries, function (index, item) {
+        window.constantLibraries.forEach(function(item) {
             xml += "<import-constant-library path=\"" + item + "\"/>";
         });
-        $.each(window.actionLibraries, function (index, item) {
+        window.actionLibraries.forEach(function(item) {
             xml += "<import-action-library path=\"" + item + "\"/>";
         });
         for (let row of this.attributeRows) {

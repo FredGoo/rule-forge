@@ -210,73 +210,74 @@ $(document).ready(function () {
         loadUrl += '?doImport=true';
     }
 
-    $.ajax({
-        url: loadUrl,
-        type: 'POST',
-        data: {
-            files: file
-        },
-        success: function (response) {
-            const data = response[0];
+    fetch(loadUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({files: file}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (response) {
+        const data = response[0];
 
-            // Convert cells array to a Map keyed by "rowNumber,columnNumber"
-            data.cellsMap = function (tableData) {
-                const map = new Map();
-                const cells = tableData.cells;
-                for (const cell of cells) {
-                    const key = cell.row + ',' + cell.col;
-                    map.set(key, cell);
-                }
-                return map;
-            }(data);
+        // Convert cells array to a Map keyed by "rowNumber,columnNumber"
+        data.cellsMap = function (tableData) {
+            const map = new Map();
+            const cells = tableData.cells;
+            for (const cell of cells) {
+                const key = cell.row + ',' + cell.col;
+                map.set(key, cell);
+            }
+            return map;
+        }(data);
 
-            crossTable.init(data);
+        crossTable.init(data);
 
-            // Load library references
-            const libraries = data.libraries;
-            if (libraries) {
-                for (let i = 0; i < libraries.length; i++) {
-                    const lib = libraries[i];
-                    const type = lib.type;
-                    const path = lib.path;
-                    switch (type) {
-                        case 'Constant':
-                            constantLibraries.push(path);
-                            break;
-                        case 'Action':
-                            actionLibraries.push(path);
-                            break;
-                        case 'Variable':
-                            variableLibraries.push(path);
-                            break;
-                        case 'Parameter':
-                            parameterLibraries.push(path);
-                            break;
-                    }
+        // Load library references
+        const libraries = data.libraries;
+        if (libraries) {
+            for (let i = 0; i < libraries.length; i++) {
+                const lib = libraries[i];
+                const type = lib.type;
+                const path = lib.path;
+                switch (type) {
+                    case 'Constant':
+                        constantLibraries.push(path);
+                        break;
+                    case 'Action':
+                        actionLibraries.push(path);
+                        break;
+                    case 'Variable':
+                        variableLibraries.push(path);
+                        break;
+                    case 'Parameter':
+                        parameterLibraries.push(path);
+                        break;
                 }
             }
+        }
 
-            refreshActionLibraries();
-            refreshConstantLibraries();
-            refreshVariableLibraries();
-            refreshParameterLibraries();
-            refreshFunctionLibraries();
-            clearDirty();
-        },
-        error: function (error) {
-            $(window.document.body).empty();
-            if (error && error.status === 401) {
-                bootbox.alert('权限不足，不能进行此操作.');
-            } else if (error && error.responseText) {
+        refreshActionLibraries();
+        refreshConstantLibraries();
+        refreshVariableLibraries();
+        refreshParameterLibraries();
+        refreshFunctionLibraries();
+        clearDirty();
+    }).catch(function (error) {
+        $(window.document.body).empty();
+        if (error && error.status === 401) {
+            bootbox.alert('权限不足，不能进行此操作.');
+        } else if (error && error.text) {
+            error.text().then(function(text) {
                 try {
-                    const result = JSON.parse(error.responseText);
+                    const result = JSON.parse(text);
                     bootbox.alert("<span style='color: red'>服务端错误：" + result.errorMsg + '</span>');
                 } catch (e) {
-                    bootbox.alert("<span style='color: red'>服务端错误：" + error.responseText + '</span>');
+                    bootbox.alert("<span style='color: red'>服务端错误：" + text + '</span>');
                 }
-            } else {
-                bootbox.alert("<span style='color: red'>服务端出错</span>");
-            }
+            });
+        } else {
+            bootbox.alert("<span style='color: red'>服务端出错</span>");
         }
     });
 });

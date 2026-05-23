@@ -64,8 +64,8 @@ ruleforge.VariableValue.prototype.initMenu = function (variableLibraries) {
         });
     };
     config = {menuItems: []};
-    $.each(data, function (index, categories) {
-        $.each(categories, function (i, category) {
+    data.forEach(function(categories) {
+        categories.forEach(function(category) {
             var variables = category.variables;
             if (self.functionProperty && self.category) {
                 if (category.name == self.category) {
@@ -77,7 +77,7 @@ ruleforge.VariableValue.prototype.initMenu = function (variableLibraries) {
                 variables: variables,
                 onClick: onCategoryClick
             }
-            $.each(variables || [], function (j, variable) {
+            variables || [].forEach(function(variable) {
                 if (!menuItem.subMenu) {
                     menuItem.subMenu = {menuItems: []};
                 }

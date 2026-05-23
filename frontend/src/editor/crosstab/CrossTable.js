@@ -295,16 +295,16 @@ export default class CrossTable {
             xml += this.headerCell.toXml();
 
             // Import libraries
-            $.each(window.parameterLibraries, function (index, path) {
+            window.parameterLibraries.forEach(function(path) {
                 xml += '<import-parameter-library path="' + path + '"/>';
             });
-            $.each(window.variableLibraries, function (index, path) {
+            window.variableLibraries.forEach(function(path) {
                 xml += '<import-variable-library path="' + path + '"/>';
             });
-            $.each(window.constantLibraries, function (index, path) {
+            window.constantLibraries.forEach(function(path) {
                 xml += '<import-constant-library path="' + path + '"/>';
             });
-            $.each(window.actionLibraries, function (index, path) {
+            window.actionLibraries.forEach(function(path) {
                 xml += '<import-action-library path="' + path + '"/>';
             });
 

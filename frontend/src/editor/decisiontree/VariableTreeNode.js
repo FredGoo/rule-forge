@@ -52,7 +52,7 @@ VariableTreeNode.prototype.toXml=function(){
     }
     var xml="<variable-tree-node>";
     xml+=this.condition.toXml();
-    $.each(this.childrenNodes,function(i,childNode){
+    this.childrenNodes.forEach(function(childNode) {
         xml+=childNode.toXml();
     });
     xml+="</variable-tree-node>";

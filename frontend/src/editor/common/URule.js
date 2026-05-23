@@ -47,19 +47,20 @@ window.refreshParameterLibraries = function () {
         return;
     }
     var url = window._server + '/common/loadXml';
-    $.ajax({
-        type: 'POST',
-        data: {files: parameterFiles},
-        url: url,
-        error: function (req, error) {
-            MsgBox.alert("加载文件失败！");
-        },
-        success: function (data) {
-            window._ruleforgeEditorParameterLibraries = data;
-            $.each(window._ParameterValueArray, function (index, item) {
-                item.initMenu(data);
-            });
-        }
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({files: parameterFiles}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        window._ruleforgeEditorParameterLibraries = data;
+        window._ParameterValueArray.forEach(function (item) {
+            item.initMenu(data);
+        });
+    }).catch(function () {
+        MsgBox.alert("加载文件失败！");
     });
 };
 
@@ -77,19 +78,20 @@ window.refreshVariableLibraries = function () {
         return;
     }
     var url = window._server + '/common/loadXml';
-    $.ajax({
-        type: 'POST',
-        data: {files: variableFiles},
-        url: url,
-        error: function (req, error) {
-            MsgBox.alert("加载文件失败！");
-        },
-        success: function (data) {
-            window._ruleforgeEditorVariableLibraries = data;
-            $.each(window._VariableValueArray, function (index, item) {
-                item.initMenu(data);
-            });
-        }
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({files: variableFiles}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        window._ruleforgeEditorVariableLibraries = data;
+        window._VariableValueArray.forEach(function (item) {
+            item.initMenu(data);
+        });
+    }).catch(function () {
+        MsgBox.alert("加载文件失败！");
     });
 };
 window.refreshActionLibraries = function () {
@@ -106,34 +108,34 @@ window.refreshActionLibraries = function () {
         actionFiles = "builtinactions";
     }
     var url = window._server + '/common/loadXml';
-    $.ajax({
-        type: 'POST',
-        data: {files: actionFiles},
-        url: url,
-        error: function (req, error) {
-            MsgBox.alert("加载文件失败！");
-        },
-        success: function (data) {
-            window._ruleforgeEditorActionLibraries = data;
-            $.each(window._ActionTypeArray, function (index, item) {
-                item.initMenu(data);
-            });
-        }
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({files: actionFiles}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        window._ruleforgeEditorActionLibraries = data;
+        window._ActionTypeArray.forEach(function (item) {
+            item.initMenu(data);
+        });
+    }).catch(function () {
+        MsgBox.alert("加载文件失败！");
     });
 };
 window.refreshFunctionLibraries = function () {
     var url = window._server + '/common/loadFunctions';
-    $.ajax({
-        url: url,
-        error: function (req, error) {
-            MsgBox.alert("加载函数失败！");
-        },
-        success: function (data) {
-            window._ruleforgeEditorFunctionLibraries = data;
-            $.each(window._FunctionValueArray, function (index, item) {
-                item.initMenu(data);
-            });
-        }
+    fetch(url).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        window._ruleforgeEditorFunctionLibraries = data;
+        window._FunctionValueArray.forEach(function (item) {
+            item.initMenu(data);
+        });
+    }).catch(function () {
+        MsgBox.alert("加载函数失败！");
     });
 };
 
@@ -151,20 +153,20 @@ window.refreshConstantLibraries = function () {
         return;
     }
     var url = window._server + '/common/loadXml';
-    $.ajax({
-        data: {files: constantFiles},
-        url: url,
-        type: 'POST',
-        error: function (req, error) {
-            MsgBox.alert("加载文件失败！");
-        },
-        success: function (data) {
-            window._ruleforgeEditorConstantLibraries = data;
-            $.each(window._ConstantValueArray, function (index, item) {
-                item.initMenu(data);
-            });
-        }
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({files: constantFiles}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        window._ruleforgeEditorConstantLibraries = data;
+        window._ConstantValueArray.forEach(function (item) {
+            item.initMenu(data);
+        });
+    }).catch(function () {
+        MsgBox.alert("加载文件失败！");
     });
 };
-
 

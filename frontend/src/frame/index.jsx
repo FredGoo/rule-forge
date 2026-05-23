@@ -240,7 +240,7 @@ $(document).ready(function () {
                                     <i className="glyphicon glyphicon-user"/> {window.__currentUser ? window.__currentUser.username : ''}
                                 </span>
                                 <a href="#" title="退出登录" onClick={() => {
-                                    $.post(window._server + '/frame/logout', function() {
+                                    fetch(window._server + '/frame/logout', {method: 'POST'}).then(function() {
                                         window.location.href = 'html/login.html';
                                     });
                                 }}><i className="glyphicon glyphicon-log-out" style={{fontSize: '12pt'}}/></a>

@@ -202,48 +202,53 @@ $(document).ready(function (e) {
             <QuickTestDialog/>
         </div>,
 );
-    $.ajax({
-        url: window._server + "/common/loadXml",
-        type: "POST",
-        data: {files: file},
-        success: function (data) {
-            const card = data[0];
-            cardTable.init(card);
-            var libraries = card.libraries;
-            if (libraries) {
-                for (var i = 0; i < libraries.length; i++) {
-                    var lib = libraries[i];
-                    var type = lib["type"];
-                    var path = lib["path"];
-                    switch (type) {
-                        case "Constant":
-                            constantLibraries.push(path);
-                            break;
-                        case "Action":
-                            actionLibraries.push(path);
-                            break;
-                        case "Variable":
-                            variableLibraries.push(path);
-                            break;
-                        case "Parameter":
-                            parameterLibraries.push(path);
-                            break;
-                    }
-                    refreshActionLibraries();
-                    refreshConstantLibraries();
-                    refreshVariableLibraries();
-                    refreshParameterLibraries();
-                    refreshFunctionLibraries();
+    fetch(window._server + "/common/loadXml", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({files: file}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        const card = data[0];
+        cardTable.init(card);
+        var libraries = card.libraries;
+        if (libraries) {
+            for (var i = 0; i < libraries.length; i++) {
+                var lib = libraries[i];
+                var type = lib["type"];
+                var path = lib["path"];
+                switch (type) {
+                    case "Constant":
+                        constantLibraries.push(path);
+                        break;
+                    case "Action":
+                        actionLibraries.push(path);
+                        break;
+                    case "Variable":
+                        variableLibraries.push(path);
+                        break;
+                    case "Parameter":
+                        parameterLibraries.push(path);
+                        break;
                 }
-                cancelDirty();
+                refreshActionLibraries();
+                refreshConstantLibraries();
+                refreshVariableLibraries();
+                refreshParameterLibraries();
+                refreshFunctionLibraries();
             }
-        },
-        error: function (response) {
-            if (response && response.responseText) {
-                bootbox.alert("<span style='color: red'>加载数据失败,服务端错误：" + response.responseText + "</span>");
-            } else {
-                bootbox.alert("<span style='color: red'>加载数据失败,服务端出错</span>");
-            }
+            cancelDirty();
+        }
+    }).catch(function (response) {
+        if (response && response.status === 401) {
+            bootbox.alert("权限不足，不能进行此操作.");
+        } else if (response && response.text) {
+            response.text().then(function(text) {
+                bootbox.alert("<span style='color: red'>加载数据失败,服务端错误：" + text + "</span>");
+            });
+        } else {
+            bootbox.alert("<span style='color: red'>加载数据失败,服务端出错</span>");
         }
     });
 });

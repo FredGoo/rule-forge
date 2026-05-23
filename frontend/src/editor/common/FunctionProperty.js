@@ -28,7 +28,7 @@ ruleforge.FunctionProperty.prototype.initMenu = function (data) {
         });
     };
     var menuConfig = {menuItems: []};
-    $.each(data, function (index, item) {
+    data.forEach(function(item) {
         menuConfig.menuItems.push({
             name: item.name,
             label: item.label,

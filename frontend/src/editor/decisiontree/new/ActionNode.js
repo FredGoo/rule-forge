@@ -60,7 +60,7 @@ export default class ActionNode extends BaseNode{
                 return;
             }
             var pos=-1;
-            $.each(self.actionTypes,function(i,at){
+            self.actionTypes.forEach(function(at) {
                 if(at===actionContainer.actionType){
                     pos=i;
                     return false;
@@ -94,7 +94,7 @@ export default class ActionNode extends BaseNode{
     }
     toXml(){
         var xml="<action-tree-node>";
-        $.each(this.actionTypes,function(i,actionType){
+        this.actionTypes.forEach(function(actionType) {
             xml+=actionType.toXml();
         });
         xml+="</action-tree-node>";

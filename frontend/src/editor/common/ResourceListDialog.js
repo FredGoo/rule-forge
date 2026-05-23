@@ -101,16 +101,16 @@ ruleforge.ResourceListDialog.prototype.doSelectFile=function(selectedFile){
 ruleforge.ResourceListDialog.prototype.initData=function(){
 	var self=this;
 	var url=(ruleforgeServer || "")+"ruleforge?action=loadrepo&filetype="+this.type+"&path="+self.getRequestParameter("file");
-	$.ajax({
-		cache:false,
-		dataType:"json",
-		url:url,
-		error:function(req,error){
-			RuleForge.alert("加载资源失败："+error);
-		},
-		success:function(data){
-			self.tree=$.fn.zTree.init(self.treeContainer, {}, data);
-		}
+	fetch(url, {
+		method: 'POST',
+		headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+	}).then(function(response) {
+		if (!response.ok) throw response;
+		return response.json();
+	}).then(function(data){
+		self.tree=$.fn.zTree.init(self.treeContainer, {}, data);
+	}).catch(function(response){
+		RuleForge.alert("加载资源失败");
 	});
 };
 

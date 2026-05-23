@@ -94,19 +94,24 @@ export function addSlave() {
 export function loadMasterData(files) {
     return function (dispatch) {
         var url=window._server+"/xml";
-        $.ajax({
-            url,
-            type:'POST',
-            data:{files},
-            success:function (data) {
-                dispatch({type:LOAD_MASTER_COMPLETED,masterData:data[0].categories});
-            },
-            error:function (response) {
-                if(response && response.responseText){
-                    bootbox.alert("<span style='color: red'>服务端错误："+response.responseText+"</span>");
-                }else{
-                    bootbox.alert("<span style='color: red'>服务端出错</span>");
-                }
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({files}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            dispatch({type:LOAD_MASTER_COMPLETED,masterData:data[0].categories});
+        }).catch(function (response) {
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>服务端出错</span>");
             }
         });
     }

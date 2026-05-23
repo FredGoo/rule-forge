@@ -11,22 +11,25 @@ export const SAVE = 'save';
 export function loadMasterData(files) {
     return function (dispatch) {
         var url = window._server + "/xml";
-        $.ajax({
-            url,
-            type: 'POST',
-            data: {files},
-            success: function (data) {
-                dispatch({type: LOAD_MASTER_COMPLETED, masterData: data[0]});
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            },
-            error: function (response) {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>加载数据失败,服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>加载数据失败,服务端出错</span>");
-                }
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({files}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            dispatch({type: LOAD_MASTER_COMPLETED, masterData: data[0]});
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        }).catch(function (response) {
+            if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>加载数据失败,服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>加载数据失败,服务端出错</span>");
             }
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
         });
     }
 }
@@ -45,22 +48,25 @@ export function addVariable(data, file) {
     console.log(data)
     return function (dispatch) {
         var url = window._server + "/common/addVariable";
-        $.ajax({
-            url,
-            type: 'POST',
-            data,
-            success: function (data) {
-                dispatch(generateVariableLibrary(file));
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            },
-            error: function (response) {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>保存数据失败,服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>保存数据失败,服务端出错</span>");
-                }
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams(data).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            dispatch(generateVariableLibrary(file));
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        }).catch(function (response) {
+            if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>保存数据失败,服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>保存数据失败,服务端出错</span>");
             }
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
         });
     }
 }
@@ -68,25 +74,28 @@ export function addVariable(data, file) {
 export function generateVariableLibrary(file) {
     return function (dispatch) {
         let url = window._server + '/variableeditor/generateVariableLibrary';
-        $.ajax({
-            url,
-            type: 'POST',
-            success: function (data) {
-                dispatch({type: LOAD_MASTER_COMPLETED, masterData: data.variableCategories});
-                if (file) {
-                    dispatch({type: SAVE, file, newVersion: false});
-                }
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            },
-            error: function (response) {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>生成字段失败,服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>生成字段失败,服务端出错</span>");
-                }
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            dispatch({type: LOAD_MASTER_COMPLETED, masterData: data.variableCategories});
+            if (file) {
+                dispatch({type: SAVE, file, newVersion: false});
             }
-        })
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        }).catch(function (response) {
+            if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>生成字段失败,服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>生成字段失败,服务端出错</span>");
+            }
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        });
     }
 }
 export function save(newVersion, file) {
@@ -110,48 +119,14 @@ export function saveData(data, newVersion, file) {
         });
     };
     data.forEach((item, index) => {
-        // if (!item.name || item.name.length < 1) {
-        //     errorInfo = '变量分类名称不能为空.';
-        //     return false;
-        // }
-        // if (!item.clazz || item.clazz.length < 1) {
-        //     errorInfo = '变量类路径不能为空.';
-        //     return false;
-        // }
         xml += "<category name='" + escapeXml(item.name) + "' type='" + escapeXml(item.type) + "' clazz='" + escapeXml(item.clazz) + "'>";
-        // xml += "<category name='" + item.name + "' type='" + item.type + "' clazz='" + item.clazz + "'>";
         const variables = item.variables;
-        // if (!variables || variables.length === 0) {
-        //     errorInfo = "变量分类[" + item.name + "]下未定义具体变量信息.";
-        //     return false;
-        // }
         let nameList = []
         let labelList = []
         variables.forEach((variable, i) => {
-            // if (!variable.name || variable.name.length < 1) {
-            //     errorInfo = '变量名不能为空';
-            //     return false;
-            // }
-            // if (!variable.label || variable.label.length < 1) {
-            //     errorInfo = '变量标题不能为空';
-            //     return false;
-            // }
-            // if (!variable.type || variable.type.length < 1) {
-            //     errorInfo = '变量数据类型不能为空';
-            //     return false;
-            // }
-            // if (nameList.indexOf(variable.name) > -1) {
-            //     errorInfo = '[' + item.name + ']变量名[' + variable.name + ']重复';
-            //     return false;
-            // }
-            // if (labelList.indexOf(variable.label) > -1) {
-            //     errorInfo = '[' + item.name + ']变量标题[' + variable.label + ']重复';
-            //     return false;
-            // }
             nameList.push(variable.name)
             labelList.push(variable.label)
             xml += "<var act='InOut' name='" + escapeXml(variable.name) + "' label='" + escapeXml(variable.label) + "' type='" + escapeXml(variable.type) + "'/>";
-            // xml += "<var act='InOut' name='" + variable.name + "' label='" + variable.label + "' type='" + variable.type + "'/>";
         });
         if (errorInfo.length > 1) {
             return false;

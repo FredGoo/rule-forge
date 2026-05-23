@@ -56,7 +56,7 @@ export default class VariableNode extends BaseNode{
         }
         var xml="<variable-tree-node>";
         xml+=this.condition.toXml();
-        $.each(this.children,function(i,connection){
+        this.children.forEach(function(connection) {
             xml+=connection.node.toXml();
         });
         xml+="</variable-tree-node>";

@@ -81,7 +81,7 @@ ConditionTreeNode.prototype.toXml=function(){
     if(this.inputType){
         xml+=this.inputType.toXml();
     }
-    $.each(this.childrenNodes,function(i,childNode){
+    this.childrenNodes.forEach(function(childNode) {
         xml+=childNode.toXml();
     });
     xml+="</condition-tree-node>";

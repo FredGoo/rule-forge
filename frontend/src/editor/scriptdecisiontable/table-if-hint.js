@@ -102,7 +102,7 @@ function getCompletions(token, context, keywords, options) {
 			parameter = window._ruleforgeEditorParameterLibraries || [],
 			variableCategories=window._ruleforgeEditorVariableLibraries||[],
 			constantCategories=window._ruleforgeEditorConstantLibraries||[];
-		$.each(actionLibraries, function(index, library){
+		actionLibraries.forEach(function(library) {
 			var springBeans=library.springBeans||[];
 			for(var j=0;j<springBeans.length;j++){
 				var springBean=springBeans[j],
@@ -123,7 +123,7 @@ function getCompletions(token, context, keywords, options) {
 				}
 			}
 		});
-		$.each(variableCategories, function(index, categories){
+		variableCategories.forEach(function(categories) {
 			for(var i=0;i<categories.length;i++){
 				var variableCategory=categories[i],
 					variables=variableCategory.variables||[];
@@ -135,7 +135,7 @@ function getCompletions(token, context, keywords, options) {
 				}
 			}
 		});
-		$.each(constantCategories, function(index, categories){
+		constantCategories.forEach(function(categories) {
 			categories = categories.categories;
 			for(var i=0;i<categories.length;i++){
 				var constantCategory=categories[i],
@@ -150,7 +150,7 @@ function getCompletions(token, context, keywords, options) {
 			}
 		});
 
-		$.each(parameter, function(index, ps){
+		parameter.forEach(function(ps) {
 			if("参数" == base) {
 				for(var i=0;i<ps.length;i++){
 					var p=ps[i],
@@ -177,7 +177,7 @@ function getCompletions(token, context, keywords, options) {
 		var	actionLibraries=window._ruleforgeEditorActionLibraries||[],
 			variableCategories=window._ruleforgeEditorVariableLibraries||[],
 			constantCategories=window._ruleforgeEditorConstantLibraries||[];
-		$.each(actionLibraries, function(index, library){
+		actionLibraries.forEach(function(library) {
 			var springBeans=library.springBeans;
 			for(var j=0;j<springBeans.length;j++){
 				var springBean=springBeans[j],
@@ -187,7 +187,7 @@ function getCompletions(token, context, keywords, options) {
 		});
 
 
-		$.each(variableCategories, function(index, categories){
+		variableCategories.forEach(function(categories) {
 			for(var i=0;i<categories.length;i++){
 				var variableCategory=categories[i],
 					name=variableCategory.name;
@@ -196,7 +196,7 @@ function getCompletions(token, context, keywords, options) {
 		});
 
 
-		$.each(constantCategories, function(index, categories){
+		constantCategories.forEach(function(categories) {
 			categories = categories.categories;
 			for(var i=0;i<categories.length;i++){
 				var constantCategory=categories[i],

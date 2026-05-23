@@ -592,7 +592,7 @@ window._setDirty = function () {
         createCellDataByCopyNextCol: function (col) {
             var self = this,
                 cellDatas = self.getCellDataByCol(col + 1);
-            $.each(cellDatas, function (index, cellData) {
+            cellDatas.forEach(function (cellData) {
                 var cell = self.createCellData(cellData.row, col);
                 cell.rowspan = cellData.rowspan;
             });
@@ -897,27 +897,27 @@ window._setDirty = function () {
                 libraries = [],
                 self = this,
                 xml;
-            $.each(constantLibraries, function (index, path) {
+            constantLibraries.forEach(function (path) {
                 libraries.push({
                     type: "Constant",
                     path: path
                 });
             });
 
-            $.each(actionLibraries, function (index, path) {
+            actionLibraries.forEach(function (path) {
                 libraries.push({
                     type: "Action",
                     path: path
                 });
             });
 
-            $.each(variableLibraries, function (index, path) {
+            variableLibraries.forEach(function (path) {
                 libraries.push({
                     type: "Variable",
                     path: path
                 });
             });
-            $.each(parameterLibraries, function (index, path) {
+            parameterLibraries.forEach(function (path) {
                 libraries.push({
                     type: "Parameter",
                     path: path
@@ -930,7 +930,7 @@ window._setDirty = function () {
             }
             xml += ">";
             xml += this.remark.toXml();
-            $.each(libraries, function (index, library) {
+            libraries.forEach(function (library) {
                 var type = library.type,
                     path = library.path;
                 if (type == "Variable") {
@@ -944,18 +944,18 @@ window._setDirty = function () {
                 }
             });
 
-            $.each(cells, function (index, cell) {
+            cells.forEach(function (cell) {
                 xml += "<cell row=\"" + cell.row + "\" col=\"" + cell.col + "\" rowspan=\"" + cell.rowspan + "\">";
                 xml += self.getCellContent(cell).toXml();
                 xml += "</cell>"
 
             });
 
-            $.each(rows, function (index, row) {
+            rows.forEach(function (row) {
                 xml += "<row num=\"" + row.num + "\" height=\"" + row.height + "\"/>"
             });
 
-            $.each(cols, function (index, col) {
+            cols.forEach(function (col) {
                 var variableName = col.variableName;
                 if (variableName) {
                     xml += "<col num=\"" + col.num + "\" width=\"" + col.width + "\" type=\"" + col.type + "\" var-category=\"" + (col.variableCategory == "parameter" ? "参数" : col.variableCategory) + "\" var-label=\"" + col.variableLabel + "\" var=\"" + col.variableName + "\" datatype=\"" + col.datatype + "\"/>"
@@ -974,89 +974,81 @@ window._setDirty = function () {
             files = getParameter("file");
             version = getParameter("version");
             url = window._server + '/common/loadXml';
-            $.ajax({
-                url,
-                async: false,
-                type: 'POST',
-                data: {files},
-                error: function (response) {
-                    if (response && response.responseText) {
-                        bootbox.alert("<span style='color: red'>加载文件失败：" + response.responseText + "</span>");
-                    } else {
-                        bootbox.alert("<span style='color: red'>加载文件失败,服务端出错</span>");
-                    }
-                },
-                success: function (data) {
-                    var decisionTable = data[0];
-                    self.remark.setData(decisionTable["remark"]);
-                    var salience = decisionTable["salience"];
-                    if (salience) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "salience", salience, 1));
-                    }
-                    var loop = decisionTable["loop"];
-                    if (loop != null) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "loop", loop, 3));
-                    }
-                    var effectiveDate = decisionTable["effectiveDate"];
-                    if (effectiveDate) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "effective-date", effectiveDate, 2));
-                    }
-                    var expiresDate = decisionTable["expiresDate"];
-                    if (expiresDate) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "expires-date", expiresDate, 2));
-                    }
-                    var enabled = decisionTable["enabled"];
-                    if (enabled != null) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "enabled", enabled, 3));
-                    }
-                    var debug = decisionTable["debug"];
-                    if (debug != null) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "debug", debug, 3));
-                    }
-
-                    var libraries = decisionTable.libraries || [];
-                    $.each(libraries, function (index, library) {
-                        var type, path;
-                        type = library.type;
-                        path = library.path;
-                        switch (type) {
-                            case "Constant":
-                                constantLibraries.push(path);
-                                break;
-                            case "Action":
-                                actionLibraries.push(path);
-                                break;
-                            case "Variable":
-                                variableLibraries.push(path);
-                                break;
-                            case "Parameter":
-                                parameterLibraries.push(path);
-                                break;
-                        }
-                    });
-                    self.decisionTable = decisionTable;
-                    refreshActionLibraries();
-                    refreshConstantLibraries();
-                    refreshVariableLibraries();
-                    refreshParameterLibraries();
-                    refreshFunctionLibraries();
-                    if (callback) {
-                        callback();
-                    }
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", url, false);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.send(new URLSearchParams({files}).toString());
+            if (xhr.status === 200) {
+                var data = JSON.parse(xhr.responseText);
+                var decisionTable = data[0];
+                self.remark.setData(decisionTable["remark"]);
+                var salience = decisionTable["salience"];
+                if (salience) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "salience", salience, 1));
                 }
-            });
+                var loop = decisionTable["loop"];
+                if (loop != null) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "loop", loop, 3));
+                }
+                var effectiveDate = decisionTable["effectiveDate"];
+                if (effectiveDate) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "effective-date", effectiveDate, 2));
+                }
+                var expiresDate = decisionTable["expiresDate"];
+                if (expiresDate) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "expires-date", expiresDate, 2));
+                }
+                var enabled = decisionTable["enabled"];
+                if (enabled != null) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "enabled", enabled, 3));
+                }
+                var debug = decisionTable["debug"];
+                if (debug != null) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "debug", debug, 3));
+                }
+
+                var libraries = decisionTable.libraries || [];
+                libraries.forEach(function (library) {
+                    var type, path;
+                    type = library.type;
+                    path = library.path;
+                    switch (type) {
+                        case "Constant":
+                            constantLibraries.push(path);
+                            break;
+                        case "Action":
+                            actionLibraries.push(path);
+                            break;
+                        case "Variable":
+                            variableLibraries.push(path);
+                            break;
+                        case "Parameter":
+                            parameterLibraries.push(path);
+                            break;
+                    }
+                });
+                self.decisionTable = decisionTable;
+                refreshActionLibraries();
+                refreshConstantLibraries();
+                refreshVariableLibraries();
+                refreshParameterLibraries();
+                refreshFunctionLibraries();
+                if (callback) {
+                    callback();
+                }
+            }
         },
         initMenu: function () {
             var self = this, variableLibrary = [];
             var oldVariableLibrary = window._ruleforgeEditorVariableLibraries || [];
-            $.each(oldVariableLibrary, function (index, lib) {
+            oldVariableLibrary.forEach(function (lib) {
                 if (lib.type != "parameter") {
                     variableLibrary.push(lib);
                 }
             });
             var parameter = window._ruleforgeEditorParameterLibraries || [];
             if (parameter.length > 0) {
-                $.each(parameter, function (index, p) {
+                parameter.forEach(function (p) {
                     variableLibrary.push([{
                         name: "参数",
                         type: "parameter",
@@ -1271,14 +1263,14 @@ window._setDirty = function () {
                 self.invoke("render");
             };
             var variabeMenuItem = [];
-            $.each(variableLibrary, function (index, categories) {
-                $.each(categories, function (i, category) {
+            variableLibrary.forEach(function (categories) {
+                categories.forEach(function (category) {
                     var menuItem = {
                         label: category.name == "parameter" ? "参数" : category.name,
                         icon: category.type == "parameter" ? "glyphicon glyphicon-th-list" : "glyphicon glyphicon-tasks"
                     };
                     var variables = category.variables;
-                    $.each(variables || [], function (j, variable) {
+                    (variables || []).forEach(function (variable) {
                         if (!menuItem.subMenu) {
                             menuItem.subMenu = {menuItems: []};
                         }

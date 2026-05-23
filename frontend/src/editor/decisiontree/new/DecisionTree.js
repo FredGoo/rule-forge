@@ -184,16 +184,16 @@ export default class DecisionTree {
             }
             xml += ">";
             xml += self.remark.toXml();
-            $.each(parameterLibraries, function (index, item) {
+            parameterLibraries.forEach(function (item) {
                 xml += "<import-parameter-library path=\"" + item + "\"/>";
             });
-            $.each(variableLibraries, function (index, item) {
+            variableLibraries.forEach(function (item) {
                 xml += "<import-variable-library path=\"" + item + "\"/>";
             });
-            $.each(constantLibraries, function (index, item) {
+            constantLibraries.forEach(function (item) {
                 xml += "<import-constant-library path=\"" + item + "\"/>";
             });
-            $.each(actionLibraries, function (index, item) {
+            actionLibraries.forEach(function (item) {
                 xml += "<import-action-library path=\"" + item + "\"/>";
             });
             try {
@@ -221,70 +221,79 @@ export default class DecisionTree {
 
         function _loadDecisionTreeFileData() {
             var url = window._server + '/common/loadXml';
-            $.ajax({
-                data: {files: file},
-                type: 'POST',
-                url: url,
-                error: function (req, error) {
-                    alert("加载文件失败！");
-                },
-                success: function (data) {
-                    var treeData = data[0];
-                    self.remark.setData(treeData["remark"]);
-                    var salience = treeData["salience"];
-                    if (salience) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "salience", salience, 1));
-                    }
-                    var loop = treeData["loop"];
-                    if (loop != null) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "loop", loop, 3));
-                    }
-                    var effectiveDate = treeData["effectiveDate"];
-                    if (effectiveDate) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "effective-date", effectiveDate, 2));
-                    }
-                    var expiresDate = treeData["expiresDate"];
-                    if (expiresDate) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "expires-date", expiresDate, 2));
-                    }
-                    var enabled = treeData["enabled"];
-                    if (enabled != null) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "enabled", enabled, 3));
-                    }
-                    var debug = treeData["debug"];
-                    if (debug != null) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "debug", debug, 3));
-                    }
+            fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({files: file}).toString()
+            }).then(function(response) {
+                if (!response.ok) throw response;
+                return response.json();
+            }).then(function (data) {
+                var treeData = data[0];
+                self.remark.setData(treeData["remark"]);
+                var salience = treeData["salience"];
+                if (salience) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "salience", salience, 1));
+                }
+                var loop = treeData["loop"];
+                if (loop != null) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "loop", loop, 3));
+                }
+                var effectiveDate = treeData["effectiveDate"];
+                if (effectiveDate) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "effective-date", effectiveDate, 2));
+                }
+                var expiresDate = treeData["expiresDate"];
+                if (expiresDate) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "expires-date", expiresDate, 2));
+                }
+                var enabled = treeData["enabled"];
+                if (enabled != null) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "enabled", enabled, 3));
+                }
+                var debug = treeData["debug"];
+                if (debug != null) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "debug", debug, 3));
+                }
 
-                    var libraries = treeData["libraries"];
-                    if (libraries) {
-                        for (var i = 0; i < libraries.length; i++) {
-                            var lib = libraries[i];
-                            var type = lib["type"];
-                            var path = lib["path"];
-                            switch (type) {
-                                case "Constant":
-                                    constantLibraries.push(path);
-                                    break;
-                                case "Action":
-                                    actionLibraries.push(path);
-                                    break;
-                                case "Variable":
-                                    variableLibraries.push(path);
-                                    break;
-                                case "Parameter":
-                                    parameterLibraries.push(path);
-                                    break;
-                            }
+                var libraries = treeData["libraries"];
+                if (libraries) {
+                    for (var i = 0; i < libraries.length; i++) {
+                        var lib = libraries[i];
+                        var type = lib["type"];
+                        var path = lib["path"];
+                        switch (type) {
+                            case "Constant":
+                                constantLibraries.push(path);
+                                break;
+                            case "Action":
+                                actionLibraries.push(path);
+                                break;
+                            case "Variable":
+                                variableLibraries.push(path);
+                                break;
+                            case "Parameter":
+                                parameterLibraries.push(path);
+                                break;
                         }
                     }
-                    refreshActionLibraries();
-                    refreshConstantLibraries();
-                    refreshVariableLibraries();
-                    refreshParameterLibraries();
-                    refreshFunctionLibraries();
-                    self.topNode.initData(treeData["variableTreeNode"]);
-                    cancelDirty();
+                }
+                refreshActionLibraries();
+                refreshConstantLibraries();
+                refreshVariableLibraries();
+                refreshParameterLibraries();
+                refreshFunctionLibraries();
+                self.topNode.initData(treeData["variableTreeNode"]);
+                cancelDirty();
+            }).catch(function (response) {
+                if (response && response.status === 401) {
+                    bootbox.alert("权限不足，不能进行此操作.");
+                } else if (response && response.text) {
+                    response.text().then(function(text) {
+                        bootbox.alert("<span style='color: red'>加载文件失败：" + text + "</span>");
+                    });
+                } else {
+                    alert("加载文件失败！");
                 }
             });
         }

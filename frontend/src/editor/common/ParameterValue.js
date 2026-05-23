@@ -57,8 +57,8 @@ ruleforge.ParameterValue.prototype.initMenu = function (parameterLibraries) {
 
     };
     config = {menuItems: []};
-    $.each(data, function (index, variables) {
-        $.each(variables || [], function (i, variable) {
+    data.forEach(function(variables) {
+        variables || [].forEach(function(variable) {
             if (self.matchAct(variable.act)) {
                 var menuItem = {
                     name: variable.name,

@@ -54,7 +54,7 @@ ActionTreeNode.prototype.addAction=function(notfirst){
             return;
         }
         var pos=-1;
-        $.each(self.actionTypes,function(i,at){
+        self.actionTypes.forEach(function(at) {
             if(at===actionContainer.actionType){
                 pos=i;
                 return false;
@@ -88,7 +88,7 @@ ActionTreeNode.prototype.initData=function(data){
 
 ActionTreeNode.prototype.toXml=function(){
     var xml="<action-tree-node>";
-    $.each(this.actionTypes,function(i,actionType){
+    this.actionTypes.forEach(function(actionType) {
         xml+=actionType.toXml();
     });
     xml+="</action-tree-node>";

@@ -20,24 +20,25 @@ export default class BaseTool extends Tool {
                 return;
             }
             const url = window._server + '/common/scriptValidation';
-            $.ajax({
-                url,
-                data: {type, content: text},
-                type: 'POST',
-                success: function (result) {
-                    if (result) {
-                        for (let item of result) {
-                            item.from = {line: item.line - 1};
-                            item.to = {line: item.line - 1};
-                        }
-                        updateLinting(editor, result);
-                    } else {
-                        updateLinting(editor, []);
+            fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({type, content: text}).toString()
+            }).then(function(response) {
+                if (!response.ok) throw response;
+                return response.json();
+            }).then(function (result) {
+                if (result) {
+                    for (let item of result) {
+                        item.from = {line: item.line - 1};
+                        item.to = {line: item.line - 1};
                     }
-                },
-                error: function () {
-                    alert('语法检查操作失败！');
+                    updateLinting(editor, result);
+                } else {
+                    updateLinting(editor, []);
                 }
+            }).catch(function () {
+                alert('语法检查操作失败！');
             });
         };
     }

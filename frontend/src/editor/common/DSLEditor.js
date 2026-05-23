@@ -22,25 +22,24 @@ $(document).ready(function() {
 		}
 		if($.trim(value)){
 			cm.validator = setTimeout(function() {
-				$.ajax({
-					url:"ruleforge?action=checkdsl",
-					type : "POST",
-					data :{
-						content : value
-					},
-					error:function(req,error){
-						RuleForge.alert("校验失败！");
-					},
-					success:function(infos){
-						if(infos && infos.length>0){
-							for(var i = 0; i<infos.length; i ++) {
-								var pre = $(".CodeMirror-code").find("pre").eq(infos[i].line-1);
-								pre.children("span").addClass("error");
-								pre.attr("title",infos[i].message);
-								
-							}
+				fetch("ruleforge?action=checkdsl", {
+					method: "POST",
+					headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+					body: new URLSearchParams({content: value}).toString()
+				}).then(function(response) {
+					if (!response.ok) throw response;
+					return response.json();
+				}).then(function(infos) {
+					if(infos && infos.length>0){
+						for(var i = 0; i<infos.length; i ++) {
+							var pre = $(".CodeMirror-code").find("pre").eq(infos[i].line-1);
+							pre.children("span").addClass("error");
+							pre.attr("title",infos[i].message);
+
 						}
 					}
+				}).catch(function() {
+					RuleForge.alert("校验失败！");
 				});
 				cm.validator = null;
 			}, 1000);
@@ -59,7 +58,7 @@ function init(){
 		return;
 	}
 	var saveButton = '<div class="btn-group navbar-btn" style="margin-right:10px;" role="group" aria-label="...">'+
-						'<button id="saveButton" type="button" class="btn btn-default navbar-btn" ><i class="icon-save"></i> 保存</button>' + 
+						'<button id="saveButton" type="button" class="btn btn-default navbar-btn" ><i class="icon-save"></i> 保存</button>' +
 						'<button id="saveButtonNewVersion" type="button" class="btn btn-default navbar-btn" style="display: none;"><i class="icon-save"></i> 生成版本</button>' +
 					'</div>';
 	if(!hasPermission()) {
@@ -85,7 +84,7 @@ function init(){
 	                '<button id="addVarButton" type="button" class="btn btn-default"><i class="icon-tasks"></i> 导入变量库</button>'+
 	                '<button id="addConstantsButton" type="button" class="btn btn-default"><i class="icon-th-list"></i> 导入常量库</button>'+
 	                '<button id="addActionButton" type="button" class="btn btn-default"><i class="icon-bolt"></i> 导入动作库</button>'+
-	                '<button id="configParameterButton" type="button" class="btn btn-default"><i class="icon-th"></i> 导入参数库</button>'+	
+	                '<button id="configParameterButton" type="button" class="btn btn-default"><i class="icon-th"></i> 导入参数库</button>'+
 	            '</div>'+
 	       ' </div>'+
 	    '</div>'+
@@ -105,7 +104,7 @@ function init(){
 	$("#checkDSL").click(function(){
 		checkDSL();
 	});
-	
+
 	$("#configParameterButton").click(function(){
 		var dialog=new ruleforge.ResourceListDialog("ParameterLibrary",null,selectResource);
 		dialog.open();
@@ -122,26 +121,22 @@ function init(){
 		var dialog=new ruleforge.ResourceListDialog("ActionLibrary",null,selectResource);
 		dialog.open();
 	});
-	
+
 	window._dirty=false;
 	var url="ruleforge?action=loaddsl&file="+file+"";
-	$.ajax({
-		cache:false,
-		url:url,
-		type:"GET",
-		error:function(req,error){
-			RuleForge.alert("文件加载失败！");
-		},
-		success:function(data){
-			codeMirror.setValue(data);
-			$("#saveButton").addClass("disabled");
-			// $("#saveButtonNewVersion").addClass("disabled");
+	fetch(url).then(function(response) {
+		if (!response.ok) throw response;
+		return response.text();
+	}).then(function(data) {
+		codeMirror.setValue(data);
+		$("#saveButton").addClass("disabled");
 
-			codeMirror.on("change",function(){
-				setDirty();
-			});
-			loadResLib();
-		}
+		codeMirror.on("change",function(){
+			setDirty();
+		});
+		loadResLib();
+	}).catch(function() {
+		RuleForge.alert("文件加载失败！");
 	});
 };
 
@@ -157,27 +152,26 @@ function checkDSL(doSuccess){
 		return;
 	}
 	var url="ruleforge?action=checkdsl";
-	$.ajax({
-		cache:false,
-		url:url,
-		type:"POST",
-		data:{content:content},
-		error:function(req,error){
-			RuleForge.alert("语法检查失败！");
+	fetch(url, {
+		method: "POST",
+		headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+		body: new URLSearchParams({content: content}).toString()
+	}).then(function(response) {
+		if (!response.ok) throw response;
+		return response.json();
+	}).then(function(data) {
+		if(!data || data.length <= 0){
+			if(doSuccess){
+				doSuccess();
+			}else{
+				RuleForge.alert("语法正确！");
 
-		},
-		success:function(data){
-			if(!data || data.length <= 0){
-				if(doSuccess){
-					doSuccess();
-				}else{
-					RuleForge.alert("语法正确！");
-
-				}
-				return;
 			}
-			RuleForge.alert("语法不正确！");
+			return;
 		}
+		RuleForge.alert("语法不正确！");
+	}).catch(function() {
+		RuleForge.alert("语法检查失败！");
 	});
 };
 function loadResLib(){
@@ -188,17 +182,17 @@ function loadResLib(){
 		return;
 	}
 	var url="ruleforge?action=loaddslreslib";
-	$.ajax({
-		cache:false,
-		url:url,
-		type:"POST",
-		data:{content:content},
-		error:function(req,error){
-			//alert("资源库加载失败!");
-		},
-		success:function(data){
-			codeMirror._library=data;
-		}
+	fetch(url, {
+		method: "POST",
+		headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+		body: new URLSearchParams({content: content}).toString()
+	}).then(function(response) {
+		if (!response.ok) throw response;
+		return response.json();
+	}).then(function(data) {
+		codeMirror._library=data;
+	}).catch(function() {
+		//alert("资源库加载失败!");
 	});
 };
 function save(file,newVersion){
@@ -207,17 +201,17 @@ function save(file,newVersion){
 	}
 	var url="ruleforge?action=savedsl&file="+file+"";
 	var content=codeMirror.getValue();
-	$.ajax({
-		cache:false,
-		url:url,
-		type:"POST",
-		data:{content:content, newVersion:newVersion},
-		error:function(req,error){
-			RuleForge.alert("保存失败！");
-		},
-		success:function(data){
-			cancelDirty();
-		}
+	fetch(url, {
+		method: "POST",
+		headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+		body: new URLSearchParams({content: content, newVersion: newVersion}).toString()
+	}).then(function(response) {
+		if (!response.ok) throw response;
+		return response.json();
+	}).then(function() {
+		cancelDirty();
+	}).catch(function() {
+		RuleForge.alert("保存失败！");
 	});
 };
 

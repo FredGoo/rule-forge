@@ -12,52 +12,53 @@ export const CREATE_NEW_FILE = 'create_new_file';
 export const LOAD_CHILDREN_END = 'load_children_end'; // 子菜单加载完成的action类型
 
 export function createNewFile(newFileName, fileType, parentNodeData) {
-    return function (dispatch) {        
+    return function (dispatch) {
         const url = window._server + '/frame/createFile';
         const fileName = newFileName + "." + fileType;
         const path = parentNodeData.fullPath + "/" + fileName;
 
-        $.ajax({
-            url,
-            data: {path: encodeURI(parentNodeData.fullPath + "/" + fileName), type: fileType},
-            type: 'POST',
-            success: function (newFileInfo) {
-                const newFileData = {
-                    id: newFileInfo.id,
-                    name: fileName,
-                    type: newFileInfo.type,
-                    fullPath: path,
-                    contextMenu: buildFileContextMenu()
-                };
-                buildData(newFileData, 1);
-                dispatch({
-                    parentNodeData,
-                    newFileData,
-                    type: CREATE_NEW_FILE
-                });
-                const targetURL = '.' + newFileData.editorPath + "?file=" + newFileData.fullPath;
-                componentEvent.eventEmitter.emit(componentEvent.TREE_NODE_CLICK, {
-                    id: newFileData.id,
-                    name: newFileData.name,
-                    path: targetURL,
-                    fullPath: path,
-                    active: true
-                });
-                event.eventEmitter.emit(event.EXPAND_TREE_NODE, parentNodeData);
-                event.eventEmitter.emit(event.CLOSE_CREATE_FILE_DIALOG);
-            },
-            error: function (response) {
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({path: encodeURI(parentNodeData.fullPath + "/" + fileName), type: fileType}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (newFileInfo) {
+            const newFileData = {
+                id: newFileInfo.id,
+                name: fileName,
+                type: newFileInfo.type,
+                fullPath: path,
+                contextMenu: buildFileContextMenu()
+            };
+            buildData(newFileData, 1);
+            dispatch({
+                parentNodeData,
+                newFileData,
+                type: CREATE_NEW_FILE
+            });
+            const targetURL = '.' + newFileData.editorPath + "?file=" + newFileData.fullPath;
+            componentEvent.eventEmitter.emit(componentEvent.TREE_NODE_CLICK, {
+                id: newFileData.id,
+                name: newFileData.name,
+                path: targetURL,
+                fullPath: path,
+                active: true
+            });
+            event.eventEmitter.emit(event.EXPAND_TREE_NODE, parentNodeData);
+            event.eventEmitter.emit(event.CLOSE_CREATE_FILE_DIALOG);
+        }).catch(function (response) {
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
 
-                if (response.status === 401) {
-                    bootbox.alert("权限不足，不能进行此操作.");
-                } else {
-                    if (response && response.responseText) {
-                        bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                    } else {
-                        bootbox.alert("<span style='color: red'>服务端出错</span>");
-                    }
-                }
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>服务端出错</span>");
             }
         });
     }
@@ -66,33 +67,34 @@ export function createNewFile(newFileName, fileType, parentNodeData) {
 export function rename(path, newPath) {
     return function (dispatch) {
         const url = window._server + '/frame/fileRename';
-        $.ajax({
-            url,
-            type: 'POST',
-            data: {
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
                 path: path,
                 newPath: newPath,
                 classify: window._classify,
                 projectName: window._projectName,
                 types: window._types
-            },
-            success: function (data) {
-                const rootFile = data.repo.rootFile;
-                buildData(rootFile, 1);
-                dispatch({data: rootFile, type: LOAD_END});
-                event.eventEmitter.emit(event.HIDE_RENAME_DIALOG);
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            },
-            error: function (response) {
-                if (response.status === 401) {
-                    bootbox.alert("权限不足，不能进行此操作.");
-                } else {
-                    if (response && response.responseText) {
-                        bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                    } else {
-                        bootbox.alert("<span style='color: red'>服务端出错</span>");
-                    }
-                }
+            }).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            const rootFile = data.repo.rootFile;
+            buildData(rootFile, 1);
+            dispatch({data: rootFile, type: LOAD_END});
+            event.eventEmitter.emit(event.HIDE_RENAME_DIALOG);
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        }).catch(function (response) {
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>服务端出错</span>");
             }
         });
     }
@@ -101,28 +103,29 @@ export function rename(path, newPath) {
 export function createNewProject(newProjectName, parentNodeData) {
     return function (dispatch) {
         const url = window._server + '/frame/createProject';
-        $.ajax({
-            url,
-            type: 'POST',
-            data: {newProjectName: newProjectName},
-            success: function (newProjectData) {
-                buildData(newProjectData, 1);
-                dispatch({type: CREATE_NEW_PROJECT, newProjectData, parentNodeData});
-                event.eventEmitter.emit(event.CLOSE_NEW_PROJECT_DIALOG);
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            },
-            error: function (response) {
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({newProjectName: newProjectName}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (newProjectData) {
+            buildData(newProjectData, 1);
+            dispatch({type: CREATE_NEW_PROJECT, newProjectData, parentNodeData});
+            event.eventEmitter.emit(event.CLOSE_NEW_PROJECT_DIALOG);
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        }).catch(function (response) {
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
 
-                if (response.status === 401) {
-                    bootbox.alert("权限不足，不能进行此操作.");
-                } else {
-                    if (response && response.responseText) {
-                        bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                    } else {
-                        bootbox.alert("<span style='color: red'>服务端出错</span>");
-                    }
-                }
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>服务端出错</span>");
             }
         });
     };
@@ -132,45 +135,46 @@ export function createNewFolder(newFolderName, parentNodeData) {
     const fullFolderName = parentNodeData.fullPath + '/' + newFolderName;
     return function (dispatch) {
         const url = window._server + '/frame/createFolder';
-        $.ajax({
-            url,
-            type: 'POST',
-            data: {
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
                 fullFolderName: fullFolderName,
                 classify: window._classify,
                 projectName: window._projectName,
                 types: window._types,
-            },
-            success: function (data) {
-                const newFolderData = {
-                    id: data.id || Date.now(), // 使用服务器返回的ID或生成临时ID
-                    name: newFolderName,
-                    type: 'folder',
-                    fullPath: fullFolderName,
-                    children: [],
-                    contextMenu: buildFullContextMenu(true, 'folder')
-                };
-                buildData(newFolderData, 1);
-                dispatch({
-                    parentNodeData,
-                    newFileData: newFolderData, 
-                    type: CREATE_NEW_FILE // 复用 CREATE_NEW_FILE action
-                });
-                event.eventEmitter.emit(event.CLOSE_CREATE_FOLDER_DIALOG);
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            },
-            error: function (response) {
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+            }).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            const newFolderData = {
+                id: data.id || Date.now(), // 使用服务器返回的ID或生成临时ID
+                name: newFolderName,
+                type: 'folder',
+                fullPath: fullFolderName,
+                children: [],
+                contextMenu: buildFullContextMenu(true, 'folder')
+            };
+            buildData(newFolderData, 1);
+            dispatch({
+                parentNodeData,
+                newFileData: newFolderData,
+                type: CREATE_NEW_FILE // 复用 CREATE_NEW_FILE action
+            });
+            event.eventEmitter.emit(event.CLOSE_CREATE_FOLDER_DIALOG);
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        }).catch(function (response) {
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
 
-                if (response.status === 401) {
-                    bootbox.alert("权限不足，不能进行此操作.");
-                } else {
-                    if (response && response.responseText) {
-                        bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                    } else {
-                        bootbox.alert("<span style='color: red'>服务端出错</span>");
-                    }
-                }
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>服务端出错</span>");
             }
         });
     };
@@ -183,41 +187,42 @@ export function fileRename(itemData, newName) {
         var basePath = fullPath.substring(0, namePos);
         var newFullPath = basePath + newName;
         var url = window._server + "/frame/fileRename";
-        $.ajax({
-            url,
-            type: 'POST',
-            data: {
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
                 path: fullPath,
                 newPath: newFullPath,
                 classify: window._classify,
                 projectName: window._projectName,
                 types: window._types
-            },
-            success: function (data) {
-                const pos = newName.indexOf('.');
-                if (pos !== -1) {
-                    itemData.fullPath = newFullPath;
-                    itemData.name = newName;
-                    dispatch({data: itemData, type: FILE_RENAME});
-                } else {
-                    const rootFile = data.repo.rootFile;
-                    buildData(rootFile, 1);
-                    dispatch({data: rootFile, type: LOAD_END});
-                }
-                event.eventEmitter.emit(event.CLOSE_UPDATE_PROJECT_DIALOG);
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            },
-            error: function (response) {
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-                if (response.status === 401) {
-                    bootbox.alert("权限不足，不能进行此操作.");
-                } else {
-                    if (response && response.responseText) {
-                        bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                    } else {
-                        bootbox.alert("<span style='color: red'>服务端出错</span>");
-                    }
-                }
+            }).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            const pos = newName.indexOf('.');
+            if (pos !== -1) {
+                itemData.fullPath = newFullPath;
+                itemData.name = newName;
+                dispatch({data: itemData, type: FILE_RENAME});
+            } else {
+                const rootFile = data.repo.rootFile;
+                buildData(rootFile, 1);
+                dispatch({data: rootFile, type: LOAD_END});
+            }
+            event.eventEmitter.emit(event.CLOSE_UPDATE_PROJECT_DIALOG);
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        }).catch(function (response) {
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>服务端出错</span>");
             }
         });
     }
@@ -225,28 +230,29 @@ export function fileRename(itemData, newName) {
 
 function moveFile(path, newPath, dispatch) {
     var url = window._server + "/frame/fileRename";
-    $.ajax({
-        url,
-        type: 'POST',
-        data: {path, newPath, classify: window._classify, projectName: window._projectName, types: window._types},
-        success: function (data) {
-            const rootFile = data.repo.rootFile;
-            buildData(rootFile, 1);
-            dispatch({data: rootFile, type: LOAD_END});
-            event.eventEmitter.emit(event.CLOSE_UPDATE_PROJECT_DIALOG);
-            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-        },
-        error: function (response) {
-            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            if (response.status === 401) {
-                bootbox.alert("权限不足，不能进行此操作.");
-            } else {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>服务端出错</span>");
-                }
-            }
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({path, newPath, classify: window._classify, projectName: window._projectName, types: window._types}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        const rootFile = data.repo.rootFile;
+        buildData(rootFile, 1);
+        dispatch({data: rootFile, type: LOAD_END});
+        event.eventEmitter.emit(event.CLOSE_UPDATE_PROJECT_DIALOG);
+        componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+    }).catch(function (response) {
+        componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        if (response && response.status === 401) {
+            bootbox.alert("权限不足，不能进行此操作.");
+        } else if (response && response.text) {
+            response.text().then(function(text) {
+                bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+            });
+        } else {
+            bootbox.alert("<span style='color: red'>服务端出错</span>");
         }
     });
 }
@@ -269,55 +275,57 @@ export function loadData(classify, projectName, types, searchFileName) {
     }
     return function (dispatch) {
         const url = window._server + '/frame/loadProjects';
-        $.ajax({
-            url: url,
-            type: 'POST',
-            // data: {classify, projectName, types, searchFileName, projectDetail: false},
-            data: {classify, projectName, types, searchFileName, projectDetail: false},
-            success: function (data) {
-                const {classify, repo, user} = data;
-                const {rootFile, publicResource, projectNames} = repo;
-                event.eventEmitter.emit(event.CHANGE_CLASSIFY, classify);
-                if (projectNames && projectNames.length > 0) {
-                    event.eventEmitter.emit(event.PROJECT_LIST_CHANGE, projectNames);
-                }
-                
-                // 只对项目列表进行懒加载，公共资源库保持原有逻辑
-                if (rootFile && Array.isArray(rootFile.children)) {
-                    rootFile.children.forEach(child => {
-                        if (Array.isArray(child.children)) {
-                            child.children = [];
-                        }
-                        // 标记为需要懒加载的节点
-                        child._needLazyLoad = true;
-                        child._childrenLoaded = false;
-                    });
-                }
-                
-                buildData(rootFile, 1, user);
-                buildData(publicResource, 1, user)
-                dispatch({data: rootFile, publicResource: publicResource, type: LOAD_END});
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({classify, projectName, types, searchFileName, projectDetail: false}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            const {classify, repo, user} = data;
+            const {rootFile, publicResource, projectNames} = repo;
+            event.eventEmitter.emit(event.CHANGE_CLASSIFY, classify);
+            if (projectNames && projectNames.length > 0) {
+                event.eventEmitter.emit(event.PROJECT_LIST_CHANGE, projectNames);
+            }
 
-                // 控制所有节点显示
-                const $span = $('#node-' + rootFile.id).parent("li");
-                if (searchFileName == null || searchFileName === '') {
-                    var $liChildren = $span.find('ul > li > ul > li');
-                    $liChildren.hide('fast');
-                    $span.find('ul > li').find('i:first').addClass('rf-plus').removeClass('rf-minus');
-                } else {
-                    var $liChildren = $span.find('li');
-                    $liChildren.show('fast');
-                    $span.find('ul > li').find('i:first').addClass('rf-minus').removeClass('rf-plus');
-                }
-            },
-            error: function (response) {
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>加载数据失败,服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>加载数据失败,服务端出错</span>");
-                }
+            // 只对项目列表进行懒加载，公共资源库保持原有逻辑
+            if (rootFile && Array.isArray(rootFile.children)) {
+                rootFile.children.forEach(child => {
+                    if (Array.isArray(child.children)) {
+                        child.children = [];
+                    }
+                    // 标记为需要懒加载的节点
+                    child._needLazyLoad = true;
+                    child._childrenLoaded = false;
+                });
+            }
+
+            buildData(rootFile, 1, user);
+            buildData(publicResource, 1, user)
+            dispatch({data: rootFile, publicResource: publicResource, type: LOAD_END});
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+
+            // 控制所有节点显示
+            const $span = $('#node-' + rootFile.id).parent("li");
+            if (searchFileName == null || searchFileName === '') {
+                var $liChildren = $span.find('ul > li > ul > li');
+                $liChildren.hide('fast');
+                $span.find('ul > li').find('i:first').addClass('rf-plus').removeClass('rf-minus');
+            } else {
+                var $liChildren = $span.find('li');
+                $liChildren.show('fast');
+                $span.find('ul > li').find('i:first').addClass('rf-minus').removeClass('rf-plus');
+            }
+        }).catch(function (response) {
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+            if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>加载数据失败,服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>加载数据失败,服务端出错</span>");
             }
         });
     }
@@ -330,61 +338,64 @@ export function loadChildren(parentNodeData, classify, projectName, types) {
     componentEvent.eventEmitter.emit(componentEvent.SHOW_LOADING);
     return function (dispatch) {
         const url = window._server + '/frame/loadProjects';
-        $.ajax({
-            url: url,
-            type: 'POST',
-            data: {
-                classify, 
-                projectName, 
-                types, 
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                classify,
+                projectName,
+                types,
                 parentPath: parentNodeData.fullPath,
                 loadChildren: true
-            },
-            success: function (data) {
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-                const {repo, user} = data;
-                
-                // 从 repo 中提取子菜单数据
-                let childrenData = null;
-                
-                // 根据父节点的路径来确定从哪里提取子菜单数据
-                if (parentNodeData.fullPath === '/') {
-                    // 如果是根节点，从 rootFile.children 获取
-                    childrenData = repo.rootFile ? repo.rootFile.children : [];
-                } else if (parentNodeData.type === 'publicResource') {
-                    // 如果是公共资源，从 publicResource.children 获取
-                    childrenData = repo.publicResource ? repo.publicResource.children : [];
-                } else {
-                    // 如果是项目节点，需要从 rootFile.children 中找到对应的项目
-                    if (repo.rootFile && repo.rootFile.children) {
-                        const projectNode = repo.rootFile.children.find(child => 
-                            child.name === parentNodeData.name || 
-                            child.fullPath === parentNodeData.fullPath
-                        );
-                        childrenData = projectNode ? projectNode.children : [];
-                    }
+            }).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+            const {repo, user} = data;
+
+            // 从 repo 中提取子菜单数据
+            let childrenData = null;
+
+            // 根据父节点的路径来确定从哪里提取子菜单数据
+            if (parentNodeData.fullPath === '/') {
+                // 如果是根节点，从 rootFile.children 获取
+                childrenData = repo.rootFile ? repo.rootFile.children : [];
+            } else if (parentNodeData.type === 'publicResource') {
+                // 如果是公共资源，从 publicResource.children 获取
+                childrenData = repo.publicResource ? repo.publicResource.children : [];
+            } else {
+                // 如果是项目节点，需要从 rootFile.children 中找到对应的项目
+                if (repo.rootFile && repo.rootFile.children) {
+                    const projectNode = repo.rootFile.children.find(child =>
+                        child.name === parentNodeData.name ||
+                        child.fullPath === parentNodeData.fullPath
+                    );
+                    childrenData = projectNode ? projectNode.children : [];
                 }
-                
-                if (childrenData && childrenData.length > 0) {
-                    // 为每个子节点构建数据
-                    childrenData.forEach(child => {
-                        buildData(child, parentNodeData._level + 1, user);
-                    });
-                    
-                    dispatch({
-                        parentNodeData,
-                        childrenData,
-                        type: LOAD_CHILDREN_END
-                    });
-                }
-            },
-            error: function (response) {
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>加载子菜单失败,服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>加载子菜单失败,服务端出错</span>");
-                }
+            }
+
+            if (childrenData && childrenData.length > 0) {
+                // 为每个子节点构建数据
+                childrenData.forEach(child => {
+                    buildData(child, parentNodeData._level + 1, user);
+                });
+
+                dispatch({
+                    parentNodeData,
+                    childrenData,
+                    type: LOAD_CHILDREN_END
+                });
+            }
+        }).catch(function (response) {
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+            if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>加载子菜单失败,服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>加载子菜单失败,服务端出错</span>");
             }
         });
     }
@@ -493,13 +504,6 @@ function buildData() {
             data._icon = Styles.frameStyle.getProjectIcon();
             data._style = Styles.frameStyle.getProjectIconStyle();
             data.contextMenu = [
-                // {
-                //     name: '修改项目名称',
-                //     icon: 'rf rf-rename',
-                //     click: function (data) {
-                //         event.eventEmitter.emit(event.OPEN_UPDATE_PROJECT_DIALOG, data);
-                //     }
-                // },
                 {
                     name: '删除项目',
                     icon: 'rf rf-remove',
@@ -512,20 +516,6 @@ function buildData() {
                         });
                     }
                 }
-                // {
-                //     name: '配置接收推送客户端',
-                //     icon: 'rf rf-operation',
-                //     click: function (data, dispatch) {
-                //         const url = '/html/client-config-editor.html?project=' + encodeURI(data.name);
-                //         componentEvent.eventEmitter.emit(componentEvent.TREE_NODE_CLICK, {
-                //             id: 'client_config_',
-                //             name: '推送客户端配置',
-                //             fullPath: 'client_config_/' + data.name,
-                //             project: data.name,
-                //             path: url
-                //         });
-                //     }
-                // }
             ];
             if (arguments.length === 3 && arguments[2].export) {
                 data.contextMenu.push({
@@ -670,15 +660,6 @@ function buildData() {
                     }
                 }
             ];
-            /*
-           data.contextMenu.push({
-                name:'添加脚本式决策表',
-                icon:Styles.frameStyle.getScriptDecisionTableIcon(),
-                click:function () {
-                    event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG,{fileType:'dts.xml',nodeData:data})
-                }
-            });
-            */
             break;
         case "decisionTreeLib":
             data._icon = Styles.frameStyle.getDecisionTreeLibIcon();
@@ -941,13 +922,6 @@ function buildFullContextMenu(isFolder, folderType) {
                 }
             }
         ]);
-        /*        menus.push({
-                    name:'添加脚本式决策表',
-                    icon:Styles.frameStyle.getScriptDecisionTableIcon(),
-                    click:function (data,dispatch) {
-                        event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG,{fileType:'dts.xml',nodeData:data})
-                    }
-                });*/
         if (!addPasteMenuItem) {
             menus.push(buildPasteMenuItem());
             addPasteMenuItem = true;
@@ -1065,21 +1039,24 @@ function buildPasteMenuItem() {
                 if (!copy) {
                     moveFile(oldFullPath, newFullPath, dispatch);
                 } else {
-                    $.ajax({
-                        url: window._server + '/frame/copyFile',
-                        type: 'POST',
-                        data: {newFullPath, oldFullPath},
-                        success: function (data) {
-                            const rootFile = data.repo.rootFile;
-                            buildData(rootFile, 1);
-                            dispatch({data: rootFile, type: LOAD_END});
-                        },
-                        error: function (response) {
-                            if (response && response.responseText) {
-                                bootbox.alert("<span style='color: red'>复制文件操作失败,服务端错误：" + response.responseText + "</span>");
-                            } else {
-                                bootbox.alert("<span style='color: red'>复制文件操作失败,服务端出错</span>");
-                            }
+                    fetch(window._server + '/frame/copyFile', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: new URLSearchParams({newFullPath, oldFullPath}).toString()
+                    }).then(function(response) {
+                        if (!response.ok) throw response;
+                        return response.json();
+                    }).then(function (data) {
+                        const rootFile = data.repo.rootFile;
+                        buildData(rootFile, 1);
+                        dispatch({data: rootFile, type: LOAD_END});
+                    }).catch(function (response) {
+                        if (response && response.text) {
+                            response.text().then(function(text) {
+                                bootbox.alert("<span style='color: red'>复制文件操作失败,服务端错误：" + text + "</span>");
+                            });
+                        } else {
+                            bootbox.alert("<span style='color: red'>复制文件操作失败,服务端出错</span>");
                         }
                     });
                 }
@@ -1160,28 +1137,29 @@ function buildFileContextMenu() {
 export function lockFile(file, dispatch) {
     componentEvent.eventEmitter.emit(componentEvent.SHOW_LOADING);
     var url = window._server + "/frame/lockFile";
-    $.ajax({
-        url,
-        type: "POST",
-        data: {file},
-        success: function (data) {
-            const rootFile = data.repo.rootFile;
-            buildData(rootFile, 1);
-            dispatch({data: rootFile, type: LOAD_END});
-            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            bootbox.alert('锁定成功!');
-        },
-        error: function (response) {
-            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            if (response.status === 401) {
-                bootbox.alert("权限不足，不能进行此操作.");
-            } else {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>服务端出错</span>");
-                }
-            }
+    fetch(url, {
+        method: "POST",
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({file}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        const rootFile = data.repo.rootFile;
+        buildData(rootFile, 1);
+        dispatch({data: rootFile, type: LOAD_END});
+        componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        bootbox.alert('锁定成功!');
+    }).catch(function (response) {
+        componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        if (response && response.status === 401) {
+            bootbox.alert("权限不足，不能进行此操作.");
+        } else if (response && response.text) {
+            response.text().then(function(text) {
+                bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+            });
+        } else {
+            bootbox.alert("<span style='color: red'>服务端出错</span>");
         }
     });
 }
@@ -1189,28 +1167,29 @@ export function lockFile(file, dispatch) {
 export function unlockFile(file, dispatch) {
     componentEvent.eventEmitter.emit(componentEvent.SHOW_LOADING);
     var url = window._server + "/frame/unlockFile";
-    $.ajax({
-        url,
-        type: "POST",
-        data: {file},
-        success: function (data) {
-            const rootFile = data.repo.rootFile;
-            buildData(rootFile, 1);
-            dispatch({data: rootFile, type: LOAD_END});
-            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            bootbox.alert('解锁成功!');
-        },
-        error: function (response) {
-            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            if (response.status === 401) {
-                bootbox.alert("权限不足，不能进行此操作.");
-            } else {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>服务端出错</span>");
-                }
-            }
+    fetch(url, {
+        method: "POST",
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({file}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        const rootFile = data.repo.rootFile;
+        buildData(rootFile, 1);
+        dispatch({data: rootFile, type: LOAD_END});
+        componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        bootbox.alert('解锁成功!');
+    }).catch(function (response) {
+        componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        if (response && response.status === 401) {
+            bootbox.alert("权限不足，不能进行此操作.");
+        } else if (response && response.text) {
+            response.text().then(function(text) {
+                bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+            });
+        } else {
+            bootbox.alert("<span style='color: red'>服务端出错</span>");
         }
     });
 }
@@ -1218,71 +1197,74 @@ export function unlockFile(file, dispatch) {
 export function saveFileSource(file, content) {
     content = encodeURIComponent(content);
     var url = window._server + "/common/saveFile";
-    $.ajax({
-        url,
-        type: 'POST',
-        data: {file, content},
-        success: function () {
-            bootbox.alert('保存成功!');
-        },
-        error: function (response) {
-            if (response.status === 401) {
-                bootbox.alert("权限不足，不能进行此操作.");
-            } else {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>服务端出错</span>");
-                }
-            }
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({file, content}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function () {
+        bootbox.alert('保存成功!');
+    }).catch(function (response) {
+        if (response && response.status === 401) {
+            bootbox.alert("权限不足，不能进行此操作.");
+        } else if (response && response.text) {
+            response.text().then(function(text) {
+                bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+            });
+        } else {
+            bootbox.alert("<span style='color: red'>服务端出错</span>");
         }
     });
 }
 
 export function seeFileSource(data) {
     var url = window._server + "/frame/fileSource";
-    $.ajax({
-        url,
-        type: 'POST',
-        data: {path: data.fullPath},
-        success: function (result) {
-            event.eventEmitter.emit(event.OPEN_SOURCE_DIALOG, data.fullPath, result.content);
-        },
-        error: function (response) {
-            if (response.status === 401) {
-                bootbox.alert("权限不足，不能进行此操作.");
-            } else {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>服务端出错</span>");
-                }
-            }
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({path: data.fullPath}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (result) {
+        event.eventEmitter.emit(event.OPEN_SOURCE_DIALOG, data.fullPath, result.content);
+    }).catch(function (response) {
+        if (response && response.status === 401) {
+            bootbox.alert("权限不足，不能进行此操作.");
+        } else if (response && response.text) {
+            response.text().then(function(text) {
+                bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+            });
+        } else {
+            bootbox.alert("<span style='color: red'>服务端出错</span>");
         }
     });
 }
 
 export function seeFileVersions(data) {
     var url = window._server + "/frame/fileVersions";
-    $.ajax({
-        url,
-        type: 'POST',
-        data: {path: data.fullPath, project: data['rpp'], page: data.page},
-        success: function (res) {
-            const files = res.files
-            const num = res.count
-            event.eventEmitter.emit(event.OPEN_FILE_VERSION_DIALOG, {files, data, num});
-        },
-        error: function (response) {
-            if (response.status === 401) {
-                bootbox.alert("权限不足，不能进行此操作.");
-            } else {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>服务端出错</span>");
-                }
-            }
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({path: data.fullPath, project: data['rpp'], page: data.page}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (res) {
+        const files = res.files
+        const num = res.count
+        event.eventEmitter.emit(event.OPEN_FILE_VERSION_DIALOG, {files, data, num});
+    }).catch(function (response) {
+        if (response && response.status === 401) {
+            bootbox.alert("权限不足，不能进行此操作.");
+        } else if (response && response.text) {
+            response.text().then(function(text) {
+                bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+            });
+        } else {
+            bootbox.alert("<span style='color: red'>服务端出错</span>");
         }
     });
 }
@@ -1291,36 +1273,37 @@ function projectDelete(item, dispatch, isFolder) {
     componentEvent.eventEmitter.emit(componentEvent.SHOW_LOADING);
     setTimeout(function () {
         var url = window._server + "/frame/deleteProject";
-        $.ajax({
-            url,
-            type: 'POST',
-            data: {
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
                 isFolder,
                 path: item.fullPath,
                 classify: window._classify,
                 projectName: window._projectName,
                 types: window._types
-            },
-            success: function (data) {
-                if (!isFolder) {
-                    dispatch({data: item, type: DEL});
-                } else {
-                    // 对于文件夹，也使用 DEL action 来避免数据污染
-                    dispatch({data: item, type: DEL});
-                }
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            },
-            error: function (response) {
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-                if (response.status === 401) {
-                    bootbox.alert("权限不足，不能进行此操作.");
-                } else {
-                    if (response && response.responseText) {
-                        bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                    } else {
-                        bootbox.alert("<span style='color: red'>服务端出错</span>");
-                    }
-                }
+            }).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            if (!isFolder) {
+                dispatch({data: item, type: DEL});
+            } else {
+                // 对于文件夹，也使用 DEL action 来避免数据污染
+                dispatch({data: item, type: DEL});
+            }
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        }).catch(function (response) {
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>服务端出错</span>");
             }
         });
     }, 150);
@@ -1330,36 +1313,37 @@ function fileDelete(item, dispatch, isFolder) {
     componentEvent.eventEmitter.emit(componentEvent.SHOW_LOADING);
     setTimeout(function () {
         var url = window._server + "/frame/deleteFile";
-        $.ajax({
-            url,
-            type: 'POST',
-            data: {
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
                 isFolder,
                 path: item.fullPath,
                 classify: window._classify,
                 projectName: window._projectName,
                 types: window._types
-            },
-            success: function (data) {
-                if (!isFolder) {
-                    dispatch({data: item, type: DEL});
-                } else {
-                    // 对于文件夹，也使用 DEL action 来避免数据污染
-                    dispatch({data: item, type: DEL});
-                }
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            },
-            error: function (response) {
-                componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-                if (response.status === 401) {
-                    bootbox.alert("权限不足，不能进行此操作.");
-                } else {
-                    if (response && response.responseText) {
-                        bootbox.alert("<span style='color: red'>服务端错误：" + response.responseText + "</span>");
-                    } else {
-                        bootbox.alert("<span style='color: red'>服务端出错</span>");
-                    }
-                }
+            }).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            if (!isFolder) {
+                dispatch({data: item, type: DEL});
+            } else {
+                // 对于文件夹，也使用 DEL action 来避免数据污染
+                dispatch({data: item, type: DEL});
+            }
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+        }).catch(function (response) {
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>服务端出错</span>");
             }
         });
     }, 150);

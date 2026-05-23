@@ -62,7 +62,7 @@ ruleforge.FunctionValue.prototype.initMenu = function (functionLibraries) {
         });
     };
     config = {menuItems: []};
-    $.each(data || [], function (index, item) {
+    data || [].forEach(function(item) {
         config.menuItems.push({
             name: item.name,
             label: item.label,

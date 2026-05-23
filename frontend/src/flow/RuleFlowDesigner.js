@@ -548,19 +548,24 @@ export default class RuleFlowDesigner extends FlowDesigner {
             return;
         }
         var url = window._server + "/common/loadXml";
-        $.ajax({
-            url,
-            data: {files},
-            type: 'POST',
-            error: function (response) {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>加载库文件失败，服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>加载库文件失败,服务端出错</span>");
-                }
-            },
-            success: function (data) {
-                callback(data);
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({files}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            callback(data);
+        }).catch(function (response) {
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>加载库文件失败，服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>加载库文件失败,服务端出错</span>");
             }
         });
     };
