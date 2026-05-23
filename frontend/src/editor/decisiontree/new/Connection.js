@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.Gao on 2016/3/23.
- */
 import Raphael from 'raphael';
 
 export default class Connection{

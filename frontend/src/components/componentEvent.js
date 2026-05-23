@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/18.
- */
 import events from 'events';
 
 export const SHOW_LOADING = 'show_loading';

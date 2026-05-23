@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.FunctionProperty = function () {
     this.container = $("<span>");
     this.label = generateContainer();

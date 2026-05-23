@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.Gao on 2016/3/27.
- */
 import {ajaxSave, getParameter} from '../../../Utils.js';
 import Context from './Context.js';
 import VariableNode from './VariableNode.js';

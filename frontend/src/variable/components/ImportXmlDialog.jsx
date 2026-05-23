@@ -1,7 +1,3 @@
-/**
- * @author Jacky.gao
- * @since 2016/6/6
- */
 import React, {Component} from 'react';
 import ReactDOM from 'react-dom';
 import Dialog from '../../components/dialog/component/Dialog.jsx';

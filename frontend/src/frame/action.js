@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/5/23.
- */
 import Styles from '../Styles.js';
 import * as event from './event.js';
 import * as componentEvent from '../components/componentEvent.js';

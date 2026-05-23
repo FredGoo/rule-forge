@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/7.
- */
 import React, {Component} from 'react';
 import ReactDOM from 'react-dom';
 import Dialog from '../../components/dialog/component/Dialog.jsx';

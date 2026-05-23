@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/5/24.
- */
 import events from 'events';
 
 export const OPEN_DIALOG = 'open_dialog';

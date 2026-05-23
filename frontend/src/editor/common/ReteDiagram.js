@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 var connections = [];
 var nodes=[];
 var r=null;

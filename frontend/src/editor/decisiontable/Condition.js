@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.Condition = function (parentContainer) {
     this.container = $("<span>");
     parentContainer.append(this.container);

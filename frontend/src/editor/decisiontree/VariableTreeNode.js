@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/2/24.
- */
 VariableTreeNode=function(parentNode,allowDelete){
     this.allowDelete=allowDelete;
     TreeNode.call(this,parentNode);

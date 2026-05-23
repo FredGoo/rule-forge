@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.NamedCondition=function(context,parentContainer,parentJoin){
 	this.context=context;
 	this.parentJoin=parentJoin;

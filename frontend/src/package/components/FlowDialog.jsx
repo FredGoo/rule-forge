@@ -1,7 +1,3 @@
-/**
- * @author jacky
- * @since 2016/6/23
- */
 import React, {Component} from 'react';
 import ReactDOM from 'react-dom';
 import * as event from '../event.js';

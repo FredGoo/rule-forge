@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.ParameterValue = function (arithmetic, data, act) {
     this.arithmetic = arithmetic;
     this.container = $("<span>");

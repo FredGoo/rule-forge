@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.Connection = function (context, isJoin, parentJoin) {
     this.isJoin = isJoin;
     this.context = context;

@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import '../css/iconfont.css';
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../../node_modules/codemirror/lib/codemirror.css';

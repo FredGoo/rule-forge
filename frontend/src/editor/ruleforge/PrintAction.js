@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.PrintAction=function(rule){
 	this.container=$("<span>");
 	this.beforeContainer=$("<span>");

@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/8/31.
- */
 export const MASTER_LOADED='master_loaded';
 export const SLAVE_LOADED='slave_loaded';
 export const PERMISSION_CHANGE="permission_change";

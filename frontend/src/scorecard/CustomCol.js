@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/18.
- */
 import Col from './Col.js';
 
 export default class CustomCol extends Col {

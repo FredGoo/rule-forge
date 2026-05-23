@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/18.
- */
 import ScoreCardTable from './ScoreCardTable.js';
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css';

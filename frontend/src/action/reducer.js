@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/15.
- */
 import {combineReducers} from 'redux';
 import * as ACTIONS from './action.js';
 import {uniqueID} from '../components/componentAction.js';

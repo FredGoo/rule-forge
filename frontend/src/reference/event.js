@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/8/9.
- */
 import events from 'events';
 
 export const OPEN_REFERENCE_DIALOG='open_reference_dialog';

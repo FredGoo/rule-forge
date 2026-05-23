@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.FunctionValue = function (arithmetic, data, rule) {
     this.arithmetic = arithmetic;
     this.container = $("<span>");

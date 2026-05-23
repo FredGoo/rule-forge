@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/18.
- */
 export default class Cell {
     constructor(row, col, cellData) {
         row.cells.push(this);

@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/5/23.
- */
 import React,{Component,PropTypes} from 'react';
 import TreeItem from './TreeItem.jsx';
 

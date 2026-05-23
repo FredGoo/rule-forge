@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import BaseTool from './BaseTool.js';
 import StartNode from './StartNode.js';
 

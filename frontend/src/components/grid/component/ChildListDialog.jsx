@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/9/4.
- */
 import React,{Component} from 'react';
 import ReactDOM from 'react-dom';
 import Grid from './Grid.jsx';

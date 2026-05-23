@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/17.
- */
 import {ajaxSave, formatDate} from '../Utils.js';
 import * as event from "../frame/event";
 

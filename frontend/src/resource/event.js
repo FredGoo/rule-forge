@@ -1,7 +1,3 @@
-/**
- * @author Jacky.gao
- * @since 2016/6/2
- */
 import events from 'events';
 
 export const MASTER_ROW_CHANGE = 'row_change';

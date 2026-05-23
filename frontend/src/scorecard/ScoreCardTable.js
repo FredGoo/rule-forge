@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/18.
- */
 import AttributeRow from './AttributeRow.js';
 import CustomCol from './CustomCol.js';
 import PropertyConfig from './PropertyConfig.js';

@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/20.
- */
 export default class TableAction {
     constructor(container) {
         this.container = container;

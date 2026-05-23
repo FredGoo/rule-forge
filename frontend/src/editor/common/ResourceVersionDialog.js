@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.ResourceVersionDialog=function(path){
 	this.path=path;
 	this.init();

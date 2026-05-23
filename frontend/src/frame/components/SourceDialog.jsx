@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/7/28.
- */
 import '../../../node_modules/codemirror/mode/xml/xml.js';
 import React,{Component,PropTypes} from 'react';
 import ReactDOM from 'react-dom';

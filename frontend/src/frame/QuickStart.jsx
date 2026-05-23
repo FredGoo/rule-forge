@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/8/10.
- */
 import React, {Component} from 'react';
 
 export default class QuickStart extends Component {

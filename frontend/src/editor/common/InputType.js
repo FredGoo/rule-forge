@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.InputType = function (endInfo, tip, functionProperty, rule) {
     this.container = $("<span>");
     this.label = generateContainer();

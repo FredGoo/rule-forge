@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/8/11.
- */
 export const ADD='add';
 export const DEL='del';
 export const LOADED_DATA='loaded_data';

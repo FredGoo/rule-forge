@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 import CodeMirror from 'codemirror';
 CodeMirror.defineSimpleMode("then", {
   // The start state contains the rules that are intially used

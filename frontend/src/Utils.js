@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/7/27.
- */
 window.iframe_id_ = 1;
 
 export function nextIFrameId() {

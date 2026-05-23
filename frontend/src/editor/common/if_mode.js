@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 CodeMirror.defineSimpleMode("if", {
   // The start state contains the rules that are intially used
   start: [

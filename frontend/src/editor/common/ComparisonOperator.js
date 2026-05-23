@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.ComparisonOperator = function (menuCallFun) {
     this.inputType = null;
     this.operator = "";

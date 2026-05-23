@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/5/24.
- */
 import '../css/jquery.splitter.css';
 import {} from './jquery-splitter.js';
 import React,{Component,PropTypes} from 'react';

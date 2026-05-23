@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 import {MsgBox} from 'flowdesigner';
 
 window._ConstantValueArray = [];

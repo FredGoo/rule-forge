@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.ActionType=function(parentContainer,rule){
 	this.uuid=Math.uuid();
 	parentContainer.prop('id',this.uuid);

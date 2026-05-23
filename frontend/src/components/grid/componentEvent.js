@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/8.
- */
 import events from 'events';
 
 export const SHOW_CELL_EDITOR = 'show_cell_editor';

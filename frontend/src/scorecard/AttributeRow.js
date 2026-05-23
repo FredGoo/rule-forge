@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/18.
- */
 import AttributeCell from './AttributeCell.js';
 import Row from './Row.js';
 import ConditionRow from './ConditionRow.js';

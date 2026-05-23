@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/15.
- */
 import events from 'events';
 
 export const OPEN_SELECT_METHOD_DIALOG='open_select_method_dialog';

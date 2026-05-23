@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.CellContent = function (element) {
     this.container = $(element);
     this.container.css({

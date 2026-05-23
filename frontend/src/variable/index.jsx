@@ -1,7 +1,3 @@
-/**
- * @author Jacky.gao
- * @since 2016/5/30
- */
 import '../../node_modules/bootstrap/dist/css/bootstrap.css'
 import '../css/iconfont.css'
 

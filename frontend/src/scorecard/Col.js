@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/21.
- */
 export default class Col {
     constructor(table) {
         this.scoreCardTable = table;

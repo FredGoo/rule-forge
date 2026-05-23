@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.ConditionListDialog=function(project, category, colData){
 	this.project = project;
 	this.category = category;

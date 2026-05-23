@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.CellExecuteMethod=function(element){
 	this.parentContainer=$(element);
 	this.parentContainer.css({

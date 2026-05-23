@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.SimpleValue = function (arithmetic, data) {
     var TIP = "请输入值";
     this.container = $("<span>");

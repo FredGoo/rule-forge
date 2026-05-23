@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 import {MsgBox} from 'flowdesigner';
 import * as event from '../../components/componentEvent.js';
 

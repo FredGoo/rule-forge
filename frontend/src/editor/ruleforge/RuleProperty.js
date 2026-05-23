@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.RuleProperty=function(parent,name,defaultValue,editorType){
 	this.parent=parent;
 	this.value=defaultValue;

@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.AssignmentAction=function(rule){
 	this.container=$("<span>");
 	this.label=generateContainer();

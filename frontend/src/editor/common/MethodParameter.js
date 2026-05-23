@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.MethodParameter = function (rule) {
     this.inputType = new ruleforge.InputType(null, null, null, rule);
     this.container = this.inputType.getContainer();

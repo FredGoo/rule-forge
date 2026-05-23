@@ -1,6 +1,3 @@
-/**
- * @author Administrator
- */
 ruleforge.ResourceListDialog=function(type,select,doSuccess){
 	this.type=type;
 	this.select=select;

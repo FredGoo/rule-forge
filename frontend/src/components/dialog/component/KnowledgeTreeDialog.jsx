@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/19.
- */
 import '../../../css/iconfont.css';
 import React, {Component} from 'react';
 import CommonDialog from './CommonDialog.jsx';

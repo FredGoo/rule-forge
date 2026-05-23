@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.Join = function (context) {
     this.type = "and";
     this.context = context;

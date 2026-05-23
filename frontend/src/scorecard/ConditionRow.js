@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/18.
- */
 import Row from './Row.js';
 import CustomCell from './CustomCell.js';
 export default class ConditionRow extends Row{

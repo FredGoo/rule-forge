@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/3/28.
- */
 import Connection from './Connection.js';
 export default class BaseNode{
     constructor(context,parentNode){

@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/10.
- */
 import { version } from 'react';
 import Styles from '../Styles.js';
 

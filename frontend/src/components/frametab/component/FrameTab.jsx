@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/5/24.
- */
 import React, {Component} from 'react';
 import QuickStart from '../../../frame/QuickStart.jsx';
 import IFrame from './IFrame.jsx';

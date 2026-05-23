@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.ComplexArithmetic = function (rule) {
     this.container = $("<span>");
     this.operator = "";

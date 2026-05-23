@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/8/31.
- */
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css';
 

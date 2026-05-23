@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import {Tool} from 'flowdesigner';
 import '../../node_modules/codemirror/addon/lint/lint.js';
 

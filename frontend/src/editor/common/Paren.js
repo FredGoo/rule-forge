@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.Paren = function (rule) {
     this.container = $("<span>");
     this.leftParen = $("<span>(</span>");

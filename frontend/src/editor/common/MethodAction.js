@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.MethodAction=function(rule){
 	this.parameters=[];
 	this.rule=rule;

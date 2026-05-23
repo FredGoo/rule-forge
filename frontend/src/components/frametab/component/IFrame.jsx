@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/5/24.
- */
 import React,{Component,PropTypes} from 'react';
 import ReactDOM from 'react-dom';
 import * as event from '../../componentEvent.js';

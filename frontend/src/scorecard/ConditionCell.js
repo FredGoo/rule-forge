@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/19.
- */
 import {MsgBox} from 'flowdesigner';
 import Cell from './Cell.js';
 

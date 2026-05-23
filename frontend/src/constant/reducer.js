@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/11.
- */
 import {combineReducers} from 'redux';
 import * as ACTIONS from './action.js';
 

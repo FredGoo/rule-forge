@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/2/22.
- */
 TreeNode=function(parentNode){
     this.parentNode=parentNode;
     this.container=$("<table class='nodeTable' border='0' cellpadding='0' cellspacing='0'>");

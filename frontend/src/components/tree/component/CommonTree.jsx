@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/5/23.
- */
 import '../css/tree.css';
 import '../../../css/iconfont.css';
 import TreeItem from './TreeItem.jsx';

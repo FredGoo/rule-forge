@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 import Raphael from 'raphael';
 
 ruleforge.Context = function (container, rule) {

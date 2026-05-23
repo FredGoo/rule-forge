@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/2/22.
- */
 DecisionTree = function (container) {
     this.container = container;
     this.topNode = new VariableTreeNode();

@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.SimpleArithmetic = function () {
     this.container = $("<span>");
     this.selectorLabel = generateContainer();

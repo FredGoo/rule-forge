@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/21.
- */
 import Col from './Col.js';
 export default class ConditionCol extends Col{
     constructor(table,name,width){

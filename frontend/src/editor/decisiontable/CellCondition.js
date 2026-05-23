@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 window._conditionId = 0;
 ruleforge.CellCondition = function (element) {
     this.container = $(element);

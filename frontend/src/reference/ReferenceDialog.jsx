@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/8/8.
- */
 import React,{Component,PropTypes} from 'react';
 import ReactDOM from 'react-dom';
 import CommonDialog from '../components/dialog/component/CommonDialog.jsx';

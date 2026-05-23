@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import decisionSVG from './svg/decision.svg';
 import BaseNode from './BaseNode.js';
 

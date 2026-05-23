@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import {Event, FlowDesigner, MsgBox, Node} from 'flowdesigner';
 import BaseNode from './BaseNode.js';
 import * as event from '../components/componentEvent.js';

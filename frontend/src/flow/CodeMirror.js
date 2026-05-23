@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/21.
- */
 import CodeMirror from 'codemirror';
 import '../../node_modules/codemirror/addon/mode/simple.js';
 import {Event} from 'flowdesigner';

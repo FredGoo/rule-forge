@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import CodeMirror from './CodeMirror.js';
 import '../../node_modules/codemirror/addon/hint/show-hint.js';
 import BaseTool from './BaseTool.js';

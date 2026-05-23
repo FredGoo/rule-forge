@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/8/2.
- */
 import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../../../node_modules/codemirror/lib/codemirror.css';
 import '../../../node_modules/codemirror/addon/hint/show-hint.css';

@@ -1,7 +1,3 @@
-/**
- * @author Jacky.gao
- * 2016/10/25
- */
 window.Remark = function (container) {
     this.remark = "";
     this.defaultRemark = "请输入备注内容";

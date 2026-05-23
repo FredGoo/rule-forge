@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.ConditionLeft=function(parentContainer){
 	this.container=$("<span>");
 	parentContainer.append(this.container);

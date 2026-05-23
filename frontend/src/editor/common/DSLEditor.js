@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 var ruleforge={};
 var codeMirror=null;
 $(document).ready(function() {

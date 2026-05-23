@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/18.
- */
 import CustomCell from './CustomCell.js';
 import ConditionCell from './ConditionCell.js';
 import ScoreCell from './ScoreCell.js';

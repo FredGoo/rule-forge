@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/19.
- */
 import Cell from './Cell.js';
 export default class CustomCell extends Cell{
     constructor(row,col,cellData){

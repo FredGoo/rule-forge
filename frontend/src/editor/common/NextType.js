@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.NextType = function (rule) {
     this.container = $("<span>");
     this.rule = rule;

@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import {MsgBox, Node} from 'flowdesigner';
 
 export default class BaseNode extends Node {

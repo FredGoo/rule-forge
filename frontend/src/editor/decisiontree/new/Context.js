@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.Gao on 2016/3/23.
- */
 import Raphael from 'raphael';
 import VariableNode from './VariableNode.js';
 import ActionNode from './ActionNode.js';

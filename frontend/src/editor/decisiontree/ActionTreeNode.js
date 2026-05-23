@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/2/24.
- */
 ActionTreeNode=function(parentNode){
     TreeNode.call(this,parentNode);
     this.actionTypes=[];

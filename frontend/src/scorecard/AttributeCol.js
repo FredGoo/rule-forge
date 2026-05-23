@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/21.
- */
 import Col from './Col.js';
 export default class AttributeCol extends Col{
     constructor(table,name,width){

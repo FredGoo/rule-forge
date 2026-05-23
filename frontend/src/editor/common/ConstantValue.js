@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.ConstantValue = function (arithmetic, data) {
     this.arithmetic = arithmetic;
     this.container = $("<span>");

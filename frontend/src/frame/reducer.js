@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/5/23.
- */
 import * as ACTIONS from './action.js';
 
 function tree(state={}, action) {

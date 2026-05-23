@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/3/28.
- */
 import {MsgBox} from 'flowdesigner';
 import BaseNode from './BaseNode.js';
 

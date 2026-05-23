@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/16.
- */
 import React,{Component,PropTypes} from 'react';
 import ReactDOM from 'react-dom';
 import {connect} from 'react-redux';

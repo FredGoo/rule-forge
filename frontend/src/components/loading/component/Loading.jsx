@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/18.
- */
 import '../css/loading.css';
 import * as event from '../../componentEvent.js';
 import React,{Component,PropTypes} from 'react';

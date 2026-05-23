@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.FunctionParameter = function (rule) {
     this.container = $("<span>");
     this.nameContainer = $("<span>");

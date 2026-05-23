@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/6/2.
- */
 import events from 'events';
 
 export const OPEN_CREATE_PACKAGE_DIALOG = 'open_create_package_dialog';

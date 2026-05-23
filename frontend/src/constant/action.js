@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/12.
- */
 import {ajaxSave} from '../Utils.js';
 export const LOAD_MASTER_COMPLETED='load_master_completed';
 export const LOAD_SLAVE_COMPLETE='load_slave_completed';

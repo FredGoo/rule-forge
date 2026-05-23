@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/12.
- */
 import {ajaxSave} from '../Utils.js';
 export const DEL='del';
 export const SAVE='save';
