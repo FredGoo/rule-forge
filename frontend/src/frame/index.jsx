@@ -236,6 +236,17 @@ $(document).ready(function () {
                                     </li>
                                 </ul>
                             </span>
+
+                            <span style={{float: 'right', margin: '5px 10px'}}>
+                                <span style={{color: '#666', marginRight: 10}}>
+                                    <i className="glyphicon glyphicon-user"/> {window.__currentUser ? window.__currentUser.username : ''}
+                                </span>
+                                <a href="#" title="退出登录" onClick={() => {
+                                    $.post(window._server + '/frame/logout', function() {
+                                        window.location.href = 'html/login.html';
+                                    });
+                                }}><i className="glyphicon glyphicon-log-out" style={{fontSize: '12pt'}}/></a>
+                            </span>
                         </div>
                         <div className='tree' style={{marginLeft: '10px'}}>
                             <div style={{margin: '10px 0px 5px 2px'}}>

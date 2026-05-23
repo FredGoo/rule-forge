@@ -23,7 +23,8 @@ module.exports = {
         ulEditor: './src/editor/ul/index.jsx',
         scoreCardTable: './src/scorecard/index.jsx',
         permissionConfigEditor: './src/permission/index.jsx',
-        resourceEditor: './src/resource/index.jsx'
+        resourceEditor: './src/resource/index.jsx',
+        login: './src/login/index.jsx'
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
@@ -55,6 +56,7 @@ module.exports = {
         new HtmlWebpackPlugin({ filename: 'html/permission-config-editor.html', template: 'html/permission-config-editor.html', chunks: ["permissionConfigEditor"] }),
         new HtmlWebpackPlugin({ filename: 'html/client-config-editor.html', template: 'html/client-config-editor.html', chunks: ["clientConfigEditor"] }),
         new HtmlWebpackPlugin({ filename: 'html/resource-editor.html', template: 'html/resource-editor.html', chunks: ["resourceEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/login.html', template: 'html/login.html', chunks: ["login"] }),
     ],
     module: {
         rules: [
