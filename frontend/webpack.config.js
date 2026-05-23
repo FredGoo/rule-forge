@@ -5,7 +5,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 module.exports = {
     mode: 'development',
     resolve: {
-        extensions: ['*', '.js', '.json']
+        extensions: ['*', '.js', '.jsx', '.json']
     },
     entry: {
         frame: './src/frame/index.jsx',
@@ -26,109 +26,35 @@ module.exports = {
         resourceEditor: './src/resource/index.jsx'
     },
     output: {
-        path: path.resolve('dist'),
-        filename: 'bundle/[name].bundle.js'
+        path: path.resolve(__dirname, 'dist'),
+        filename: 'bundle/[name].bundle.js',
+        clean: true
     },
     plugins: [
-        // 复制文件
-        new CopyWebpackPlugin([
-            {
-                from: path.resolve(__dirname, 'lib'),
-                to: 'lib'
-            },
-            {
-                from: path.resolve(__dirname, 'fonts'),
-                to: 'fonts'
-            },
-            {
-                from: path.resolve(__dirname, 'html/complexscorecard-editor.html'),
-                to: 'html/complexscorecard-editor.html'
-            },
-            {
-                from: path.resolve(__dirname, 'html/crosstab-editor.html'),
-                to: 'html/crosstab-editor.html'
-            }
-        ]),
-        new HtmlWebpackPlugin({
-            filename: 'index.html',
-            template: 'html/frame.html',
-            chunks: ["frame"]
+        new CopyWebpackPlugin({
+            patterns: [
+                { from: path.resolve(__dirname, 'lib'), to: 'lib' },
+                { from: path.resolve(__dirname, 'fonts'), to: 'fonts' },
+                { from: path.resolve(__dirname, 'html/complexscorecard-editor.html'), to: 'html/complexscorecard-editor.html' },
+                { from: path.resolve(__dirname, 'html/crosstab-editor.html'), to: 'html/crosstab-editor.html' }
+            ]
         }),
-        new HtmlWebpackPlugin({
-            filename: 'html/variable-editor.html',
-            template: 'html/variable-editor.html',
-            chunks: ["variableEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/ruleset-editor.html',
-            template: 'html/ruleset-editor.html',
-            chunks: ["ruleSetEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/decision-table-editor.html',
-            template: 'html/decision-table-editor.html',
-            chunks: ["decisionTableEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/decision-tree-editor.html',
-            template: 'html/decision-tree-editor.html',
-            chunks: ["decisionTreeEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/score-card-editor.html',
-            template: 'html/score-card-editor.html',
-            chunks: ["scoreCardTable"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/rule-flow-designer.html',
-            template: 'html/rule-flow-designer.html',
-            chunks: ["flowDesigner"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/package-editor.html',
-            template: 'html/package-editor.html',
-            chunks: ["packageEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/constant-editor.html',
-            template: 'html/constant-editor.html',
-            chunks: ["constantEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/action-editor.html',
-            template: 'html/action-editor.html',
-            chunks: ["actionEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/parameter-editor.html',
-            template: 'html/parameter-editor.html',
-            chunks: ["parameterEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/script-decision-table-editor.html',
-            template: 'html/script-decision-table-editor.html',
-            chunks: ["scriptDecisionTableEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/ul-editor.html',
-            template: 'html/ul-editor.html',
-            chunks: ["ulEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/permission-config-editor.html',
-            template: 'html/permission-config-editor.html',
-            chunks: ["permissionConfigEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/client-config-editor.html',
-            template: 'html/client-config-editor.html',
-            chunks: ["clientConfigEditor"]
-        }),
-        new HtmlWebpackPlugin({
-            filename: 'html/resource-editor.html',
-            template: 'html/resource-editor.html',
-            chunks: ["resourceEditor"]
-        }),
+        new HtmlWebpackPlugin({ filename: 'index.html', template: 'html/frame.html', chunks: ["frame"] }),
+        new HtmlWebpackPlugin({ filename: 'html/variable-editor.html', template: 'html/variable-editor.html', chunks: ["variableEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/ruleset-editor.html', template: 'html/ruleset-editor.html', chunks: ["ruleSetEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/decision-table-editor.html', template: 'html/decision-table-editor.html', chunks: ["decisionTableEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/decision-tree-editor.html', template: 'html/decision-tree-editor.html', chunks: ["decisionTreeEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/score-card-editor.html', template: 'html/score-card-editor.html', chunks: ["scoreCardTable"] }),
+        new HtmlWebpackPlugin({ filename: 'html/rule-flow-designer.html', template: 'html/rule-flow-designer.html', chunks: ["flowDesigner"] }),
+        new HtmlWebpackPlugin({ filename: 'html/package-editor.html', template: 'html/package-editor.html', chunks: ["packageEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/constant-editor.html', template: 'html/constant-editor.html', chunks: ["constantEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/action-editor.html', template: 'html/action-editor.html', chunks: ["actionEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/parameter-editor.html', template: 'html/parameter-editor.html', chunks: ["parameterEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/script-decision-table-editor.html', template: 'html/script-decision-table-editor.html', chunks: ["scriptDecisionTableEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/ul-editor.html', template: 'html/ul-editor.html', chunks: ["ulEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/permission-config-editor.html', template: 'html/permission-config-editor.html', chunks: ["permissionConfigEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/client-config-editor.html', template: 'html/client-config-editor.html', chunks: ["clientConfigEditor"] }),
+        new HtmlWebpackPlugin({ filename: 'html/resource-editor.html', template: 'html/resource-editor.html', chunks: ["resourceEditor"] }),
     ],
     module: {
         rules: [
@@ -137,43 +63,39 @@ module.exports = {
                 exclude: /node_modules/,
                 loader: "babel-loader",
                 options: {
-                    "presets": [
-                        "react", "env"
-                    ]
+                    presets: ["@babel/preset-react", "@babel/preset-env"]
                 }
             },
             {
                 test: /\.css$/,
-                use: [{loader: 'style-loader'}, {loader: 'css-loader'}]
+                use: [{ loader: 'style-loader' }, { loader: 'css-loader' }]
             },
             {
                 test: /\.(eot|woff|woff2|ttf|svg|png|jpg)$/,
-                use: [
-                    {
-                        loader: 'url-loader',
-                        options: {
-                            limit: 10000000
-                        }
+                type: 'asset',
+                parser: {
+                    dataUrlCondition: {
+                        maxSize: 10 * 1024 * 1024
                     }
-                ]
+                }
             }
         ]
     },
     devServer: {
-        contentBase: path.join(__dirname, 'dist'),
+        static: path.join(__dirname, 'dist'),
         compress: true,
         port: 3001,
         host: "0.0.0.0",
-	useLocalIp: true,
         open: true,
-        proxy: {
-            '/api/': {
-		    target: 'http://127.0.0.1:8081/',
+        proxy: [
+            {
+                context: ['/api/'],
+                target: 'http://127.0.0.1:8081/',
                 changeOrigin: true,
                 pathRewrite: {
                     '^/api': '/ruleforgeV2'
                 }
             }
-        }
+        ]
     }
 };

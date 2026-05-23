@@ -5,7 +5,7 @@ import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css';
 
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {Provider} from 'react-redux';
 import {applyMiddleware, createStore} from 'redux';
 import thunk from 'redux-thunk';
@@ -16,10 +16,9 @@ import * as action from './action.js';
 $(document).ready(function () {
     const store = createStore(reducer, applyMiddleware(thunk));
     store.dispatch(action.loadMasterData());
-    ReactDOM.render(
+    createRoot(document.getElementById("container")).render(
         <Provider store={store}>
             <PermissionConfigEditor/>
         </Provider>,
-        document.getElementById("container")
-    );
+);
 });

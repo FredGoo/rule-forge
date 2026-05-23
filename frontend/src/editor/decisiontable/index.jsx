@@ -12,7 +12,7 @@ import '../jquery.handsontable.full.js';
 import '../bootstrap-table.min.js';
 import '../Math.uuid.js';
 import '../../Remark.js';
-import '../common/RuleForge.js';
+import '../common/URule.js';
 import '../common/contextMenu.js';
 import '../common/Context.js';
 import '../ruleforge/RuleFactory.js';
@@ -56,19 +56,18 @@ import './DecisionTable.js';
 import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.jsx';
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {buildProjectNameFromFile, getParameter} from "../../Utils";
 
 $(document).ready(function () {
     const file = getParameter('file');
     window._project = buildProjectNameFromFile(file);
 
-    ReactDOM.render(
+    createRoot(document.getElementById("dialogContainer")).render(
         <div>
             <KnowledgeTreeDialog/>,
             <QuickTestDialog/>
         </div>,
-        document.getElementById('dialogContainer')
-    );
+);
     new RuleForge.DecisionTable('container');
 });

@@ -4,7 +4,7 @@
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../../node_modules/bootstrapvalidator/dist/css/bootstrapValidator.css';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {applyMiddleware, createStore} from 'redux';
 import {Provider} from 'react-redux';
 import thunk from 'redux-thunk';
@@ -17,12 +17,11 @@ $(document).ready(function () {
     const project = _getParameter("file").replace('.rp', '');
     store.dispatch(action.loadMasterData(project));
     store.dispatch(action.loadPackageConfig(project));
-    ReactDOM.render(
+    createRoot(document.getElementById("container")).render(
         <Provider store={store}>
             <PackageEditor project={project}/>
         </Provider>,
-        document.getElementById('container')
-    );
+);
 });
 
 function _getParameter(name) {

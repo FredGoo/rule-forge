@@ -9,7 +9,7 @@ import '../../css/iconfont.css';
 import '../Math.uuid.js';
 import '../common/jquery.utils.js';
 import '../common/contextMenu.js';
-import '../common/RuleForge.js';
+import '../common/URule.js';
 import '../common/Context.js';
 import '../../Remark.js';
 import './RuleFactory.js';
@@ -53,7 +53,7 @@ import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.j
 import ReferenceDialog from '../../reference/ReferenceDialog.jsx';
 import * as refEvent from '../../reference/event.js';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {buildProjectNameFromFile, getParameter} from "../../Utils";
 
 $(document).ready(function () {

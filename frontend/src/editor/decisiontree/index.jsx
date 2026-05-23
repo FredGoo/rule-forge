@@ -9,7 +9,7 @@ import '../ruleforge/ruleset.css';
 import '../Math.uuid.js';
 import '../../Remark.js';
 import '../common/contextMenu.js';
-import '../common/RuleForge.js';
+import '../common/URule.js';
 import '../common/ComparisonOperator.js';
 import '../common/ComplexArithmetic.js';
 import '../common/VariableValue.js';
@@ -45,19 +45,18 @@ import DecisionTree from './new/DecisionTree.js';
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
 import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.jsx';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {buildProjectNameFromFile, getParameter} from "../../Utils";
 
 $(document).ready(function () {
     const file = getParameter('file');
     window._project = buildProjectNameFromFile(file);
 
-    ReactDOM.render(
+    createRoot(document.getElementById("dialogContainer")).render(
         <div>
             <KnowledgeTreeDialog/>,
             <QuickTestDialog/>
         </div>,
-        document.getElementById('dialogContainer')
-    );
+);
     new DecisionTree($('#container'));
 });

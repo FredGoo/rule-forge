@@ -12,7 +12,7 @@ import '../context.standalone.css';
 import '../../css/iconfont.css';
 import '../ruleforge/ruleset.css';
 
-import '../common/RuleForge.js';
+import '../common/URule.js';
 import '../common/contextMenu.js';
 import '../common/Context.js';
 
@@ -27,16 +27,15 @@ import './ScriptDecisionTable.js';
 
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {buildProjectNameFromFile, getParameter} from "../../Utils";
 
 $(document).ready(function () {
     const file = getParameter('file');
     window._project = buildProjectNameFromFile(file);
 
-    ReactDOM.render(
+    createRoot(document.getElementById("dialogContainer")).render(
         <KnowledgeTreeDialog/>,
-        document.getElementById('dialogContainer')
-    );
+);
     new RuleForge.DecisionTable('container');
 });

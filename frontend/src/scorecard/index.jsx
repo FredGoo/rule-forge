@@ -8,10 +8,10 @@ import './scorecard.css';
 import '../editor/context.standalone.css';
 import '../editor/ruleforge/ruleset.css';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import '../Remark.js';
 import '../editor/common/jquery.utils.js';
-import '../editor/common/RuleForge.js';
+import '../editor/common/URule.js';
 import '../editor/common/contextMenu.js';
 import '../editor/Math.uuid.js';
 import '../editor/common/Context.js';
@@ -199,13 +199,12 @@ $(document).ready(function (e) {
     saveVersionButton.click(function () {
         save(true);
     });
-    ReactDOM.render(
+    createRoot(document.getElementById("dialogContainer")).render(
         <div>
             <KnowledgeTreeDialog/>
             <QuickTestDialog/>
         </div>,
-        document.getElementById("dialogContainer")
-    );
+);
     $.ajax({
         url: window._server + "/common/loadXml",
         type: "POST",

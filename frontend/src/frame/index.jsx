@@ -7,7 +7,7 @@ import '../../node_modules/codemirror/lib/codemirror.css';
 import '../../node_modules/bootstrapvalidator/dist/css/bootstrapValidator.css';
 import '../bootstrap-contextmenu.js';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {applyMiddleware, createStore} from 'redux';
 import {Provider} from 'react-redux';
 import * as ACTIONS from './action.js';
@@ -82,7 +82,7 @@ $(document).ready(function () {
         store.dispatch(ACTIONS.loadData(window._classify, window._projectName, window._types, window.searchFileName));
     }
 
-    ReactDOM.render(
+    createRoot(document.getElementById("container")).render(
         <div>
             <Loading show={true}/>
             <Provider store={store}>
@@ -255,8 +255,7 @@ $(document).ready(function () {
                 </Splitter>
             </Provider>
         </div>,
-        document.getElementById("container")
-    );
+);
 
     event.eventEmitter.on(event.EXPAND_TREE_NODE, (nodeData) => {
         const $span = $('#node-' + nodeData.id).parent("li");

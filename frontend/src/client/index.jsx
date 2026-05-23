@@ -4,7 +4,7 @@
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {applyMiddleware, createStore} from 'redux';
 import {Provider} from 'react-redux';
 import thunk from 'redux-thunk';
@@ -18,10 +18,9 @@ $(document).ready(function () {
     const store = createStore(reducer, applyMiddleware(thunk));
     const project = getParameter('project');
     store.dispatch(action.loadData(project));
-    ReactDOM.render(
+    createRoot(document.getElementById("container")).render(
         <Provider store={store}>
             <ClientConfigEditor project={project}/>
         </Provider>,
-        document.getElementById('container')
-    );
+);
 });

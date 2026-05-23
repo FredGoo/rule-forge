@@ -5,7 +5,7 @@ import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css';
 
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {createStore,applyMiddleware} from 'redux';
 import {Provider} from 'react-redux';
 import thunk from 'redux-thunk';
@@ -18,10 +18,9 @@ $(document).ready(function(){
     const store=createStore(reducer,applyMiddleware(thunk));
     const file=getParameter("file");
     store.dispatch(action.loadData(file));
-    ReactDOM.render(
+    createRoot(document.getElementById("container")).render(
         <Provider store={store}>
             <ParameterEditor file={file}/>
         </Provider>,
-        document.getElementById('container')
-    );
+);
 });

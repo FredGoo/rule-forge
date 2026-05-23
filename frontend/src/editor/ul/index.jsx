@@ -7,7 +7,7 @@ import '../../../node_modules/codemirror/addon/hint/show-hint.css';
 import '../../../node_modules/codemirror/addon/lint/lint.css';
 import './ul.css';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {MsgBox} from 'flowdesigner';
 import CodeMirror from 'codemirror';
 import '../../../node_modules/codemirror/addon/mode/simple.js';
@@ -25,13 +25,12 @@ $(document).ready(function () {
     const file = getParameter('file');
     window._project = buildProjectNameFromFile(file);
 
-    ReactDOM.render(
+    createRoot(document.getElementById("dialogContainer")).render(
         <div>
             <KnowledgeTreeDialog/>,
             <QuickTestDialog/>
         </div>,
-        document.getElementById('dialogContainer')
-    );
+);
 
     CodeMirror.commands.autocomplete = function (cm) {
         cm.showHint({hint: CodeMirror.hint.ruleforge});

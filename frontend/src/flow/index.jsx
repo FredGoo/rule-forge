@@ -18,7 +18,7 @@ import ForkTool from './ForkTool.js';
 import JoinTool from './JoinTool.js';
 import RulesPackageTool from './RulesPackageTool.js';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {Event} from 'flowdesigner';
 import KnowledgeTreeDialog from '../components/dialog/component/KnowledgeTreeDialog.jsx';
 import QuickTestDialog from '../components/dialog/component/QuickTestDialog.jsx';
@@ -107,13 +107,12 @@ $(document).ready(function () {
 
     const container = $('#' + containerId);
     container.append('<div id="__dialog_container"></div>');
-    ReactDOM.render(
+    createRoot(document.getElementById("__dialog_container")).render(
         <div>
             <KnowledgeTreeDialog/>,
             <QuickTestDialog/>
         </div>,
-        document.getElementById('__dialog_container')
-    );
+);
 
     $.ajax({
         url: window._server + '/ruleflowdesigner/loadFlowDefinition',

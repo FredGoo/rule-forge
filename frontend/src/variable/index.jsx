@@ -6,7 +6,7 @@ import '../../node_modules/bootstrap/dist/css/bootstrap.css'
 import '../css/iconfont.css'
 
 import React from 'react'
-import ReactDOM from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import {applyMiddleware, createStore} from 'redux'
 import thunk from 'redux-thunk'
 import {Provider} from 'react-redux'
@@ -23,14 +23,13 @@ $(document).ready(function () {
     }
     store.dispatch(action.loadMasterData(file))
 
-    ReactDOM.render(
+    createRoot(document.getElementById("container")).render(
         <div>
             <Provider store={store}>
                 <VariableEditor file={file}/>
             </Provider>
         </div>,
-        document.getElementById("container")
-    )
+)
 })
 
 function _getParameter(name) {
