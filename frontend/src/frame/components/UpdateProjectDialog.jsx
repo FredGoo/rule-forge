@@ -1,55 +1,47 @@
 import React,{Component,PropTypes} from 'react';
-import ReactDOM from 'react-dom';
 import Dialog from '../../components/dialog/component/Dialog.jsx';
 import * as componentEvent from '../../components/componentEvent.js';
 import * as event from '../event.js';
 import * as action from '../action.js';
 
+const NAME_REGEXP = /^(?!_)(?!-)[一-龥_a-zA-Z0-9_-]{1,}$/;
+
 export default class UpdateProjectDialog extends Component{
     constructor(props){
         super(props);
-        this.state={data:{}};
+        this.state={data:{}, visible: false, projectName: '', errors: {}};
     }
     componentDidMount(){
-        $(ReactDOM.findDOMNode(this)).bootstrapValidator({
-            feedbackIcons: {
-                valid: 'glyphicon glyphicon-ok',
-                invalid: 'glyphicon glyphicon-remove',
-                validating: 'glyphicon glyphicon-refresh'
-            },
-            fields:{
-                projectName:{
-                    validators: {
-                        notEmpty: {
-                            message: '项目名称不能为空'
-                        },
-                        regexp: {
-                            regexp: "^(?!_)(?!-)[\u4e00-\u9fa5_a-zA-Z0-9_-]{1,}$",
-                            message: '名称只能包含中文及英文字母、数字、下划线、中划线,且不能以下划线、中划线开头'
-                        }
-                    }
-                }
-            }
-        });
         event.eventEmitter.on(event.OPEN_UPDATE_PROJECT_DIALOG,(data)=>{
-            this.setState({data});
-            document.getElementsByName('projectName')[0].value=data.name;
-            $(ReactDOM.findDOMNode(this)).modal('show');
+            this.setState({data, projectName: data.name, errors: {}});
+            this.setState({visible: true});
         });
         event.eventEmitter.on(event.CLOSE_UPDATE_PROJECT_DIALOG,()=>{
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
     componentWillUnmount(){
         event.eventEmitter.removeAllListeners(event.OPEN_UPDATE_PROJECT_DIALOG);
         event.eventEmitter.removeAllListeners(event.CLOSE_UPDATE_PROJECT_DIALOG);
     }
+    _validate(){
+        const value = this.state.projectName;
+        const errors = {};
+        if (!value || !value.trim()) {
+            errors.projectName = '项目名称不能为空';
+        } else if (!NAME_REGEXP.test(value)) {
+            errors.projectName = '名称只能包含中文及英文字母、数字、下划线、中划线,且不能以下划线、中划线开头';
+        }
+        return {valid: Object.keys(errors).length === 0, errors};
+    }
     render(){
         const dispatch=this.props.dispatch;
         const body=(
             <div className="form-group">
                 <label>项目名称</label>
-                <input type="text" className="form-control" name="projectName"></input>
+                <input type="text" className="form-control" name="projectName" value={this.state.projectName}
+                       onChange={function(e){this.setState({projectName: e.target.value, errors: {}})}.bind(this)}></input>
+                {this.state.errors.projectName && <div className="text-danger" style={{fontSize: '12px'}}>{this.state.errors.projectName}</div>}
             </div>
         );
         const buttons=[];
@@ -59,8 +51,13 @@ export default class UpdateProjectDialog extends Component{
                 className:'btn btn-success',
                 icon:'fa fa-floppy-o',
                 click:function () {
+                    const {valid, errors} = this._validate();
+                    if(!valid){
+                        this.setState({errors});
+                        return;
+                    }
                     const data=this.state.data;
-                    var newProjectName=document.getElementsByName('projectName')[0].value;
+                    const newProjectName=this.state.projectName;
                     componentEvent.eventEmitter.emit(componentEvent.SHOW_LOADING);
                     setTimeout(function () {
                         dispatch(action.fileRename(data,newProjectName));
@@ -69,7 +66,7 @@ export default class UpdateProjectDialog extends Component{
             }
         );
         return (
-            <Dialog title="项目名称修改" body={body} buttons={buttons}></Dialog>
+            <Dialog visible={this.state.visible} title="项目名称修改" body={body} buttons={buttons}></Dialog>
         );
     }
 }

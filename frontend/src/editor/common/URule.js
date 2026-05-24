@@ -12,23 +12,14 @@ window.parameterLibraries = [];
 window.ruleforge = {};
 
 window.generateContainer = function () {
-    var container = $("<span>.</span>");
-    container.css({
-        height: "20px",
-        cursor: "pointer",
-        margin: "0px",
-        color: "white",
-        border: "dashed transparent 1px"
+    var container = document.createElement("span");
+    container.textContent = ".";
+    container.style.cssText = "height:20px;cursor:pointer;margin:0px;color:white;border:dashed transparent 1px;";
+    container.addEventListener("mouseover", function () {
+        container.style.border = "dashed gray 1px";
     });
-    container.mouseover(function () {
-        container.css({
-            border: "dashed gray 1px"
-        });
-    });
-    container.mouseout(function () {
-        container.css({
-            border: "dashed transparent 1px"
-        });
+    container.addEventListener("mouseout", function () {
+        container.style.border = "dashed transparent 1px";
     });
     return container;
 };

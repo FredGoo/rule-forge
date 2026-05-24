@@ -1,5 +1,4 @@
 import React,{Component,PropTypes} from 'react';
-import ReactDOM from 'react-dom';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
 import * as action from '../action.js';
@@ -7,55 +6,40 @@ import * as action from '../action.js';
 export default class PackageDialog extends Component{
     constructor(props){
         super(props);
-        this.state={title:''};
+        this.state={visible: false, title:'', packageId:'', packageName:'', disabled:false, errors:{}};
     }
     componentDidMount(){
-        $(ReactDOM.findDOMNode(this)).bootstrapValidator({
-            feedbackIcons: {
-                valid: 'glyphicon glyphicon-ok',
-                invalid: 'glyphicon glyphicon-remove',
-                validating: 'glyphicon glyphicon-refresh'
-            },
-            fields:{
-                packageId:{
-                    validators: {
-                        notEmpty: {
-                            message: '知识包编码不能为空'
-                        }
-                    }
-                },
-                packageName:{
-                    validators: {
-                        notEmpty: {
-                            message: '知识包名称不能为空'
-                        }
-                    }
-                }
-            }
-        });
         event.eventEmitter.on(event.OPEN_CREATE_PACKAGE_DIALOG,(data)=>{
-            $(ReactDOM.findDOMNode(this)).modal('show');
+            this.setState({visible: true, errors:{}});
             const create=data.create;
             const title=data.title;
             const rowIndex=data.rowIndex;
             if(create){
-                $('[name=packageId]').val('').prop('disabled',false);
-                $('[name=packageName]').val('');
-                $(ReactDOM.findDOMNode(this)).data('bootstrapValidator').enableFieldValidators('packageId', true);
+                this.setState({create,title,rowIndex,packageId:'',packageName:'',disabled:false});
             }else{
-                $('[name=packageId]').val(data.rowData.id).prop('disabled',true);
-                $('[name=packageName]').val(data.rowData.name);
-                $(ReactDOM.findDOMNode(this)).data('bootstrapValidator').enableFieldValidators('packageId', false);
+                this.setState({create,title,rowIndex,packageId:data.rowData.id,packageName:data.rowData.name,disabled:true});
             }
-            this.setState({create,title,rowIndex});
         });
         event.eventEmitter.on(event.HIDE_CREATE_PACKAGE_DIALOG,()=>{
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
     componentWillUnmount(){
         event.eventEmitter.removeAllListeners(event.OPEN_CREATE_PACKAGE_DIALOG);
         event.eventEmitter.removeAllListeners(event.HIDE_CREATE_PACKAGE_DIALOG);
+    }
+    _validate(){
+        const errors={};
+        const {packageId,packageName,create}=this.state;
+        if(create){
+            if(!packageId||!packageId.trim()){
+                errors.packageId='知识包编码不能为空';
+            }
+        }
+        if(!packageName||!packageName.trim()){
+            errors.packageName='知识包名称不能为空';
+        }
+        return {valid:Object.keys(errors).length===0,errors};
     }
     render(){
         const {dispatch}=this.props;
@@ -63,11 +47,18 @@ export default class PackageDialog extends Component{
             <div>
                 <div className="form-group">
                     <label>包ID:</label>
-                    <input type="text" className="form-control" name="packageId"/>
+                    <input type="text" className="form-control" name="packageId"
+                        value={this.state.packageId}
+                        disabled={this.state.disabled}
+                        onChange={(e)=>this.setState({packageId:e.target.value,errors:{...this.state.errors,packageId:undefined}})}/>
+                    {this.state.errors.packageId && <div className="text-danger" style={{fontSize:'12px'}}>{this.state.errors.packageId}</div>}
                 </div>
                 <div className="form-group">
                     <label>包名称:</label>
-                    <input type="text" className="form-control" name="packageName"/>
+                    <input type="text" className="form-control" name="packageName"
+                        value={this.state.packageName}
+                        onChange={(e)=>this.setState({packageName:e.target.value,errors:{...this.state.errors,packageName:undefined}})}/>
+                    {this.state.errors.packageName && <div className="text-danger" style={{fontSize:'12px'}}>{this.state.errors.packageName}</div>}
                 </div>
             </div>
         );
@@ -77,15 +68,12 @@ export default class PackageDialog extends Component{
                 className:'btn btn-success',
                 icon:'fa fa-floppy-o',
                 click:function () {
-                    var validator=$(ReactDOM.findDOMNode(this)).data('bootstrapValidator');
-                    validator.validate();
-                    var valid=validator.isValid();
+                    var {valid,errors}=this._validate();
                     if(!valid){
+                        this.setState({errors});
                         return;
                     }
-                    var packageId=$('[name=packageId]').val();
-                    var packageName=$('[name=packageName]').val();
-                    var {rowIndex,create}=this.state;
+                    var {packageId,packageName,rowIndex,create}=this.state;
                     if(create){
                         dispatch(action.addMaster({id:packageId,name:packageName}));
                     }else{
@@ -95,6 +83,6 @@ export default class PackageDialog extends Component{
                 }.bind(this)
             }
         ];
-        return (<CommonDialog title={this.state.title} body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons}/>);
     };
 }

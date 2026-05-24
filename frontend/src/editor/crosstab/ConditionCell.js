@@ -29,13 +29,14 @@ export default class ConditionCell extends BaseCell {
     initCellContent() {
         const self = this;
 
-        const wrapper = $('<div style="position: relative"></div>');
-        this.td.append(wrapper);
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position: relative';
+        this.td.appendChild(wrapper);
 
         // Property container (click to open variable/parameter menu)
         this.propContainer = generateContainer();
-        this.propContainer.css('color', '#a7a7a7');
-        wrapper.append(this.propContainer);
+        this.propContainer.style.color = '#a7a7a7';
+        wrapper.appendChild(this.propContainer);
 
         // Variable target selector
         this.variableTarget = new ruleforge.VariableValue(null, null, 'Out');
@@ -49,39 +50,35 @@ export default class ConditionCell extends BaseCell {
             self.unifyBundleData(data);
         });
 
-        this.variableTarget.getContainer().hide();
-        this.parameterTarget.getContainer().hide();
-        wrapper.append(this.variableTarget.getContainer());
-        wrapper.append(this.parameterTarget.getContainer());
+        this.variableTarget.getContainer().style.display = 'none';
+        this.parameterTarget.getContainer().style.display = 'none';
+        wrapper.appendChild(this.variableTarget.getContainer());
+        wrapper.appendChild(this.parameterTarget.getContainer());
 
         // Bundle selection menu (variable or parameter)
         this.bundleMenu = new RuleForge.menu.Menu({
             menuItems: [{
                 label: '选择变量',
                 onClick: function () {
-                    self.parameterTarget.getContainer().hide();
-                    self.variableTarget.getContainer().show();
+                    self.parameterTarget.getContainer().style.display = 'none';
+                    self.variableTarget.getContainer().style.display = '';
                     self.assignTargetType = 'variable';
                     RuleForge.setDomContent(self.propContainer, '.');
-                    self.propContainer.css({
-                        color: 'white'
-                    });
+                    self.propContainer.style.color = 'white';
                 }
             }, {
                 label: '选择参数',
                 onClick: function () {
-                    self.variableTarget.getContainer().hide();
-                    self.parameterTarget.getContainer().show();
+                    self.variableTarget.getContainer().style.display = 'none';
+                    self.parameterTarget.getContainer().style.display = '';
                     self.assignTargetType = 'parameter';
                     RuleForge.setDomContent(self.propContainer, '.');
-                    self.propContainer.css({
-                        color: 'white'
-                    });
+                    self.propContainer.style.color = 'white';
                 }
             }]
         });
 
-        this.propContainer.click(function (e) {
+        this.propContainer.addEventListener('click', function (e) {
             self.bundleMenu.show(e);
         });
 
@@ -93,14 +90,17 @@ export default class ConditionCell extends BaseCell {
         RuleForge.setDomContent(this.propContainer, placeholder);
 
         // Condition display area
-        const conditionWrapper = $('<span style="position: relative"></span>');
-        this.td.append(conditionWrapper);
-        this.conditionContainer = $('<span><span style="color:#999">无</span></span>');
-        conditionWrapper.append(this.conditionContainer);
+        const conditionWrapper = document.createElement('span');
+        conditionWrapper.style.cssText = 'position: relative';
+        this.td.appendChild(conditionWrapper);
+        const conditionContainer = document.createElement('span');
+        conditionContainer.innerHTML = '<span style="color:#999">无</span>';
+        this.conditionContainer = conditionContainer;
+        conditionWrapper.appendChild(conditionContainer);
 
         this.cellCondition = new ruleforge.CellCondition('<div/>');
-        this.conditionContainer.empty();
-        this.conditionContainer.append(this.cellCondition.getDisplayContainer());
+        conditionContainer.innerHTML = '';
+        conditionContainer.appendChild(this.cellCondition.getDisplayContainer());
     }
 
     /**
@@ -114,8 +114,8 @@ export default class ConditionCell extends BaseCell {
     initData(data) {
         if (data.joint) {
             this.cellCondition.initData(data.joint);
-            this.conditionContainer.empty();
-            this.conditionContainer.append(this.cellCondition.getDisplayContainer());
+            this.conditionContainer.innerHTML = '';
+            this.conditionContainer.appendChild(this.cellCondition.getDisplayContainer());
         }
         if (this.row.bundleData) {
             this.setBundleData(this.row.bundleData);
@@ -125,11 +125,11 @@ export default class ConditionCell extends BaseCell {
         }
         const rowspan = data.rowspan;
         if (rowspan) {
-            this.td.prop('rowspan', rowspan);
+            this.td.rowSpan = rowspan;
         }
         const colspan = data.colspan;
         if (colspan) {
-            this.td.prop('colspan', colspan);
+            this.td.colSpan = colspan;
         }
     }
 
@@ -186,18 +186,18 @@ export default class ConditionCell extends BaseCell {
         }
 
         if (data.type === 'variable') {
-            this.parameterTarget.getContainer().hide();
-            this.variableTarget.getContainer().show();
+            this.parameterTarget.getContainer().style.display = 'none';
+            this.variableTarget.getContainer().style.display = '';
             this.assignTargetType = 'variable';
             RuleForge.setDomContent(this.propContainer, '.');
-            this.propContainer.css({color: 'white'});
+            this.propContainer.style.color = 'white';
             this.variableTarget.setValue(data);
         } else {
-            this.variableTarget.getContainer().hide();
-            this.parameterTarget.getContainer().show();
+            this.variableTarget.getContainer().style.display = 'none';
+            this.parameterTarget.getContainer().style.display = '';
             this.assignTargetType = 'parameter';
             RuleForge.setDomContent(this.propContainer, '.');
-            this.propContainer.css({color: 'white'});
+            this.propContainer.style.color = 'white';
             this.parameterTarget.setValue(data);
         }
     }
@@ -229,7 +229,7 @@ export default class ConditionCell extends BaseCell {
             this.propContainer.menu.setConfig({menuItems: menuItems});
         } else {
             this.propContainer.menu = new RuleForge.menu.Menu({menuItems: menuItems});
-            this.propContainer.click(function (e) {
+            this.propContainer.addEventListener('click', function (e) {
                 self.propContainer.menu.show(e);
             });
         }
@@ -249,7 +249,7 @@ export default class ConditionCell extends BaseCell {
                 label: '配置条件',
                 icon: 'glyphicon glyphicon-cog',
                 onClick: function () {
-                    const dialog = $('<div/>');
+                    const dialog = document.createElement('div');
                     if (!self.cellCondition) {
                         self.cellCondition = new ruleforge.CellCondition('<div/>');
                     }
@@ -257,8 +257,8 @@ export default class ConditionCell extends BaseCell {
                     MsgBox.showDialog('配置条件', dialog, [], [{
                         name: 'hide.bs.modal',
                         callback: function () {
-                            self.conditionContainer.empty();
-                            self.conditionContainer.append(self.cellCondition.getDisplayContainer());
+                            self.conditionContainer.innerHTML = '';
+                            self.conditionContainer.appendChild(self.cellCondition.getDisplayContainer());
                         }
                     }], true);
                 }
@@ -304,8 +304,8 @@ export default class ConditionCell extends BaseCell {
                     MsgBox.confirm('真的要清空当前单元格条件？', function () {
                         if (self.cellCondition) {
                             self.cellCondition.clean();
-                            self.conditionContainer.html('无');
-                            self.conditionContainer.css('color', 'gray');
+                            self.conditionContainer.innerHTML = '无';
+                            self.conditionContainer.style.color = 'gray';
                         }
                         window._setDirty();
                     });
@@ -331,14 +331,14 @@ export default class ConditionCell extends BaseCell {
                         }
                         self.cellCondition = new ruleforge.CellCondition('<div/>');
                         self.cellCondition.initData(data);
-                        self.conditionContainer.empty();
-                        self.conditionContainer.append(self.cellCondition.getDisplayContainer());
+                        self.conditionContainer.innerHTML = '';
+                        self.conditionContainer.appendChild(self.cellCondition.getDisplayContainer());
                     });
                 }
             }]
         });
 
-        this.td.contextmenu(function (e) {
+        this.td.addEventListener('contextmenu', function (e) {
             self.menu.show(e);
         });
     }
@@ -356,7 +356,7 @@ export default class ConditionCell extends BaseCell {
                 label: '配置条件',
                 icon: 'glyphicon glyphicon-cog',
                 onClick: function () {
-                    const dialog = $('<div/>');
+                    const dialog = document.createElement('div');
                     if (!self.cellCondition) {
                         self.cellCondition = new ruleforge.CellCondition('<div/>');
                     }
@@ -364,8 +364,8 @@ export default class ConditionCell extends BaseCell {
                     MsgBox.showDialog('配置条件', dialog, [], [{
                         name: 'hide.bs.modal',
                         callback: function () {
-                            self.conditionContainer.empty();
-                            self.conditionContainer.append(self.cellCondition.getDisplayContainer());
+                            self.conditionContainer.innerHTML = '';
+                            self.conditionContainer.appendChild(self.cellCondition.getDisplayContainer());
                         }
                     }], true);
                 }
@@ -411,8 +411,8 @@ export default class ConditionCell extends BaseCell {
                     MsgBox.confirm('真的要清空当前单元格条件？', function () {
                         if (self.cellCondition) {
                             self.cellCondition.clean();
-                            self.conditionContainer.html('无');
-                            self.conditionContainer.css('color', 'gray');
+                            self.conditionContainer.innerHTML = '无';
+                            self.conditionContainer.style.color = 'gray';
                         }
                         window._setDirty();
                     });
@@ -438,14 +438,14 @@ export default class ConditionCell extends BaseCell {
                         }
                         self.cellCondition = new ruleforge.CellCondition('<div/>');
                         self.cellCondition.initData(data);
-                        self.conditionContainer.empty();
-                        self.conditionContainer.append(self.cellCondition.getDisplayContainer());
+                        self.conditionContainer.innerHTML = '';
+                        self.conditionContainer.appendChild(self.cellCondition.getDisplayContainer());
                     });
                 }
             }]
         });
 
-        this.td.contextmenu(function (e) {
+        this.td.addEventListener('contextmenu', function (e) {
             self.menu.show(e);
         });
     }

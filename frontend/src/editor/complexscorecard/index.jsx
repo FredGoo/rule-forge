@@ -1,3 +1,4 @@
+import '../../bootbox.js';
 /**
  * Complex Scorecard Editor - Entry point.
  *
@@ -48,6 +49,8 @@ import '../common/jquery.utils.js';
 import React from 'react';
 import {createRoot} from 'react-dom/client';
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
+import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
+import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
 
 import ComplexScoreCard from './ComplexScoreCard.js';
 import {getParameter, buildProjectNameFromFile} from '../../Utils.js';
@@ -55,30 +58,34 @@ import {getParameter, buildProjectNameFromFile} from '../../Utils.js';
 window._setDirty = function () {
     if (window._dirty) return;
     window._dirty = true;
-    $('#saveButton').html("<i class='rf rf-save'></i> *保存");
-    $('#saveButton').prop('disabled', false);
+    document.getElementById('saveButton').innerHTML = "<i class='rf rf-save'></i> *保存";
+    document.getElementById('saveButton').disabled = false;
 };
 
 window.cancelDirty = function () {
     if (!window._dirty) return;
     window._dirty = false;
-    $('#saveButton').html("<i class='rf rf-save'></i> 保存");
-    $('#saveButton').prop('disabled', true);
+    document.getElementById('saveButton').innerHTML = "<i class='rf rf-save'></i> 保存";
+    document.getElementById('saveButton').disabled = true;
 };
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     const file = getParameter('file');
     if (!file) {
-        $('#container').html('<h2 style="color:red">请先指定一个复杂评分卡文件!</h2>');
+        document.getElementById('container').innerHTML = '<h2 style="color:red">请先指定一个复杂评分卡文件!</h2>';
         return;
     }
     window._project = buildProjectNameFromFile(file);
 
     // Render KnowledgeTreeDialog
     createRoot(document.getElementById('dialogContainer')).render(
-        <KnowledgeTreeDialog/>
+        <div>
+            <KnowledgeTreeDialog/>
+            <ResourceVersionDialogComponent/>
+            <ResourceListDialogComponent/>
+        </div>
     );
 
     // Initialize the complex scorecard
-    new ComplexScoreCard($('#container'));
+    new ComplexScoreCard(document.getElementById('container'));
 });

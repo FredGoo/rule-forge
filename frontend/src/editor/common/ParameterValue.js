@@ -1,14 +1,12 @@
 ruleforge.ParameterValue = function (arithmetic, data, act) {
     this.arithmetic = arithmetic;
-    this.container = $("<span>");
+    this.container = document.createElement("span");
     this.label = generateContainer();
-    this.container.append(this.label);
-    this.label.css({
-        "color": "#6b3db0"
-    });
+    this.container.appendChild(this.label);
+    this.label.style.color = "#6b3db0";
     RuleForge.setDomContent(this.label, "请选择参数");
     if (arithmetic) {
-        this.container.append(arithmetic.getContainer());
+        this.container.appendChild(arithmetic.getContainer());
     }
     if (data) {
         this.initData(data);
@@ -19,11 +17,12 @@ ruleforge.ParameterValue = function (arithmetic, data, act) {
 };
 
 ruleforge.ParameterValue.prototype.getDisplayContainer = function () {
-    var container = $("<span>参数." + this.parameterLabel + "</span>");
+    var container = document.createElement("span");
+    container.textContent = "参数." + this.parameterLabel;
     if (this.arithmetic) {
         var dis = this.arithmetic.getDisplayContainer();
         if (dis) {
-            container.append(dis);
+            container.appendChild(dis);
         }
     }
     return container;
@@ -77,7 +76,7 @@ ruleforge.ParameterValue.prototype.initMenu = function (parameterLibraries) {
     } else {
         self.menu = new RuleForge.menu.Menu(config);
     }
-    this.label.click(function (e) {
+    this.label.addEventListener("click", function (e) {
         self.menu.show(e);
     });
 };

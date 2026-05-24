@@ -1,3 +1,4 @@
+import '../bootbox.js';
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css';
 import React from 'react';
@@ -11,7 +12,7 @@ import ClientConfigEditor from './component/ClientConfigEditor.jsx';
 import * as action from './action.js';
 import {getParameter} from '../Utils.js';
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     const store = createStore(reducer, applyMiddleware(thunk));
     const project = getParameter('project');
     store.dispatch(action.loadData(project));

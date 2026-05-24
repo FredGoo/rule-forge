@@ -9,12 +9,13 @@
 
 export default class CrossCellVariableBundle {
     constructor() {
-        this.container = $('<div style="margin-left: 15px;"><span style="color: #747474;">选择交叉单元格值要赋予的对象：</span></div>');
+        const container = document.createElement('div');
+        container.style.cssText = 'margin-left: 15px;';
+        container.innerHTML = '<span style="color: #747474;">选择交叉单元格值要赋予的对象：</span>';
+        this.container = container;
         this.assignTargetContainer = generateContainer();
-        this.container.append(this.assignTargetContainer);
-        this.assignTargetContainer.css({
-            color: '#2196F3'
-        });
+        container.appendChild(this.assignTargetContainer);
+        this.assignTargetContainer.style.color = '#2196F3';
         this.init();
     }
 
@@ -25,40 +26,36 @@ export default class CrossCellVariableBundle {
         this.variableTarget = new ruleforge.VariableValue(null, null, 'Out');
         this.parameterTarget = new ruleforge.ParameterValue(null, null, 'Out');
 
-        this.variableTarget.getContainer().hide();
-        this.parameterTarget.getContainer().hide();
+        this.variableTarget.getContainer().style.display = 'none';
+        this.parameterTarget.getContainer().style.display = 'none';
 
-        this.container.append(this.variableTarget.getContainer());
-        this.container.append(this.parameterTarget.getContainer());
+        this.container.appendChild(this.variableTarget.getContainer());
+        this.container.appendChild(this.parameterTarget.getContainer());
 
         const self = this;
         self.menu = new RuleForge.menu.Menu({
             menuItems: [{
                 label: '选择变量',
                 onClick: function () {
-                    self.parameterTarget.getContainer().hide();
-                    self.variableTarget.getContainer().show();
+                    self.parameterTarget.getContainer().style.display = 'none';
+                    self.variableTarget.getContainer().style.display = '';
                     self.assignTargetType = 'variable';
                     RuleForge.setDomContent(self.assignTargetContainer, '.');
-                    self.assignTargetContainer.css({
-                        color: 'white'
-                    });
+                    self.assignTargetContainer.style.color = 'white';
                 }
             }, {
                 label: '选择参数',
                 onClick: function () {
-                    self.variableTarget.getContainer().hide();
-                    self.parameterTarget.getContainer().show();
+                    self.variableTarget.getContainer().style.display = 'none';
+                    self.parameterTarget.getContainer().style.display = '';
                     self.assignTargetType = 'parameter';
                     RuleForge.setDomContent(self.assignTargetContainer, '.');
-                    self.assignTargetContainer.css({
-                        color: 'white'
-                    });
+                    self.assignTargetContainer.style.color = 'white';
                 }
             }]
         });
 
-        this.assignTargetContainer.click(function (e) {
+        this.assignTargetContainer.addEventListener('click', function (e) {
             self.menu.show(e);
         });
 
@@ -85,22 +82,22 @@ export default class CrossCellVariableBundle {
             };
 
             if (data.assignTargetType === 'variable') {
-                this.variableTarget.getContainer().show();
-                this.parameterTarget.getContainer().hide();
+                this.variableTarget.getContainer().style.display = '';
+                this.parameterTarget.getContainer().style.display = 'none';
                 this.variableTarget.setValue(valueData);
             } else if (data.assignTargetType === 'parameter') {
-                this.variableTarget.getContainer().hide();
-                this.parameterTarget.getContainer().show();
+                this.variableTarget.getContainer().style.display = 'none';
+                this.parameterTarget.getContainer().style.display = '';
                 this.parameterTarget.setValue(valueData);
             } else {
                 RuleForge.setDomContent(this.assignTargetContainer, '请选择要赋值的对象...');
-                this.assignTargetContainer.css('color', '#03A9F4');
+                this.assignTargetContainer.style.color = '#03A9F4';
             }
 
             if (data.assignTargetType) {
                 this.assignTargetType = data.assignTargetType;
                 RuleForge.setDomContent(this.assignTargetContainer, '.');
-                this.assignTargetContainer.css('color', '#fff');
+                this.assignTargetContainer.style.color = '#fff';
             }
         }
     }

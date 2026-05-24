@@ -20,7 +20,7 @@ export default class HeaderRow {
         this.complexTable = complexTable;
         this.conditionHeaders = [];
         this.actionHeaders = [];
-        this.tr = $('<tr></tr>');
+        this.tr = document.createElement('tr');
     }
 
     /**
@@ -32,7 +32,7 @@ export default class HeaderRow {
     addConditionHeader(rowContext, conditionCol) {
         const headerCell = new ConditionHeaderCell(rowContext, conditionCol);
         this.conditionHeaders.push(headerCell);
-        this.tr.append(headerCell.td);
+        this.tr.appendChild(headerCell.td);
     }
 
     /**
@@ -44,7 +44,7 @@ export default class HeaderRow {
     addActionHeader(rowContext, actionCol) {
         const headerCell = new ActionHeaderCell(rowContext, actionCol);
         this.actionHeaders.push(headerCell);
-        this.tr.append(headerCell.td);
+        this.tr.appendChild(headerCell.td);
     }
 }
 
@@ -77,13 +77,17 @@ class ConditionHeaderCell extends ResizableHeaderCell {
      * @param {RowContext} rowContext - The row context
      */
     init(rowContext) {
-        this.td.css('width', '200px');
+        this.td.style.width = '200px';
 
-        const iconDiv = $('<div><i class="glyphicon glyphicon-filter"></i></div>');
-        this.td.append(iconDiv);
+        const iconDiv = document.createElement('div');
+        iconDiv.innerHTML = '<i class="glyphicon glyphicon-filter"></i>';
+        this.td.appendChild(iconDiv);
 
-        this.labelContainer = $('<span style="color: #727171">请选择参数或变量</span>');
-        iconDiv.append(this.labelContainer);
+        const labelContainer = document.createElement('span');
+        labelContainer.style.color = '#727171';
+        labelContainer.textContent = '请选择参数或变量';
+        this.labelContainer = labelContainer;
+        iconDiv.appendChild(labelContainer);
 
         // Register for variable/parameter library updates
         window._VariableValueArray.push(this);
@@ -167,15 +171,15 @@ class ConditionHeaderCell extends ResizableHeaderCell {
             const col = this.conditionCol;
             col.variableCategory = data.variableCategory;
             col.variables = data.variables;
-            this.labelContainer.html(col.variableCategory);
-            this.labelContainer.css('color', '#1d1d1d');
+            this.labelContainer.innerHTML = col.variableCategory;
+            this.labelContainer.style.color = '#1d1d1d';
             if (this.variableCategory === '参数') {
-                this.labelContainer.css('font-weight', 'bold');
+                this.labelContainer.style.fontWeight = 'bold';
             } else {
-                this.labelContainer.css('font-weight', 'normal');
+                this.labelContainer.style.fontWeight = 'normal';
             }
         } else {
-            this.labelContainer.html('<span style="color: #727171">请选择参数或变量</span>');
+            this.labelContainer.innerHTML = '<span style="color: #727171">请选择参数或变量</span>';
         }
     }
 
@@ -191,18 +195,18 @@ class ConditionHeaderCell extends ResizableHeaderCell {
 
         const onCategorySelect = function (item) {
             col.variableCategory = item.label;
-            self.labelContainer.html(col.variableCategory);
-            self.labelContainer.css('color', '#1d1d1d');
+            self.labelContainer.innerHTML = col.variableCategory;
+            self.labelContainer.style.color = '#1d1d1d';
 
             if (item.label === '参数') {
-                self.labelContainer.css('font-weight', 'bold');
+                self.labelContainer.style.fontWeight = 'bold';
                 let allParams = [];
                 for (const vars of (item.variables || [])) {
                     allParams = allParams.concat(vars);
                 }
                 col.variables = allParams;
             } else {
-                self.labelContainer.css('font-weight', 'normal');
+                self.labelContainer.style.fontWeight = 'normal';
                 col.variables = item.variables || [];
             }
             col.refreshConditionCellVariableMenus(item.variables);
@@ -221,7 +225,7 @@ class ConditionHeaderCell extends ResizableHeaderCell {
 
         const menuConfig = this.buildMenuConfig(menuItems);
         const menu = new URule.menu.Menu(menuConfig);
-        this.td.contextmenu(function (e) {
+        this.td.addEventListener('contextmenu', function (e) {
             menu.show(e);
         });
     }
@@ -346,21 +350,25 @@ class ActionHeaderCell extends ResizableHeaderCell {
      * @param {number} actionType - The action type
      */
     init(rowContext, actionType) {
-        this.td.css('width', '150px');
+        this.td.style.width = '150px';
 
-        const wrapper = $('<div></div>');
-        this.td.append(wrapper);
+        const wrapper = document.createElement('div');
+        this.td.appendChild(wrapper);
         this.actionType = actionType;
 
         if (actionType === 1) {
             // Score column
-            wrapper.append('<span></span>');
-            this.labelContainer = $('<span><span style="color: #ff7734;"><strong>分值</strong></span></span>');
-            wrapper.append(this.labelContainer);
+            wrapper.appendChild(document.createElement('span'));
+            const labelContainer = document.createElement('span');
+            labelContainer.innerHTML = '<span style="color: #ff7734;"><strong>分值</strong></span>';
+            this.labelContainer = labelContainer;
+            wrapper.appendChild(labelContainer);
         } else if (actionType === 2) {
             // Custom column
-            this.labelContainer = $('<span style="color: #31708f;"></span>');
-            wrapper.append(this.labelContainer);
+            const labelContainer = document.createElement('span');
+            labelContainer.style.color = '#31708f';
+            this.labelContainer = labelContainer;
+            wrapper.appendChild(labelContainer);
         }
 
         this.buildMenu();
@@ -423,9 +431,9 @@ class ActionHeaderCell extends ResizableHeaderCell {
     updateLabel(data) {
         if (data) {
             this.customLabel = data;
-            this.labelContainer.html(data);
+            this.labelContainer.textContent = data;
         } else {
-            this.labelContainer.html('');
+            this.labelContainer.textContent = '';
         }
     }
 
@@ -459,7 +467,7 @@ class ActionHeaderCell extends ResizableHeaderCell {
         }
 
         const menu = new URule.menu.Menu(config);
-        this.td.contextmenu(function (e) {
+        this.td.addEventListener('contextmenu', function (e) {
             menu.show(e);
         });
     }

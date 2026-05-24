@@ -1,71 +1,39 @@
+import * as event from '../../components/componentEvent.js';
+
 ruleforge.ConditionListDialog=function(project, category, colData){
 	this.project = project;
 	this.category = category;
 	this.colData = colData;
-	this.init();
+	this.variable = "";
 };
+
 ruleforge.ConditionListDialog.prototype.open=function(doSuccess){
-	var self = this;
-	self.dialog.dialog("open");
-	self.doSuccess=doSuccess;
+	var self=this;
+	var url="ruleforge?action=loadcommonconditions&project="+this.project + "&category=" + this.category + "&variable=" + this.colData.variableCategory + "." + this.colData.variableLabel;
+	fetch(url).then(function(response){
+		if(!response.ok) throw response;
+		return response.json();
+	}).then(function(data){
+		self.variable=self.colData.variableCategory + "." + self.colData.variableLabel;
+		event.eventEmitter.emit(event.OPEN_CONDITION_LIST_DIALOG,{
+			variable:self.variable,
+			data:data || [],
+			callback:doSuccess
+		});
+	}).catch(function(){
+		RuleForge.alert("加载常用条件失败");
+	});
 };
 
 ruleforge.ConditionListDialog.prototype.setOption=function(option){
-	this.dialog.dialog("option",option);
+	// Dialog options are now handled by the React component
 };
 
 ruleforge.ConditionListDialog.prototype.refresh=function(project, category, variable){
-	var url="ruleforge?action=loadcommonconditions&project="+project + "&category=" + category + "&variable=" + this.colData.variableCategory + "." + this.colData.variableLabel;
-	this.table.bootstrapTable("refresh", {url : url});
-};
-
-ruleforge.ConditionListDialog.prototype.init=function(){
-	this.dialog=$("<div>");
-	var tableHtml="<table data-height=\"299\">";
-	tableHtml+="<thead><tr>";
-	tableHtml+="<th data-field=\"name\">名称</th>";
-	tableHtml+="<th data-field=\"condition\">条件</th>";
-	tableHtml+="</tr></thead></table>";
-	this.table=$(tableHtml);
-	var url="ruleforge?action=loadcommonconditions&project="+this.project + "&category=" + this.category + "&variable=" + this.colData.variableCategory + "." + this.colData.variableLabel;
-	this.table.bootstrapTable({
-		url:url,
-		onDblClickRow : function(data){
-			self.doSuccess(data.condition);
-		}
-	});
-	this.dialog.append(this.table);
 	var self=this;
-	this.dialog.dialog({
-		title:"常用条件列表【"+(self.variable || "")+"】",
-		height:300,
-		width:500,
-		autoOpen:false,
-		modal:false,
-		show:false,
-		open : function(){
-			self.isShow = true;
-		},
-		close :function(){
-			self.isShow = false;
-		},
-		buttons:[{
-			text:"关闭",
-			click:function(){
-				$(this).dialog("destroy");
-			}
-		}]
+	event.eventEmitter.emit(event.REFRESH_CONDITION_LIST_DIALOG,{
+		project:project || this.project,
+		category:category || this.category,
+		variable:this.colData.variableCategory + "." + this.colData.variableLabel
 	});
-};
-
-function __formatDate(time){
-	var datetime = new Date();  
-    datetime.setTime(time);
-	var year = datetime.getFullYear();  
-	var month = datetime.getMonth() + 1 < 10 ? "0" + (datetime.getMonth() + 1) : datetime.getMonth() + 1;  
-	var date = datetime.getDate() < 10 ? "0" + datetime.getDate() : datetime.getDate();  
-	var hour = datetime.getHours()< 10 ? "0" + datetime.getHours() : datetime.getHours();  
-	var minute = datetime.getMinutes()< 10 ? "0" + datetime.getMinutes() : datetime.getMinutes();  
-	var second = datetime.getSeconds()< 10 ? "0" + datetime.getSeconds() : datetime.getSeconds();  
-	return year + "-" + month + "-" + date+" "+hour+":"+minute+":"+second;  
 };

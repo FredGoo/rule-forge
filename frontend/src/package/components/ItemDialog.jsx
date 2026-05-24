@@ -1,5 +1,4 @@
 import React,{Component,PropTypes} from 'react';
-import ReactDOM from 'react-dom';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
 import * as action from '../action.js';
@@ -8,62 +7,41 @@ import * as componentEvent from '../../components/componentEvent.js';
 export default class ItemDialog extends Component{
     constructor(props){
         super(props);
-        this.state={title:''};
+        this.state={visible: false, title:'', itemName:'', itemPath:'', itemVersion:'', errors:{}};
     }
     componentDidMount(){
-        $(ReactDOM.findDOMNode(this)).bootstrapValidator({
-            feedbackIcons: {
-                valid: 'glyphicon glyphicon-ok',
-                invalid: 'glyphicon glyphicon-remove',
-                validating: 'glyphicon glyphicon-refresh'
-            },
-            fields:{
-                itemName:{
-                    validators: {
-                        notEmpty: {
-                            message: '文件名不能为空'
-                        }
-                    }
-                },
-                itemPath:{
-                    validators: {
-                        notEmpty: {
-                            message: '文件路径不能为空'
-                        }
-                    }
-                },
-                itemVersion:{
-                    validators: {
-                        notEmpty: {
-                            message: '文件版本不能为空'
-                        }
-                    }
-                }
-            }
-        });
         event.eventEmitter.on(event.OPEN_CREATE_PACKAGE_ITEM_DIALOG,(data)=>{
-            $(ReactDOM.findDOMNode(this)).modal('show');
+            this.setState({visible: true, errors:{}});
             const create=data.create;
             const title=data.title;
             const rowIndex=data.rowIndex;
             if(create){
-                $('[name=itemName]').val('');
-                $('[name=itemPath]').val('');
-                $('[name=itemVersion]').val('');
+                this.setState({create,title,rowIndex,itemName:'',itemPath:'',itemVersion:''});
             }else{
-                $('[name=itemName]').val(data.rowData.name);
-                $('[name=itemPath]').val(data.rowData.path);
-                $('[name=itemVersion]').val(data.rowData.version);
+                this.setState({create,title,rowIndex,itemName:data.rowData.name,itemPath:data.rowData.path,itemVersion:data.rowData.version});
             }
-            this.setState({create,title,rowIndex});
         });
         event.eventEmitter.on(event.HIDE_CREATE_PACKAGE_ITEM_DIALOG,()=>{
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
     componentWillUnmount(){
         event.eventEmitter.removeAllListeners(event.OPEN_CREATE_PACKAGE_ITEM_DIALOG);
         event.eventEmitter.removeAllListeners(event.HIDE_CREATE_PACKAGE_ITEM_DIALOG);
+    }
+    _validate(){
+        const errors={};
+        const {itemName,itemPath,itemVersion}=this.state;
+        if(!itemName||!itemName.trim()){
+            errors.itemName='文件名不能为空';
+        }
+        if(!itemPath||!itemPath.trim()){
+            errors.itemPath='文件路径不能为空';
+        }
+        if(!itemVersion||!itemVersion.trim()){
+            errors.itemVersion='文件版本不能为空';
+        }
+        return {valid:Object.keys(errors).length===0,errors};
     }
     render(){
         const {dispatch}=this.props;
@@ -71,25 +49,31 @@ export default class ItemDialog extends Component{
             <div>
                 <div className="form-group">
                     <label>名称:</label>
-                    <input type="text" className="form-control" name="itemName"/>
+                    <input type="text" className="form-control" name="itemName"
+                        value={this.state.itemName}
+                        onChange={(e)=>this.setState({itemName:e.target.value,errors:{...this.state.errors,itemName:undefined}})}/>
+                    {this.state.errors.itemName && <div className="text-danger" style={{fontSize:'12px'}}>{this.state.errors.itemName}</div>}
                 </div>
                 <div className="form-group">
                     <label>资源文件路径:</label>
                     <div className="input-group">
-                        <input type="text" className="form-control" name="itemPath" disabled/>
+                        <input type="text" className="form-control" name="itemPath" disabled
+                            value={this.state.itemPath}/>
                         <span className="input-group-btn">
                             <button type="button" className="btn btn-default" onClick={()=>{
                                 componentEvent.eventEmitter.emit(componentEvent.OPEN_KNOWLEDGE_TREE_DIALOG,{project:this.props.project,callback:function(file,version){
-                                     $('[name=itemPath]').val('jcr:'+file);
-                                     $('[name=itemVersion]').val(version);
-                                }});
+                                     this.setState({itemPath:'jcr:'+file,itemVersion:version});
+                                }.bind(this)});
                             }}>选择文件</button>
                         </span>
                     </div>
+                    {this.state.errors.itemPath && <div className="text-danger" style={{fontSize:'12px'}}>{this.state.errors.itemPath}</div>}
                 </div>
                 <div className="form-group">
                     <label>版本号:</label>
-                    <input type="text" className="form-control" name="itemVersion" disabled/>
+                    <input type="text" className="form-control" name="itemVersion" disabled
+                        value={this.state.itemVersion}/>
+                    {this.state.errors.itemVersion && <div className="text-danger" style={{fontSize:'12px'}}>{this.state.errors.itemVersion}</div>}
                 </div>
             </div>
         );
@@ -99,18 +83,12 @@ export default class ItemDialog extends Component{
                 className:'btn btn-success',
                 icon:'fa fa-floppy-o',
                 click:function () {
-                    var validator=$(ReactDOM.findDOMNode(this)).data('bootstrapValidator');
-                    validator.resetForm();
-                    validator.validate();
-                    var valid=validator.isValid();
+                    var {valid,errors}=this._validate();
                     if(!valid){
+                        this.setState({errors});
                         return;
                     }
-                    var itemName=$('[name=itemName]').val();
-                    var itemPath=$('[name=itemPath]').val();
-                    var itemVersion=$('[name=itemVersion]').val();
-                    var create=this.state.create;
-                    var rowIndex=this.state.rowIndex;
+                    var {itemName,itemPath,itemVersion,create,rowIndex}=this.state;
                     if(create){
                         dispatch(action.addSlave({name:itemName,path:itemPath,version:itemVersion}));
                     }else{
@@ -120,6 +98,6 @@ export default class ItemDialog extends Component{
                 }.bind(this)
             }
         ];
-        return (<CommonDialog title={this.state.title} body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons}/>);
     };
 }

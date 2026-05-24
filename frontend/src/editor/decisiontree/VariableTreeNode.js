@@ -6,14 +6,17 @@ VariableTreeNode=function(parentNode,allowDelete){
 VariableTreeNode.prototype=Object.create(TreeNode.prototype);
 VariableTreeNode.prototype.constructor=VariableTreeNode;
 VariableTreeNode.prototype.initNode=function(){
-    var nodeContainer=$("<div class='node varNode'>");
-    this.col.append(nodeContainer);
-    var contentContainer=$("<span>");
-    nodeContainer.append(contentContainer);
+    var nodeContainer=document.createElement("div");
+    nodeContainer.className="node varNode";
+    this.col.appendChild(nodeContainer);
+    var contentContainer=document.createElement("span");
+    nodeContainer.appendChild(contentContainer);
     this.condition=new ruleforge.ConditionLeft(contentContainer);
     var self=this;
-    var operations=$("<span class='operations'><i class='icon-ok-circle'></i></span>");
-    nodeContainer.append(operations);
+    var operations=document.createElement("span");
+    operations.className="operations";
+    operations.innerHTML="<i class='icon-ok-circle'></i>";
+    nodeContainer.appendChild(operations);
     var menuItems=[];
     menuItems.push({
         name:"addCondition",
@@ -34,7 +37,7 @@ VariableTreeNode.prototype.initNode=function(){
         });
     }
     var menu=new RuleForge.menu.Menu({menuItems:menuItems});
-    operations.click(function(e){
+    operations.addEventListener('click',function(e){
         menu.show(e);
     });
 };

@@ -118,8 +118,8 @@ var _drawReteTree=function(container,filelist){
 	}).then(function(data) {
 		var width=data["width"];
 		var height=data["height"];
-		var winWidth=$(window).height();
-		var winHeight=$(window).width();
+		var winWidth=window.innerHeight;
+		var winHeight=window.innerWidth;
 		if(winWidth>width){
 			width=winWidth;
 		}

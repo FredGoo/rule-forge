@@ -20,7 +20,7 @@ import ConditionCell from './ConditionCell.js';
 export default class CrossTable {
     /**
      * @param {Object} options
-     * @param {jQuery} options.container - The container element to render into
+     * @param {HTMLElement} options.container - The container element to render into
      */
     constructor(options) {
         this.seq = 0;
@@ -30,25 +30,30 @@ export default class CrossTable {
         this.rowColCellsMap = new Map();
 
         // Remark section
-        const remarkContainer = $("<div style='margin-left: 5px'></div>");
-        options.container.append(remarkContainer);
+        const remarkContainer = document.createElement('div');
+        remarkContainer.style.cssText = 'margin-left: 5px';
+        options.container.appendChild(remarkContainer);
         this.remark = new Remark(remarkContainer);
 
         // Property configuration
-        const propertyContainer = $('<div style="margin: 5px;"></div>');
-        const propertySpan = $('<span></span>');
-        options.container.append(propertyContainer);
-        propertyContainer.append(propertySpan);
+        const propertyContainer = document.createElement('div');
+        propertyContainer.style.cssText = 'margin: 5px;';
+        const propertySpan = document.createElement('span');
+        options.container.appendChild(propertyContainer);
+        propertyContainer.appendChild(propertySpan);
         this.propertyConfig = new PropertyConfig(propertySpan);
 
         // Cross-cell variable bundle (assignment target)
         this.crossCellVariableBundle = new CrossCellVariableBundle();
-        options.container.append(this.crossCellVariableBundle.container);
+        options.container.appendChild(this.crossCellVariableBundle.container);
         this.crossCellVariableBundle.initData();
 
         // Main table element
-        this.table = $('<table class="table table-bordered" style="font-size: 12px;margin-left: 5px;margin-top:10px;width: inherit;"></table>');
-        options.container.append(this.table);
+        const table = document.createElement('table');
+        table.className = 'table table-bordered';
+        table.style.cssText = 'font-size: 12px;margin-left: 5px;margin-top:10px;width: inherit;';
+        this.table = table;
+        options.container.appendChild(table);
     }
 
     /**
@@ -64,8 +69,9 @@ export default class CrossTable {
         this.crossCellVariableBundle.initData(data);
         data = data || {};
         this.remark.setData(data.remark);
-        this.body = $('<tbody></tbody>');
-        this.table.append(this.body);
+        const tbody = document.createElement('tbody');
+        this.body = tbody;
+        this.table.appendChild(tbody);
 
         const rows = data.rows || [];
         const columns = data.columns || [];
@@ -136,13 +142,13 @@ export default class CrossTable {
                         cell = new ConditionCell(row, col);
                         if (row.istop) {
                             cell.initTopMenu();
-                            cell.td.addClass('top-condition-cell');
+                            cell.td.classList.add('top-condition-cell');
                             if (row.bundleData) {
                                 cell.setBundleData(row.bundleData);
                             }
                         } else {
                             cell.initLeftMenu();
-                            cell.td.addClass('left-condition-cell');
+                            cell.td.classList.add('left-condition-cell');
                         }
                     } else {
                         cell = new Cell(row, col);
@@ -261,16 +267,18 @@ export default class CrossTable {
 
     /**
      * Get or create the highlight div used to indicate the active cell.
-     * @returns {jQuery}
+     * @returns {HTMLElement}
      */
     getHighlightDiv() {
         if (this.highlightDiv) {
             const currentTD = this.highlightDiv.currentTD;
             if (currentTD) {
-                currentTD.off('DOMSubtreeModified');
+                currentTD.removeEventListener('DOMSubtreeModified', currentTD._domModifiedHandler);
             }
         } else {
-            this.highlightDiv = $('<div style="border:2px solid rgb(82, 146, 247);position:absolute;left: 0;top: 0;"></div>');
+            const div = document.createElement('div');
+            div.style.cssText = 'border:2px solid rgb(82, 146, 247);position:absolute;left: 0;top: 0;';
+            this.highlightDiv = div;
         }
         return this.highlightDiv;
     }

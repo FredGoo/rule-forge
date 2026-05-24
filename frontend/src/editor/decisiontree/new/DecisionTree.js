@@ -12,35 +12,37 @@ export default class DecisionTree {
         this.initRemarkContainer();
         this.initPropertyContainer();
 
-        var treeContainer = $("<div style='position: relative;text-align: center'>");
-        this.container.append(treeContainer);
+        var treeContainer = document.createElement("div");
+        treeContainer.style.cssText = "position: relative;text-align: center";
+        this.container.appendChild(treeContainer);
         var context = new Context(treeContainer);
         this.topNode = new VariableNode(context, null, true);
         context.topNode = this.topNode;
         var left = 10, top = 10;
-        this.topNode.nodeContainer.css({
-            position: "absolute",
-            left: left,
-            top: top
-        });
+        this.topNode.nodeContainer.style.position = "absolute";
+        this.topNode.nodeContainer.style.left = left + "px";
+        this.topNode.nodeContainer.style.top = top + "px";
     }
 
     initRemarkContainer() {
-        var remarkContainer = $("<div style='margin: 5px;'></div>");
-        this.container.append(remarkContainer);
+        var remarkContainer = document.createElement("div");
+        remarkContainer.style.cssText = "margin: 5px;";
+        this.container.appendChild(remarkContainer);
         this.remark = new Remark(remarkContainer);
     }
 
     initPropertyContainer() {
-        var propContainer = $("<div style='margin: 5px;border: solid 1px #dddddd;border-radius:5px'></div>");
-        this.container.append(propContainer);
-        this.propertyContainer = $("<span>");
-        this.propertyContainer.css({
-            "padding": "10px"
-        });
-        var addProp = $("<button type='button' class='rule-add-property btn btn-link'>添加属性</button>");
-        propContainer.append(addProp);
-        propContainer.append(this.propertyContainer);
+        var propContainer = document.createElement("div");
+        propContainer.style.cssText = "margin: 5px;border: solid 1px #dddddd;border-radius:5px";
+        this.container.appendChild(propContainer);
+        this.propertyContainer = document.createElement("span");
+        this.propertyContainer.style.padding = "10px";
+        var addProp = document.createElement("button");
+        addProp.type = "button";
+        addProp.className = "rule-add-property btn btn-link";
+        addProp.textContent = "添加属性";
+        propContainer.appendChild(addProp);
+        propContainer.appendChild(this.propertyContainer);
         var self = this;
         var onClick = function (menuItem) {
             var prop = new ruleforge.RuleProperty(self, menuItem.name, menuItem.defaultValue, menuItem.editorType);
@@ -79,13 +81,13 @@ export default class DecisionTree {
                 onClick: onClick
             }]
         });
-        addProp.click(function (e) {
+        addProp.addEventListener('click', function (e) {
             self.menu.show(e);
         });
     }
 
     addProperty(property) {
-        this.propertyContainer.append(property.getContainer());
+        this.propertyContainer.appendChild(property.getContainer());
         this.properties.push(property);
         window._setDirty();
     };
@@ -114,66 +116,62 @@ export default class DecisionTree {
                         <button id="configActionButton" type="button" class="btn btn-default"><i class="rf rf-action"/> 动作库</button>
                         <button id="configParameterButton" type="button" class="btn btn-default"><i class="rf rf-parameter"/> 参数库</button>
                     </div>
-                    ${saveButton} 
+                    ${saveButton}
                     ${testButton}
                  </div>
             </div>
         </nav>`;
-        var toolbar = $(toolbarHtml);
-        toolbar.css({
-            diaplay: "inline-block"
-        });
-        var toolbarContainer = $("<div>");
-        toolbarContainer.append(toolbar);
-        this.container.append(toolbarContainer);
+        var toolbarContainer = document.createElement("div");
+        toolbarContainer.innerHTML = toolbarHtml;
+        this.container.appendChild(toolbarContainer.firstElementChild || toolbarContainer);
         var self = this;
-        $("#configVarButton").click(function () {
+        document.getElementById("configVarButton").addEventListener('click', function () {
             if (!self.configVarDialog) {
                 self.configVarDialog = new ruleforge.ConfigVariableDialog(self);
             }
             self.configVarDialog.open();
         });
 
-        $("#configConstantsButton").click(function () {
+        document.getElementById("configConstantsButton").addEventListener('click', function () {
             if (!self.configConstantDialog) {
                 self.configConstantDialog = new ruleforge.ConfigConstantDialog(self);
             }
             self.configConstantDialog.open();
         });
 
-        $("#configActionButton").click(function () {
+        document.getElementById("configActionButton").addEventListener('click', function () {
             if (!self.configActionDialog) {
                 self.configActionDialog = new ruleforge.ConfigActionDialog(self);
             }
             self.configActionDialog.open();
         });
 
-        $("#configParameterButton").click(function () {
+        document.getElementById("configParameterButton").addEventListener('click', function () {
             if (!self.configParameterDialog) {
                 self.configParameterDialog = new ruleforge.ConfigParameterDialog(self);
             }
             self.configParameterDialog.open();
         });
 
-        var $saveButtonNewVersion = $("#saveButtonNewVersion");
-        $saveButtonNewVersion.click(function () {
+        var saveButtonNewVersion = document.getElementById("saveButtonNewVersion");
+        saveButtonNewVersion.addEventListener('click', function () {
             _save(true);
         });
-        var $saveButtonOldVersion = $("#saveButton");
-        $saveButtonOldVersion.click(function () {
+        var saveButtonOldVersion = document.getElementById("saveButton");
+        saveButtonOldVersion.addEventListener('click', function () {
             _save(false);
         });
-        $saveButtonOldVersion.addClass("disabled");
+        saveButtonOldVersion.classList.add("disabled");
         _loadDecisionTreeFileData();
 
-        $("#testButton").click(function() {
+        document.getElementById("testButton").addEventListener('click', function() {
             let file = getParameter('file')
             let decodedFile = decodeURIComponent(file)
             event.eventEmitter.emit(event.OPEN_QUICK_TEST_DIALOG, {project: window._project, file: decodedFile});
         })
 
         function _save(newVersion) {
-            if (!newVersion && $saveButtonOldVersion.hasClass("disabled")) {
+            if (!newVersion && saveButtonOldVersion.classList.contains("disabled")) {
                 return false;
             }
             var xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
@@ -306,10 +304,9 @@ window._setDirty = function () {
     }
     window._dirty = true;
 
-    var saveButton = $("#saveButton");
-    var saveButtonNewVersion = $("#saveButtonNewVersion");
-    saveButton.html("<i class='rf rf-save'/> *保存");
-    saveButton.removeClass("disabled");
+    var saveButton = document.getElementById("saveButton");
+    saveButton.innerHTML = "<i class='rf rf-save'/> *保存";
+    saveButton.classList.remove("disabled");
 };
 
 function cancelDirty() {
@@ -318,8 +315,7 @@ function cancelDirty() {
     }
     window._dirty = false;
 
-    var saveButton = $("#saveButton");
-    var saveButtonNewVersion = $("#saveButtonNewVersion");
-    saveButton.html("<i class='rf rf-save'/> 保存");
-    saveButton.addClass("disabled");
+    var saveButton = document.getElementById("saveButton");
+    saveButton.innerHTML = "<i class='rf rf-save'/> 保存";
+    saveButton.classList.add("disabled");
 }

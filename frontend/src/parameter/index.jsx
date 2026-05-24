@@ -1,3 +1,4 @@
+import '../bootbox.js';
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css';
 
@@ -11,7 +12,7 @@ import ParameterEditor from './components/ParameterEditor.jsx';
 import * as action from './action.js';
 import {getParameter} from '../Utils.js';
 
-$(document).ready(function(){
+document.addEventListener('DOMContentLoaded', function(){
     const store=createStore(reducer,applyMiddleware(thunk));
     const file=getParameter("file");
     store.dispatch(action.loadData(file));

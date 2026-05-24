@@ -2,11 +2,11 @@ import {ajaxSave, getParameter} from '../../Utils.js';
 import {MsgBox} from 'flowdesigner';
 import {saveNewVersion} from "../../Utils";
 import * as event from '../../components/componentEvent.js';
+import Sortable from 'sortablejs';
 
-(function ($) {
-    $.fn.ruleforge = function () {
-        this._dirty = false;
-        this.rules = [];
+function RuleFactory(container) {
+    container._dirty = false;
+    container.rules = [];
         var file = getParameter("file");
         var version = getParameter("version") || "";
         console.log('当前版本号', version)
@@ -41,14 +41,14 @@ import * as event from '../../components/componentEvent.js';
 	            </div>
             </div>
     	</nav>`;
-        var toolbar = $(toolbarHtml);
-        toolbar.css({
-            diaplay: "inline-block"
-        });
-        this.append(toolbar);
-        var self = this;
+        var temp = document.createElement('div');
+        temp.innerHTML = toolbarHtml;
+        var toolbar = temp.firstElementChild;
+        toolbar.style.display = "inline-block";
+    container.appendChild(toolbar);
+    var self = container;
 
-        $("#addRuleButton").click(function () {
+        document.getElementById("addRuleButton").addEventListener('click', function () {
             var ruleKey = prompt("规则编号", "");
             if (ruleKey == null || ruleKey === '') {
                 var rule = _addRule();
@@ -78,45 +78,45 @@ import * as event from '../../components/componentEvent.js';
             }
         });
 
-        $("#addLoopRuleButton").click(function () {
+        document.getElementById("addLoopRuleButton").addEventListener('click', function () {
             var rule = _addLoopRule();
             rule.initTopJoin();
         });
 
-        $("#configVarButton").click(function () {
+        document.getElementById("configVarButton").addEventListener('click', function () {
             if (!self.configVarDialog) {
                 self.configVarDialog = new ruleforge.ConfigVariableDialog(self);
             }
             self.configVarDialog.open();
         });
 
-        $("#configConstantsButton").click(function () {
+        document.getElementById("configConstantsButton").addEventListener('click', function () {
             if (!self.configConstantDialog) {
                 self.configConstantDialog = new ruleforge.ConfigConstantDialog(self);
             }
             self.configConstantDialog.open();
         });
 
-        $("#configActionButton").click(function () {
+        document.getElementById("configActionButton").addEventListener('click', function () {
             if (!self.configActionDialog) {
                 self.configActionDialog = new ruleforge.ConfigActionDialog(self);
             }
             self.configActionDialog.open();
         });
 
-        $("#configParameterButton").click(function () {
+        document.getElementById("configParameterButton").addEventListener('click', function () {
             if (!self.configParameterDialog) {
                 self.configParameterDialog = new ruleforge.ConfigParameterDialog(self);
             }
             self.configParameterDialog.open();
         });
 
-        $("#testButton").click(function() {
+        document.getElementById("testButton").addEventListener('click', function() {
             let decodedFile = decodeURIComponent(file)
             event.eventEmitter.emit(event.OPEN_QUICK_TEST_DIALOG, {project: window._project, file: decodedFile, type: 'ruleLib'});
         })
 
-        $("#referenceButton").click(function () {
+        document.getElementById("referenceButton").addEventListener('click', function () {
             // 解码文件路径，确保传递的是解码后的路径
             const decodedFile = decodeURIComponent(file);
             const title = `规则集"${decodedFile}"`;
@@ -129,47 +129,51 @@ import * as event from '../../components/componentEvent.js';
             }
         });
 
-        const saveButtonNewVersion = $("#saveButtonNewVersion");
-        saveButtonNewVersion.click(function () {
+        const saveButtonNewVersion = document.getElementById("saveButtonNewVersion");
+        saveButtonNewVersion.addEventListener('click', function () {
             save(true);
         });
-        const saveButtonNotNew = $("#saveButton");
-        saveButtonNotNew.click(function () {
+        const saveButtonNotNew = document.getElementById("saveButton");
+        saveButtonNotNew.addEventListener('click', function () {
             save(false);
         });
-        saveButtonNotNew.addClass("disabled");
+        saveButtonNotNew.classList.add("disabled");
 
-        var remarkContainer = $("<div style='margin: 5px;padding: 5px;'></div>");
-        this.append(remarkContainer);
-        this.remark = new Remark(remarkContainer);
+        var remarkContainer = document.createElement("div");
+        remarkContainer.style.margin = "5px";
+        remarkContainer.style.padding = "5px";
+    container.appendChild(remarkContainer);
+    container.remark = new Remark(remarkContainer);
 
         _loadRulesetFileData();
 
-        var _this = this;
-        this.sortable({
+    var _this = container;
+    Sortable.create(container, {
             delay: 200,
-            update: function (event, ui) {
-                var children = _this.children("div");
-                children.each(function (index, div) {
-                    let item = $(div), id = item.prop("id"), rules = _this.rules, targetRule = null;
-                    for (let rule of rules) {
-                        if (rule.uuid === id) {
-                            targetRule = rule;
-                            break;
+            onEnd: function (evt) {
+                if (evt.oldIndex !== evt.newIndex) {
+                    var children = _this.querySelectorAll("div");
+                    children.forEach(function (div, index) {
+                        var id = div.id, rules = _this.rules, targetRule = null;
+                        for (let rule of rules) {
+                            if (rule.uuid === id) {
+                                targetRule = rule;
+                                break;
+                            }
                         }
-                    }
-                    if (targetRule) {
-                        const pos = rules.indexOf(targetRule);
-                        rules.splice(pos, 1);
-                        rules.splice(index, 0, targetRule);
-                    }
-                });
-                window._setDirty();
+                        if (targetRule) {
+                            const pos = rules.indexOf(targetRule);
+                            rules.splice(pos, 1);
+                            rules.splice(index, 0, targetRule);
+                        }
+                    });
+                    window._setDirty();
+                }
             }
         });
 
         function save(newVersion) {
-            if (!newVersion && saveButtonNotNew.hasClass("disabled")) {
+            if (!newVersion && saveButtonNotNew.classList.contains("disabled")) {
                 return false;
             }
             var xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
@@ -219,8 +223,8 @@ import * as event from '../../components/componentEvent.js';
             }
             self._dirty = true;
             window._dirty = true;
-            saveButtonNotNew.html("<i class='rf rf-save'/> *保存");
-            saveButtonNotNew.removeClass("disabled");
+            saveButtonNotNew.innerHTML = "<i class='rf rf-save'/> *保存";
+            saveButtonNotNew.classList.remove("disabled");
         };
 
         function cancelDirty() {
@@ -229,13 +233,17 @@ import * as event from '../../components/componentEvent.js';
             }
             self._dirty = false;
             window._dirty = false;
-            saveButtonNotNew.html("<i class='rf rf-save'/> 保存");
-            saveButtonNotNew.addClass("disabled");
+            saveButtonNotNew.innerHTML = "<i class='rf rf-save'/> 保存";
+            saveButtonNotNew.classList.add("disabled");
         }
 
         function _addRule(data) {
-            var ruleContainer = $("<div class='well' style='margin:5px;padding:8px;background-color: #fdfdfd'></div>");
-            self.append(ruleContainer);
+            var ruleContainer = document.createElement("div");
+            ruleContainer.className = "well";
+            ruleContainer.style.margin = "5px";
+            ruleContainer.style.padding = "8px";
+            ruleContainer.style.backgroundColor = "#fdfdfd";
+            self.appendChild(ruleContainer);
             var rule = new ruleforge.Rule(self, ruleContainer, data);
             self.rules.push(rule);
             window._setDirty();
@@ -243,8 +251,13 @@ import * as event from '../../components/componentEvent.js';
         }
 
         function _addLoopRule(data) {
-            var ruleContainer = $("<div class='well' style='margin:5px;padding:8px;border-color:#337AB7;background-color: #fdfdfd'></div>");
-            self.append(ruleContainer);
+            var ruleContainer = document.createElement("div");
+            ruleContainer.className = "well";
+            ruleContainer.style.margin = "5px";
+            ruleContainer.style.padding = "8px";
+            ruleContainer.style.borderColor = "#337AB7";
+            ruleContainer.style.backgroundColor = "#fdfdfd";
+            self.appendChild(ruleContainer);
             var rule = new ruleforge.LoopRule(self, ruleContainer, data);
             self.rules.push(rule);
             window._setDirty();
@@ -311,5 +324,6 @@ import * as event from '../../components/componentEvent.js';
             });
         }
 
-    };
-})(jQuery);
+}
+
+window.RuleFactory = RuleFactory;

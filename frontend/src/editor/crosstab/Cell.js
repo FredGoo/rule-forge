@@ -31,14 +31,16 @@ export default class Cell extends BaseCell {
      * @param {Object} [data] - Initial value data
      */
     initCellContent(data) {
-        this.container = $('<div style="position: relative"></div>');
+        const container = document.createElement('div');
+        container.style.cssText = 'position: relative';
+        this.container = container;
         this.inputType = new ruleforge.InputType(null, '无');
-        this.container.append(this.inputType.getContainer());
+        container.appendChild(this.inputType.getContainer());
         if (data && data.value) {
             const value = data.value;
             this.inputType.setValueType(value.valueType, value);
         }
-        this.td.append(this.container);
+        this.td.appendChild(container);
     }
 
     /**
@@ -64,7 +66,7 @@ export default class Cell extends BaseCell {
         const columns = this.table.columns;
         const self = this;
 
-        this.td.click(function () {
+        this.td.addEventListener('click', function () {
             // Reset all cell backgrounds
             for (const row of rows) {
                 for (const col of columns) {
@@ -72,13 +74,13 @@ export default class Cell extends BaseCell {
                     if (cell) {
                         if (cell instanceof Cell) {
                             // ValueCell - reset to default
-                            cell.td.css('background', 'none');
+                            cell.td.style.background = 'none';
                         } else if (cell.row.istop) {
                             // Top condition cell
-                            cell.td.css('background', '#f3f8ff');
+                            cell.td.style.background = '#f3f8ff';
                         } else {
                             // Left condition cell
-                            cell.td.css('background', '#f5fdf1');
+                            cell.td.style.background = '#f5fdf1';
                         }
                     }
                 }
@@ -89,7 +91,7 @@ export default class Cell extends BaseCell {
             for (const row of rows) {
                 const cell = self.table.getCell(row, highlightCol);
                 if (cell) {
-                    cell.td.css('background', '#fcf8e3');
+                    cell.td.style.background = '#fcf8e3';
                 }
             }
 
@@ -98,7 +100,7 @@ export default class Cell extends BaseCell {
             for (const col of columns) {
                 const cell = self.table.getCell(highlightRow, col);
                 if (cell) {
-                    cell.td.css('background', '#fcf8e3');
+                    cell.td.style.background = '#fcf8e3';
                 }
             }
         });
@@ -117,7 +119,7 @@ export default class Cell extends BaseCell {
                     MsgBox.confirm('真的要清空当前单元格内容吗？', function () {
                         self.inputType.getContainer().remove();
                         self.inputType = new ruleforge.InputType(null, '无');
-                        self.container.append(self.inputType.getContainer());
+                        self.container.appendChild(self.inputType.getContainer());
                         window._setDirty();
                     });
                 }
@@ -139,14 +141,14 @@ export default class Cell extends BaseCell {
                     pasteCellData('value', function (data) {
                         self.inputType.getContainer().remove();
                         self.inputType = new ruleforge.InputType(null, '无');
-                        self.container.append(self.inputType.getContainer());
+                        self.container.appendChild(self.inputType.getContainer());
                         self.inputType.setValueType(data.valueType, data);
                     });
                 }
             }]
         };
         const menu = new RuleForge.menu.Menu(menuConfig);
-        this.td.contextmenu(function (e) {
+        this.td.addEventListener('contextmenu', function (e) {
             menu.show(e);
         });
     }

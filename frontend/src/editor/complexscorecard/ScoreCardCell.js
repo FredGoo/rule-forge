@@ -37,19 +37,18 @@ export default class ConditionCell extends HighlightCell {
         // Variable/parameter selector
         this.propContainer = generateContainer();
         URule.setDomContent(this.propContainer, '请选择属性');
-        this.td.append(this.propContainer);
-        this.propContainer.css({
-            color: '#999',
-            position: 'relative'
-        });
+        this.td.appendChild(this.propContainer);
+        this.propContainer.style.cssText = 'color: #999; position: relative';
         this.refreshVariableMenus();
 
         // Condition display
-        this.container = $('<div>无</div>');
-        this.td.append(this.container);
+        const container = document.createElement('div');
+        container.textContent = '无';
+        this.container = container;
+        this.td.appendChild(container);
 
         // Track current condition cell for delete row button
-        this.td.click(function () {
+        this.td.addEventListener('click', function () {
             window._currentConditionCell = self;
         });
 
@@ -82,8 +81,8 @@ export default class ConditionCell extends HighlightCell {
                     MsgBox.confirm('真的要清空当前单元格内容？', function () {
                         if (self.cellCondition) {
                             self.cellCondition.clean();
-                            self.container.html('无');
-                            self.container.css('color', 'gray');
+                            self.container.innerHTML = '无';
+                            self.container.style.color = 'gray';
                         }
                         window._setDirty();
                     });
@@ -109,14 +108,14 @@ export default class ConditionCell extends HighlightCell {
                         }
                         self.cellCondition = new urule.CellCondition('<div/>');
                         self.cellCondition.initData(data);
-                        self.container.empty();
-                        self.container.append(self.cellCondition.getDisplayContainer());
+                        self.container.innerHTML = '';
+                        self.container.appendChild(self.cellCondition.getDisplayContainer());
                     });
                 }
             }]
         };
         const menu = new URule.menu.Menu(menuConfig);
-        this.td.contextmenu(function (e) {
+        this.td.addEventListener('contextmenu', function (e) {
             menu.show(e);
         });
     }
@@ -134,15 +133,15 @@ export default class ConditionCell extends HighlightCell {
         if (data.joint) {
             this.cellCondition = new urule.CellCondition('<div/>');
             this.cellCondition.initData(data.joint);
-            this.container.empty();
-            this.container.append(this.cellCondition.getDisplayContainer());
+            this.container.innerHTML = '';
+            this.container.appendChild(this.cellCondition.getDisplayContainer());
         }
         if (data.variableLabel) {
             this.variableLabel = data.variableLabel;
             this.variableName = data.variableName;
             this.datatype = data.datatype;
             URule.setDomContent(this.propContainer, this.variableLabel || this.variableName);
-            this.propContainer.css('color', '#1d1d1d');
+            this.propContainer.style.color = '#1d1d1d';
         }
     }
 
@@ -169,7 +168,7 @@ export default class ConditionCell extends HighlightCell {
             this.propContainer.menu.setConfig({menuItems: menuItems});
         } else {
             this.propContainer.menu = new URule.menu.Menu({menuItems: menuItems});
-            this.propContainer.click(function (e) {
+            this.propContainer.addEventListener('click', function (e) {
                 self.propContainer.menu.show(e);
             });
         }
@@ -185,18 +184,18 @@ export default class ConditionCell extends HighlightCell {
             self.variableLabel = item.label;
             self.variableName = item.name;
             self.datatype = item.datatype;
-            self.propContainer.html(self.variableLabel);
-            self.propContainer.css('color', '#1d1d1d');
+            self.propContainer.innerHTML = self.variableLabel;
+            self.propContainer.style.color = '#1d1d1d';
         };
     }
 
     /**
      * Open the condition configuration dialog.
      *
-     * @param {jQuery} container - The container element to update after dialog closes
+     * @param {HTMLElement} container - The container element to update after dialog closes
      */
     configCondition(container) {
-        const dialog = $('<div/>');
+        const dialog = document.createElement('div');
         if (!this.cellCondition) {
             this.cellCondition = new urule.CellCondition('<div/>');
         }
@@ -205,8 +204,8 @@ export default class ConditionCell extends HighlightCell {
         MsgBox.showDialog('配置条件', dialog, [], [{
             name: 'hide.bs.modal',
             callback: function () {
-                container.empty();
-                container.append(self.cellCondition.getDisplayContainer());
+                container.innerHTML = '';
+                container.appendChild(self.cellCondition.getDisplayContainer());
             }
         }], true);
     }
@@ -215,11 +214,11 @@ export default class ConditionCell extends HighlightCell {
      * Increment the rowspan of this cell's TD element.
      */
     increaseRowSpan() {
-        let rowspan = this.td.prop('rowspan');
+        let rowspan = this.td.rowSpan;
         rowspan || (rowspan = 1);
         rowspan++;
         this.rowSpan = rowspan;
-        this.td.prop('rowspan', rowspan);
+        this.td.rowSpan = rowspan;
     }
 
     /**
@@ -239,7 +238,7 @@ export default class ConditionCell extends HighlightCell {
      * @param {ComplexScoreCard} complexTable - The parent scorecard table
      */
     deleteRow(complexTable) {
-        let rowspan = this.td.prop('rowspan');
+        let rowspan = this.td.rowSpan;
         const spanCount = rowspan;
 
         if (rowspan === complexTable.contentRows.length) {
@@ -261,10 +260,10 @@ export default class ConditionCell extends HighlightCell {
                 const cell = rowContext._findConditionCell(row, col);
 
                 if (cell) {
-                    let cellRowspan = cell.td.prop('rowspan');
+                    let cellRowspan = cell.td.rowSpan;
                     if (cellRowspan > 1 && cellRowspan > spanCount) {
                         cellRowspan--;
-                        cell.td.prop('rowspan', cellRowspan);
+                        cell.td.rowSpan = cellRowspan;
 
                         // Transfer cell to the next available row
                         const nextCol = complexTable.conditionColumns[ci + 1];
@@ -280,9 +279,9 @@ export default class ConditionCell extends HighlightCell {
                 } else {
                     // Cell is part of a span from a previous row
                     const spannedCell = rowContext.fetchConditionCell(row, col);
-                    let spannedRowspan = spannedCell.td.prop('rowspan');
+                    let spannedRowspan = spannedCell.td.rowSpan;
                     spannedRowspan--;
-                    spannedCell.td.prop('rowspan', spannedRowspan);
+                    spannedCell.td.rowSpan = spannedRowspan;
                 }
             }
             row.tr.remove();
@@ -362,16 +361,18 @@ export class ActionCell extends HighlightCell {
     init() {
         const self = this;
 
-        this.container = $('<div style="position: relative;"></div>');
-        this.td.append(this.container);
+        const container = document.createElement('div');
+        container.style.cssText = 'position: relative;';
+        this.container = container;
+        this.td.appendChild(container);
 
         // Click clears current condition cell selection
-        this.td.click(function () {
+        this.td.addEventListener('click', function () {
             window._currentConditionCell = null;
         });
 
         this.inputType = new urule.InputType(null, '无');
-        this.container.append(this.inputType.getContainer());
+        container.appendChild(this.inputType.getContainer());
 
         // Context menu
         const menuConfig = {
@@ -382,7 +383,7 @@ export class ActionCell extends HighlightCell {
                     MsgBox.confirm('真的要清空当前单元格内容吗？', function () {
                         self.inputType.getContainer().remove();
                         self.inputType = new urule.InputType(null, '无');
-                        self.container.append(self.inputType.getContainer());
+                        self.container.appendChild(self.inputType.getContainer());
                         window._setDirty();
                     });
                 }
@@ -404,14 +405,14 @@ export class ActionCell extends HighlightCell {
                     pasteCellData('value', function (data) {
                         self.inputType.getContainer().remove();
                         self.inputType = new urule.InputType(null, '无');
-                        self.container.append(self.inputType.getContainer());
+                        self.container.appendChild(self.inputType.getContainer());
                         self.inputType.setValueType(data.valueType, data);
                     });
                 }
             }]
         };
         const menu = new URule.menu.Menu(menuConfig);
-        this.td.contextmenu(function (e) {
+        this.td.addEventListener('contextmenu', function (e) {
             menu.show(e);
         });
     }

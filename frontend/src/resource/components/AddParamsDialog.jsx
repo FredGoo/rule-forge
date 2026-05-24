@@ -1,5 +1,4 @@
 import React,{Component,PropTypes} from 'react';
-import ReactDOM from 'react-dom';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
 import * as action from '../action.js';
@@ -7,79 +6,50 @@ import * as action from '../action.js';
 export default class AddParamsDialog extends Component{
     constructor(props){
         super(props);
-        this.state={title:''};
+        this.state={title:'',visible:false,name:'',label:'',defaultValue:'',type:'String',logicComment:'',categoryLabel:'',dsStatus:0,errors:{}};
     }
     componentDidMount(){
-        console.log($(ReactDOM.findDOMNode(this)))
-        $(ReactDOM.findDOMNode(this)).bootstrapValidator({
-            feedbackIcons: {
-                invalid: 'glyphicon glyphicon-remove',
-                validating: 'glyphicon glyphicon-refresh'
-            },
-            fields:{
-                name:{
-                    validators: {
-                        notEmpty: {
-                            message: '字段名称不能为空'
-                        },
-                        regexp: {
-                            regexp: /^[A-Za-z]+$/,
-                            message: '字段名称只能英文输入'
-                        }
-                    }
-                },
-                label:{
-                    validators: {
-                        notEmpty: {
-                            message: '标题不能为空'
-                        },
-                        regexp: {
-                            regexp: /^[\u4e00-\u9fa5]+$/,
-                            message: '标题必须使用中文'
-                        }
-                    }
-                },
-                defaultValue:{
-                    validators: {
-                        notEmpty: {
-                            message: '默认值不能为空'
-                        }
-                    }
-                },
-                type:{
-                    validators: {
-                        notEmpty: {
-                            message: '数据类型不能为空'
-                        }
-                    }
-                }
-            }
-        });
         event.eventEmitter.on(event.OPEN_CREATE_PARAMS_DIALOG,(data)=>{
-            $(ReactDOM.findDOMNode(this)).modal('show');
+            this.setState({visible: true, errors:{}});
             const create=data.create;
             const title=data.title;
             const rowIndex=data.rowIndex;
             const masterRowData=data.data;
             if(create){
-                $('[name=name]').val('');
-                $('[name=label]').val('');
-                $('[name=defaultValue]').val('');
-                $('[name=type]').val('');
-                $('[name=logicComment]').val('');
-                $('[name=categoryLabel]').val('');
-                $('[name=dsStatus]').val(0);
-                $(ReactDOM.findDOMNode(this)).data('bootstrapValidator').enableFieldValidators('name', true);
+                this.setState({create,title,rowIndex,masterRowData,name:'',label:'',defaultValue:'',type:'String',logicComment:'',categoryLabel:'',dsStatus:0});
             }
             this.setState({create,title,rowIndex,masterRowData});
         });
         event.eventEmitter.on(event.HIDE_CREATE_PARAMS_DIALOG,()=>{
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
     componentWillUnmount(){
         event.eventEmitter.removeAllListeners(event.OPEN_CREATE_PARAMS_DIALOG);
         event.eventEmitter.removeAllListeners(event.HIDE_CREATE_PARAMS_DIALOG);
+    }
+    _validate(){
+        const errors={};
+        const {name,label,defaultValue,type,create}=this.state;
+        if(create){
+            if(!name||!name.trim()){
+                errors.name='字段名称不能为空';
+            }else if(!/^[A-Za-z]+$/.test(name)){
+                errors.name='字段名称只能英文输入';
+            }
+        }
+        if(!label||!label.trim()){
+            errors.label='标题不能为空';
+        }else if(!/^[一-龥]+$/.test(label)){
+            errors.label='标题必须使用中文';
+        }
+        if(!defaultValue||!defaultValue.trim()){
+            errors.defaultValue='默认值不能为空';
+        }
+        if(!type||!type.trim()){
+            errors.type='数据类型不能为空';
+        }
+        return {valid:Object.keys(errors).length===0,errors};
     }
     render(){
         const {dispatch, data, file}=this.props;
@@ -88,42 +58,58 @@ export default class AddParamsDialog extends Component{
                 <div className="row">
                     <div className="form-group col-xs-6">
                         <label>字段名称：</label>
-                        <input type="text" name="name" className="form-control"/>
+                        <input type="text" name="name" className="form-control"
+                            value={this.state.name}
+                            onChange={(e)=>this.setState({name:e.target.value,errors:{...this.state.errors,name:undefined}})}/>
+                        {this.state.errors.name && <div className="text-danger" style={{fontSize:'12px'}}>{this.state.errors.name}</div>}
                     </div>
                     <div className="form-group col-xs-6">
                         <label>标题：</label>
-                        <input type="text" name="label" className="form-control"/>
+                        <input type="text" name="label" className="form-control"
+                            value={this.state.label}
+                            onChange={(e)=>this.setState({label:e.target.value,errors:{...this.state.errors,label:undefined}})}/>
+                        {this.state.errors.label && <div className="text-danger" style={{fontSize:'12px'}}>{this.state.errors.label}</div>}
                     </div>
                 </div>
                 <div className="row">
                     <div className="form-group col-xs-6">
                         <label>默认值:</label>
-                        <input type="text" name="defaultValue" className="form-control"/>
+                        <input type="text" name="defaultValue" className="form-control"
+                            value={this.state.defaultValue}
+                            onChange={(e)=>this.setState({defaultValue:e.target.value,errors:{...this.state.errors,defaultValue:undefined}})}/>
+                        {this.state.errors.defaultValue && <div className="text-danger" style={{fontSize:'12px'}}>{this.state.errors.defaultValue}</div>}
                     </div>
                     <div className="form-group col-xs-6">
                         <label>数据类型:</label>
-                        <select name="type" className="form-control">
+                        <select name="type" className="form-control"
+                            value={this.state.type}
+                            onChange={(e)=>this.setState({type:e.target.value,errors:{...this.state.errors,type:undefined}})}>
                             {['String', 'Integer', 'Char', 'Double', 'Long', 'Float', 'BigDecimal', 'Boolean', 'Date', 'List', 'Set', 'Map', 'Enum', 'Object']
-                                .map(option => 
+                                .map(option =>
                                     <option value={option} key={option}>{option}</option>
                                 )}
                         </select>
+                        {this.state.errors.type && <div className="text-danger" style={{fontSize:'12px'}}>{this.state.errors.type}</div>}
                     </div>
                 </div>
                 <div className="form-group">
                     <label>实现逻辑:</label>
-                    <textarea name="logicComment" className="form-control" rows="3" maxLength="300" />
+                    <textarea name="logicComment" className="form-control" rows="3" maxLength="300"
+                        value={this.state.logicComment}
+                        onChange={(e)=>this.setState({logicComment:e.target.value})}/>
                 </div>
                 <div className="row">
                     <div className="form-group col-xs-6">
                         <label>状态:</label>
-                        <select name="dsStatus" className="form-control">
+                        <select name="dsStatus" className="form-control"
+                            value={this.state.dsStatus}
+                            onChange={(e)=>this.setState({dsStatus:Number(e.target.value)})}>
                             <option value="0">待开发</option>
                             <option value="1">已上线</option>
                         </select>
                     </div>
                 </div>
-                
+
             </div>
         );
         const buttons=[
@@ -132,23 +118,22 @@ export default class AddParamsDialog extends Component{
                 className:'btn btn-success',
                 icon:'fa fa-floppy-o',
                 click:function () {
-                    var validator=$(ReactDOM.findDOMNode(this)).data('bootstrapValidator');
-                    validator.validate();
-                    var valid=validator.isValid();
+                    var {valid,errors}=this._validate();
                     if(!valid){
+                        this.setState({errors});
                         return;
                     }
-                    var {rowIndex,create,masterRowData}=this.state;
+                    var {rowIndex,create,masterRowData,name,label,type,defaultValue,logicComment,categoryLabel,dsStatus}=this.state;
                     if(create){
                         dispatch(action.addVariable({
                             clazz: masterRowData.clazz,
-                            name: $('[name=name]').val() || '',
-                            label: $('[name=label]').val() || '',
-                            dataType: $('[name=type]').val() || '',
-                            defaultVal: $('[name=defaultValue]').val() || '',
-                            logicComment: $('[name=logicComment]').val() || '',
-                            categoryLabel: $('[name=categoryLabel]').val() || '',
-                            dsStatus: Number($('[name=dsStatus]').val())
+                            name: name || '',
+                            label: label || '',
+                            dataType: type || '',
+                            defaultVal: defaultValue || '',
+                            logicComment: logicComment || '',
+                            categoryLabel: categoryLabel || '',
+                            dsStatus: dsStatus
                         }, file));
                     }
                     event.eventEmitter.emit(event.SHOW_LOADING);
@@ -156,6 +141,6 @@ export default class AddParamsDialog extends Component{
                 }.bind(this)
             }
         ];
-        return (<CommonDialog title={this.state.title} body={body} buttons={buttons}/>);
+        return (<CommonDialog title={this.state.title} body={body} buttons={buttons} visible={this.state.visible}/>);
     };
 }

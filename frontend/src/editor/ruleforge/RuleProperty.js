@@ -2,54 +2,66 @@ ruleforge.RuleProperty=function(parent,name,defaultValue,editorType){
 	this.parent=parent;
 	this.value=defaultValue;
 	this.editorType=editorType;
-	this.container=$("<span class='rule-property'>");
-	var nameContainer=$("<span>");
+	this.container=document.createElement("span");
+	this.container.className="rule-property";
+	var nameContainer=document.createElement("span");
 	this.name=name;
 	var label=this.getLabel();
 	RuleForge.setDomContent(nameContainer,label+"：");
-	this.container.append(nameContainer);
-	var valueContainer=$("<span>");
+	this.container.appendChild(nameContainer);
+	var valueContainer=document.createElement("span");
 	var valueLabel=generateContainer();
 	if(defaultValue=="")defaultValue="无";
-	valueLabel.css({
-		"color":"#000"
-	});
+	valueLabel.style.color="#000";
 	RuleForge.setDomContent(valueLabel,defaultValue);
-	valueContainer.append(valueLabel);
-	this.container.append(valueContainer);
+	valueContainer.appendChild(valueLabel);
+	this.container.appendChild(valueContainer);
 	var editor=null;
 	this.radioName=Math.uuid(15);
 	this.yesRadio=null;
 	this.noRadio=null;
 	if(editorType==1){
-		editor=$("<input type='text' size='30' class='form-control rule-text-editor'>");
+		editor=document.createElement("input");
+		editor.type="text";
+		editor.size="30";
+		editor.className="form-control rule-text-editor";
 	}else if(editorType==2){
-		editor=$("<input type='datetime' size='30' class='form-control rule-text-editor' title='日期格式为:yyyy-MM-dd HH:mm:ss，如2016-10-11 12:50:06'>");
+		editor=document.createElement("input");
+		editor.type="datetime";
+		editor.size="30";
+		editor.className="form-control rule-text-editor";
+		editor.title="日期格式为:yyyy-MM-dd HH:mm:ss，如2016-10-11 12:50:06";
 	}else if(editorType==3){
-		this.yesRadio=$("<input type='radio' value='是' name='"+this.radioName+"'> 是 </input>");
-		this.noRadio=$("<input type='radio' value='否' name='"+this.radioName+"'> 否</input>");
+		this.yesRadio=document.createElement("input");
+		this.yesRadio.type="radio";
+		this.yesRadio.value="是";
+		this.yesRadio.name=this.radioName;
+		this.noRadio=document.createElement("input");
+		this.noRadio.type="radio";
+		this.noRadio.value="否";
+		this.noRadio.name=this.radioName;
 	}
 	var self=this;
 	if(editorType!=3){
-		editor.blur(function(){
-			self.value=editor.prop("value");
-			editor.hide();
+		editor.addEventListener('blur',function(){
+			self.value=editor.value;
+			editor.style.display='none';
 			if(self.value==""){
 				RuleForge.setDomContent(valueLabel,"无");
 			}else{
 				RuleForge.setDomContent(valueLabel,self.value);
 			}
-			valueLabel.show();
+			valueLabel.style.display='';
 			window._setDirty();
 		});
-		valueLabel.click(function(){
-			valueLabel.hide();
-			editor.prop("value",self.value);
-			editor.show();
+		valueLabel.addEventListener('click',function(){
+			valueLabel.style.display='none';
+			editor.value=self.value;
+			editor.style.display='';
 			editor.focus();
 		});
-		this.container.append(editor);
-		editor.hide();
+		this.container.appendChild(editor);
+		editor.style.display='none';
 		if(editorType==2){
 			if(defaultValue!=="无"){
 				var defaultDate=new Date(defaultValue);
@@ -59,28 +71,29 @@ ruleforge.RuleProperty=function(parent,name,defaultValue,editorType){
 		}
 	}else{
 		if(defaultValue==true){
-			this.yesRadio.prop("checked",true);
+			this.yesRadio.checked=true;
 		}else{
-			this.noRadio.prop("checked",true);
+			this.noRadio.checked=true;
 		}
-		this.yesRadio.change(function(){
+		this.yesRadio.addEventListener('change',function(){
 			window._setDirty();
 		});
-		this.noRadio.change(function(){
+		this.noRadio.addEventListener('change',function(){
 			window._setDirty();
 		});
-		valueLabel.hide();
-		this.container.append(this.yesRadio);
-		this.container.append(this.noRadio);
+		valueLabel.style.display='none';
+		this.container.appendChild(this.yesRadio);
+		this.container.appendChild(this.noRadio);
 	}
-	var del=$(`<i class="glyphicon glyphicon-remove rule-property-del">`);
-	del.click(function(){
+	var del=document.createElement("i");
+	del.className="glyphicon glyphicon-remove rule-property-del";
+	del.addEventListener('click',function(){
 		self.container.remove();
 		var pos=self.parent.properties.indexOf(self);
 		self.parent.properties.splice(pos,1);
 		window._setDirty();
 	});
-	this.container.append(del);
+	this.container.appendChild(del);
 };
 ruleforge.RuleProperty.prototype.getLabel=function(){
 	var label="";
@@ -110,10 +123,10 @@ ruleforge.RuleProperty.prototype.getLabel=function(){
 ruleforge.RuleProperty.prototype.toXml=function(){
 	var xml=this.name;
 	if(this.editorType==3){
-		if(this.yesRadio.prop("checked")){
+		if(this.yesRadio.checked){
 			xml+="=\"true\"";
 		}else{
-			xml+="=\"false\"";			
+			xml+="=\"false\"";
 		}
 	}else{
 		if(!this.value || this.value==""){

@@ -15,18 +15,21 @@ export default class ResizableHeaderCell extends BaseCell {
      */
     constructor(rowContext) {
         super(rowContext);
-        this.td.css('padding-right', '0');
-        this.td.append(this.buildColResizeTrigger());
+        this.td.style.paddingRight = '0';
+        this.td.appendChild(this.buildColResizeTrigger());
         this.bindColResize(rowContext);
     }
 
     /**
      * Build the drag handle element for column resizing.
-     * @returns {jQuery} The resize trigger span
+     * @returns {HTMLElement} The resize trigger span
      */
     buildColResizeTrigger() {
-        this.resizeTrigger = $('<span style="cursor: col-resize;width: 3px;height: 20px;float: right;border: solid 2px transparent;">&nbsp;</span>');
-        return this.resizeTrigger;
+        const resizeTrigger = document.createElement('span');
+        resizeTrigger.style.cssText = 'cursor: col-resize;width: 3px;height: 20px;float: right;border: solid 2px transparent;';
+        resizeTrigger.innerHTML = '&nbsp;';
+        this.resizeTrigger = resizeTrigger;
+        return resizeTrigger;
     }
 
     /**
@@ -41,20 +44,20 @@ export default class ResizableHeaderCell extends BaseCell {
         let startWidth;
         const self = this;
 
-        this.resizeTrigger.mouseover(function () {
-            $(this).css('border', 'solid 2px #999');
+        this.resizeTrigger.addEventListener('mouseover', function () {
+            this.style.border = 'solid 2px #999';
         });
-        this.resizeTrigger.mouseout(function () {
-            $(this).css('border', 'solid 2px transparent');
+        this.resizeTrigger.addEventListener('mouseout', function () {
+            this.style.border = 'solid 2px transparent';
         });
-        this.resizeTrigger.mousedown(function (e) {
-            parentTd = $(this).parent();
+        this.resizeTrigger.addEventListener('mousedown', function (e) {
+            parentTd = this.parentElement;
             isDragging = true;
             startX = e.pageX;
-            startWidth = parentTd.width();
+            startWidth = parentTd.clientWidth;
             e.preventDefault();
         });
-        $(document).mousemove(function (e) {
+        document.addEventListener('mousemove', function (e) {
             if (isDragging) {
                 const newWidth = startWidth + (e.pageX - startX);
                 if (self.actionCol) {
@@ -62,12 +65,12 @@ export default class ResizableHeaderCell extends BaseCell {
                 } else {
                     self.conditionCol.width = newWidth;
                 }
-                parentTd.width(newWidth);
+                parentTd.style.width = newWidth + 'px';
                 self._rebuildHighLightDiv(rowContext);
                 e.preventDefault();
             }
         });
-        $(document).mouseup(function () {
+        document.addEventListener('mouseup', function () {
             isDragging = false;
             window._setDirty();
         });
@@ -82,12 +85,10 @@ export default class ResizableHeaderCell extends BaseCell {
         const highlightDiv = rowContext.complexTable.getHighlightDiv();
         const currentTD = highlightDiv.currentTD;
         if (currentTD) {
-            const width = currentTD.get(0).clientWidth;
-            const height = currentTD.get(0).clientHeight;
-            highlightDiv.css({
-                width: width + 'px',
-                height: height + 'px'
-            });
+            const width = currentTD.clientWidth;
+            const height = currentTD.clientHeight;
+            highlightDiv.style.width = width + 'px';
+            highlightDiv.style.height = height + 'px';
         }
     }
 }

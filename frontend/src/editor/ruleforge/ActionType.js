@@ -1,6 +1,6 @@
 ruleforge.ActionType=function(parentContainer,rule){
 	this.uuid=Math.uuid();
-	parentContainer.prop('id',this.uuid);
+	parentContainer.id=this.uuid;
 	this.rule=rule;
 	this.parentContainer=parentContainer;
 	this.type="";
@@ -34,7 +34,7 @@ ruleforge.ActionType.prototype.init=function(){
 	this.container.css({
 		"color":"green"
 	});
-	this.parentContainer.append(this.container);
+	this.parentContainer.appendChild(this.container);
 	this.action=null;
 };
 ruleforge.ActionType.prototype.initMenu=function(actionLibraries){
@@ -71,7 +71,7 @@ ruleforge.ActionType.prototype.initMenu=function(actionLibraries){
 		}
 	}]};
 	data||[].forEach(function(item) {
-		var springBeans=item.springBeans||[]; 
+		var springBeans=item.springBeans||[];
 		springBeans.forEach(function(springBean) {
 			var menuItem={
 				name:springBean.id,
@@ -98,7 +98,7 @@ ruleforge.ActionType.prototype.initMenu=function(actionLibraries){
 	}else{
 		self.menu=new RuleForge.menu.Menu(config);
 	}
-	this.container.click(function(e){
+	this.container.addEventListener('click',function(e){
 		self.menu.show(e);
 	});
 };
@@ -148,6 +148,6 @@ ruleforge.ActionType.prototype.setAction=function(type,data){
 		this.type="execute-function";
 		break;
 	}
-	this.parentContainer.append(this.action.getContainer());
+	this.parentContainer.appendChild(this.action.getContainer());
 	this.action.initData(data);
 };

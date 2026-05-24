@@ -26,7 +26,7 @@ ruleforge.ConfigConstantDialog.prototype.open = function () {
                             MsgBox.alert('常量库文件已存在');
                             return;
                         }
-                        _this.tbody.append(_this.newLibRow(path));
+                        _this.tbody.appendChild(_this.newLibRow(path));
                         window.constantLibraries.push(path);
                         window.refreshConstantLibraries();
                         window._setDirty();
@@ -39,35 +39,48 @@ ruleforge.ConfigConstantDialog.prototype.open = function () {
 
 ruleforge.ConfigConstantDialog.prototype.init = function () {
     var self = this;
-    const table = $(`<table class="table table-bordered">
-		<thead><tr>
-			<td>常量库文件</td><td style="width: 70px">操作</td>
-		</tr></thead>
-	</table>`);
-    this.tbody = $(`<tbody></tbody>`);
-    table.append(this.tbody);
-    this.dialogContent = $('<div>');
-    this.dialogContent.append(table);
+    const table = document.createElement("table");
+    table.className = "table table-bordered";
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    const td1 = document.createElement("td");
+    td1.textContent = "常量库文件";
+    const td2 = document.createElement("td");
+    td2.style.width = "70px";
+    td2.textContent = "操作";
+    headRow.appendChild(td1);
+    headRow.appendChild(td2);
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+    this.tbody = document.createElement("tbody");
+    table.appendChild(this.tbody);
+    this.dialogContent = document.createElement("div");
+    this.dialogContent.appendChild(table);
 
     for (var i = 0; i < window.constantLibraries.length; i++) {
         const lib = window.constantLibraries[i];
-        this.tbody.append(this.newLibRow(lib));
+        this.tbody.appendChild(this.newLibRow(lib));
     }
 };
 
 ruleforge.ConfigConstantDialog.prototype.newLibRow = function (lib) {
-    const row = $(`<tr>
-			<td>${lib}</td>
-		</tr>`);
-    const delCol = $(`<td></td>`), delButton = $(`<button type="button" class="btn btn-link">删除</button>`);
-    delCol.append(delButton);
-    delButton.click(function () {
+    const row = document.createElement("tr");
+    const libCell = document.createElement("td");
+    libCell.textContent = lib;
+    row.appendChild(libCell);
+    const delCol = document.createElement("td");
+    const delButton = document.createElement("button");
+    delButton.type = "button";
+    delButton.className = "btn btn-link";
+    delButton.textContent = "删除";
+    delCol.appendChild(delButton);
+    delButton.addEventListener('click', function () {
         const pos = window.constantLibraries.indexOf(lib);
         window.constantLibraries.splice(pos, 1);
         row.remove();
         window.refreshConstantLibraries();
         window._setDirty();
     });
-    row.append(delCol);
+    row.appendChild(delCol);
     return row;
 };

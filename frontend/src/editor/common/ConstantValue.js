@@ -1,14 +1,12 @@
 ruleforge.ConstantValue = function (arithmetic, data) {
     this.arithmetic = arithmetic;
-    this.container = $("<span>");
+    this.container = document.createElement("span");
     this.label = generateContainer();
-    this.container.append(this.label);
-    this.label.css({
-        "color": "#0174DF",
-    });
-    this.label.prop("innerText", "请选择常量");
+    this.container.appendChild(this.label);
+    this.label.style.color = "#0174DF";
+    this.label.innerText = "请选择常量";
     if (arithmetic) {
-        this.container.append(arithmetic.getContainer());
+        this.container.appendChild(arithmetic.getContainer());
     }
     if (data) {
         this.setValue(data);
@@ -68,17 +66,18 @@ ruleforge.ConstantValue.prototype.initMenu = function (constantLibraries) {
     } else {
         self.menu = new RuleForge.menu.Menu(config);
     }
-    this.label.click(function (e) {
+    this.label.addEventListener("click", function (e) {
         self.menu.show(e);
     });
 };
 
 ruleforge.ConstantValue.prototype.getDisplayContainer = function () {
-    var container = $("<span>" + this.category + "." + this.constantLabel + "</span>");
+    var container = document.createElement("span");
+    container.textContent = this.category + "." + this.constantLabel;
     if (this.arithmetic) {
         var dis = this.arithmetic.getDisplayContainer();
         if (dis) {
-            container.append(dis);
+            container.appendChild(dis);
         }
     }
     return container;

@@ -1,20 +1,19 @@
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
 
 export default class ImportProjectDialog extends Component {
     constructor(props) {
         super(props);
-        this.state = {isImporting: false};
+        this.state = {isImporting: false, visible: false};
     }
 
     componentDidMount() {
         event.eventEmitter.on(event.OPEN_IMPORT_PROJECT_DIALOG, () => {
-            $(ReactDOM.findDOMNode(this)).modal('show');
+            this.setState({visible: true});
         });
         event.eventEmitter.on(event.CLOSE_IMPORT_PROJECT_DIALOG, () => {
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
 
         //监听frame的 onload方法
@@ -25,7 +24,7 @@ export default class ImportProjectDialog extends Component {
             } else {
                 // 获取iframe里面的内容
                 event.eventEmitter.emit(event.CLOSE_IMPORT_PROJECT_DIALOG);
-                const responseText = $('#hiddenFrame')[0].contentDocument.body.textContent;
+                const responseText = document.getElementById('hiddenFrame').contentDocument.body.textContent;
                 $vm.setState({isImporting: false});
                 // 上传完成后的处理
                 if (responseText !== "") {
@@ -91,7 +90,7 @@ export default class ImportProjectDialog extends Component {
                         bootbox.alert('正在导入中，请等待');
                         return;
                     }
-                    var file = $('[name=file]').val();
+                    var file = document.querySelector('[name=file]').value;
                     if (!file || file.length < 2) {
                         bootbox.alert('请选择要导入的文件');
                         return;
@@ -102,6 +101,6 @@ export default class ImportProjectDialog extends Component {
             }
         ];
 
-        return (<CommonDialog title="导入项目" body={body} buttons={buttons}/>)
+        return (<CommonDialog visible={this.state.visible} title="导入项目" body={body} buttons={buttons}/>)
     }
 }

@@ -1,16 +1,16 @@
 ruleforge.Condition = function (parentContainer) {
-    this.container = $("<span>");
-    parentContainer.append(this.container);
+    this.container = document.createElement("span");
+    parentContainer.appendChild(this.container);
     this.arithmetic = new ruleforge.SimpleArithmetic();
 
     this.label = generateContainer();
-    this.container.append(this.label);
+    this.container.appendChild(this.label);
     this.label.css({
         "color": "blue"
     });
     RuleForge.setDomContent(this.label, "请选择类型");
-    this.valueContainer = $("<span>");
-    this.container.append(this.valueContainer);
+    this.valueContainer = document.createElement("span");
+    this.container.appendChild(this.valueContainer);
     this.initMenu();
 
 };
@@ -22,30 +22,30 @@ ruleforge.Condition.prototype.initMenu = function (constantLibraries) {
             onClick: function () {
                 self.type = "variable";
                 if (self.parameterValue) {
-                    self.parameterValue.getContainer().hide();
+                    self.parameterValue.getContainer().style.display = 'none';
                 }
                 if (self.functionValue) {
-                    self.functionValue.getContainer().hide();
+                    self.functionValue.getContainer().style.display = 'none';
                 }
                 if (self.methodValue) {
-                    self.methodValue.getContainer().hide();
+                    self.methodValue.getContainer().style.display = 'none';
                 }
                 if (self.variableValue) {
-                    self.variableValue.getContainer().show();
+                    self.variableValue.getContainer().style.display = '';
                 } else {
                     self.variableValue = new ruleforge.VariableValue(self.arithmetic, null, "In", null, false);
-                    self.valueContainer.append(self.variableValue.getContainer());
+                    self.valueContainer.appendChild(self.variableValue.getContainer());
                 }
                 if (self.operator) {
-                    self.operator.getContainer().show();
+                    self.operator.getContainer().style.display = '';
                 } else {
                     self.operator = new ruleforge.ComparisonOperator(function () {
                         self.inputType = self.operator.getInputType();
                         if (self.inputType) {
-                            self.container.append(self.inputType.getContainer());
+                            self.container.appendChild(self.inputType.getContainer());
                         }
                     });
-                    self.container.append(self.operator.getContainer());
+                    self.container.appendChild(self.operator.getContainer());
                 }
                 self.label.css({
                     "color": "white"
@@ -58,30 +58,30 @@ ruleforge.Condition.prototype.initMenu = function (constantLibraries) {
             onClick: function () {
                 self.type = "parameter";
                 if (self.variableValue) {
-                    self.variableValue.getContainer().hide();
+                    self.variableValue.getContainer().style.display = 'none';
                 }
                 if (self.methodValue) {
-                    self.methodValue.getContainer().hide();
+                    self.methodValue.getContainer().style.display = 'none';
                 }
                 if (self.functionValue) {
-                    self.functionValue.getContainer().hide();
+                    self.functionValue.getContainer().style.display = 'none';
                 }
                 if (self.parameterValue) {
-                    self.parameterValue.getContainer().show();
+                    self.parameterValue.getContainer().style.display = '';
                 } else {
                     self.parameterValue = new ruleforge.ParameterValue(self.arithmetic, null, "In");
-                    self.valueContainer.append(self.parameterValue.getContainer());
+                    self.valueContainer.appendChild(self.parameterValue.getContainer());
                 }
                 if (self.operator) {
-                    self.operator.getContainer().show();
+                    self.operator.getContainer().style.display = '';
                 } else {
                     self.operator = new ruleforge.ComparisonOperator(function () {
                         self.inputType = self.operator.getInputType();
                         if (self.inputType) {
-                            self.container.append(self.inputType.getContainer());
+                            self.container.appendChild(self.inputType.getContainer());
                         }
                     });
-                    self.container.append(self.operator.getContainer());
+                    self.container.appendChild(self.operator.getContainer());
                 }
                 self.label.css({
                     "color": "white"
@@ -91,7 +91,7 @@ ruleforge.Condition.prototype.initMenu = function (constantLibraries) {
             }
         }]
     });
-    this.label.click(function (e) {
+    this.label.addEventListener('click', function (e) {
         self.menu.show(e);
     });
 
@@ -110,72 +110,72 @@ ruleforge.Condition.prototype.initData = function (data) {
     }
     if (this.type == "parameter") {
         if (this.variableValue) {
-            this.variableValue.getContainer().hide();
+            this.variableValue.getContainer().style.display = 'none';
         }
         if (this.methodValue) {
-            this.methodValue.getContainer().hide();
+            this.methodValue.getContainer().style.display = 'none';
         }
         if (this.functionValue) {
-            this.functionValue.getContainer().hide();
+            this.functionValue.getContainer().style.display = 'none';
         }
         this.parameterValue = new ruleforge.ParameterValue(this.arithmetic, leftPart, "In");
-        this.valueContainer.append(this.parameterValue.getContainer());
+        this.valueContainer.appendChild(this.parameterValue.getContainer());
     } else if (this.type == "variable") {
         if (this.parameterValue) {
-            this.parameterValue.getContainer().hide();
+            this.parameterValue.getContainer().style.display = 'none';
         }
         if (this.methodValue) {
-            this.methodValue.getContainer().hide();
+            this.methodValue.getContainer().style.display = 'none';
         }
         if (this.functionValue) {
-            this.functionValue.getContainer().hide();
+            this.functionValue.getContainer().style.display = 'none';
         }
         this.variableValue = new ruleforge.VariableValue(this.arithmetic, leftPart, "In", null, false);
-        this.valueContainer.append(this.variableValue.getContainer());
+        this.valueContainer.appendChild(this.variableValue.getContainer());
     } else if (this.type == "method") {
         if (this.parameterValue) {
-            this.parameterValue.getContainer().hide();
+            this.parameterValue.getContainer().style.display = 'none';
         }
         if (this.variableValue) {
-            this.variableValue.getContainer().hide();
+            this.variableValue.getContainer().style.display = 'none';
         }
         if (this.functionValue) {
-            this.functionValue.getContainer().hide();
+            this.functionValue.getContainer().style.display = 'none';
         }
         this.methodValue = new ruleforge.MethodValue(this.arithmetic, leftPart);
-        this.valueContainer.append(this.methodValue.getContainer());
+        this.valueContainer.appendChild(this.methodValue.getContainer());
 
     } else if (this.type == "commonfunction") {
         if (this.parameterValue) {
-            this.parameterValue.getContainer().hide();
+            this.parameterValue.getContainer().style.display = 'none';
         }
         if (this.variableValue) {
-            this.variableValue.getContainer().hide();
+            this.variableValue.getContainer().style.display = 'none';
         }
         if (this.methodValue) {
-            this.methodValue.getContainer().hide();
+            this.methodValue.getContainer().style.display = 'none';
         }
         this.functionValue = new ruleforge.FunctionValue(this.arithmetic, leftPart);
-        this.valueContainer.append(this.functionValue.getContainer());
+        this.valueContainer.appendChild(this.functionValue.getContainer());
     }
     if (this.operator) {
-        this.operator.getContainer().show();
+        this.operator.getContainer().style.display = '';
     } else {
         var self = this;
         this.operator = new ruleforge.ComparisonOperator(function () {
             self.inputType = self.operator.getInputType();
             if (self.inputType) {
-                self.container.append(self.inputType.getContainer());
+                self.container.appendChild(self.inputType.getContainer());
             }
         });
-        this.container.append(this.operator.getContainer());
+        this.container.appendChild(this.operator.getContainer());
     }
     var op = data["op"];
     this.operator.setOperator(op);
     this.operator.initRightValue(data["value"]);
     this.inputType = this.operator.getInputType();
     if (this.inputType) {
-        this.container.append(this.inputType.getContainer());
+        this.container.appendChild(this.inputType.getContainer());
     }
 };
 ruleforge.Condition.prototype.toXml = function () {

@@ -8,15 +8,16 @@ export default class AttributeRow extends Row{
         super(table);
         this.rowData=rowData;
         this.conditionRows=[];
-        this.tr=$(`<tr style="min-height: 25px"></tr>`);
-        this.tr.append(this.newAttributeCell());
-        this.tr.append(this.newConditionCell());
-        this.tr.append(this.newScoreCell());
+        this.tr = document.createElement('tr');
+        this.tr.style.cssText = 'min-height: 25px';
+        this.tr.appendChild(this.newAttributeCell());
+        this.tr.appendChild(this.newConditionCell());
+        this.tr.appendChild(this.newScoreCell());
         this.initCustomCells();
     }
     addCustomCol(customCol){
         const cell=new CustomCell(this,customCol);
-        this.tr.append(cell.td);
+        this.tr.appendChild(cell.td);
         customCol.customCells.push(cell);
         for(let row of this.conditionRows){
             row.addCustomCol(customCol);
@@ -65,24 +66,24 @@ export default class AttributeRow extends Row{
     removeConditionRow(conditionRow){
         const pos=this.conditionRows.indexOf(conditionRow);
         this.conditionRows.splice(pos,1);
-        let rowSpan=this.attributeCell.td.prop("rowspan");
+        let rowSpan=this.attributeCell.td.rowSpan;
         if(!rowSpan){
             rowSpan=0;
         }else{
             rowSpan=parseInt(rowSpan)-1;
         }
-        this.attributeCell.td.prop("rowspan",rowSpan);
+        this.attributeCell.td.rowSpan=rowSpan;
         conditionRow.tr.remove();
     }
     addConditionRow(conditionRowData){
         const newConditionRow=new ConditionRow(this.scoreCardTable,this,conditionRowData);
-        let rowSpan=this.attributeCell.td.prop("rowspan");
+        let rowSpan=this.attributeCell.td.rowSpan;
         if(!rowSpan){
             rowSpan=2;
         }else{
             rowSpan=parseInt(rowSpan)+1;
         }
-        this.attributeCell.td.prop("rowspan",rowSpan);
+        this.attributeCell.td.rowSpan=rowSpan;
         if(this.conditionRows.length>0){
             this.conditionRows[this.conditionRows.length-1].tr.after(newConditionRow.tr);
         }else{

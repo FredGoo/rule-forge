@@ -308,15 +308,24 @@ export function loadData(classify, projectName, types, searchFileName) {
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
 
             // 控制所有节点显示
-            const $span = $('#node-' + rootFile.id).parent("li");
-            if (searchFileName == null || searchFileName === '') {
-                var $liChildren = $span.find('ul > li > ul > li');
-                $liChildren.hide('fast');
-                $span.find('ul > li').find('i:first').addClass('rf-plus').removeClass('rf-minus');
-            } else {
-                var $liChildren = $span.find('li');
-                $liChildren.show('fast');
-                $span.find('ul > li').find('i:first').addClass('rf-minus').removeClass('rf-plus');
+            const spanEl = document.getElementById('node-' + rootFile.id);
+            if (spanEl) {
+                const parentLi = spanEl.parentElement;
+                if (searchFileName == null || searchFileName === '') {
+                    var liChildren = parentLi.querySelectorAll('ul > li > ul > li');
+                    liChildren.forEach(function(child) { child.style.display = 'none'; });
+                    parentLi.querySelectorAll('ul > li').forEach(function(item) {
+                        const firstI = item.querySelector('i:first-child');
+                        if (firstI) { firstI.classList.add('rf-plus'); firstI.classList.remove('rf-minus'); }
+                    });
+                } else {
+                    var liChildren = parentLi.querySelectorAll('li');
+                    liChildren.forEach(function(child) { child.style.display = ''; });
+                    parentLi.querySelectorAll('ul > li').forEach(function(item) {
+                        const firstI = item.querySelector('i:first-child');
+                        if (firstI) { firstI.classList.add('rf-minus'); firstI.classList.remove('rf-plus'); }
+                    });
+                }
             }
         }).catch(function (response) {
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);

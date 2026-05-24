@@ -1,6 +1,6 @@
 var ruleforge={};
 var codeMirror=null;
-$(document).ready(function() {
+document.addEventListener("DOMContentLoaded", function() {
 	CodeMirror.commands.autocomplete = function(cm) {
         cm.showHint({hint: CodeMirror.hint.ruleforge});
     };
@@ -15,12 +15,16 @@ $(document).ready(function() {
 		if(e.text=="."){
 			CodeMirror.commands.autocomplete(codeMirror);
 		}
-		$(".CodeMirror-code").find("pre").children(".error").removeClass("error");
-		$(".CodeMirror-code").find("pre").attr("title", "");
+		document.querySelector(".CodeMirror-code").querySelectorAll("pre").forEach(function(pre) {
+			pre.querySelectorAll(".error").forEach(function(span) {
+				span.classList.remove("error");
+			});
+			pre.title = "";
+		});
 		if(cm.validator){
 			clearTimeout(cm.validator);
 		}
-		if($.trim(value)){
+		if(value.trim()){
 			cm.validator = setTimeout(function() {
 				fetch("ruleforge?action=checkdsl", {
 					method: "POST",
@@ -31,11 +35,13 @@ $(document).ready(function() {
 					return response.json();
 				}).then(function(infos) {
 					if(infos && infos.length>0){
+						var pres = document.querySelector(".CodeMirror-code").querySelectorAll("pre");
 						for(var i = 0; i<infos.length; i ++) {
-							var pre = $(".CodeMirror-code").find("pre").eq(infos[i].line-1);
-							pre.children("span").addClass("error");
-							pre.attr("title",infos[i].message);
-
+							var pre = pres[infos[i].line-1];
+							pre.querySelectorAll("span").forEach(function(span) {
+								span.classList.add("error");
+							});
+							pre.title = infos[i].message;
 						}
 					}
 				}).catch(function() {
@@ -49,7 +55,7 @@ $(document).ready(function() {
 });
 
 function init(){
-	var height=$(document).height()-55;
+	var height=document.documentElement.scrollHeight-55;
 	codeMirror.setSize("100%",height)
 	window._dirty=false;
 	var file=_getRequestParameter("file");
@@ -64,7 +70,7 @@ function init(){
 	if(!hasPermission()) {
 		saveButton = '';
 	}else {
-		$(window).keydown(function(event) {
+		window.addEventListener("keydown", function(event) {
 			if(event.ctrlKey) {
 				if(event.keyCode == 83) {
 					save(file, false);
@@ -89,35 +95,35 @@ function init(){
 	       ' </div>'+
 	    '</div>'+
 	'</nav>';
-	var toolbar=$(toolbarHtml);
-	toolbar.css({
-		padding:"4px",
-		diaplay:"inline-block"
-	});
-	$("#toolbarContainer").append(toolbar);
-	$("#saveButton").click(function(){
+	var toolbarEl = document.createElement("div");
+	toolbarEl.innerHTML = toolbarHtml;
+	var toolbar = toolbarEl.firstChild;
+	toolbar.style.padding = "4px";
+	toolbar.style.display = "inline-block";
+	document.getElementById("toolbarContainer").appendChild(toolbar);
+	document.getElementById("saveButton").addEventListener("click", function(){
 		save(file,false);
 	});
-	$("#saveButtonNewVersion").click(function(){
+	document.getElementById("saveButtonNewVersion").addEventListener("click", function(){
 		save(file,true);
 	});
-	$("#checkDSL").click(function(){
+	document.getElementById("checkDSL").addEventListener("click", function(){
 		checkDSL();
 	});
 
-	$("#configParameterButton").click(function(){
+	document.getElementById("configParameterButton").addEventListener("click", function(){
 		var dialog=new ruleforge.ResourceListDialog("ParameterLibrary",null,selectResource);
 		dialog.open();
 	});
-	$("#addVarButton").click(function(){
+	document.getElementById("addVarButton").addEventListener("click", function(){
 		var dialog=new ruleforge.ResourceListDialog("VariableLibrary",null,selectResource);
 		dialog.open();
 	});
-	$("#addConstantsButton").click(function(){
+	document.getElementById("addConstantsButton").addEventListener("click", function(){
 		var dialog=new ruleforge.ResourceListDialog("ConstantLibrary",null,selectResource);
 		dialog.open();
 	});
-	$("#addActionButton").click(function(){
+	document.getElementById("addActionButton").addEventListener("click", function(){
 		var dialog=new ruleforge.ResourceListDialog("ActionLibrary",null,selectResource);
 		dialog.open();
 	});
@@ -129,7 +135,7 @@ function init(){
 		return response.text();
 	}).then(function(data) {
 		codeMirror.setValue(data);
-		$("#saveButton").addClass("disabled");
+		document.getElementById("saveButton").classList.add("disabled");
 
 		codeMirror.on("change",function(){
 			setDirty();
@@ -196,7 +202,7 @@ function loadResLib(){
 	});
 };
 function save(file,newVersion){
-	if($("#saveButton").hasClass("disabled")){
+	if(document.getElementById("saveButton").classList.contains("disabled")){
 		return false;
 	}
 	var url="ruleforge?action=savedsl&file="+file+"";
@@ -220,8 +226,8 @@ function setDirty(){
 		return;
 	}
 	window._dirty=true;
-	$("#saveButton").html("<i class='icon-save'></i> *保存");
-	$("#saveButton").removeClass("disabled");
+	document.getElementById("saveButton").innerHTML = "<i class='icon-save'></i> *保存";
+	document.getElementById("saveButton").classList.remove("disabled");
 };
 
 function cancelDirty(){
@@ -229,8 +235,8 @@ function cancelDirty(){
 		return;
 	}
 	window._dirty=false;
-	$("#saveButton").html("<i class='icon-save'></i> 保存");
-	$("#saveButton").addClass("disabled");
+	document.getElementById("saveButton").innerHTML = "<i class='icon-save'></i> 保存";
+	document.getElementById("saveButton").classList.add("disabled");
 };
 
 function _getRequestParameter(name){

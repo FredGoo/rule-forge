@@ -3,12 +3,7 @@ ruleforge.ComparisonOperator = function (menuCallFun) {
     this.operator = "";
     this.container = generateContainer();
     RuleForge.setDomContent(this.container, "请选择比较操作符");
-    this.container.css({
-        "font-size": "13px",
-        "color": "red",
-        "fontWeight": "bold",
-        "margin-right": "3px"
-    });
+    this.container.style.cssText += ";font-size:13px;color:red;fontWeight:bold;margin-right:3px;";
     var self = this;
     var onClick = function (menu) {
         self.setOperator(menu.name);
@@ -99,7 +94,7 @@ ruleforge.ComparisonOperator = function (menuCallFun) {
             onClick: onClick
         }]
     });
-    this.container.click(function (e) {
+    this.container.addEventListener("click", function (e) {
         self.menu.show(e);
     });
 

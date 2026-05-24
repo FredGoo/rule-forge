@@ -1,3 +1,4 @@
+import '../../bootbox.js';
 /**
  * Crosstab Decision Table Editor - Entry point.
  *
@@ -49,45 +50,71 @@ import '../common/jquery.utils.js';
 import CrossTable from './CrossTable.js';
 import ExcelImportDialog from './ExcelImportDialog.js';
 import {getParameter, ajaxSave, buildProjectNameFromFile} from '../../Utils.js';
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
+import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     const crossTable = new CrossTable({
-        container: $('#container')
+        container: document.getElementById('container')
     });
 
     const file = getParameter('file');
     if (!file) {
-        $('#container').html('<h2 style="color:red">请先指定一个交叉决策表文件!</h2>');
+        document.getElementById('container').innerHTML = '<h2 style="color:red">请先指定一个交叉决策表文件!</h2>';
         return;
     }
 
     window._project = buildProjectNameFromFile(file);
 
-    // Build toolbar
-    const toolbarContainer = $('#toolbarContainer');
-    const toolbar = $('<div class="btn-toolbar" style="border: solid 1px #d0d0d0;padding:5px;margin:3px;border-radius: 5px;background: #fdfdfd"></div>');
-    toolbarContainer.append(toolbar);
+    // Mount React dialog components
+    createRoot(document.getElementById('dialogContainer')).render(
+        <div>
+            <ResourceVersionDialogComponent/>
+            <ResourceListDialogComponent/>
+        </div>
+    );
 
-    const group1 = $('<div class="btn-group btn-group-sm"></div>');
-    toolbar.append(group1);
+    // Build toolbar
+    const toolbarContainer = document.getElementById('toolbarContainer');
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'btn-toolbar';
+    toolbar.style.cssText = 'border: solid 1px #d0d0d0;padding:5px;margin:3px;border-radius: 5px;background: #fdfdfd';
+    toolbarContainer.appendChild(toolbar);
+
+    const group1 = document.createElement('div');
+    group1.className = 'btn-group btn-group-sm';
+    toolbar.appendChild(group1);
 
     // Save button (starts disabled)
-    const saveButton = $('<button type="button" class="btn btn-default disabled"><i class="rf rf-save"></i> 保存</button>');
-    group1.append(saveButton);
+    const saveButton = document.createElement('button');
+    saveButton.type = 'button';
+    saveButton.className = 'btn btn-default disabled';
+    saveButton.innerHTML = "<i class='rf rf-save'></i> 保存";
+    group1.appendChild(saveButton);
 
     // Save new version button (starts disabled)
-    const saveNewVersionButton = $('<button type="button" class="btn btn-default disabled"><i class="rf rf-savenewversion"></i> 保存新版本</button>');
-    group1.append(saveNewVersionButton);
+    const saveNewVersionButton = document.createElement('button');
+    saveNewVersionButton.type = 'button';
+    saveNewVersionButton.className = 'btn btn-default disabled';
+    saveNewVersionButton.innerHTML = "<i class='rf rf-savenewversion'></i> 保存新版本";
+    group1.appendChild(saveNewVersionButton);
 
     const context = {};
 
-    const group2 = $('<div class="btn-group btn-group-sm"></div>');
-    toolbar.append(group2);
+    const group2 = document.createElement('div');
+    group2.className = 'btn-group btn-group-sm';
+    toolbar.appendChild(group2);
 
     // Variable library button
-    const varButton = $('<button type="button" class="btn btn-default"><i class="rf rf-variable"></i> 变量库</button>');
-    group2.append(varButton);
-    varButton.click(function () {
+    const varButton = document.createElement('button');
+    varButton.type = 'button';
+    varButton.className = 'btn btn-default';
+    varButton.innerHTML = "<i class='rf rf-variable'></i> 变量库";
+    group2.appendChild(varButton);
+    varButton.addEventListener('click', function () {
         if (!context.configVarDialog) {
             context.configVarDialog = new ruleforge.ConfigVariableDialog(context);
         }
@@ -95,9 +122,12 @@ $(document).ready(function () {
     });
 
     // Constant library button
-    const constButton = $('<button type="button" class="btn btn-default"><i class="rf rf-constant"></i> 常量库</button>');
-    group2.append(constButton);
-    constButton.click(function () {
+    const constButton = document.createElement('button');
+    constButton.type = 'button';
+    constButton.className = 'btn btn-default';
+    constButton.innerHTML = "<i class='rf rf-constant'></i> 常量库";
+    group2.appendChild(constButton);
+    constButton.addEventListener('click', function () {
         if (!context.configConstantDialog) {
             context.configConstantDialog = new ruleforge.ConfigConstantDialog(context);
         }
@@ -105,9 +135,12 @@ $(document).ready(function () {
     });
 
     // Action library button
-    const actionButton = $('<button type="button" class="btn btn-default"><i class="rf rf-action"></i> 动作库</button>');
-    group2.append(actionButton);
-    actionButton.click(function () {
+    const actionButton = document.createElement('button');
+    actionButton.type = 'button';
+    actionButton.className = 'btn btn-default';
+    actionButton.innerHTML = "<i class='rf rf-action'></i> 动作库";
+    group2.appendChild(actionButton);
+    actionButton.addEventListener('click', function () {
         if (!context.configActionDialog) {
             context.configActionDialog = new ruleforge.ConfigActionDialog(context);
         }
@@ -115,9 +148,12 @@ $(document).ready(function () {
     });
 
     // Parameter library button
-    const paramButton = $('<button type="button" class="btn btn-default"><i class="rf rf-parameter"></i> 参数库</button>');
-    group2.append(paramButton);
-    paramButton.click(function () {
+    const paramButton = document.createElement('button');
+    paramButton.type = 'button';
+    paramButton.className = 'btn btn-default';
+    paramButton.innerHTML = "<i class='rf rf-parameter'></i> 参数库";
+    group2.appendChild(paramButton);
+    paramButton.addEventListener('click', function () {
         if (!context.configParameterDialog) {
             context.configParameterDialog = new ruleforge.ConfigParameterDialog(context);
         }
@@ -125,9 +161,13 @@ $(document).ready(function () {
     });
 
     // Excel import button
-    const excelButton = $('<button type="button" class="btn btn-default" style="height: 36px"><i class="glyphicon glyphicon-share-alt" style="font-size: 16px"></i> 导入Excel</button>');
-    group2.append(excelButton);
-    excelButton.click(function () {
+    const excelButton = document.createElement('button');
+    excelButton.type = 'button';
+    excelButton.className = 'btn btn-default';
+    excelButton.style.height = '36px';
+    excelButton.innerHTML = "<i class='glyphicon glyphicon-share-alt' style='font-size: 16px'></i> 导入Excel";
+    group2.appendChild(excelButton);
+    excelButton.addEventListener('click', function () {
         new ExcelImportDialog().show();
     });
 
@@ -136,17 +176,17 @@ $(document).ready(function () {
         if (context._dirty) return;
         context._dirty = true;
         window._dirty = true;
-        saveButton.html("<i class='rf rf-save'></i> *保存");
-        saveButton.removeClass('disabled');
-        saveNewVersionButton.html("<i class='rf rf-savenewversion'></i> *保存新版本");
-        saveNewVersionButton.removeClass('disabled');
+        saveButton.innerHTML = "<i class='rf rf-save'></i> *保存";
+        saveButton.classList.remove('disabled');
+        saveNewVersionButton.innerHTML = "<i class='rf rf-savenewversion'></i> *保存新版本";
+        saveNewVersionButton.classList.remove('disabled');
     };
 
-    saveButton.click(function () {
+    saveButton.addEventListener('click', function () {
         saveFile(false);
     });
 
-    saveNewVersionButton.click(function () {
+    saveNewVersionButton.addEventListener('click', function () {
         saveFile(true);
     });
 
@@ -156,10 +196,10 @@ $(document).ready(function () {
     function clearDirty() {
         context._dirty = false;
         window._dirty = false;
-        saveButton.html("<i class='rf rf-save'></i> 保存");
-        saveButton.addClass('disabled');
-        saveNewVersionButton.html("<i class='rf rf-savenewversion'></i> 保存新版本");
-        saveNewVersionButton.addClass('disabled');
+        saveButton.innerHTML = "<i class='rf rf-save'></i> 保存";
+        saveButton.classList.add('disabled');
+        saveNewVersionButton.innerHTML = "<i class='rf rf-savenewversion'></i> 保存新版本";
+        saveNewVersionButton.classList.add('disabled');
     }
 
     /**
@@ -264,7 +304,7 @@ $(document).ready(function () {
         refreshFunctionLibraries();
         clearDirty();
     }).catch(function (error) {
-        $(window.document.body).empty();
+        document.body.innerHTML = '';
         if (error && error.status === 401) {
             bootbox.alert('权限不足，不能进行此操作.');
         } else if (error && error.text) {

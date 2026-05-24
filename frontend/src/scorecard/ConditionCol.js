@@ -8,9 +8,12 @@ export default class ConditionCol extends Col{
         this.init();
     }
     init(){
-        this.td=$(`<td style="width: ${this.width}px;padding-right: 0;background: #607D8B;color: #ffffff;border:1px solid #607D8B">${this.name}</td>`);
-        this.td.append(this.buildColResizeTrigger());
-        this.scoreCardTable.headerRow.append(this.td);
+        const td = document.createElement('td');
+        td.style.cssText = 'width: ' + this.width + 'px;padding-right: 0;background: #607D8B;color: #ffffff;border:1px solid #607D8B';
+        td.textContent = this.name;
+        this.td = td;
+        this.td.appendChild(this.buildColResizeTrigger());
+        this.scoreCardTable.headerRow.appendChild(this.td);
         this.bindColResize();
     }
     toXml(){

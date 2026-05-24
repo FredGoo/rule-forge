@@ -8,6 +8,8 @@
 
 export default class BaseRow {
     constructor() {
-        this.tr = $('<tr style="height: 30px;"></tr>');
+        const tr = document.createElement('tr');
+        tr.style.height = '30px';
+        this.tr = tr;
     }
 }

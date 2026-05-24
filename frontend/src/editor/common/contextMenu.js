@@ -15,15 +15,15 @@
         }, getDom: function () {
             if (!this._dom) {
                 this._dom = this.createDom();
-                $(this._dom).data("ref", this);
+                this._dom._ref = this;
             }
             return this._dom;
         }, render: function (target) {
             if (!this._rendered) {
                 if (target) {
-                    $(target).append(this.getDom());
+                    target.appendChild(this.getDom());
                 } else {
-                    $("body").append(this.getDom());
+                    document.body.appendChild(this.getDom());
                 }
             }
             this._rendered = true;
@@ -42,7 +42,7 @@
 
     RuleForge.menu.Menu = function (config) {
         RuleForge.menu.Menu.prototype.superClass.call(this, config);
-        $.extend(this, config);
+        Object.assign(this, config);
     };
 
     RuleForge.menu.Menu.prototype = new RuleForge.menu.AbstractMenu();
@@ -52,29 +52,36 @@
     RuleForge.menu.Menu.prototype.createDom = function () {
         var compressed, dom, menuItems, ul;
         compressed = this.compress ? ' compressed-context' : '';
-        ul = $("<ul class='dropdown-menu dropdown-context" + compressed + "' style='font-size:12px'></ul>");
-        dom = ul[0];
+        ul = document.createElement("ul");
+        ul.className = 'dropdown-menu dropdown-context' + compressed;
+        ul.style.fontSize = '12px';
+        dom = ul;
         this._dom = dom;
         menuItems = this.menuItems;
         var self = this;
         if (menuItems.length > 20) {
-            var searchContainer = $("<div style='margin-left: 2px;margin-right: 2px'>");
-            searchContainer.append("<i class='glyphicon glyphicon-filter' style='color:#006600;margin-left: 2px;margin-right: 2px'></i>  ");
-            this.search = $("<input type='text' class='form-control' placeholder='输入值后回车查询' style='width: 85%;display: inline-block;height: 26px;padding: 1px;font-size: 12px;'>");
-            searchContainer.append(this.search);
-            ul.append(searchContainer);
-            this.search.click(function (e) {
+            var searchContainer = document.createElement("div");
+            searchContainer.style.cssText = "margin-left: 2px;margin-right: 2px";
+            searchContainer.innerHTML = "<i class='glyphicon glyphicon-filter' style='color:#006600;margin-left: 2px;margin-right: 2px'></i>  ";
+            this.search = document.createElement("input");
+            this.search.type = "text";
+            this.search.className = "form-control";
+            this.search.placeholder = "输入值后回车查询";
+            this.search.style.cssText = "width: 85%;display: inline-block;height: 26px;padding: 1px;font-size: 12px;";
+            searchContainer.appendChild(this.search);
+            ul.appendChild(searchContainer);
+            this.search.addEventListener("click", function (e) {
                 e.stopPropagation();
             });
-            this.search.dblclick(function (e) {
+            this.search.addEventListener("dblclick", function (e) {
                 e.stopPropagation();
             });
-            this.search.keypress(function (event) {
+            this.search.addEventListener("keypress", function (event) {
                 var keynum = (event.keyCode ? event.keyCode : event.which);
                 if (keynum !== '13' && keynum !== 13) {
                     return;
                 }
-                var value = $(this).val();
+                var value = this.value;
                 if (self.oldSearchValue && self.oldSearchValue === value) {
                     return;
                 }
@@ -141,7 +148,7 @@
         RuleForge.menu.Menu.prototype.superClass.prototype.remove.call(this);
         if (this.parent) {
             this.parent.subMenu = null;
-            this.parent.getDom().removeClass("dropdown-submenu");
+            this.parent.getDom().classList.remove("dropdown-submenu");
         }
     };
 
@@ -149,38 +156,49 @@
         e.preventDefault();
         e.stopPropagation();
         this.render();
-        $('.modal').removeAttr('tabindex');
-        var $dd = $(this.getDom());
-        var target = $(e.target), z = 3;
-        while (!target.is("body")) {
-            var pz = target.css("z-index");
+        document.querySelectorAll('.modal').forEach(function(el) {
+            el.removeAttribute('tabindex');
+        });
+        var dd = this.getDom();
+        var target = e.target, z = 3;
+        while (target && target !== document.body) {
+            var pz = target.style.zIndex || window.getComputedStyle(target).zIndex;
             if (!isNaN(pz) && pz !== '0') {
                 z = parseInt(pz) + 1;
                 break;
             }
-            target = target.parent();
+            target = target.parentElement;
         }
-        $dd.css("z-index", z);
-        $('.dropdown-context:not(.dropdown-context-sub)').hide();
+        dd.style.zIndex = z;
+        document.querySelectorAll('.dropdown-context:not(.dropdown-context-sub)').forEach(function(el) {
+            el.style.display = 'none';
+        });
         if (typeof this.above == 'boolean' && this.above) {
-            $dd.addClass('dropdown-context-up')
-                .css({
-                    top: e.pageY - 20 - $dd.height(),
-                    left: e.pageX - 13
-                }).fadeIn(this.fadeSpeed);
+            dd.classList.add('dropdown-context-up');
+            dd.style.top = (e.pageY - 20 - dd.offsetHeight) + 'px';
+            dd.style.left = (e.pageX - 13) + 'px';
+            dd.style.opacity = '0';
+            dd.style.display = '';
+            dd.style.transition = 'opacity ' + (this.fadeSpeed / 1000) + 's';
+            requestAnimationFrame(function() { dd.style.opacity = '1'; });
         } else if (typeof this.above == 'string' && this.above == 'auto') {
-            $dd.removeClass('dropdown-context-up');
-            var autoH = $dd.height() + 12;
-            if ((e.pageY + autoH) > ($('html').height() + 10) && e.pageY > autoH) {
-                $dd.addClass('dropdown-context-up').css({
-                    top: e.pageY - 20 - autoH,
-                    left: e.pageX - 13
-                }).fadeIn(this.fadeSpeed);
+            dd.classList.remove('dropdown-context-up');
+            var autoH = dd.offsetHeight + 12;
+            if ((e.pageY + autoH) > (document.documentElement.scrollHeight + 10) && e.pageY > autoH) {
+                dd.classList.add('dropdown-context-up');
+                dd.style.top = (e.pageY - 20 - autoH) + 'px';
+                dd.style.left = (e.pageX - 13) + 'px';
+                dd.style.opacity = '0';
+                dd.style.display = '';
+                dd.style.transition = 'opacity ' + (this.fadeSpeed / 1000) + 's';
+                requestAnimationFrame(function() { dd.style.opacity = '1'; });
             } else {
-                $dd.css({
-                    top: e.pageY + 10,
-                    left: e.pageX - 13
-                }).fadeIn(this.fadeSpeed);
+                dd.style.top = (e.pageY + 10) + 'px';
+                dd.style.left = (e.pageX - 13) + 'px';
+                dd.style.opacity = '0';
+                dd.style.display = '';
+                dd.style.transition = 'opacity ' + (this.fadeSpeed / 1000) + 's';
+                requestAnimationFrame(function() { dd.style.opacity = '1'; });
             }
         }
         if (this.onShow) {
@@ -189,14 +207,22 @@
     };
 
     RuleForge.menu.Menu.prototype.hide = function () {
-        var $dom = $(this._dom);
-        if ($dom.is(":visible")) {
+        var dom = this._dom;
+        if (dom && dom.offsetParent !== null) {
             if (this.onHide) {
                 this.onHide(this);
             }
-            $dom.fadeOut(this.fadeSpeed, function () {
-                $dom.css({display: ''}).find('.drop-left').removeClass('drop-left');
-            });
+            var fadeSpeed = this.fadeSpeed;
+            dom.style.transition = 'opacity ' + (fadeSpeed / 1000) + 's';
+            dom.style.opacity = '0';
+            setTimeout(function () {
+                dom.style.display = '';
+                dom.style.opacity = '';
+                dom.style.transition = '';
+                dom.querySelectorAll('.drop-left').forEach(function(el) {
+                    el.classList.remove('drop-left');
+                });
+            }, fadeSpeed);
             if (this.parent) {
                 this.parent.parent.hide();
             }
@@ -206,7 +232,7 @@
 
     RuleForge.menu.MenuItem = function (config) {
         RuleForge.menu.MenuItem.prototype.superClass.call(this, config);
-        $.extend(this, config);
+        Object.assign(this, config);
     };
 
     RuleForge.menu.MenuItem.prototype = new RuleForge.menu.AbstractMenu();
@@ -214,51 +240,61 @@
     RuleForge.menu.MenuItem.prototype.constructor = RuleForge.menu.MenuItem;
 
     RuleForge.menu.MenuItem.prototype.createDom = function () {
-        var $li, iconAndLabel, self;
+        var li, iconAndLabel, self;
         self = this;
-        $li = $("<li style='cursor: default'></li>");
-        this._dom = $li[0];
+        li = document.createElement("li");
+        li.style.cursor = "default";
+        this._dom = li;
         if (this.icon) {
             iconAndLabel = "<i class='" + this.icon + "'></i> " + this.label;
         } else {
             iconAndLabel = this.label;
         }
 
-        $li.on("mouseenter", function () {
-            $li.siblings(".dropdown-submenu").each(function () {
-                $(this).find("ul.dropdown-context-sub").each(function () {
-                    var menu = $(this).data("ref");
-                    $(this).fadeOut(menu.fadeSpeed);
-                });
-            });
-
+        li.addEventListener("mouseenter", function () {
+            var siblings = li.parentElement ? li.parentElement.children : [];
+            for (var s = 0; s < siblings.length; s++) {
+                var sibling = siblings[s];
+                if (sibling !== li && sibling.classList.contains("dropdown-submenu")) {
+                    var subMenus = sibling.querySelectorAll("ul.dropdown-context-sub");
+                    for (var j = 0; j < subMenus.length; j++) {
+                        var subMenuEl = subMenus[j];
+                        var menu = subMenuEl._ref;
+                        if (menu) {
+                            subMenuEl.style.transition = 'opacity ' + (menu.fadeSpeed/1000) + 's';
+                            subMenuEl.style.opacity = '0';
+                            setTimeout(function() { subMenuEl.style.display = 'none'; }, menu.fadeSpeed);
+                        }
+                    }
+                }
+            }
         });
 
         if (this.type === "divider") {
-            $li.addClass("divider");
-            $li.append(iconAndLabel);
+            li.classList.add("divider");
+            li.innerHTML = iconAndLabel;
         } else if (this.type == "header") {
-            $li.addClass("nav-header");
-            $li.append(iconAndLabel);
+            li.classList.add("nav-header");
+            li.innerHTML = iconAndLabel;
         } else {
-            $li.append("<a>" + iconAndLabel + "</a>");
+            li.innerHTML = "<a>" + iconAndLabel + "</a>";
             if (this.subMenu) {
                 this.setSubMenu(this.subMenu);
             }
         }
         if (self.onClick) {
             if (this.parent && this.parent.search) {
-                $li.click(function (e) {
+                li.addEventListener("click", function (e) {
                     e.stopPropagation();
                 });
-                $li.dblclick(function (e) {
+                li.addEventListener("dblclick", function (e) {
                     self.onClick(self, {event: e});
                     e.preventDefault();
                     e.stopPropagation();
                     self.parent.hide();
                 });
             } else {
-                $li.click(function (e) {
+                li.addEventListener("click", function (e) {
                     e.preventDefault();
                     e.stopPropagation();
                     self.onClick(self, {event: e});
@@ -266,7 +302,7 @@
                 });
             }
         }
-        return $li[0];
+        return li;
     };
 
 
@@ -280,19 +316,23 @@
             self.subMenu = new RuleForge.menu.Menu(menu);
         }
         self.subMenu.parent = this;
-        $(dom).attr("class", "dropdown-submenu")
-            .on("mouseenter", function () {
-                var $sub = $(this).find(".dropdown-context-sub:first"),
-                    subWidth = $sub.width(),
-                    subLeft = $sub.offset().left,
-                    collision = (subWidth + subLeft) > window.innerWidth;
+        dom.className = "dropdown-submenu";
+        dom.addEventListener("mouseenter", function () {
+            var sub = dom.querySelector(".dropdown-context-sub:first-child"),
+                subWidth, subLeft, collision;
+            if (sub) {
+                subWidth = sub.offsetWidth;
+                subLeft = sub.offsetLeft;
+                collision = (subWidth + subLeft) > window.innerWidth;
                 if (collision) {
-                    $sub.addClass('drop-left');
+                    sub.classList.add('drop-left');
                 }
-                $(self.subMenu.getDom()).fadeIn(self.subMenu.fadeSpeed);
-            });
+            }
+            self.subMenu.getDom().style.display = '';
+            self.subMenu.getDom().style.opacity = '1';
+        });
         this.subMenu.render(dom);
-        $(this.subMenu.getDom()).addClass("dropdown-context-sub");
+        this.subMenu.getDom().classList.add("dropdown-context-sub");
         return this.subMenu;
 
     };
@@ -305,25 +345,27 @@
     };
 
     RuleForge.menu.MenuItem.prototype.show = function () {
-        $(this._dom).show();
+        this._dom.style.display = "";
     };
 
     RuleForge.menu.MenuItem.prototype.hide = function () {
-        $(this._dom).hide();
+        this._dom.style.display = "none";
     };
 
 
-    $(document).on('dblclick', 'html', function () {
-        $('.dropdown-context').each(function () {
+    document.addEventListener("dblclick", function () {
+        document.querySelectorAll('.dropdown-context').forEach(function (el) {
             var menu;
-            menu = $(this).data("ref");
-            menu.hide();
-        })
+            menu = el._ref;
+            if (menu) menu.hide();
+        });
     });
 
     if (RuleForge.menu.AbstractMenu.preventDoubleContext) {
-        $(document).on('contextmenu', '.dropdown-context', function (e) {
-            e.preventDefault();
+        document.addEventListener('contextmenu', function (e) {
+            if (e.target.closest && e.target.closest('.dropdown-context')) {
+                e.preventDefault();
+            }
         });
     }
 

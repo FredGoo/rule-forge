@@ -8,50 +8,71 @@ import ScoreCol from './ScoreCol.js';
 
 export default class ScoreCardTable {
     constructor(config) {
-        var remarkContainer = $("<div></div>");
-        config.container.append(remarkContainer);
+        var remarkContainer = document.createElement('div');
+        config.container.appendChild(remarkContainer);
         this.remark = new Remark(remarkContainer);
         this.weightSupport = false;
-        const configContainer = $(`<div style="margin: 5px;"></div>`);
-        this.weightSupportContainer = $(`<span style="padding: 8px;margin-right:5px;border:solid 1px #9E9E9E">权重:</span>`);
+        const configContainer = document.createElement('div');
+        configContainer.style.cssText = 'margin: 5px;';
+        this.weightSupportContainer = document.createElement('span');
+        this.weightSupportContainer.style.cssText = 'padding: 8px;margin-right:5px;border:solid 1px #9E9E9E';
+        this.weightSupportContainer.textContent = '权重:';
         this.initWeightSupportOptions();
-        configContainer.append(this.weightSupportContainer);
-        const propertyContainer = $(`<span/>`);
-        config.container.append(configContainer);
-        configContainer.append(propertyContainer);
+        configContainer.appendChild(this.weightSupportContainer);
+        const propertyContainer = document.createElement('span');
+        config.container.appendChild(configContainer);
+        configContainer.appendChild(propertyContainer);
         this.propertyConfig = new PropertyConfig(propertyContainer);
         this.attributeRows = [];
         this.customCols = [];
         this.config = config;
-        this.table = $(`<table class="table table-bordered" style="width: auto;max-width: none;font-size: 12px"/>`);
-        config.container.append(this.table);
-        const actionContainer = $(`<div style="border: solid 1px #ddd;border-radius:5px;padding:10px"></div>`);
-        config.container.append(actionContainer);
+        const table = document.createElement('table');
+        table.className = 'table table-bordered';
+        table.style.cssText = 'width: auto;max-width: none;font-size: 12px';
+        this.table = table;
+        config.container.appendChild(table);
+        const actionContainer = document.createElement('div');
+        actionContainer.style.cssText = 'border: solid 1px #ddd;border-radius:5px;padding:10px';
+        config.container.appendChild(actionContainer);
         this.tableAction = new TableAction(actionContainer);
     }
 
     initWeightSupportOptions() {
-        const container = $(`<span/>`);
-        this.weightSupportContainer.append(container);
-        const supportLabel = $(`<label class="checkbox-inline" style="padding-left: 8px;"/>`);
-        container.append(supportLabel);
-        this.weightSupportOption = $(`<input type="radio" name="weightSupport">支持</input>`);
-        supportLabel.append(this.weightSupportOption);
-        const nonsupportLabel = $(`<label class="checkbox-inline" style="padding-left: 8px;"/>`);
-        container.append(nonsupportLabel);
-        this.weightNonsupportOption = $(`<input type="radio" name="weightSupport">不支持</input>`);
-        nonsupportLabel.append(this.weightNonsupportOption);
+        const container = document.createElement('span');
+        this.weightSupportContainer.appendChild(container);
+        const supportLabel = document.createElement('label');
+        supportLabel.className = 'checkbox-inline';
+        supportLabel.style.cssText = 'padding-left: 8px;';
+        container.appendChild(supportLabel);
+        const supportRadio = document.createElement('input');
+        supportRadio.type = 'radio';
+        supportRadio.name = 'weightSupport';
+        supportRadio.value = '支持';
+        this.weightSupportOption = supportRadio;
+        supportLabel.appendChild(supportRadio);
+        supportLabel.appendChild(document.createTextNode('支持'));
+        const nonsupportLabel = document.createElement('label');
+        nonsupportLabel.className = 'checkbox-inline';
+        nonsupportLabel.style.cssText = 'padding-left: 8px;';
+        container.appendChild(nonsupportLabel);
+        const nonsupportRadio = document.createElement('input');
+        nonsupportRadio.type = 'radio';
+        nonsupportRadio.name = 'weightSupport';
+        nonsupportRadio.value = '不支持';
+        this.weightNonsupportOption = nonsupportRadio;
+        nonsupportLabel.appendChild(nonsupportRadio);
+        nonsupportLabel.appendChild(document.createTextNode('不支持'));
         const _this = this;
-        this.weightSupportOption.change(function () {
-            if ($(this).val() === 'on') {
+        this.weightSupportOption.addEventListener('change', function () {
+            if (this.value === '支持') {
                 for (let row of _this.attributeRows) {
                     row.attributeCell.showWeight();
                 }
                 _this.weightSupport = true;
             }
         });
-        this.weightNonsupportOption.change(function () {
-            if ($(this).val() === 'on') {
+        this.weightNonsupportOption.addEventListener('change', function () {
+            if (this.value === '不支持') {
                 for (let row of _this.attributeRows) {
                     row.attributeCell.hideWeight();
                 }
@@ -64,20 +85,20 @@ export default class ScoreCardTable {
         this.data = data || {};
         if (this.data.weightSupport) {
             this.weightSupport = true;
-            this.weightSupportOption.prop("checked", true);
+            this.weightSupportOption.checked = true;
         } else {
             this.weightSupport = false;
-            this.weightNonsupportOption.prop("checked", true);
+            this.weightNonsupportOption.checked = true;
         }
         this.remark.setData(data["remark"]);
         this.propertyConfig.initData(data);
         this.tableAction.initData(data);
-        const header = $(`<thead/>`);
-        this.table.append(header);
-        this.headerRow = $(`<tr/>`);
-        header.append(this.headerRow);
-        this.body = $(`<tbody/>`);
-        this.table.append(this.body);
+        const header = document.createElement('thead');
+        this.table.appendChild(header);
+        this.headerRow = document.createElement('tr');
+        header.appendChild(this.headerRow);
+        this.body = document.createElement('tbody');
+        this.table.appendChild(this.body);
         this.initAttributeCol(data);
         this.initConditionCol(data);
         this.initScoreCol(data);
@@ -141,7 +162,7 @@ export default class ScoreCardTable {
     addAttributeRow(rowData) {
         const attributeRow = new AttributeRow(this, rowData);
         this.attributeRows.push(attributeRow);
-        this.body.append(attributeRow.tr);
+        this.body.appendChild(attributeRow.tr);
         if (rowData) {
             attributeRow.initConditionRows(rowData);
         }

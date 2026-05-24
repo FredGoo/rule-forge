@@ -204,10 +204,10 @@ export class TopColumn extends BaseRowCol {
                 }
             }
             const td = spanningCell.td;
-            let colspan = td.prop('colspan');
+            let colspan = td.colSpan;
             colspan || (colspan = 1);
             colspan++;
-            td.prop('colspan', colspan);
+            td.colSpan = colspan;
         }
     }
 

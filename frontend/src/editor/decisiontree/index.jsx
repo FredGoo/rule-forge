@@ -1,3 +1,4 @@
+import '../../bootbox.js';
 import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../context.standalone.css';
 import '../../css/iconfont.css';
@@ -41,19 +42,23 @@ import '../common/jquery.utils.js';
 import DecisionTree from './new/DecisionTree.js';
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
 import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.jsx';
+import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
+import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import {buildProjectNameFromFile, getParameter} from "../../Utils";
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     const file = getParameter('file');
     window._project = buildProjectNameFromFile(file);
 
     createRoot(document.getElementById("dialogContainer")).render(
         <div>
             <KnowledgeTreeDialog/>,
-            <QuickTestDialog/>
+            <QuickTestDialog/>,
+            <ResourceVersionDialogComponent/>,
+            <ResourceListDialogComponent/>
         </div>,
 );
-    new DecisionTree($('#container'));
+    new DecisionTree(document.getElementById('container'));
 });

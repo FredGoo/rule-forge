@@ -7,22 +7,25 @@ export default class ConditionNode extends BaseNode{
         this.init();
     }
     init(){
-        this.nodeContainer=$("<div class='node conditionNode'>");
-        this.context.container.append(this.nodeContainer);
+        this.nodeContainer=document.createElement("div");
+        this.nodeContainer.className="node conditionNode";
+        this.context.container.appendChild(this.nodeContainer);
         this.initBindResizeEvent();
         var self=this;
-        this.contentContainer=$("<span>");
-        this.nodeContainer.append(this.contentContainer);
+        this.contentContainer=document.createElement("span");
+        this.nodeContainer.appendChild(this.contentContainer);
         this.operator=new ruleforge.ComparisonOperator(function(){
             self.inputType=self.operator.getInputType();
             if(self.inputType){
-                self.contentContainer.append(self.inputType.getContainer());
+                self.contentContainer.appendChild(self.inputType.getContainer());
             }
         });
-        this.contentContainer.append(this.operator.getContainer());
+        this.contentContainer.appendChild(this.operator.getContainer());
 
-        var operations=$("<span class='operations'><i class='glyphicon glyphicon-ok-circle'></i></span>");
-        this.nodeContainer.append(operations);
+        var operations=document.createElement("span");
+        operations.className="operations";
+        operations.innerHTML="<i class='glyphicon glyphicon-ok-circle'></i>";
+        this.nodeContainer.appendChild(operations);
         var menuItems=[];
         menuItems.push({
             name:"addCondition",
@@ -55,11 +58,11 @@ export default class ConditionNode extends BaseNode{
             }
         });
         var menu=new RuleForge.menu.Menu({menuItems:menuItems});
-        operations.click(function(e){
+        operations.addEventListener('click',function(e){
             menu.show(e);
         });
-        this.nodeHeight=this.nodeContainer.height()+15;
-        this.nodeWidth=this.nodeContainer.width();
+        this.nodeHeight=this.nodeContainer.offsetHeight+15;
+        this.nodeWidth=this.nodeContainer.offsetWidth;
     }
     initData(data){
         if(!data){
@@ -71,7 +74,7 @@ export default class ConditionNode extends BaseNode{
         this.operator.initRightValue(value);
         this.inputType=this.operator.getInputType();
         if(this.inputType){
-            this.contentContainer.append(this.inputType.getContainer());
+            this.contentContainer.appendChild(this.inputType.getContainer());
         }
         super.initChildrenNodeData(data);
     }

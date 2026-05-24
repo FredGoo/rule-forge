@@ -20,7 +20,7 @@ import {MsgBox} from 'flowdesigner';
 
 export default class ComplexScoreCard {
     /**
-     * @param {jQuery} container - The container element to render into
+     * @param {HTMLElement} container - The container element to render into
      */
     constructor(container) {
         this.id = 0;
@@ -35,51 +35,59 @@ export default class ComplexScoreCard {
     /**
      * Build the entire UI: toolbar, remark, property config, table, and scoring action.
      *
-     * @param {jQuery} container - The container element
+     * @param {HTMLElement} container - The container element
      */
     init(container) {
         const self = this;
 
         // Toolbar
-        container.append(`
-            <nav class="navbar navbar-default" style="margin: 5px">
+        const toolbarNav = document.createElement('nav');
+        toolbarNav.className = 'navbar navbar-default';
+        toolbarNav.style.margin = '5px';
+        toolbarNav.innerHTML = `
+            <div>
                 <div>
-                    <div>
-                        <div class="btn-group btn-group-sm navbar-btn" style="margin-top:5px;margin-bottom: 0;margin-left: 5px" >
-                            <button id="saveButtonNewVersion" type="button" class="btn btn-default btn-sm"><i class="rf rf-savenewversion" style="font-size: 14px"/> 生成版本</button>
-                            <button id="saveButton" type="button" class="btn btn-default btn-sm" ><i class="rf rf-save" style="font-size: 14px"/> 保存</button>
-                            <div class="btn-group btn-group-sm navbar-btn" style="margin-top:3px;margin-bottom: 0;margin-left: 5px" >
-                                <button id="addCriteriaButton" type="button" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-plus" style="font-size: 16px"/> 添加条件行</button>
-                                <button id="deleteCriteriaButton" type="button" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-minus" style="font-size: 16px"/> 删除条件行</button>
-                            </div>
-                        </div>
-                        <div class="btn-group btn-group-sm navbar-btn" style="margin-top:5px;margin-bottom: 0">
-                            <button id="configVarButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-variable" style="font-size: 13px"/> 变量库</button>
-                            <button id="configConstantsButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-constant" style="font-size: 13px"/> 常量库</button>
-                            <button id="configActionButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-action" style="font-size: 13px"/> 动作库</button>
-                            <button id="configParameterButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-parameter" style="font-size: 13px"/> 参数库</button>
+                    <div class="btn-group btn-group-sm navbar-btn" style="margin-top:5px;margin-bottom: 0;margin-left: 5px" >
+                        <button id="saveButtonNewVersion" type="button" class="btn btn-default btn-sm"><i class="rf rf-savenewversion" style="font-size: 14px"/> 生成版本</button>
+                        <button id="saveButton" type="button" class="btn btn-default btn-sm" ><i class="rf rf-save" style="font-size: 14px"/> 保存</button>
+                        <div class="btn-group btn-group-sm navbar-btn" style="margin-top:3px;margin-bottom: 0;margin-left: 5px" >
+                            <button id="addCriteriaButton" type="button" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-plus" style="font-size: 16px"/> 添加条件行</button>
+                            <button id="deleteCriteriaButton" type="button" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-minus" style="font-size: 16px"/> 删除条件行</button>
                         </div>
                     </div>
+                    <div class="btn-group btn-group-sm navbar-btn" style="margin-top:5px;margin-bottom: 0">
+                        <button id="configVarButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-variable" style="font-size: 13px"/> 变量库</button>
+                        <button id="configConstantsButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-constant" style="font-size: 13px"/> 常量库</button>
+                        <button id="configActionButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-action" style="font-size: 13px"/> 动作库</button>
+                        <button id="configParameterButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-parameter" style="font-size: 13px"/> 参数库</button>
+                    </div>
                 </div>
-            </nav>`);
+            </div>`;
+        container.appendChild(toolbarNav);
 
         // Remark
-        const remarkContainer = $("<div style='margin:5px 5px 5px 15px'></div>");
-        container.append(remarkContainer);
+        const remarkContainer = document.createElement('div');
+        remarkContainer.style.cssText = 'margin:5px 5px 5px 15px';
+        container.appendChild(remarkContainer);
         this.remark = new Remark(remarkContainer);
 
         // Property configuration
-        const propertyContainer = $("<div style='margin:5px 5px 5px 15px;'></div>");
-        container.append(propertyContainer);
-        this.propertyContainer = $('<span>');
-        this.propertyContainer.css({padding: '10px'});
-        const addPropertyButton = $("<button type='button' class='rule-add-property btn btn-link'>添加属性</button>");
-        propertyContainer.append(addPropertyButton);
-        propertyContainer.append(this.propertyContainer);
+        const propertyContainer = document.createElement('div');
+        propertyContainer.style.cssText = 'margin:5px 5px 5px 15px;';
+        container.appendChild(propertyContainer);
+        const propertySpan = document.createElement('span');
+        propertySpan.style.cssText = 'padding: 10px';
+        this.propertyContainer = propertySpan;
+        const addPropertyButton = document.createElement('button');
+        addPropertyButton.type = 'button';
+        addPropertyButton.className = 'rule-add-property btn btn-link';
+        addPropertyButton.textContent = '添加属性';
+        propertyContainer.appendChild(addPropertyButton);
+        propertyContainer.appendChild(propertySpan);
 
         const onPropertyClick = function (menuItem) {
             const prop = new urule.RuleProperty(self, menuItem.name, menuItem.defaultValue, menuItem.editorType);
-            self.propertyContainer.append(prop.getContainer());
+            self.propertyContainer.appendChild(prop.getContainer());
             self.properties.push(prop);
             window._setDirty();
         };
@@ -89,7 +97,7 @@ export default class ComplexScoreCard {
          * @param {boolean} isNewVersion - Whether to save as a new version
          */
         function save(isNewVersion) {
-            if (!isNewVersion && $('#saveButton').hasClass('disabled')) return false;
+            if (!isNewVersion && document.getElementById('saveButton').classList.contains('disabled')) return false;
 
             const file = getParameter('file');
             let xml = null;
@@ -199,18 +207,18 @@ export default class ComplexScoreCard {
             }]
         });
 
-        addPropertyButton.click(function (e) {
+        addPropertyButton.addEventListener('click', function (e) {
             self.menu.show(e);
         });
 
         // Bind toolbar buttons
-        $('#addCriteriaButton').click(function () {
+        document.getElementById('addCriteriaButton').addEventListener('click', function () {
             const rowContext = new RowContext(self);
             rowContext.setRefConditionCell(window._currentConditionCell);
             self.addRow(rowContext);
         });
 
-        $('#deleteCriteriaButton').click(function () {
+        document.getElementById('deleteCriteriaButton').addEventListener('click', function () {
             if (!window._currentConditionCell) {
                 bootbox.alert('请先选中目标行的一个条件单元格');
                 return;
@@ -221,51 +229,55 @@ export default class ComplexScoreCard {
             });
         });
 
-        $('#configVarButton').click(function () {
+        document.getElementById('configVarButton').addEventListener('click', function () {
             if (!self.configVarDialog) {
                 self.configVarDialog = new urule.ConfigVariableDialog(self);
             }
             self.configVarDialog.open();
         });
 
-        $('#configConstantsButton').click(function () {
+        document.getElementById('configConstantsButton').addEventListener('click', function () {
             if (!self.configConstantDialog) {
                 self.configConstantDialog = new urule.ConfigConstantDialog(self);
             }
             self.configConstantDialog.open();
         });
 
-        $('#configActionButton').click(function () {
+        document.getElementById('configActionButton').addEventListener('click', function () {
             if (!self.configActionDialog) {
                 self.configActionDialog = new urule.ConfigActionDialog(self);
             }
             self.configActionDialog.open();
         });
 
-        $('#configParameterButton').click(function () {
+        document.getElementById('configParameterButton').addEventListener('click', function () {
             if (!self.configParameterDialog) {
                 self.configParameterDialog = new urule.ConfigParameterDialog(self);
             }
             self.configParameterDialog.open();
         });
 
-        $('#saveButton').click(function () {
+        document.getElementById('saveButton').addEventListener('click', function () {
             save(false);
         });
 
-        $('#saveButtonNewVersion').click(function () {
+        document.getElementById('saveButtonNewVersion').addEventListener('click', function () {
             save(true);
         });
 
         // Main table
-        this.table = $('<table class="table table-bordered" style="width: max-content;max-width: none;margin-left: 15px"></table>');
-        container.append(this.table);
-        this.tbody = $('<tbody></tbody>');
-        this.table.append(this.tbody);
+        const table = document.createElement('table');
+        table.className = 'table table-bordered';
+        table.style.cssText = 'width: max-content;max-width: none;margin-left: 15px';
+        this.table = table;
+        container.appendChild(table);
+        const tbody = document.createElement('tbody');
+        this.tbody = tbody;
+        table.appendChild(tbody);
 
         // Header row
         this.headerRow = new HeaderRow(this);
-        this.table.append(this.headerRow.tr);
+        table.appendChild(this.headerRow.tr);
 
         // Create an initial empty row
         new RowContext(this);
@@ -274,8 +286,9 @@ export default class ComplexScoreCard {
         this.loadFile(this._buildLoadDataFunction());
 
         // Scoring action section
-        const actionContainer = $('<div style="padding-left:10px"></div>');
-        container.append(actionContainer);
+        const actionContainer = document.createElement('div');
+        actionContainer.style.cssText = 'padding-left:10px';
+        container.appendChild(actionContainer);
         this.tableAction = new TableAction(actionContainer, true);
     }
 
@@ -493,7 +506,7 @@ export default class ComplexScoreCard {
 
             if (callback) callback(data);
         }).catch(function (error) {
-            $(window.document.body).empty();
+            document.body.innerHTML = '';
             if (error && error.status === 401) {
                 bootbox.alert('权限不足，不能进行此操作.');
             } else if (error && error.text) {
@@ -517,7 +530,7 @@ export default class ComplexScoreCard {
      * @param {RuleProperty} prop - The property to add
      */
     addProperty(prop) {
-        this.propertyContainer.append(prop.getContainer());
+        this.propertyContainer.appendChild(prop.getContainer());
         this.properties.push(prop);
         window._setDirty();
     }
@@ -534,7 +547,7 @@ export default class ComplexScoreCard {
         if (refConditionCell) {
             const refRow = refConditionCell.contentRow;
             let insertIndex = this.contentRows.indexOf(refRow);
-            const rowspan = refConditionCell.td.prop('rowspan');
+            const rowspan = refConditionCell.td.rowSpan;
             if (rowspan) {
                 insertIndex = insertIndex + rowspan - 1;
             }
@@ -542,7 +555,7 @@ export default class ComplexScoreCard {
             targetRow.tr.after(row.tr);
             this.contentRows.splice(insertIndex + 1, 0, row);
         } else {
-            this.tbody.append(row.tr);
+            this.tbody.appendChild(row.tr);
             this.contentRows.push(row);
         }
 
@@ -605,24 +618,26 @@ export default class ComplexScoreCard {
     rebuildBorder() {
         if (this.headerRow.actionHeaders.length === 0) return;
 
-        this.headerRow.actionHeaders[0].td.css('border-left', 'solid 3px #9d9d9d');
+        this.headerRow.actionHeaders[0].td.style.borderLeft = 'solid 3px #9d9d9d';
         for (const row of this.contentRows) {
-            row.actionCells[0].td.css('border-left', 'solid 3px #9d9d9d');
+            row.actionCells[0].td.style.borderLeft = 'solid 3px #9d9d9d';
         }
     }
 
     /**
      * Get or create the highlight div used to indicate the active cell.
-     * @returns {jQuery}
+     * @returns {HTMLElement}
      */
     getHighlightDiv() {
         if (this.highlightDiv) {
             const currentTD = this.highlightDiv.currentTD;
             if (currentTD) {
-                currentTD.off('DOMSubtreeModified');
+                currentTD.removeEventListener('DOMSubtreeModified', currentTD._domModifiedHandler);
             }
         } else {
-            this.highlightDiv = $('<div style="border:2px solid rgb(82, 146, 247);position:absolute;left: 0;top: 0;"></div>');
+            const div = document.createElement('div');
+            div.style.cssText = 'border:2px solid rgb(82, 146, 247);position:absolute;left: 0;top: 0;';
+            this.highlightDiv = div;
         }
         return this.highlightDiv;
     }
@@ -707,7 +722,7 @@ export default class ComplexScoreCard {
 
         // Cells
         allCells.forEach(function (cell) {
-            const rowspan = cell.td.prop('rowspan');
+            const rowspan = cell.td.rowSpan;
             if (cell.conditionCol) {
                 if (!cell.variableLabel) {
                     throw '请选择条件条件格[' + (cell.contentRow.num + 1) + ',' + (cell.conditionCol.num + 1) + ']对应的对象属性！';

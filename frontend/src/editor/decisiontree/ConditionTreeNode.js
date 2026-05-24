@@ -5,22 +5,25 @@ ConditionTreeNode=function(parentNode){
 ConditionTreeNode.prototype=Object.create(TreeNode.prototype);
 ConditionTreeNode.prototype.constructor=ConditionTreeNode;
 ConditionTreeNode.prototype.initNode=function(){
-    var nodeContainer=$("<div class='node conditionNode'>");
-    this.col.append(nodeContainer);
+    var nodeContainer=document.createElement("div");
+    nodeContainer.className="node conditionNode";
+    this.col.appendChild(nodeContainer);
     var self=this;
-    var contentContainer=$("<span>");
+    var contentContainer=document.createElement("span");
     this.contentContainer=contentContainer;
-    nodeContainer.append(contentContainer);
+    nodeContainer.appendChild(contentContainer);
     this.operator=new ruleforge.ComparisonOperator(function(){
         self.inputType=self.operator.getInputType();
         if(self.inputType){
-            contentContainer.append(self.inputType.getContainer());
+            contentContainer.appendChild(self.inputType.getContainer());
         }
     });
-    contentContainer.append(this.operator.getContainer());
+    contentContainer.appendChild(this.operator.getContainer());
 
-    var operations=$("<span class='operations'><i class='icon-ok-circle'></i></span>");
-    nodeContainer.append(operations);
+    var operations=document.createElement("span");
+    operations.className="operations";
+    operations.innerHTML="<i class='icon-ok-circle'></i>";
+    nodeContainer.appendChild(operations);
     var menuItems=[];
     menuItems.push({
         name:"addCondition",
@@ -53,7 +56,7 @@ ConditionTreeNode.prototype.initNode=function(){
         }
     });
     var menu=new RuleForge.menu.Menu({menuItems:menuItems});
-    operations.click(function(e){
+    operations.addEventListener('click',function(e){
         menu.show(e);
     });
 };
@@ -68,7 +71,7 @@ ConditionTreeNode.prototype.initData=function(data){
     this.operator.initRightValue(value);
     this.inputType=this.operator.getInputType();
     if(this.inputType){
-        this.contentContainer.append(this.inputType.getContainer());
+        this.contentContainer.appendChild(this.inputType.getContainer());
     }
     TreeNode.prototype.initChildrenNodeData.call(this,data);
 };

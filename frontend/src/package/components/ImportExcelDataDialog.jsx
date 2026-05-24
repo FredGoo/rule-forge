@@ -1,21 +1,19 @@
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
 
 export default class ImportExcelDataDialog extends Component {
     constructor(props) {
         super(props);
-        this.state = {files: ''};
+        this.state = {visible: false, files: ''};
     }
 
     componentDidMount() {
         event.eventEmitter.on(event.OPEN_IMPORT_EXCEL_DIALOG, (files) => {
-            $(ReactDOM.findDOMNode(this)).modal('show');
-            this.setState({files});
+            this.setState({visible: true, files});
         });
         event.eventEmitter.on(event.HIDE_IMPORT_EXCEL_DIALOG, () => {
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
 
@@ -37,10 +35,10 @@ export default class ImportExcelDataDialog extends Component {
                 <iframe name={iframeName} height="0px" width="0px" frameBorder="0" onLoad={(e) => {
                     console.log('导入complete',e)
                     try {
-                        let jsonData = $.parseJSON($(e.target).contents().text());
+                        let jsonData = JSON.parse(e.target.contentDocument.body.textContent);
                         if(jsonData.status) {
                             bootbox.alert('导入Excel成功');
-                            $(ReactDOM.findDOMNode(this)).modal('hide');
+                            this.setState({visible: false});
                         } else {
                             event.eventEmitter.emit(event.OPEN_IMPORT_EXCEL_ERROR_DIALOG, jsonData.data);
                         }
@@ -62,6 +60,6 @@ export default class ImportExcelDataDialog extends Component {
                 }
             }
         ];
-        return (<CommonDialog title="导入Excel" body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} title="导入Excel" body={body} buttons={buttons}/>);
     }
 }

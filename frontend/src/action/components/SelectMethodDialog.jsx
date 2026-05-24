@@ -1,5 +1,4 @@
-import React,{Component,PropTypes} from 'react';
-import ReactDOM from 'react-dom';
+import React,{Component} from 'react';
 import {connect} from 'react-redux';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import Grid from '../../components/grid/component/Grid.jsx';
@@ -7,13 +6,17 @@ import * as action from '../action.js';
 import * as event from '../event.js';
 
 class SelectMethodDialog extends Component{
+    constructor(props) {
+        super(props);
+        this.state = {visible: false};
+    }
     componentDidMount(){
         event.eventEmitter.on(event.CLOSE_SELECT_METHOD_DIALOG,()=>{
-           $( ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
         const {dispatch}=this.props;
         event.eventEmitter.on(event.OPEN_SELECT_METHOD_DIALOG,(beanId)=>{
-            $( ReactDOM.findDOMNode(this)).modal('show');
+            this.setState({visible: true});
             dispatch(action.loadBeanMethods(beanId));
         });
     }
@@ -54,7 +57,7 @@ class SelectMethodDialog extends Component{
             }
         ];
         return (
-            <CommonDialog title="选择方法" body={body} buttons={buttons}/>
+            <CommonDialog visible={this.state.visible} title="选择方法" body={body} buttons={buttons}/>
         );
     }
 }

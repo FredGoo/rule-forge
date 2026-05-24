@@ -163,7 +163,7 @@ export function beginTest(postData, type, callback) {
     });
 }
 
-function buildData(data) {
+export function buildData(data) {
     switch (data.type) {
         case "root":
             data._icon = Styles.frameStyle.getRootIcon();

@@ -109,14 +109,14 @@ export function refreshKnowledgeCache(project,packageConfig, currentPackage) {
                                     <div class="col-xs-6" style="display: flex;flex-flow: column;">
                                         <div style="flex: 1;display: flex;align-items: center;">
                                              <label style="margin-right: 5px;width: 65px;">开始时间</label>
-                                             <input type="text" id="startTime" class="form-control datepicker" name="startTime" autoComplete="off" style="flex: 1;"/>
+                                             <input type="datetime-local" id="startTime" class="form-control" name="startTime" style="flex: 1;"/>
                                         </div>
                                         <span id="start-time-error" class="text-danger" style="display: none;margin-left: 70px;">该字段为必填项</span>
                                     </div>
                                      <div class="col-xs-6" style="display: flex;flex-flow: column;">
                                         <div style="flex: 1;display: flex;align-items: center;">
                                              <label style="margin-right: 5px;width: 65px;">结束时间</label>
-                                             <input type="text" id="endTime" class="form-control datepicker" name="endTime" autoComplete="off" style="flex: 1;"/>
+                                             <input type="datetime-local" id="endTime" class="form-control" name="endTime" style="flex: 1;"/>
                                         </div>
                                         <span id="end-time-error" class="text-danger" style="display: none;margin-left: 70px;">该字段为必填项</span>
                                     </div>
@@ -196,20 +196,12 @@ export function refreshKnowledgeCache(project,packageConfig, currentPackage) {
         };
         bootbox.dialog(options);
         setTimeout(function () {
-            $("#startTime").datetimepicker({
-                lang: 'ch',
-                format: 'Y-m-d H:i',
-            });
-            $("#endTime").datetimepicker({
-                lang: 'ch',
-                format: 'Y-m-d H:i',
-            });
-            $('#test-pass-version').off().on('blur', function () {
+            document.getElementById('test-pass-version').onblur = function () {
                 changeTestPassVersion(project)
-            });
-            $('#test-contrast-version').off().on('blur', function () {
+            };
+            document.getElementById('test-contrast-version').onblur = function () {
                 changeTestPassVersion(project)
-            });
+            };
         }, 1000)
     }).catch(function (response) {
         if (response && response.status === 401) {
@@ -226,7 +218,7 @@ export function refreshKnowledgeCache(project,packageConfig, currentPackage) {
 
 // 发布测试 选择版本
 function changeTestPassVersion(project) {
-    $('#testDiffContent').html('')
+    document.getElementById('testDiffContent').innerHTML = ''
     const testPassVersion = document.getElementById('test-pass-version').value;
     const testContrastVersion = document.getElementById('test-contrast-version').value;
     if (!testPassVersion || !testContrastVersion) return
@@ -252,7 +244,7 @@ function changeTestPassVersion(project) {
                 </div>
                 `
         }
-        $('#testDiffContent').html(diffContent)
+        document.getElementById('testDiffContent').innerHTML = diffContent
     }).catch(function (response) {
         if (response && response.status === 401) {
             alert('权限不足，不能进行此操作.');
@@ -501,8 +493,8 @@ export function applyNewVersion(data, project, packageConfig, currentPackage) {
                         const formData = new FormData();
                         formData.append('project', projectArray[0]);
                         formData.append('version', typeof (projectArray[1]) === 'undefined' ? '' : projectArray[1]);
-                        formData.append('remark', $('#version-remark').val());
-                        formData.append('title', $('#version-title').val());
+                        formData.append('remark', document.getElementById('version-remark').value);
+                        formData.append('title', document.getElementById('version-title').value);
                         formData.append('file', document.getElementById('version-file').files[0]);
                         formData.append('passRateEffect', passRateEffect);
                         formData.append('passRateRange', passRateRange);
@@ -519,14 +511,14 @@ export function applyNewVersion(data, project, packageConfig, currentPackage) {
         };
         bootbox.dialog(options);
         setTimeout(function () {
-            $('#pass-version').off().on('blur', function () {
-                console.log($(this).val())
+            document.getElementById('pass-version').onblur = function () {
+                console.log(this.value)
                 changePassVersion(project)
-            });
-            $('#contrast-version').off().on('blur', function () {
-                console.log($(this).val())
+            };
+            document.getElementById('contrast-version').onblur = function () {
+                console.log(this.value)
                 changePassVersion(project)
-            });
+            };
         }, 1000)
     }).catch(function (response) {
         if (response && response.status === 401) {
@@ -544,7 +536,7 @@ export function applyNewVersion(data, project, packageConfig, currentPackage) {
 
 // 发起审批 选择版本
 function changePassVersion(project) {
-    $('#diffContent').html('')
+    document.getElementById('diffContent').innerHTML = ''
     const passVersion = document.getElementById('pass-version').value;
     const contrastVersion = document.getElementById('contrast-version').value;
     if (!passVersion || !contrastVersion) return
@@ -570,7 +562,7 @@ function changePassVersion(project) {
                 </div>
                 `
         }
-        $('#diffContent').html(diffContent)
+        document.getElementById('diffContent').innerHTML = diffContent
     }).catch(function (response) {
         if (response && response.status === 401) {
             alert('权限不足，不能进行此操作.');

@@ -13,6 +13,8 @@ export default class BaseCell {
      */
     constructor(rowContext) {
         this.id = rowContext.complexTable.nextId();
-        this.td = $('<td style="position: relative;"></td>');
+        const td = document.createElement('td');
+        td.style.cssText = 'position: relative;';
+        this.td = td;
     }
 }

@@ -1,16 +1,12 @@
 ruleforge.CellExecuteMethod=function(element){
-	this.parentContainer=$(element);
-	this.parentContainer.css({
-		height:"40px",
-		width:"100%"
-	});
+	this.parentContainer=element[0] || element;
+	this.parentContainer.style.height="40px";
+	this.parentContainer.style.width="100%";
 	this.container=generateContainer();
 //	this.container.prop("innerText","无");
 	RuleForge.setDomContent(this.container,"无");
-	this.container.css({
-		"color":"gray"
-	});
-	this.parentContainer.append(this.container);
+	this.container.style.color="gray";
+	this.parentContainer.appendChild(this.container);
 	window._ActionTypeArray.push(this);
 	this.initMenu();
 };
@@ -33,7 +29,7 @@ ruleforge.CellExecuteMethod.prototype.initMenu=function(actionLibraries){
 	};
 	config={menuItems:[]};
 	data||[].forEach(function(item) {
-		var springBeans=item.springBeans||[]; 
+		var springBeans=item.springBeans||[];
 		springBeans.forEach(function(springBean) {
 			var menuItem={
 				name:springBean.id,
@@ -60,7 +56,7 @@ ruleforge.CellExecuteMethod.prototype.initMenu=function(actionLibraries){
 	}else{
 		self.menu=new RuleForge.menu.Menu(config);
 	}
-	this.container.click(function(e){
+	this.container.addEventListener('click',function(e){
 		self.menu.show(e);
 	});
 };
@@ -70,9 +66,7 @@ ruleforge.CellExecuteMethod.prototype.clean=function(){
 		this.action.getContainer().remove();
 	}
 	RuleForge.setDomContent(this.container,"无");
-	this.container.css({
-		"color":"gray"
-	});
+	this.container.style.color="gray";
 	this.action=null;
 };
 ruleforge.CellExecuteMethod.prototype.setAction=function(data){
@@ -82,15 +76,13 @@ ruleforge.CellExecuteMethod.prototype.setAction=function(data){
 	}
 	this.action=new ruleforge.MethodAction();
 	RuleForge.setDomContent(this.container,".");
-	this.container.css({
-		"color":"white"
-	});
-	this.parentContainer.append(this.action.getContainer());
+	this.container.style.color="white";
+	this.parentContainer.appendChild(this.action.getContainer());
 	this.action.initData(data);
 };
 ruleforge.CellExecuteMethod.prototype.toXml=function(){
 	if(this.action){
-		return this.action.toXml();		
+		return this.action.toXml();
 	}
 	return "";
 };

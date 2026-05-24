@@ -9,7 +9,7 @@
 
 export default class PropertyConfig {
     /**
-     * @param {jQuery} container - The container element to render into
+     * @param {HTMLElement} container - The container element to render into
      */
     constructor(container) {
         this.container = container;
@@ -24,14 +24,16 @@ export default class PropertyConfig {
     init() {
         const self = this;
 
-        this.propertyContainer = $('<span>');
-        this.propertyContainer.css({
-            padding: '10px'
-        });
+        const propertyContainer = document.createElement('span');
+        propertyContainer.style.cssText = 'padding: 10px';
+        this.propertyContainer = propertyContainer;
 
-        const addButton = $("<button type='button' class='rule-add-property btn btn-link'>添加属性</button>");
-        this.container.append(addButton);
-        this.container.append(this.propertyContainer);
+        const addButton = document.createElement('button');
+        addButton.type = 'button';
+        addButton.className = 'rule-add-property btn btn-link';
+        addButton.textContent = '添加属性';
+        this.container.appendChild(addButton);
+        this.container.appendChild(propertyContainer);
 
         const onPropertyClick = function (menuItem) {
             const prop = new ruleforge.RuleProperty(self, menuItem.name, menuItem.defaultValue, menuItem.editorType);
@@ -72,7 +74,7 @@ export default class PropertyConfig {
             }]
         });
 
-        addButton.click(function (e) {
+        addButton.addEventListener('click', function (e) {
             self.menu.show(e);
         });
     }
@@ -126,7 +128,7 @@ export default class PropertyConfig {
      * @param {RuleProperty} prop - The property to add
      */
     addProperty(prop) {
-        this.propertyContainer.append(prop.getContainer());
+        this.propertyContainer.appendChild(prop.getContainer());
         this.properties.push(prop);
         window._setDirty();
     }

@@ -2,7 +2,7 @@ import Raphael from 'raphael';
 
 ruleforge.Context = function (container, rule) {
     this.container = container;
-    this.paper = new Raphael(this.container.get(0), "100%", "100%");
+    this.paper = new Raphael(this.container, "100%", "100%");
     this.rule = rule;
     this.rootJoin = null;
 };

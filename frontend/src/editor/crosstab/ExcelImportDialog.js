@@ -15,8 +15,12 @@ export default class ExcelImportDialog {
      */
     constructor(callback) {
         this.callback = callback;
-        this.dialog = $(
-            '<div class="modal fade" role="dialog" aria-hidden="true" style="z-index: 10000">' +
+        const dialog = document.createElement('div');
+        dialog.className = 'modal fade';
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-hidden', 'true');
+        dialog.style.zIndex = '10000';
+        dialog.innerHTML =
             '  <div class="modal-dialog">' +
             '    <div class="modal-content">' +
             '      <div class="modal-header">' +
@@ -26,45 +30,61 @@ export default class ExcelImportDialog {
             '      <div class="modal-body"></div>' +
             '      <div class="modal-footer"></div>' +
             '    </div>' +
-            '  </div>' +
-            '</div>'
-        );
+            '  </div>';
+        this.dialog = dialog;
 
-        const body = this.dialog.find('.modal-body');
-        const footer = this.dialog.find('.modal-footer');
+        const body = dialog.querySelector('.modal-body');
+        const footer = dialog.querySelector('.modal-footer');
         this.initBody(body, footer, callback);
     }
 
     /**
      * Build the dialog body content: tutorial link, file upload form, and hidden iframe.
      *
-     * @param {jQuery} body - The modal body element
-     * @param {jQuery} footer - The modal footer element
+     * @param {HTMLElement} body - The modal body element
+     * @param {HTMLElement} footer - The modal footer element
      * @param {Function} callback - Callback after successful import
      */
     initBody(body, footer, callback) {
-        const tutorialLink = $('<div><a href="http://wiki.bsdn.org/pages/viewpage.action?pageId=76450722" target="_blank">导入Excel教程</a></div>');
-        body.append(tutorialLink);
+        const tutorialLink = document.createElement('div');
+        tutorialLink.innerHTML = '<a href="http://wiki.bsdn.org/pages/viewpage.action?pageId=76450722" target="_blank">导入Excel教程</a>';
+        body.appendChild(tutorialLink);
 
         const uploadUrl = window._server + '/crosstabeditor/importExcel?project=' + encodeURI(window._project);
-        const form = $('<form enctype="multipart/form-data" style="height: 70px;" method="post" target="frame_for_import" action="' + uploadUrl + '"></form>');
-        body.append(form);
+        const form = document.createElement('form');
+        form.setAttribute('enctype', 'multipart/form-data');
+        form.style.height = '70px';
+        form.method = 'post';
+        form.target = 'frame_for_import';
+        form.action = uploadUrl;
+        body.appendChild(form);
 
-        const fileGroup = $('<div class="form-group"><label>请选择要导入的Excel文件：</label></div>');
-        form.append(fileGroup);
+        const fileGroup = document.createElement('div');
+        fileGroup.className = 'form-group';
+        fileGroup.innerHTML = '<label>请选择要导入的Excel文件：</label>';
+        form.appendChild(fileGroup);
 
-        const fileInput = $('<input type="file" name="excel_file" style="display: inline-block">');
-        fileGroup.append(fileInput);
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.name = 'excel_file';
+        fileInput.style.display = 'inline-block';
+        fileGroup.appendChild(fileInput);
 
-        const submitBtn = $('<input type="submit" value="上传" class="btn btn-default" style="float: right">');
-        form.append(submitBtn);
+        const submitBtn = document.createElement('input');
+        submitBtn.type = 'submit';
+        submitBtn.value = '上传';
+        submitBtn.className = 'btn btn-default';
+        submitBtn.style.float = 'right';
+        form.appendChild(submitBtn);
 
         // Hidden iframe to receive the upload response
-        const iframe = $('<iframe name="frame_for_import" style="width: 0;height: 0;border: 0px"></iframe>');
-        body.append(iframe);
+        const iframe = document.createElement('iframe');
+        iframe.name = 'frame_for_import';
+        iframe.style.cssText = 'width: 0;height: 0;border: 0px';
+        body.appendChild(iframe);
 
-        iframe.load(function () {
-            const responseText = $(this).contents().find('body').text();
+        iframe.addEventListener('load', function () {
+            const responseText = iframe.contentDocument.body.textContent;
             if (responseText && responseText.length >= 5) {
                 const result = JSON.parse(responseText);
                 if (result.fail) {
@@ -82,6 +102,34 @@ export default class ExcelImportDialog {
      * Show the dialog.
      */
     show() {
-        this.dialog.modal('show');
+        document.body.appendChild(this.dialog);
+        this.dialog.classList.add('in');
+        this.dialog.style.display = 'block';
+        this.dialog.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        // Add backdrop
+        var backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade in';
+        backdrop.id = 'excel-import-backdrop';
+        document.body.appendChild(backdrop);
+        // Close handlers
+        var self = this;
+        var closeBtn = this.dialog.querySelector('.close');
+        if (closeBtn) {
+            closeBtn.onclick = function() { self.hide(); };
+        }
+        backdrop.addEventListener('click', function() { self.hide(); });
+    }
+
+    /**
+     * Hide the dialog.
+     */
+    hide() {
+        this.dialog.classList.remove('in');
+        this.dialog.style.display = 'none';
+        this.dialog.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        var backdrop = document.getElementById('excel-import-backdrop');
+        if (backdrop) backdrop.remove();
     }
 }

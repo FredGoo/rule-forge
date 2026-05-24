@@ -1,3 +1,4 @@
+import '../bootbox.js';
 import '../../node_modules/bootstrapvalidator/dist/css/bootstrapValidator.css';
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css'
@@ -12,7 +13,7 @@ import ResourceEditor from './components/ResourceEditor.jsx'
 import * as action from './action.js'
 import Loading from '../components/loading/component/Loading.jsx';
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     const store = createStore(reducer, applyMiddleware(thunk))
     const file = _getParameter('file')
     if (!file || file.length < 1) {

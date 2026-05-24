@@ -1,17 +1,15 @@
 ruleforge.VariableValue = function (arithmetic, data, act, functionProperty) {
     this.arithmetic = arithmetic;
-    this.container = $("<span>");
+    this.container = document.createElement("span");
 
     var self = this;
     this.label = generateContainer();
     this.functionProperty = functionProperty;
-    this.container.append(this.label);
-    this.label.css({
-        "color": "darkcyan"
-    });
+    this.container.appendChild(this.label);
+    this.label.style.color = "darkcyan";
     RuleForge.setDomContent(this.label, "请选择变量");
     if (arithmetic) {
-        this.container.append(arithmetic.getContainer());
+        this.container.appendChild(arithmetic.getContainer());
     }
     if (data) {
         this.initData(data);
@@ -22,11 +20,12 @@ ruleforge.VariableValue = function (arithmetic, data, act, functionProperty) {
 };
 
 ruleforge.VariableValue.prototype.getDisplayContainer = function () {
-    var container = $("<span>" + this.category + "." + this.variableLabel + "</span>");
+    var container = document.createElement("span");
+    container.textContent = this.category + "." + this.variableLabel;
     if (this.arithmetic) {
         var dis = this.arithmetic.getDisplayContainer();
         if (dis) {
-            container.append(dis);
+            container.appendChild(dis);
         }
     }
     return container;
@@ -101,7 +100,7 @@ ruleforge.VariableValue.prototype.initMenu = function (variableLibraries) {
     } else {
         self.menu = new RuleForge.menu.Menu(config);
     }
-    this.label.click(function (e) {
+    this.label.addEventListener("click", function (e) {
         self.menu.show(e);
     });
 };

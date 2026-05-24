@@ -37,7 +37,7 @@ export default class BaseRowCol {
                 if (rowSpan > 1) {
                     // Decrement rowspan; ensure at least 1
                     --rowSpan || (rowSpan = 1);
-                    cell.td.prop('rowspan', rowSpan);
+                    cell.td.rowSpan = rowSpan;
 
                     // Transfer cell to the next row
                     const nextRow = rows[rowIndex + 1];
@@ -66,7 +66,7 @@ export default class BaseRowCol {
                     if (prevCell) {
                         let span = prevCell.getRowSpan() - 1;
                         span || (span = 1);
-                        prevCell.td.prop('rowspan', span);
+                        prevCell.td.rowSpan = span;
                         break;
                     }
                 }
@@ -91,7 +91,7 @@ export default class BaseRowCol {
                 if (colSpan > 1) {
                     // Decrement colspan; ensure at least 1
                     --colSpan || (colSpan = 1);
-                    cell.td.prop('colspan', colSpan);
+                    cell.td.colSpan = colSpan;
 
                     // Transfer cell to the next column
                     const nextCol = columns[colIndex + 1];
@@ -114,7 +114,7 @@ export default class BaseRowCol {
                     let span = prevCell.getColSpan();
                     if (span > 1) {
                         --span || (span = 1);
-                        prevCell.td.prop('colspan', span);
+                        prevCell.td.colSpan = span;
                     }
                 }
             }
@@ -134,13 +134,13 @@ export default class BaseRowCol {
         const cell = new ConditionCell(row, col);
         if (isTop) {
             cell.initTopMenu();
-            cell.td.addClass('top-condition-cell');
+            cell.td.classList.add('top-condition-cell');
             if (parentRowCol.bundleData) {
                 cell.setBundleData(parentRowCol.bundleData);
             }
         } else {
             cell.initLeftMenu();
-            cell.td.addClass('left-condition-cell');
+            cell.td.classList.add('left-condition-cell');
         }
         if (this.isleft && cell.col.id === parentRowCol.col.id && parentRowCol.bundleData) {
             cell.setBundleData(parentRowCol.bundleData);

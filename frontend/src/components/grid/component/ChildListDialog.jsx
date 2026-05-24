@@ -1,5 +1,5 @@
-import React,{Component} from 'react';
-import ReactDOM from 'react-dom';
+import '../css/grid.css';
+import React, {Component} from 'react';
 import Grid from './Grid.jsx';
 import CommonDialog from '../../dialog/component/CommonDialog.jsx';
 import * as event from '../componentEvent.js';
@@ -7,12 +7,11 @@ import * as event from '../componentEvent.js';
 export default class ChildListDialog extends Component{
     constructor(props){
         super(props);
-        this.state={rows:[],variables:[]};
+        this.state={rows:[],variables:[],visible:false};
     }
     componentDidMount(){
         event.eventEmitter.on(event.SHOW_CHILD_LIST_DIALOG,config=>{
-            $(ReactDOM.findDOMNode(this)).modal('show');
-            this.setState({rows:config.rows,variables:config.variables,callback:config.callback});
+            this.setState({rows:config.rows,variables:config.variables,callback:config.callback,visible:true});
         });
     }
     render(){
@@ -49,7 +48,7 @@ export default class ChildListDialog extends Component{
                 className:'btn btn-danger',
                 click:function(){
                     callback(rows);
-                    $(ReactDOM.findDOMNode(_this)).modal('hide');
+                    _this.setState({visible: false});
                 }
             }
         ];
@@ -58,6 +57,8 @@ export default class ChildListDialog extends Component{
                 <Grid headers={headers} rows={rows} operationConfig={gridOperationCol} uniqueKey={true}/>
             </div>
         );
-        return (<CommonDialog title="定义子对象" body={body} buttons={buttons} large={true} holdState={true}/>);
+        return (
+            <CommonDialog visible={this.state.visible} title="定义子对象" body={body} buttons={buttons} large={true} holdState={true}/>
+        );
     }
 }

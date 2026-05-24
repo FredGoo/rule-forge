@@ -6,9 +6,12 @@ ruleforge.Join=function(context){
 	this.H=30;
 	this.W=60;
 	this.children=[];
-	this.joinContainer=$("<span class='btn btn-default dropdown-toggle rule-join-container'>");
-	this.joinLabel=$("<span style='font-size: 11pt'>并且</span>");
-	this.joinContainer.append(this.joinLabel);
+	this.joinContainer=document.createElement("span");
+	this.joinContainer.className="btn btn-default dropdown-toggle rule-join-container";
+	this.joinLabel=document.createElement("span");
+	this.joinLabel.style.fontSize="11pt";
+	this.joinLabel.textContent="并且";
+	this.joinContainer.appendChild(this.joinLabel);
 };
 ruleforge.Join.prototype.initData=function(data){
 	var criterions=data["criterions"];
@@ -28,7 +31,7 @@ ruleforge.Join.prototype.initData=function(data){
 		}
 		var newConnection=this.addItem(isJoin);
 		if(isJoin){
-			newConnection.getJoin().initData(criterion);			
+			newConnection.getJoin().initData(criterion);
 		}else{
 			newConnection.getCondition().initData(criterion);
 		}
@@ -46,9 +49,10 @@ ruleforge.Join.prototype.setType=function(type){
 ruleforge.Join.prototype.init=function(parentConnection){
 	if(parentConnection){
 		this.parentConnection=parentConnection;
-		this.parent=parentConnection.getParentJoin();		
+		this.parent=parentConnection.getParentJoin();
 	}
-	var joinArrow=$(`<i class="glyphicon glyphicon-chevron-down rule-join-node"></i>`);
+	var joinArrow=document.createElement("i");
+	joinArrow.className="glyphicon glyphicon-chevron-down rule-join-node";
 	var self=this;
 	var onClick=function(menu){
 		self.setOperator(menu.name);
@@ -72,7 +76,7 @@ ruleforge.Join.prototype.init=function(parentConnection){
 		},{
 			label:"添加联合条件",
 			onClick:function(){
-				self.addItem(true);				
+				self.addItem(true);
 			}
 		},{
 			label:"删除",
@@ -85,16 +89,16 @@ ruleforge.Join.prototype.init=function(parentConnection){
 					var parentJoin=parentConnection.getParentJoin();
 					if(parentJoin){
 						parentJoin.removeConnection(parentConnection);
-					}					
+					}
 				}
 			}
 		}]
 	});
-	this.joinContainer.click(function(e){
+	this.joinContainer.addEventListener('click',function(e){
 		self.menu.show(e);
 	});
-	
-	this.joinContainer.append(joinArrow);
+
+	this.joinContainer.appendChild(joinArrow);
 };
 ruleforge.Join.prototype.removeConnection=function(connection){
 	var pos=this.children.indexOf(connection);
@@ -115,8 +119,8 @@ ruleforge.Join.prototype.addItem=function(isJoin){
 		this.parent.resetItemPosition(pos+1,true);
 	}
 	var totalHeight=childrenCount*this.H;
-	var parentLeft=parseInt(this.joinContainer.css("left"));
-	var parentTop=parseInt(this.joinContainer.css("top"));
+	var parentLeft=parseInt(this.joinContainer.style.left);
+	var parentTop=parseInt(this.joinContainer.style.top);
 	var startX=parentLeft+this.W/2;
 	var startY=parentTop+this.H/5;
 	var endX=startX+this.W-25;
@@ -165,14 +169,12 @@ ruleforge.Join.prototype.resetItemPosition=function(index,add){
 };
 ruleforge.Join.prototype.resetContainerSize=function(){
 	var container=this.context.getCanvas();
-	var height=container.css("height");
+	var height=container.style.height;
 	height=parseInt(height);
 	var childrenCount=this.context.getTotalChildrenCount();
 	if(childrenCount==0)childrenCount=1;
 	var totalHeight=childrenCount*this.H+10;
-	container.css({
-		"height":totalHeight+"px"
-	});
+	container.style.height=totalHeight+"px";
 };
 ruleforge.Join.prototype.getChildrenCount=function(){
 	var total=0;
@@ -193,12 +195,10 @@ ruleforge.Join.prototype.getChildrenCount=function(){
 ruleforge.Join.prototype.initTopJoin=function(container){
 	var left=5;
 	var top=5;
-	this.joinContainer.css({
-		"position":"absolute",
-		"left":left,
-		"top":top
-	});
-	container.append(this.joinContainer);
+	this.joinContainer.style.position="absolute";
+	this.joinContainer.style.left=left;
+	this.joinContainer.style.top=top;
+	container.appendChild(this.joinContainer);
 	this.context.setRootJoin(this);
 };
 ruleforge.Join.prototype.getChildren=function(){

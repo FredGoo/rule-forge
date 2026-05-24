@@ -1,9 +1,10 @@
+import '../bootbox.js';
 import '../css/iconfont.css';
+import '../css/theme.css';
 import '../css/theme.css';
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../../node_modules/codemirror/lib/codemirror.css';
 import '../../node_modules/bootstrapvalidator/dist/css/bootstrapValidator.css';
-import '../bootstrap-contextmenu.js';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import {applyMiddleware, createStore} from 'redux';
@@ -19,40 +20,43 @@ import * as event from './event.js';
 import * as componentEvent from '../components/componentEvent.js';
 import Loading from '../components/loading/component/Loading.jsx';
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     window._types = null, window._projectName = null, window.componentEvent = componentEvent;
     const store = createStore(reducer, applyMiddleware(thunk));
     store.dispatch(ACTIONS.loadData());
-    const documentHeight = $(document).height() + 'px';
+    const documentHeight = document.documentElement.scrollHeight + 'px';
     event.eventEmitter.on(event.CHANGE_CLASSIFY, classify => {
         window._classify = classify;
         if (classify) {
-            $('#__classify_display').html('<i class="rf rf-check"/> 分类展示');
-            $('#__no_classify_display').html('&nbsp;&nbsp;&nbsp;&nbsp;集中展示');
+            document.getElementById('__classify_display').innerHTML = '<i class="rf rf-check"/> 分类展示';
+            document.getElementById('__no_classify_display').innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;集中展示';
         } else {
-            $('#__classify_display').html('&nbsp;&nbsp;&nbsp;&nbsp;分类展示');
-            $('#__no_classify_display').html('<i class="rf rf-check"/> 集中展示');
+            document.getElementById('__classify_display').innerHTML = '&nbsp;&nbsp;&nbsp;&nbsp;分类展示';
+            document.getElementById('__no_classify_display').innerHTML = '<i class="rf rf-check"/> 集中展示';
         }
     });
     event.eventEmitter.on(event.PROJECT_LIST_CHANGE, projectNames => {
-        const menu = $('#__project_filter_menu');
-        const menuChildren = menu.children('li');
-        menuChildren.each(function (index, li) {
-            const $li = $(li);
-            if (!$li.hasClass('_firstItem')) {
-                $li.remove();
+        const menu = document.getElementById('__project_filter_menu');
+        const menuChildren = Array.from(menu.children);
+        menuChildren.forEach(function (li) {
+            if (!li.classList.contains('_firstItem')) {
+                li.remove();
             } else {
-                $li.find('a').css("margin-left", '0px');
+                li.querySelector('a').style.marginLeft = '0px';
             }
         });
-        $('#_show_all_projects_i').addClass('rf rf-check');
+        document.getElementById('_show_all_projects_i').classList.add('rf', 'rf-check');
         for (let name of projectNames) {
-            const newLi = $(`<li class="p_${name}"/>`),
-                link = $(`<a href="###" style="margin-left: 22px"><i/> ${name}</a>`);
-            newLi.append(link);
-            menu.append(newLi);
+            const newLi = document.createElement('li');
+            newLi.className = 'p_' + name;
+            const link = document.createElement('a');
+            link.href = '###';
+            link.style.marginLeft = '22px';
+            link.innerHTML = '<i/> ' + name;
+            newLi.appendChild(link);
+            menu.appendChild(newLi);
 
-            link.click(function () {
+            link.addEventListener('click', function () {
                 window._projectName = name;
                 componentEvent.eventEmitter.emit(componentEvent.SHOW_LOADING);
                 setTimeout(function () {
@@ -64,19 +68,25 @@ $(document).ready(function () {
         }
     });
     event.eventEmitter.on(event.PROJECT_FILTER_CHANGE, name => {
-        const menu = $('#__project_filter_menu');
-        const menuChildren = menu.children('li');
-        menuChildren.each(function (index, li) {
-            $(li).find('i').removeClass('rf rf-check');
-            $(li).find('a').css('margin-left', '22px');
+        const menu = document.getElementById('__project_filter_menu');
+        const menuChildren = Array.from(menu.children);
+        menuChildren.forEach(function (li) {
+            const iEl = li.querySelector('i');
+            if (iEl) iEl.classList.remove('rf', 'rf-check');
+            const aEl = li.querySelector('a');
+            if (aEl) aEl.style.marginLeft = '22px';
         });
-        const li = menu.find(`.p_${name}`);
-        li.find('a').css('margin-left', '0px');
-        li.find('i').addClass('rf rf-check');
+        const filterLi = menu.querySelector('.p_' + name);
+        if (filterLi) {
+            const aEl = filterLi.querySelector('a');
+            if (aEl) aEl.style.marginLeft = '0px';
+            const iEl = filterLi.querySelector('i');
+            if (iEl) iEl.classList.add('rf', 'rf-check');
+        }
     });
 
     function searchFile() {
-        window.searchFileName = $('.fileSearchText').val();
+        window.searchFileName = document.querySelector('.fileSearchText').value;
         store.dispatch(ACTIONS.loadData(window._classify, window._projectName, window._types, window.searchFileName));
     }
 
@@ -124,14 +134,16 @@ $(document).ready(function () {
                                                 store.dispatch(ACTIONS.loadData(window._classify));
                                                 componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
                                             }, 200);
-                                            const menu = $('#__project_filter_menu');
-                                            const menuChildren = menu.children('li');
-                                            menuChildren.each(function (index, li) {
-                                                $(li).find('i').removeClass('rf rf-check');
-                                                $(li).find('a').css('margin-left', '22px');
+                                            const menu = document.getElementById('__project_filter_menu');
+                                            const menuChildren = Array.from(menu.children);
+                                            menuChildren.forEach(function (li) {
+                                                const iEl = li.querySelector('i');
+                                                if (iEl) iEl.classList.remove('rf', 'rf-check');
+                                                const aEl = li.querySelector('a');
+                                                if (aEl) aEl.style.marginLeft = '22px';
                                             });
-                                            $(this).css('margin-left', '0px');
-                                            $('#_show_all_projects_i').addClass('rf rf-check');
+                                            e.target.style.marginLeft = '0px';
+                                            document.getElementById('_show_all_projects_i').classList.add('rf', 'rf-check');
                                             window._projectName = null;
                                         }}><i id="_show_all_projects_i"/> 显示所有项目
                                         </a>
@@ -150,8 +162,8 @@ $(document).ready(function () {
                                             store.dispatch(ACTIONS.loadData(window._classify, window._projectName, window._types));
                                             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
                                         }, 200);
-                                        $('.filter_file').removeClass('rf rf-check');
-                                        $(e.target).children('.filter_file').addClass('rf rf-check');
+                                        document.querySelectorAll('.filter_file').forEach(function(el) { el.classList.remove('rf', 'rf-check'); });
+                                        e.target.querySelector('.filter_file').classList.add('rf', 'rf-check');
                                     }}><i className="filter_file rf rf-check"/> <i className="glyphicon glyphicon-th"/> 显示所有文件</a></li>
                                     <li>
                                         <a href="#" onClick={function (e) {
@@ -161,8 +173,8 @@ $(document).ready(function () {
                                                 store.dispatch(ACTIONS.loadData(window._classify, window._projectName, window._types));
                                                 componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
                                             }, 200);
-                                            $('.filter_file').removeClass('rf rf-check');
-                                            $(e.target).children('.filter_file').addClass('rf rf-check');
+                                            document.querySelectorAll('.filter_file').forEach(function(el) { el.classList.remove('rf', 'rf-check'); });
+                                            e.target.querySelector('.filter_file').classList.add('rf', 'rf-check');
                                         }}><i className="filter_file"/>  <i className="rf rf-library"/> 库文件</a>
                                     </li>
                                     <li>
@@ -173,8 +185,8 @@ $(document).ready(function () {
                                                 store.dispatch(ACTIONS.loadData(window._classify, window._projectName, window._types));
                                                 componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
                                             }, 200);
-                                            $('.filter_file').removeClass('rf rf-check');
-                                            $(e.target).children('.filter_file').addClass('rf rf-check');
+                                            document.querySelectorAll('.filter_file').forEach(function(el) { el.classList.remove('rf', 'rf-check'); });
+                                            e.target.querySelector('.filter_file').classList.add('rf', 'rf-check');
                                         }}><i className="filter_file"/>  <i className="rf rf-rule"/> 决策集</a>
                                     </li>
                                     <li>
@@ -185,8 +197,8 @@ $(document).ready(function () {
                                                 store.dispatch(ACTIONS.loadData(window._classify, window._projectName, window._types));
                                                 componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
                                             }, 200);
-                                            $('.filter_file').removeClass('rf rf-check');
-                                            $(e.target).children('.filter_file').addClass('rf rf-check');
+                                            document.querySelectorAll('.filter_file').forEach(function(el) { el.classList.remove('rf', 'rf-check'); });
+                                            e.target.querySelector('.filter_file').classList.add('rf', 'rf-check');
                                         }}><i className="filter_file"/> <i className="rf rf-table"/> 决策表</a>
                                     </li>
                                     <li>
@@ -197,8 +209,8 @@ $(document).ready(function () {
                                                 store.dispatch(ACTIONS.loadData(window._classify, window._projectName, window._types));
                                                 componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
                                             }, 200);
-                                            $('.filter_file').removeClass('rf rf-check');
-                                            $(e.target).children('.filter_file').addClass('rf rf-check');
+                                            document.querySelectorAll('.filter_file').forEach(function(el) { el.classList.remove('rf', 'rf-check'); });
+                                            e.target.querySelector('.filter_file').classList.add('rf', 'rf-check');
                                         }}><i className="filter_file"/> <i className="rf rf-tree"/> 决策树</a>
                                     </li>
                                     <li>
@@ -209,8 +221,8 @@ $(document).ready(function () {
                                                 store.dispatch(ACTIONS.loadData(window._classify, window._projectName, window._types));
                                                 componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
                                             }, 200);
-                                            $('.filter_file').removeClass('rf rf-check');
-                                            $(e.target).children('.filter_file').addClass('rf rf-check');
+                                            document.querySelectorAll('.filter_file').forEach(function(el) { el.classList.remove('rf', 'rf-check'); });
+                                            e.target.querySelector('.filter_file').classList.add('rf', 'rf-check');
                                         }}><i className="filter_file"/> <i className="rf rf-flow"/> 决策流</a>
                                     </li>
                                 </ul>
@@ -267,10 +279,22 @@ $(document).ready(function () {
 );
 
     event.eventEmitter.on(event.EXPAND_TREE_NODE, (nodeData) => {
-        const $span = $('#node-' + nodeData.id).parent("li");
-        var $liChildren = $span.parent('li.parent_li').find(' > ul > li');
-        $liChildren.show('fast');
-        $span.children('i:first').addClass('rf-minus').removeClass('rf-plus');
+        const spanEl = document.getElementById('node-' + nodeData.id);
+        if (spanEl) {
+            const liEl = spanEl.parentElement;
+            if (liEl) {
+                const parentLi = liEl.closest('li.parent_li');
+                if (parentLi) {
+                    const liChildren = parentLi.querySelectorAll(':scope > ul > li');
+                    liChildren.forEach(function(child) { child.style.display = ''; });
+                }
+            }
+            const firstI = spanEl.querySelector('i:first-child');
+            if (firstI) {
+                firstI.classList.add('rf-minus');
+                firstI.classList.remove('rf-plus');
+            }
+        }
     })
 });
 

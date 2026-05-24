@@ -40,12 +40,10 @@ ruleforge.Connection.prototype.initJoin=function(joinType){
 	var joinContainer=this.join.getContainer();
 	var left=(this.endX+10)+"px";
 	var top=this.endY+"px";
-	joinContainer.css({
-		"position":"absolute",
-		"left":left,
-		"top":top
-	});
-	this.context.getCanvas().append(joinContainer);
+	joinContainer.style.position="absolute";
+	joinContainer.style.left=left;
+	joinContainer.style.top=top;
+	this.context.getCanvas().appendChild(joinContainer);
 };
 
 ruleforge.Connection.prototype.remove=function(){
@@ -59,26 +57,29 @@ ruleforge.Connection.prototype.remove=function(){
 };
 
 ruleforge.Connection.prototype.initCondition=function(joinType){
-	this.conditionContainer=$("<div>");
+	this.conditionContainer=document.createElement("div");
 	var left=(this.endX+10)+"px";
 	var top=this.endY+"px";
-	this.conditionContainer.css({
-		"position":"absolute",
-		"left":left,
-		"top":top
-	});
+	this.conditionContainer.style.position="absolute";
+	this.conditionContainer.style.left=left;
+	this.conditionContainer.style.top=top;
 	if(this.parentJoin instanceof ruleforge.NamedJoin){
 		this.condition=new ruleforge.NamedCondition(this.context,this.conditionContainer,this.parentJoin);
 	}else{
 		this.condition=new ruleforge.Condition(this.conditionContainer);
 	}
-	var del=$(`<i class="glyphicon glyphicon-trash" style="color: #019dff;cursor: pointer;font-size: 9pt;padding-left:5px"></i>`);
+	var del=document.createElement("i");
+	del.className="glyphicon glyphicon-trash";
+	del.style.color="#019dff";
+	del.style.cursor="pointer";
+	del.style.fontSize="9pt";
+	del.style.paddingLeft="5px";
 	var self=this;
-	del.click(function(){
+	del.addEventListener('click',function(){
 		self.parentJoin.removeConnection(self);
 	});
-	this.conditionContainer.append(del);
-	this.context.getCanvas().append(this.conditionContainer);
+	this.conditionContainer.appendChild(del);
+	this.context.getCanvas().appendChild(this.conditionContainer);
 };
 ruleforge.Connection.prototype.update=function(add){
 	var pathInfo=this.buildPathInfo();
@@ -86,24 +87,16 @@ ruleforge.Connection.prototype.update=function(add){
 	if(add===null){
 		var left=(this.endX+10)+"px";
 		if(this.conditionContainer){
-			this.conditionContainer.css({
-				"left":left
-			});
+			this.conditionContainer.style.left=left;
 		}else{
-			this.join.getContainer().css({
-				"left":left
-			});
+			this.join.getContainer().style.left=left;
 		}
 	}else{
 		var top=this.endY+"px";
 		if(this.conditionContainer){
-			this.conditionContainer.css({
-				"top":top
-			});
+			this.conditionContainer.style.top=top;
 		}else{
-			this.join.getContainer().css({
-				"top":top
-			});
+			this.join.getContainer().style.top=top;
 		}
 	}
 	if(this.join){

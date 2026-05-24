@@ -1,10 +1,18 @@
 window._conditionId = 0;
 ruleforge.CellCondition = function (element) {
-    this.container = $(element);
-    this.container.css({
-        height: "40px",
-        position: "relative"
-    });
+    if (typeof element === 'string') {
+        var temp = document.createElement('div');
+        temp.innerHTML = element;
+        this.container = temp.firstElementChild || temp;
+    } else if (element && element.nodeType) {
+        this.container = element;
+    } else if (element && element[0]) {
+        this.container = element[0];
+    } else {
+        this.container = element;
+    }
+    this.container.style.height = "40px";
+    this.container.style.position = "relative";
     var context = new ruleforge.Context(this.container);
     this.join = new ruleforge.Join(context);
     this.join.init(null);
@@ -28,7 +36,9 @@ ruleforge.CellCondition.prototype.getDisplayContainer = function () {
         dis = this.join.getDisplayContainer();
     }
     if (!dis) {
-        dis = $("<span style='color:gray'>无</span>");
+        dis = document.createElement("span");
+        dis.style.cssText = "color:gray";
+        dis.textContent = "无";
     }
     return dis;
 };

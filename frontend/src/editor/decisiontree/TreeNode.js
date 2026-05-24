@@ -1,10 +1,15 @@
 TreeNode=function(parentNode){
     this.parentNode=parentNode;
-    this.container=$("<table class='nodeTable' border='0' cellpadding='0' cellspacing='0'>");
-    var row=$("<tr>");
-    this.col=$("<td align='center'>");
-    row.append(this.col);
-    this.container.append(row);
+    this.container=document.createElement("table");
+    this.container.className="nodeTable";
+    this.container.setAttribute("border","0");
+    this.container.setAttribute("cellpadding","0");
+    this.container.setAttribute("cellspacing","0");
+    var row=document.createElement("tr");
+    this.col=document.createElement("td");
+    this.col.setAttribute("align","center");
+    row.appendChild(this.col);
+    this.container.appendChild(row);
     this.nextColCount=0;
     this.lineCols=[];
     this.childrenNodes=[];
@@ -25,8 +30,8 @@ TreeNode.prototype.delete=function(){
     }
     parentChildrenNodes.splice(pos,1);
     this.parentNode.nextColCount-=2;
-    this.parentNode.col.prop("colspan",this.parentNode.nextColCount);
-    this.parentNode.lineCol.prop("colspan",this.parentNode.nextColCount);
+    this.parentNode.col.colSpan=this.parentNode.nextColCount;
+    this.parentNode.lineCol.colSpan=this.parentNode.nextColCount;
     if(parentChildrenNodes.length>0){
         this.parentCol.remove();
         var parentLineCols=this.parentNode.lineCols;
@@ -41,8 +46,8 @@ TreeNode.prototype.delete=function(){
             parentLineCols.splice(pos,1);
         }
         if(parentLineCols.length>1){
-            parentLineCols[0].css("border-top-style","none");
-            parentLineCols[parentLineCols.length-1].css("border-top-style","none");
+            parentLineCols[0].style.borderTopStyle="none";
+            parentLineCols[parentLineCols.length-1].style.borderTopStyle="none";
         }
         this.newLineCols[0].remove();
         this.newLineCols[1].remove();
@@ -58,18 +63,27 @@ TreeNode.prototype.delete=function(){
 TreeNode.prototype.addChild=function(type){
     _setDirty();
     if(!this.nextRow){
-        this.nextRow=$("<tr style='min-height:40px'>");
-        this.nextLineRow=$("<tr style='height:20px;'>");
-        this.lineRow=$("<tr style='height:20px;'>");
-        this.lineCol=$("<td><div class='vertical-line'></div></td>");
-        this.lineRow.append(this.lineCol);
-        this.container.append(this.lineRow);
-        this.container.append(this.nextLineRow);
-        this.container.append(this.nextRow);
+        this.nextRow=document.createElement("tr");
+        this.nextRow.style.minHeight="40px";
+        this.nextLineRow=document.createElement("tr");
+        this.nextLineRow.style.height="20px";
+        this.lineRow=document.createElement("tr");
+        this.lineRow.style.height="20px";
+        this.lineCol=document.createElement("td");
+        var lineDiv=document.createElement("div");
+        lineDiv.className="vertical-line";
+        this.lineCol.appendChild(lineDiv);
+        this.lineRow.appendChild(this.lineCol);
+        this.container.appendChild(this.lineRow);
+        this.container.appendChild(this.nextLineRow);
+        this.container.appendChild(this.nextRow);
     }
     var newLineCols=this.newLine();
 
-    var newCol=$("<td class='nodeContainer' align='center' colspan='2'>");
+    var newCol=document.createElement("td");
+    newCol.className="nodeContainer";
+    newCol.setAttribute("align","center");
+    newCol.colSpan=2;
     var childNode;
     if(type==="condition"){
         childNode=new ConditionTreeNode(this);
@@ -81,12 +95,12 @@ TreeNode.prototype.addChild=function(type){
     childNode.newLineCols=newLineCols;
     childNode.parentCol=newCol;
     this.childrenNodes.push(childNode);
-    newCol.append(childNode.container);
+    newCol.appendChild(childNode.container);
     this.nextColCount+=2;
-    this.nextRow.append(newCol);
+    this.nextRow.appendChild(newCol);
     if(this.nextColCount>1){
-        this.col.prop("colspan",this.nextColCount);
-        this.lineCol.prop("colspan",this.nextColCount);
+        this.col.colSpan=this.nextColCount;
+        this.lineCol.colSpan=this.nextColCount;
     }
     return childNode;
 };
@@ -114,14 +128,16 @@ TreeNode.prototype.initChildrenNodeData=function(data){
     }
 };
 TreeNode.prototype.newLine=function(){
-    var lineCol1=$("<td style='border-right:solid #4cae4c 2px;'></td>");
-    this.nextLineRow.append(lineCol1);
-    var lineCol2=$("<td style='border-left:solid #4cae4c 2px;'></td>");
-    this.nextLineRow.append(lineCol2);
+    var lineCol1=document.createElement("td");
+    lineCol1.style.borderRight="solid #4cae4c 2px";
+    this.nextLineRow.appendChild(lineCol1);
+    var lineCol2=document.createElement("td");
+    lineCol2.style.borderLeft="solid #4cae4c 2px";
+    this.nextLineRow.appendChild(lineCol2);
     if(this.lineCols.length>0){
         var lastLineCol=this.lineCols[this.lineCols.length-1];
-        lastLineCol.css("border-top","solid #4cae4c 2px");
-        lineCol1.css("border-top","solid #4cae4c 2px");
+        lastLineCol.style.borderTop="solid #4cae4c 2px";
+        lineCol1.style.borderTop="solid #4cae4c 2px";
     }
     this.lineCols.push(lineCol1);
     this.lineCols.push(lineCol2);

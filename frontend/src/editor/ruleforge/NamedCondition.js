@@ -2,20 +2,20 @@ ruleforge.NamedCondition=function(context,parentContainer,parentJoin){
 	this.context=context;
 	this.parentJoin=parentJoin;
 	this.variable=null;
-	this.container=$("<span>");
-	parentContainer.append(this.container);
+	this.container=document.createElement("span");
+	parentContainer.appendChild(this.container);
 	this.arithmetic=new ruleforge.SimpleArithmetic();
-	
+
 	this.label=generateContainer();
-	this.container.append(this.label);
+	this.container.appendChild(this.label);
 	this.label.css({
 		"color":"#673AB7"
 	});
 	RuleForge.setDomContent(this.label,"请选择属性");
-	this.valueContainer=$("<span>");
-	this.container.append(this.valueContainer);
+	this.valueContainer=document.createElement("span");
+	this.container.appendChild(this.valueContainer);
 	this.initMenu();
-	
+
 };
 ruleforge.NamedCondition.prototype.initMenu=function(){
 	var self=this,menuItems=[];
@@ -33,22 +33,22 @@ ruleforge.NamedCondition.prototype.initMenu=function(){
 				self.datatype=variable.type;
 				RuleForge.setDomContent(self.label,item.label);
 				if(self.operator){
-					self.operator.getContainer().show();
+					self.operator.getContainer().style.display='';
 				}else{
 					self.operator=new ruleforge.ComparisonOperator(function(){
 						self.inputType=self.operator.getInputType();
 						if(self.inputType){
-							self.container.append(self.inputType.getContainer());
+							self.container.appendChild(self.inputType.getContainer());
 						}
 					});
-					self.container.append(self.operator.getContainer());
+					self.container.appendChild(self.operator.getContainer());
 				}
 				window._setDirty();
 			}
 		});
 	}
 	this.menu=new RuleForge.menu.Menu({menuItems});
-	this.label.click(function(e){
+	this.label.addEventListener('click',function(e){
 		self.menu.show(e);
 	});
 };
@@ -59,22 +59,22 @@ ruleforge.NamedCondition.prototype.initData=function(data){
 	RuleForge.setDomContent(this.label,this.variableLabel);
 	var self=this;
 	if(this.operator){
-		this.operator.getContainer().show();
+		this.operator.getContainer().style.display='';
 	}else{
 		this.operator=new ruleforge.ComparisonOperator(function(){
 			self.inputType=self.operator.getInputType();
 			if(self.inputType){
-				self.container.append(self.inputType.getContainer());		
+				self.container.appendChild(self.inputType.getContainer());
 			}
 		});
-		this.container.append(this.operator.getContainer());
+		this.container.appendChild(this.operator.getContainer());
 	}
 	var op=data["op"];
 	this.operator.setOperator(op);
 	this.operator.initRightValue(data["value"]);
 	this.inputType=this.operator.getInputType();
 	if(this.inputType){
-		this.container.append(this.inputType.getContainer());		
+		this.container.appendChild(this.inputType.getContainer());
 	}
 };
 ruleforge.NamedCondition.prototype.toXml=function(){

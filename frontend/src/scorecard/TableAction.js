@@ -8,121 +8,121 @@ export default class TableAction {
     initData(data) {
         const scoringType = data.scoringType;
         if (scoringType) {
-            this.scoringSettingSelect.val(scoringType);
+            this.scoringSettingSelect.value = scoringType;
             this.scoringType = scoringType;
             if (scoringType === 'custom') {
-                this.customContainer.show();
+                this.customContainer.style.display = '';
                 this.customScoringBean = data.scoringBean;
-                this.customBeanEditor.val(this.customScoringBean);
+                this.customBeanEditor.value = this.customScoringBean;
             }
         }
         const assignTargetType = data.assignTargetType;
         if (assignTargetType) {
             this.assignTargetType = assignTargetType;
             if (assignTargetType === 'variable') {
-                this.variableTarget.getContainer().show();
+                this.variableTarget.getContainer().style.display = '';
                 this.variableTarget.setValue(data);
                 RuleForge.setDomContent(this.assignTargetContainer, ".");
-                this.assignTargetContainer.css({
-                    "color": "white"
-                });
+                this.assignTargetContainer.style.color = "white";
             } else if (assignTargetType === 'parameter') {
-                this.parameterTarget.getContainer().show();
+                this.parameterTarget.getContainer().style.display = '';
                 this.parameterTarget.setValue(data);
                 RuleForge.setDomContent(this.assignTargetContainer, ".");
-                this.assignTargetContainer.css({
-                    "color": "white"
-                });
+                this.assignTargetContainer.style.color = "white";
             } else {
                 RuleForge.setDomContent(this.assignTargetContainer, "不赋值");
-                this.assignTargetContainer.css({
-                    "color": "#999"
-                });
+                this.assignTargetContainer.style.color = "#999";
             }
         }
     }
 
     initScoringSetting() {
-        const scoringSettingContainer = $(`<div style="margin: 5px;">得分计算方式：</div>`);
-        this.container.append(scoringSettingContainer);
-        this.scoringSettingSelect = $(`<select class="form-control" style="display: inline-block;width:120px;height:30px;padding: 3px;"></select>`);
-        scoringSettingContainer.append(this.scoringSettingSelect);
-        this.scoringSettingSelect.append(`<option value="sum">求和</option>`);
-        this.scoringSettingSelect.append(`<option value="weightsum">加权求和</option>`);
-        this.scoringSettingSelect.append(`<option value="custom">自定义</option>`);
-        this.customContainer = $(`<span style="margin: 15px;">自定义计算得分的Bean ID：</span>`);
-        scoringSettingContainer.append(this.customContainer);
-        this.customContainer.hide();
-        this.customBeanEditor = $(`<input type="text" class="form-control" style="width: 200px;display: inline-block">`);
-        this.customContainer.append(this.customBeanEditor);
+        const scoringSettingContainer = document.createElement('div');
+        scoringSettingContainer.style.cssText = 'margin: 5px;';
+        scoringSettingContainer.textContent = '得分计算方式：';
+        this.container.appendChild(scoringSettingContainer);
+        const select = document.createElement('select');
+        select.className = 'form-control';
+        select.style.cssText = 'display: inline-block;width:120px;height:30px;padding: 3px;';
+        this.scoringSettingSelect = select;
+        scoringSettingContainer.appendChild(select);
+        select.innerHTML = '<option value="sum">求和</option>';
+        select.innerHTML += '<option value="weightsum">加权求和</option>';
+        select.innerHTML += '<option value="custom">自定义</option>';
+        const customContainer = document.createElement('span');
+        customContainer.style.cssText = 'margin: 15px;';
+        customContainer.textContent = '自定义计算得分的Bean ID：';
+        this.customContainer = customContainer;
+        scoringSettingContainer.appendChild(customContainer);
+        customContainer.style.display = 'none';
+        const customBeanEditor = document.createElement('input');
+        customBeanEditor.type = 'text';
+        customBeanEditor.className = 'form-control';
+        customBeanEditor.style.cssText = 'width: 200px;display: inline-block';
+        this.customBeanEditor = customBeanEditor;
+        customContainer.appendChild(customBeanEditor);
         const _this = this;
-        this.customBeanEditor.change(function () {
-            _this.customScoringBean = $(this).val();
+        customBeanEditor.addEventListener('change', function () {
+            _this.customScoringBean = this.value;
         });
 
-        this.scoringSettingSelect.change(function () {
-            _this.scoringType = $(this).val();
+        select.addEventListener('change', function () {
+            _this.scoringType = this.value;
             if (_this.scoringType === 'custom') {
-                _this.customContainer.show();
+                _this.customContainer.style.display = '';
             } else {
-                _this.customContainer.hide();
+                _this.customContainer.style.display = 'none';
             }
         });
     }
 
     initAssignSetting() {
-        const assignSettingContainer = $(`<div style="margin: 15px 5px">将得分值赋给：</div>`);
-        this.container.append(assignSettingContainer);
+        const assignSettingContainer = document.createElement('div');
+        assignSettingContainer.style.cssText = 'margin: 15px 5px';
+        assignSettingContainer.textContent = '将得分值赋给：';
+        this.container.appendChild(assignSettingContainer);
         this.assignTargetContainer = generateContainer();
-        assignSettingContainer.append(this.assignTargetContainer);
+        assignSettingContainer.appendChild(this.assignTargetContainer);
         RuleForge.setDomContent(this.assignTargetContainer, "请选择值类型");
-        this.assignTargetContainer.css({
-            "color": "blue"
-        });
+        this.assignTargetContainer.style.color = "blue";
         this.variableTarget = new ruleforge.VariableValue(null, null, "Out");
         this.parameterTarget = new ruleforge.ParameterValue(null, null, "Out");
-        this.variableTarget.getContainer().hide();
-        this.parameterTarget.getContainer().hide();
-        assignSettingContainer.append(this.variableTarget.getContainer());
-        assignSettingContainer.append(this.parameterTarget.getContainer());
+        this.variableTarget.getContainer().style.display = 'none';
+        this.parameterTarget.getContainer().style.display = 'none';
+        assignSettingContainer.appendChild(this.variableTarget.getContainer());
+        assignSettingContainer.appendChild(this.parameterTarget.getContainer());
         var self = this;
         self.menu = new RuleForge.menu.Menu({
             menuItems: [{
                 label: "选择变量",
                 onClick: function () {
-                    self.parameterTarget.getContainer().hide();
-                    self.variableTarget.getContainer().show();
+                    self.parameterTarget.getContainer().style.display = 'none';
+                    self.variableTarget.getContainer().style.display = '';
                     self.assignTargetType = "variable";
                     RuleForge.setDomContent(self.assignTargetContainer, ".");
-                    self.assignTargetContainer.css({
-                        "color": "white"
-                    });
+                    self.assignTargetContainer.style.color = "white";
                 }
             }, {
                 label: "选择参数",
                 onClick: function () {
-                    self.variableTarget.getContainer().hide();
-                    self.parameterTarget.getContainer().show();
+                    self.variableTarget.getContainer().style.display = 'none';
+                    self.parameterTarget.getContainer().style.display = '';
                     self.assignTargetType = "parameter";
                     RuleForge.setDomContent(self.assignTargetContainer, ".");
-                    self.assignTargetContainer.css({
-                        "color": "white"
-                    });
+                    self.assignTargetContainer.style.color = "white";
                 }
             }, {
                 label: "不赋值",
                 onClick: function () {
-                    self.variableTarget.getContainer().hide();
-                    self.parameterTarget.getContainer().hide();
+                    self.variableTarget.getContainer().style.display = 'none';
+                    self.parameterTarget.getContainer().style.display = 'none';
                     self.assignTargetType = "none";
                     RuleForge.setDomContent(self.assignTargetContainer, "不赋值");
-                    self.assignTargetContainer.css({
-                        "color": "#999"
-                    });
+                    self.assignTargetContainer.style.color = "#999";
                 }
             }]
         });
-        this.assignTargetContainer.click(function (e) {
+        this.assignTargetContainer.addEventListener('click', function (e) {
             self.menu.show(e);
         });
     }

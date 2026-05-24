@@ -1,11 +1,9 @@
 ruleforge.FunctionProperty = function () {
-    this.container = $("<span>");
+    this.container = document.createElement("span");
     this.label = generateContainer();
-    this.container.append(this.label);
+    this.container.appendChild(this.label);
     RuleForge.setDomContent(this.label, "选择属性");
-    this.label.css({
-        "color": "#004C85",
-    });
+    this.label.style.color = "#004C85";
 };
 ruleforge.FunctionProperty.prototype.toXml = function () {
     if (!this.variableName) {
@@ -37,7 +35,7 @@ ruleforge.FunctionProperty.prototype.initMenu = function (data) {
         });
     });
     this.menu = new RuleForge.menu.Menu(menuConfig);
-    this.label.click(function (e) {
+    this.label.addEventListener("click", function (e) {
         self.menu.show(e);
     });
 };

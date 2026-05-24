@@ -6,15 +6,16 @@ export default class ConditionRow extends Row{
         this.attributeRow=attributeRow;
         this.rowData=rowData;
         this.rowType="condition";
-        this.tr=$(`<tr style="min-height: 25px"></tr>`);
-        this.tr.append(this.newConditionCell());
-        this.tr.append(this.newScoreCell());
+        this.tr = document.createElement('tr');
+        this.tr.style.cssText = 'min-height: 25px';
+        this.tr.appendChild(this.newConditionCell());
+        this.tr.appendChild(this.newScoreCell());
         this.initCustomCells();
     }
     addCustomCol(customCol){
         const cell=new CustomCell(this,customCol);
         customCol.customCells.push(cell);
-        this.tr.append(cell.td);
+        this.tr.appendChild(cell.td);
     }
 
     removeCustomCol(customCol){

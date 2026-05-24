@@ -1,3 +1,4 @@
+import '../../bootbox.js';
 import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../../../node_modules/codemirror/lib/codemirror.css';
 import '../../../node_modules/codemirror/addon/hint/show-hint.css';
@@ -18,7 +19,7 @@ import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.j
 import {ajaxSave, buildProjectNameFromFile, getParameter, saveNewVersion} from '../../Utils.js';
 import * as event from '../../components/componentEvent.js';
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     const file = getParameter('file');
     window._project = buildProjectNameFromFile(file);
 
@@ -91,7 +92,7 @@ function buildScriptLintFunction(type) {
 }
 
 function init() {
-    var height = $(document).height() - 60;
+    var height = document.documentElement.scrollHeight - 60;
     codeMirror.setSize("100%", height);
     window._dirty = false;
     var file = getParameter("file");
@@ -106,32 +107,34 @@ function init() {
     var testButton = '<div class="btn-group btn-group-sm navbar-btn" style="margin-left:5px;margin-top:0;margin-bottom: 0" role="group" aria-label="...">' +
         '<button id="testButton" type="button" class="btn btn-success navbar-btn"><i class="glyphicon glyphicon-flash"/> 快速测试</button>' +
         '</div>';
-    var toolbar = $(`<nav class="navbar navbar-default" style="margin-bottom: 1px">
-        <div>
-            <div class="collapse navbar-collapse"> ${saveButton}
-                    <div class="btn-group btn-group-sm navbar-btn" style="margin:1px;" role="group" aria-label="...">
-                        <button id="addVarButton" type="button" class="btn btn-default"><i class="rf rf-variable"></i> 变量库</button>
-                        <button id="addConstantsButton" type="button" class="btn btn-default"><i class="rf rf-constant"></i> 常量库</button>
-                        <button id="addActionButton" type="button" class="btn btn-default"><i class="rf rf-action"></i> 动作库</button>
-                        <button id="configParameterButton" type="button" class="btn btn-default"><i class="rf rf-parameter"></i> 参数库</button>
-                    </div>
-                    ${testButton}
-                 </div>
-            </div>
-        </nav>`);
-    $("#toolbarContainer").append(toolbar);
-    $("#saveButton").click(function () {
+    var toolbarContainer = document.getElementById("toolbarContainer");
+    var nav = document.createElement('nav');
+    nav.className = 'navbar navbar-default';
+    nav.style.marginBottom = '1px';
+    nav.innerHTML = `<div>
+        <div class="collapse navbar-collapse"> ${saveButton}
+                <div class="btn-group btn-group-sm navbar-btn" style="margin:1px;" role="group" aria-label="...">
+                    <button id="addVarButton" type="button" class="btn btn-default"><i class="rf rf-variable"></i> 变量库</button>
+                    <button id="addConstantsButton" type="button" class="btn btn-default"><i class="rf rf-constant"></i> 常量库</button>
+                    <button id="addActionButton" type="button" class="btn btn-default"><i class="rf rf-action"></i> 动作库</button>
+                    <button id="configParameterButton" type="button" class="btn btn-default"><i class="rf rf-parameter"></i> 参数库</button>
+                </div>
+                ${testButton}
+             </div>
+        </div>`;
+    toolbarContainer.appendChild(nav);
+    document.getElementById("saveButton").addEventListener('click', function () {
         save(file, false);
     });
-    $("#saveButtonNewVersion").click(function () {
+    document.getElementById("saveButtonNewVersion").addEventListener('click', function () {
         save(file, true);
     });
-    $("#testButton").click(function() {
+    document.getElementById("testButton").addEventListener('click', function() {
         let decodedFile = decodeURIComponent(file)
         event.eventEmitter.emit(event.OPEN_QUICK_TEST_DIALOG, {project: window._project, file: decodedFile});
-    })
+    });
 
-    $("#configParameterButton").click(function () {
+    document.getElementById("configParameterButton").addEventListener('click', function () {
         event.eventEmitter.emit(event.OPEN_KNOWLEDGE_TREE_DIALOG, {
             project: window._project,
             fileType: 'ParameterLibrary',
@@ -144,7 +147,7 @@ function init() {
             }
         });
     });
-    $("#addVarButton").click(function () {
+    document.getElementById("addVarButton").addEventListener('click', function () {
         event.eventEmitter.emit(event.OPEN_KNOWLEDGE_TREE_DIALOG, {
             project: window._project,
             fileType: 'VariableLibrary',
@@ -157,7 +160,7 @@ function init() {
             }
         });
     });
-    $("#addConstantsButton").click(function () {
+    document.getElementById("addConstantsButton").addEventListener('click', function () {
         event.eventEmitter.emit(event.OPEN_KNOWLEDGE_TREE_DIALOG, {
             project: window._project,
             fileType: 'ConstantLibrary',
@@ -170,7 +173,7 @@ function init() {
             }
         });
     });
-    $("#addActionButton").click(function () {
+    document.getElementById("addActionButton").addEventListener('click', function () {
         event.eventEmitter.emit(event.OPEN_KNOWLEDGE_TREE_DIALOG, {
             project: window._project,
             fileType: 'ActionLibrary',
@@ -195,8 +198,7 @@ function init() {
         return response.json();
     }).then(function (data) {
         codeMirror.setValue(data);
-        $("#saveButton").addClass("disabled");
-        // $("#saveButtonNewVersion").addClass("disabled");
+        document.getElementById("saveButton").classList.add("disabled");
         codeMirror.on("change", function () {
             setDirty();
         });
@@ -250,7 +252,7 @@ function loadResLib() {
 };
 
 function save(file, newVersion) {
-    if (!newVersion && $("#saveButton").hasClass("disabled")) {
+    if (!newVersion && document.getElementById("saveButton").classList.contains("disabled")) {
         return false;
     }
     var content = codeMirror.getValue();
@@ -274,8 +276,8 @@ function setDirty() {
         return;
     }
     window._dirty = true;
-    $("#saveButton").html("<i class='rf rf-save'></i> *保存");
-    $("#saveButton").removeClass("disabled");
+    document.getElementById("saveButton").innerHTML = "<i class='rf rf-save'></i> *保存";
+    document.getElementById("saveButton").classList.remove("disabled");
 };
 
 function cancelDirty() {
@@ -283,6 +285,6 @@ function cancelDirty() {
         return;
     }
     window._dirty = false;
-    $("#saveButton").html("<i class='rf rf-save'></i> 保存");
-    $("#saveButton").addClass("disabled");
+    document.getElementById("saveButton").innerHTML = "<i class='rf rf-save'></i> 保存";
+    document.getElementById("saveButton").classList.add("disabled");
 };

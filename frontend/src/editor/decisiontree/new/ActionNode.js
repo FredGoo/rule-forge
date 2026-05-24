@@ -8,15 +8,19 @@ export default class ActionNode extends BaseNode{
         this.init();
     }
     init(){
-        this.nodeContainer=$("<div class='node actionNode'>");
-        this.context.container.append(this.nodeContainer);
+        this.nodeContainer=document.createElement("div");
+        this.nodeContainer.className="node actionNode";
+        this.context.container.appendChild(this.nodeContainer);
         this.initBindResizeEvent();
-        this.actionsContainer=$("<span style='display: inline-block;'>");
-        this.nodeContainer.append(this.actionsContainer);
+        this.actionsContainer=document.createElement("span");
+        this.actionsContainer.style.display="inline-block";
+        this.nodeContainer.appendChild(this.actionsContainer);
         this.addAction();
         var self=this;
-        var operations=$("<span class='operations'><i class='glyphicon glyphicon-ok-circle'></i></span>");
-        this.nodeContainer.append(operations);
+        var operations=document.createElement("span");
+        operations.className="operations";
+        operations.innerHTML="<i class='glyphicon glyphicon-ok-circle'></i>";
+        this.nodeContainer.appendChild(operations);
         var menuItems=[];
         menuItems.push({
             name:"delete",
@@ -35,26 +39,28 @@ export default class ActionNode extends BaseNode{
             }
         });
         var menu=new RuleForge.menu.Menu({menuItems:menuItems});
-        operations.click(function(e){
+        operations.addEventListener('click',function(e){
             menu.show(e);
         });
-        this.nodeHeight=this.nodeContainer.height()+15;
-        this.nodeWidth=this.nodeContainer.width();
+        this.nodeHeight=this.nodeContainer.offsetHeight+15;
+        this.nodeWidth=this.nodeContainer.offsetWidth;
     }
     addAction(notfirst){
-        var actionContainer=$("<span>");
+        var actionContainer=document.createElement("span");
         if(notfirst){
-            actionContainer.css("display","block");
+            actionContainer.style.display="block";
         }
         window._setDirty();
-        var delIcon=$("<i class='glyphicon glyphicon-minus-sign' style='color: #ac2925;padding-right: 5px'></i>");
-        actionContainer.append(delIcon);
-        this.actionsContainer.append(actionContainer);
+        var delIcon=document.createElement("i");
+        delIcon.className="glyphicon glyphicon-minus-sign";
+        delIcon.style.cssText="color: #ac2925;padding-right: 5px";
+        actionContainer.appendChild(delIcon);
+        this.actionsContainer.appendChild(actionContainer);
         var newActionType=new ruleforge.ActionType(actionContainer);
         this.actionTypes.push(newActionType);
         actionContainer.actionType=newActionType;
         var self=this;
-        delIcon.click(function(){
+        delIcon.addEventListener('click',function(){
             if(self.actionTypes.length===1){
                 MsgBox.alert("动作至少要有一个.");
                 return;

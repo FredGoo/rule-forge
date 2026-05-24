@@ -34,20 +34,16 @@ export default class Connection{
     }
     update(nodeHeight){
         this.updatePath();
-        var top=parseInt(this.node.nodeContainer.css("top"))+nodeHeight;
-        this.node.nodeContainer.css({
-            "top":top
-        });
+        var top=parseInt(this.node.nodeContainer.style.top)+nodeHeight;
+        this.node.nodeContainer.style.top=top+"px";
         this.node.resetItemPosition(0,nodeHeight);
     }
     initNodePosition(){
-        var h=this.node.nodeContainer.height(),w=this.node.nodeContainer.width();
+        var h=this.node.nodeContainer.offsetHeight,w=this.node.nodeContainer.offsetWidth;
         var left=this.endX,top=this.endY-h/2;
-        this.node.nodeContainer.css({
-            position:"absolute",
-            left:left,
-            top:top
-        });
+        this.node.nodeContainer.style.position="absolute";
+        this.node.nodeContainer.style.left=left+"px";
+        this.node.nodeContainer.style.top=top+"px";
     }
     buildPathInfo(){
         return "M" + this.startX + "," + this.startY + " C" + this.startX + "," + this.endY + "," + this.startX + "," + this.endY + "," + this.endX + "," + this.endY;

@@ -18,7 +18,7 @@ export class TopRow extends BaseRowCol {
         super(table);
         this.istop = true;
         this.parentCell = parentCell;
-        this.tr = $('<tr></tr>');
+        this.tr = document.createElement('tr');
         this.init();
     }
 
@@ -45,7 +45,7 @@ export class TopRow extends BaseRowCol {
             const insertIndex = rows.indexOf(lastTopRow);
             rows.splice(insertIndex + 1, 0, this);
         } else {
-            this.table.body.append(this.tr);
+            this.table.body.appendChild(this.tr);
             rows.push(this);
         }
         this.createCells();
@@ -127,7 +127,7 @@ export class LeftRow extends BaseRowCol {
         super(table);
         this.isleft = true;
         this.parentCell = parentCell;
-        this.tr = $('<tr></tr>');
+        this.tr = document.createElement('tr');
         this.init();
     }
 
@@ -210,10 +210,10 @@ export class LeftRow extends BaseRowCol {
                 }
             }
             const td = spanningCell.td;
-            let rowspan = td.prop('rowspan');
+            let rowspan = td.rowSpan;
             rowspan || (rowspan = 1);
             rowspan++;
-            td.prop('rowspan', rowspan);
+            td.rowSpan = rowspan;
         }
     }
 

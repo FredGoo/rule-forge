@@ -1,11 +1,11 @@
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import * as componentEvent from '../componentEvent.js';
 
 export default class CellEditor extends Component {
     constructor(props) {
         super(props);
         this.state = {display: 'none'};
+        this.inputRef = React.createRef();
     }
 
     componentDidMount() {
@@ -14,13 +14,8 @@ export default class CellEditor extends Component {
             if (data.colId !== header.id) {
                 return;
             }
-            const $targetDiv = $(data.targetDiv);
-            const $targetTD = $targetDiv.parent();
-            const $dom = $(ReactDOM.findDOMNode(this));
-            $targetTD.append($dom);
             const rowData = data.rowData;
-            $dom.val(rowData[header.name]);
-            this.setState({$targetDiv, rowData, display: ''});
+            this.setState({rowData, display: '', value: rowData[header.name]});
         });
     }
 
@@ -29,20 +24,18 @@ export default class CellEditor extends Component {
     }
 
     blur() {
-        const $targetDiv = this.state.$targetDiv;
-        if (!$targetDiv) return;
-        $targetDiv.css({display: ''});
-        const value = ReactDOM.findDOMNode(this).value;
-        $targetDiv.html(value);
+        const value = this.inputRef.current ? this.inputRef.current.value : '';
         const header = this.props.header;
         const rowData = this.state.rowData;
-        rowData[header.name] = value;
+        if (rowData) {
+            rowData[header.name] = value;
+        }
         this.setState({display: 'none'});
     }
 
-    componentDidUpdate() {
-        if (this.state.display === '') {
-            ReactDOM.findDOMNode(this).focus();
+    componentDidUpdate(prevProps, prevState) {
+        if (this.state.display === '' && prevState.display !== '' && this.inputRef.current) {
+            this.inputRef.current.focus();
         }
     }
 
@@ -50,33 +43,34 @@ export default class CellEditor extends Component {
         const styleObj = {display: this.state.display, height: '31px', padding: '0px 5px'};
         const header = this.props.header;
         const {editorType, selectData, selectParam} = header;
+        const currentValue = this.state.value || '';
         switch (editorType) {
             case "select":
                 let selectOptions = [];
-                console.log(selectParam, this.state.rowData && this.state.rowData[selectParam])
-                selectOptions = selectParam && this.state.rowData && this.state.rowData[selectParam] ? this.state.rowData && this.state.rowData[selectParam] : selectData
-                console.log('下拉列表', selectOptions)
-                return (<select style={styleObj} onBlur={this.blur.bind(this)} className="form-control">
+                selectOptions = selectParam && this.state.rowData && this.state.rowData[selectParam] ? this.state.rowData[selectParam] : selectData;
+                return (<select ref={this.inputRef} style={styleObj} onBlur={this.blur.bind(this)}
+                                className="form-control" defaultValue={currentValue}>
                     {selectOptions.map((option, index) => {
                         return (<option key={index}>{option}</option>);
                     })}
                 </select>);
             case "boolean":
                 return (
-                    <select onBlur={this.blur.bind(this)} className="form-control">
+                    <select ref={this.inputRef} onBlur={this.blur.bind(this)} className="form-control"
+                            defaultValue={currentValue}>
                         <option value="true">true</option>
-                        <option value="false" selected="selected">false</option>
+                        <option value="false">false</option>
                     </select>
                 );
             case "date":
-                return (<input style={styleObj} onBlur={this.blur.bind(this)} type="date"
-                               className="form-control"/>);
+                return (<input ref={this.inputRef} style={styleObj} onBlur={this.blur.bind(this)} type="date"
+                               className="form-control" defaultValue={currentValue}/>);
             case "number":
-                return (<input style={styleObj} onBlur={this.blur.bind(this)} type="number"
-                               className="form-control"/>);
+                return (<input ref={this.inputRef} style={styleObj} onBlur={this.blur.bind(this)} type="number"
+                               className="form-control" defaultValue={currentValue}/>);
             default:
-                return (<input style={styleObj} onBlur={this.blur.bind(this)} type="text"
-                               className="form-control"/>);
+                return (<input ref={this.inputRef} style={styleObj} onBlur={this.blur.bind(this)} type="text"
+                               className="form-control" defaultValue={currentValue}/>);
         }
     }
 };

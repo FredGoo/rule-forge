@@ -1,5 +1,4 @@
 import React,{Component,PropTypes} from 'react';
-import ReactDOM from 'react-dom';
 import CommonDialog from '../components/dialog/component/CommonDialog.jsx';
 import * as event from './event.js';
 import * as frameEvent from '../frame/event.js';
@@ -16,7 +15,8 @@ export default class ReferenceDialog extends Component{
             currentData: null, // 存储当前的查询数据
             currentInfo: null,  // 存储当前的查询信息
             searchText: '', // 搜索框文本
-            showDropdown: false // 是否显示下拉列表
+            showDropdown: false, // 是否显示下拉列表
+            visible: false
         };
 
         // 绑定方法到this
@@ -46,7 +46,7 @@ export default class ReferenceDialog extends Component{
         document.addEventListener('click', this.handleClickOutside);
 
         event.eventEmitter.on(event.OPEN_REFERENCE_DIALOG,(data,info,options={})=>{
-            $(ReactDOM.findDOMNode(this)).modal('show');
+            this.setState({visible: true});
             // 智能解码路径：如果包含%则解码，否则直接使用
             const path = data.path.includes('%') ? decodeURIComponent(data.path) : data.path;
             // 判断是否来自规则集（规则集的info通常包含"规则集"字样）
@@ -64,7 +64,7 @@ export default class ReferenceDialog extends Component{
             this.loadReferenceFiles(data, '', info); // 传入完整的data对象和info
         });
         event.eventEmitter.on(event.CLOSE_REFERENCE_DIALOG,()=>{
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
             // 重置状态
             this.setState({
                 projectFilter: '',
@@ -77,15 +77,13 @@ export default class ReferenceDialog extends Component{
     loadProjectNames() {
         console.log('ReferenceDialog loadProjectNames called');
         // 尝试从DOM中获取项目列表
-        const projectMenu = $('#__project_filter_menu');
-        console.log('projectMenu found:', projectMenu.length);
-        if (projectMenu.length > 0) {
+        const projectMenu = document.getElementById('__project_filter_menu');
+        if (projectMenu) {
             const projectNames = [];
-            projectMenu.find('li').each(function(index, li) {
-                const $li = $(li);
-                if (!$li.hasClass('_firstItem')) {
-                    const link = $li.find('a');
-                    const projectName = link.text().trim();
+            projectMenu.querySelectorAll('li').forEach(function(li) {
+                if (!li.classList.contains('_firstItem')) {
+                    const link = li.querySelector('a');
+                    const projectName = link.textContent.trim();
                     console.log('Found project name:', projectName);
                     if (projectName) {
                         projectNames.push(projectName);
@@ -309,6 +307,6 @@ export default class ReferenceDialog extends Component{
                 </table>
             </div>
         );
-        return (<CommonDialog buttons={[]} body={body} title={this.state.title}/>);
+        return (<CommonDialog buttons={[]} body={body} title={this.state.title} visible={this.state.visible}/>);
     }
 }

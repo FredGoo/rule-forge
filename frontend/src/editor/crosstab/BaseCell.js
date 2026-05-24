@@ -18,33 +18,32 @@ export default class BaseCell {
         this.table = row.table;
         this.row = row;
         this.col = col;
-        this.td = $('<td class="cell" style="vertical-align:middle;position: relative"></td>');
+        const td = document.createElement('td');
+        td.className = 'cell';
+        td.style.cssText = 'vertical-align:middle;position: relative';
+        this.td = td;
         this.initCell();
 
         // Click handler for highlighting the row/column
         const self = this;
         const highlightHandler = function () {
-            const td = $(this);
-            const width = td.get(0).clientWidth;
-            const height = td.get(0).clientHeight;
+            const tdEl = this;
+            const width = tdEl.clientWidth;
+            const height = tdEl.clientHeight;
             const highlightDiv = row.table.getHighlightDiv();
-            highlightDiv.css({
-                width: width + 'px',
-                height: height + 'px'
-            });
-            td.prepend(highlightDiv);
-            highlightDiv.currentTD = td;
-            td.on('DOMSubtreeModified', function () {
-                const w = td.get(0).clientWidth;
-                const h = td.get(0).clientHeight;
-                highlightDiv.css({
-                    width: w + 'px',
-                    height: h + 'px'
-                });
+            highlightDiv.style.width = width + 'px';
+            highlightDiv.style.height = height + 'px';
+            tdEl.prepend(highlightDiv);
+            highlightDiv.currentTD = tdEl;
+            tdEl.addEventListener('DOMSubtreeModified', function () {
+                const w = tdEl.clientWidth;
+                const h = tdEl.clientHeight;
+                highlightDiv.style.width = w + 'px';
+                highlightDiv.style.height = h + 'px';
             });
         };
-        this.td.click(highlightHandler);
-        this.td.contextmenu(highlightHandler);
+        this.td.addEventListener('click', highlightHandler);
+        this.td.addEventListener('contextmenu', highlightHandler);
     }
 
     /**
@@ -52,7 +51,7 @@ export default class BaseCell {
      * @returns {number}
      */
     getRowSpan() {
-        let rowspan = this.td.prop('rowspan');
+        let rowspan = this.td.rowSpan;
         rowspan || (rowspan = 0);
         return rowspan;
     }
@@ -62,7 +61,7 @@ export default class BaseCell {
      * @returns {number}
      */
     getColSpan() {
-        let colspan = this.td.prop('colspan');
+        let colspan = this.td.colSpan;
         colspan || (colspan = 0);
         return colspan;
     }
@@ -85,7 +84,7 @@ export default class BaseCell {
         if (prevCell) {
             prevCell.td.after(this.td);
         } else {
-            this.row.tr.append(this.td);
+            this.row.tr.appendChild(this.td);
         }
     }
 

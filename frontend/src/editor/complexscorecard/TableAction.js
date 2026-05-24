@@ -11,7 +11,7 @@
 
 export default class TableAction {
     /**
-     * @param {jQuery} container - The container element to render into
+     * @param {HTMLElement} container - The container element to render into
      * @param {boolean} notWeight - If true, hide the weighted sum option
      */
     constructor(container, notWeight) {
@@ -33,30 +33,30 @@ export default class TableAction {
     initData(data) {
         const scoringType = data.scoringType;
         if (scoringType) {
-            this.scoringSettingSelect.val(scoringType);
+            this.scoringSettingSelect.value = scoringType;
             this.scoringType = scoringType;
             if (scoringType === 'custom') {
-                this.customContainer.show();
+                this.customContainer.style.display = '';
                 this.customScoringBean = data.scoringBean;
-                this.customBeanEditor.val(this.customScoringBean);
+                this.customBeanEditor.value = this.customScoringBean;
             }
         }
         const assignTargetType = data.assignTargetType;
         if (assignTargetType) {
             this.assignTargetType = assignTargetType;
             if (assignTargetType === 'variable') {
-                this.variableTarget.getContainer().show();
+                this.variableTarget.getContainer().style.display = '';
                 this.variableTarget.setValue(data);
                 URule.setDomContent(this.assignTargetContainer, '.');
-                this.assignTargetContainer.css({color: 'white'});
+                this.assignTargetContainer.style.color = 'white';
             } else if (assignTargetType === 'parameter') {
-                this.parameterTarget.getContainer().show();
+                this.parameterTarget.getContainer().style.display = '';
                 this.parameterTarget.setValue(data);
                 URule.setDomContent(this.assignTargetContainer, '.');
-                this.assignTargetContainer.css({color: 'white'});
+                this.assignTargetContainer.style.color = 'white';
             } else {
                 URule.setDomContent(this.assignTargetContainer, '不赋值');
-                this.assignTargetContainer.css({color: '#999'});
+                this.assignTargetContainer.style.color = '#999';
             }
         }
     }
@@ -65,34 +65,46 @@ export default class TableAction {
      * Initialize the scoring type selector UI.
      */
     initScoringSetting() {
-        const container = $('<div style="margin: 5px;">得分计算方式：</div>');
-        this.container.append(container);
+        const container = document.createElement('div');
+        container.style.cssText = 'margin: 5px;';
+        container.textContent = '得分计算方式：';
+        this.container.appendChild(container);
 
-        this.scoringSettingSelect = $('<select class="form-control" style="display: inline-block;width:120px;height:30px;padding: 3px;"></select>');
-        container.append(this.scoringSettingSelect);
-        this.scoringSettingSelect.append('<option value="sum" selected>求和</option>');
+        const select = document.createElement('select');
+        select.className = 'form-control';
+        select.style.cssText = 'display: inline-block;width:120px;height:30px;padding: 3px;';
+        this.scoringSettingSelect = select;
+        container.appendChild(select);
+        select.innerHTML = '<option value="sum" selected>求和</option>';
         if (!this.notWeight) {
-            this.scoringSettingSelect.append('<option value="weightsum">加权求和</option>');
+            select.innerHTML += '<option value="weightsum">加权求和</option>';
         }
-        this.scoringSettingSelect.append('<option value="custom">自定义</option>');
+        select.innerHTML += '<option value="custom">自定义</option>';
 
-        this.customContainer = $('<span style="margin: 15px;">自定义计算得分的Bean ID：</span>');
-        container.append(this.customContainer);
-        this.customContainer.hide();
+        const customContainer = document.createElement('span');
+        customContainer.style.cssText = 'margin: 15px;';
+        customContainer.textContent = '自定义计算得分的Bean ID：';
+        this.customContainer = customContainer;
+        container.appendChild(customContainer);
+        customContainer.style.display = 'none';
 
-        this.customBeanEditor = $('<input type="text" class="form-control" style="width: 200px;display: inline-block">');
-        this.customContainer.append(this.customBeanEditor);
+        const customBeanEditor = document.createElement('input');
+        customBeanEditor.type = 'text';
+        customBeanEditor.className = 'form-control';
+        customBeanEditor.style.cssText = 'width: 200px;display: inline-block';
+        this.customBeanEditor = customBeanEditor;
+        customContainer.appendChild(customBeanEditor);
 
         const self = this;
-        this.customBeanEditor.change(function () {
-            self.customScoringBean = $(this).val();
+        customBeanEditor.addEventListener('change', function () {
+            self.customScoringBean = this.value;
         });
-        this.scoringSettingSelect.change(function () {
-            self.scoringType = $(this).val();
+        select.addEventListener('change', function () {
+            self.scoringType = this.value;
             if (self.scoringType === 'custom') {
-                self.customContainer.show();
+                self.customContainer.style.display = '';
             } else {
-                self.customContainer.hide();
+                self.customContainer.style.display = 'none';
             }
         });
     }
@@ -101,53 +113,55 @@ export default class TableAction {
      * Initialize the assignment target selector UI.
      */
     initAssignSetting() {
-        const container = $('<div style="margin: 15px 5px">将得分值赋给：</div>');
-        this.container.append(container);
+        const container = document.createElement('div');
+        container.style.cssText = 'margin: 15px 5px';
+        container.textContent = '将得分值赋给：';
+        this.container.appendChild(container);
 
         this.assignTargetContainer = generateContainer();
-        container.append(this.assignTargetContainer);
+        container.appendChild(this.assignTargetContainer);
         URule.setDomContent(this.assignTargetContainer, '请选择值类型');
-        this.assignTargetContainer.css({color: 'blue'});
+        this.assignTargetContainer.style.color = 'blue';
 
         this.variableTarget = new urule.VariableValue(null, null, 'Out');
         this.parameterTarget = new urule.ParameterValue(null, null, 'Out');
-        this.variableTarget.getContainer().hide();
-        this.parameterTarget.getContainer().hide();
-        container.append(this.variableTarget.getContainer());
-        container.append(this.parameterTarget.getContainer());
+        this.variableTarget.getContainer().style.display = 'none';
+        this.parameterTarget.getContainer().style.display = 'none';
+        container.appendChild(this.variableTarget.getContainer());
+        container.appendChild(this.parameterTarget.getContainer());
 
         const self = this;
         self.menu = new URule.menu.Menu({
             menuItems: [{
                 label: '选择变量',
                 onClick: function () {
-                    self.parameterTarget.getContainer().hide();
-                    self.variableTarget.getContainer().show();
+                    self.parameterTarget.getContainer().style.display = 'none';
+                    self.variableTarget.getContainer().style.display = '';
                     self.assignTargetType = 'variable';
                     URule.setDomContent(self.assignTargetContainer, '.');
-                    self.assignTargetContainer.css({color: 'white'});
+                    self.assignTargetContainer.style.color = 'white';
                 }
             }, {
                 label: '选择参数',
                 onClick: function () {
-                    self.variableTarget.getContainer().hide();
-                    self.parameterTarget.getContainer().show();
+                    self.variableTarget.getContainer().style.display = 'none';
+                    self.parameterTarget.getContainer().style.display = '';
                     self.assignTargetType = 'parameter';
                     URule.setDomContent(self.assignTargetContainer, '.');
-                    self.assignTargetContainer.css({color: 'white'});
+                    self.assignTargetContainer.style.color = 'white';
                 }
             }, {
                 label: '不赋值',
                 onClick: function () {
-                    self.variableTarget.getContainer().hide();
-                    self.parameterTarget.getContainer().hide();
+                    self.variableTarget.getContainer().style.display = 'none';
+                    self.parameterTarget.getContainer().style.display = 'none';
                     self.assignTargetType = 'none';
                     URule.setDomContent(self.assignTargetContainer, '不赋值');
-                    self.assignTargetContainer.css({color: '#999'});
+                    self.assignTargetContainer.style.color = '#999';
                 }
             }]
         });
-        this.assignTargetContainer.click(function (e) {
+        this.assignTargetContainer.addEventListener('click', function (e) {
             self.menu.show(e);
         });
     }

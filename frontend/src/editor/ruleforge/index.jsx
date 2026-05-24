@@ -1,5 +1,5 @@
+import '../../bootbox.js';
 import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
-import '../jquery.datetimepicker.css';
 import '../context.standalone.css';
 import './ruleset.css';
 import '../../css/iconfont.css';
@@ -47,29 +47,33 @@ import './LoopRule.js';
 
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
 import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.jsx';
+import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
+import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
 import ReferenceDialog from '../../reference/ReferenceDialog.jsx';
 import * as refEvent from '../../reference/event.js';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import {buildProjectNameFromFile, getParameter} from "../../Utils";
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     const file = getParameter('file');
     window._project = buildProjectNameFromFile(file);
-    
+
     // 设置全局引用事件
     window.refEvent = refEvent;
 
-    const container = $('#container');
-    container.ruleforge();
-    const dialogContainer = $('<div>');
-    container.append(dialogContainer);
-    ReactDOM.render(
+    const container = document.getElementById('container');
+    new RuleFactory(container);
+    const dialogContainer = document.createElement("div");
+    container.appendChild(dialogContainer);
+    const root = createRoot(dialogContainer);
+    root.render(
         <div>
             <KnowledgeTreeDialog/>
             <ReferenceDialog/>
             <QuickTestDialog/>
-        </div>,
-        dialogContainer[0]
+            <ResourceVersionDialogComponent/>
+            <ResourceListDialogComponent/>
+        </div>
     );
 });

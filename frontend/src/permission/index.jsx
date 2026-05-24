@@ -1,3 +1,4 @@
+import '../bootbox.js';
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css';
 
@@ -10,7 +11,7 @@ import PermissionConfigEditor from './components/PermissionConfigEditor.jsx';
 import reducer from './reducer.js';
 import * as action from './action.js';
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     const store = createStore(reducer, applyMiddleware(thunk));
     store.dispatch(action.loadMasterData());
     createRoot(document.getElementById("container")).render(

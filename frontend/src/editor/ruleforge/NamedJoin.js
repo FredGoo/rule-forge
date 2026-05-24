@@ -6,32 +6,36 @@ ruleforge.NamedJoin=function(context){
 	window._VariableValueArray.push(this);
 	this.H=30;
 	this.children=[];
-	this.container=$("<span class='btn btn-default dropdown-toggle rule-join-container' style='border:solid 1px #2196f3'>");
+	this.container=document.createElement("span");
+	this.container.className="btn btn-default dropdown-toggle rule-join-container";
+	this.container.style.border="solid 1px #2196f3";
 	this.referenceName=null,this.variableCategory=null;
 	this.namedLabel=generateContainer();
-	this.namedLabel.css({
-		color:"#9C27B0",
-		cursor:"pointer",
-		fontSize:"12px"
-	});
+	this.namedLabel.style.color="#9C27B0";
+	this.namedLabel.style.cursor="pointer";
+	this.namedLabel.style.fontSize="12px";
 	RuleForge.setDomContent(this.namedLabel,"请输入引用名");
-	this.container.append(this.namedLabel);
-	var namedEditor=$("<input type='text' class='form-control' style='width:100px;height:24px'>");
-	this.container.append(namedEditor);
-	namedEditor.hide();
+	this.container.appendChild(this.namedLabel);
+	var namedEditor=document.createElement("input");
+	namedEditor.type="text";
+	namedEditor.className="form-control";
+	namedEditor.style.width="100px";
+	namedEditor.style.height="24px";
+	this.container.appendChild(namedEditor);
+	namedEditor.style.display='none';
 	var self=this;
-	this.namedLabel.click(function () {
-		self.namedLabel.hide();
-		namedEditor.css("display","inline");
-		namedEditor.val(self.referenceName);
+	this.namedLabel.addEventListener('click',function () {
+		self.namedLabel.style.display='none';
+		namedEditor.style.display="inline";
+		namedEditor.value=self.referenceName || '';
 		namedEditor.focus();
 		self.resetItemPosition(0,null);
 	});
-	namedEditor.blur(function () {
+	namedEditor.addEventListener('blur',function () {
 		if(self.referenceName && self.referenceName.length>0){
 			self.context.deleteFromNamedMap(self.referenceName);
 		}
-		var value=$(this).val();
+		var value=this.value;
 		if(value && value!==''){
 			self.referenceName=value;
 			RuleForge.setDomContent(self.namedLabel,value+":");
@@ -47,25 +51,26 @@ ruleforge.NamedJoin=function(context){
 				refValue.initMenu();
 			}
 		}
-		self.namedLabel.show();
-		namedEditor.hide();
+		self.namedLabel.style.display='';
+		namedEditor.style.display='none';
 		self.resetItemPosition(0,null);
 	});
 
 	this.variableCategoryLabel=generateContainer();
-	this.variableCategoryLabel.css({
-		color:"#03A9F4",
-		cursor:"pointer",
-		fontSize:"12px"
-	});
+	this.variableCategoryLabel.style.color="#03A9F4";
+	this.variableCategoryLabel.style.cursor="pointer";
+	this.variableCategoryLabel.style.fontSize="12px";
 	RuleForge.setDomContent(this.variableCategoryLabel,"请选择变量对象");
-	this.container.append(this.variableCategoryLabel);
+	this.container.appendChild(this.variableCategoryLabel);
 	this.initMenu();
 
-	this.joinContainer=$("<span>");
-	this.container.append(this.joinContainer);
-	this.joinLabel=$("<span style='font-size: 11pt;color:#FF9800'>并且</span>");
-	this.joinContainer.append(this.joinLabel);
+	this.joinContainer=document.createElement("span");
+	this.container.appendChild(this.joinContainer);
+	this.joinLabel=document.createElement("span");
+	this.joinLabel.style.fontSize="11pt";
+	this.joinLabel.style.color="#FF9800";
+	this.joinLabel.textContent="并且";
+	this.joinContainer.appendChild(this.joinLabel);
 };
 
 ruleforge.NamedJoin.prototype.initMenu=function(variableLibraries){
@@ -120,7 +125,7 @@ ruleforge.NamedJoin.prototype.initMenu=function(variableLibraries){
 	}else{
 		self.categoryMenu=new RuleForge.menu.Menu(config);
 	}
-	this.variableCategoryLabel.click(function(e){
+	this.variableCategoryLabel.addEventListener('click',function(e){
 		if(!self.referenceName){
 			bootbox.alert("请先输入引用名称.");
 			return;
@@ -180,9 +185,10 @@ ruleforge.NamedJoin.prototype.setType=function(type){
 ruleforge.NamedJoin.prototype.init=function(parentConnection){
 	if(parentConnection){
 		this.parentConnection=parentConnection;
-		this.parent=parentConnection.getParentJoin();		
+		this.parent=parentConnection.getParentJoin();
 	}
-	var joinArrow=$(`<i class="glyphicon glyphicon-chevron-down rule-join-node"></i>`);
+	var joinArrow=document.createElement("i");
+	joinArrow.className="glyphicon glyphicon-chevron-down rule-join-node";
 	var self=this;
 	var onClick=function(menu){
 		self.setOperator(menu.name);
@@ -214,7 +220,7 @@ ruleforge.NamedJoin.prototype.init=function(parentConnection){
 					var parentJoin=parentConnection.getParentJoin();
 					if(parentJoin){
 						parentJoin.removeConnection(parentConnection);
-					}					
+					}
 				}
 				if(self.referenceName){
 					self.context.deleteFromNamedMap(self.referenceName);
@@ -227,10 +233,10 @@ ruleforge.NamedJoin.prototype.init=function(parentConnection){
 			}
 		}]
 	});
-	this.joinContainer.click(function(e){
+	this.joinContainer.addEventListener('click',function(e){
 		self.menu.show(e);
 	});
-	this.joinContainer.append(joinArrow);
+	this.joinContainer.appendChild(joinArrow);
 };
 ruleforge.NamedJoin.prototype.removeConnection=function(connection){
 	var pos=this.children.indexOf(connection);
@@ -255,9 +261,9 @@ ruleforge.NamedJoin.prototype.addItem=function(isJoin){
 		this.parent.resetItemPosition(pos+1,true);
 	}
 	var totalHeight=childrenCount*this.H;
-	var parentLeft=parseInt(this.container.css("left"));
-	var parentTop=parseInt(this.container.css("top"));
-	var startX=parentLeft+this.container.width()-15;
+	var parentLeft=parseInt(this.container.style.left);
+	var parentTop=parseInt(this.container.style.top);
+	var startX=parentLeft+this.container.offsetWidth-15;
 	var startY=parentTop+this.H/5;
 	var endX=startX+40;
 	var endY=startY+totalHeight;
@@ -289,8 +295,8 @@ ruleforge.NamedJoin.prototype.resetItemPosition=function(index,add){
 	for(var i=index;i<this.children.length;i++){
 		var connection=this.children[i];
 		if(add===null){
-			var parentLeft=parseInt(this.container.css("left"));
-			var startX=parentLeft+this.container.width()-15;
+			var parentLeft=parseInt(this.container.style.left);
+			var startX=parentLeft+this.container.offsetWidth-15;
 			var endX=startX+40;
 			connection.setStartX(startX);
 			connection.setEndX(endX);
@@ -316,14 +322,12 @@ ruleforge.NamedJoin.prototype.resetItemPosition=function(index,add){
 };
 ruleforge.NamedJoin.prototype.resetContainerSize=function(){
 	var container=this.context.getCanvas();
-	var height=container.css("height");
+	var height=container.style.height;
 	height=parseInt(height);
 	var childrenCount=this.context.getTotalChildrenCount();
 	if(childrenCount==0)childrenCount=1;
 	var totalHeight=childrenCount*this.H+10;
-	container.css({
-		"height":totalHeight+"px"
-	});
+	container.style.height=totalHeight+"px";
 };
 ruleforge.NamedJoin.prototype.getChildrenCount=function(){
 	var total=0;
@@ -344,12 +348,10 @@ ruleforge.NamedJoin.prototype.getChildrenCount=function(){
 ruleforge.NamedJoin.prototype.initTopJoin=function(container){
 	var left=5;
 	var top=5;
-	this.joinContainer.css({
-		"position":"absolute",
-		"left":left,
-		"top":top
-	});
-	container.append(this.joinContainer);
+	this.joinContainer.style.position="absolute";
+	this.joinContainer.style.left=left;
+	this.joinContainer.style.top=top;
+	container.appendChild(this.joinContainer);
 	this.context.setRootJoin(this);
 };
 ruleforge.NamedJoin.prototype.getChildren=function(){

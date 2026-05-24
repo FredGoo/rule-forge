@@ -1,10 +1,11 @@
 import {MsgBox} from 'flowdesigner';
+import Sortable from 'sortablejs';
 
 ruleforge.Rule = function (parent, container, data) {
     this.uuid = Math.uuid();
     this.namedMap = new Map();
     this.namedReferenceValues = [];
-    container.prop('id', this.uuid);
+    container.id = this.uuid;
     this.parent = parent;
     this.container = container;
     this.data = data;
@@ -15,8 +16,10 @@ ruleforge.Rule = function (parent, container, data) {
     this.initData();
 };
 ruleforge.Rule.prototype.init = function () {
-    this.ruleContainer = $("<div class='collapse' id='" + this.uuid + "-container'>");
-    this.container.append(this.ruleContainer);
+    this.ruleContainer = document.createElement("div");
+    this.ruleContainer.className = "collapse";
+    this.ruleContainer.id = this.uuid + "-container";
+    this.container.appendChild(this.ruleContainer);
     this.initRemark();
     this.initHeader();
     this.initIf();
@@ -29,7 +32,7 @@ ruleforge.Rule.prototype.initData = function () {
         return;
     }
     this.name = this.data["name"];
-    this.nameLabel.prop("innerText", this.name);
+    this.nameLabel.innerText = this.name;
     var salience = this.data["salience"];
     if (salience) {
         this.addProperty(new ruleforge.RuleProperty(this, "salience", salience, 1));
@@ -126,7 +129,7 @@ ruleforge.Rule.prototype.initCriterion = function (criterion) {
     }
 };
 ruleforge.Rule.prototype.addProperty = function (property) {
-    this.propertyContainer.append(property.getContainer());
+    this.propertyContainer.appendChild(property.getContainer());
     this.properties.push(property);
     window._setDirty();
 };
@@ -137,51 +140,64 @@ ruleforge.Rule.prototype.initParent = function () {
     } else {
         message = this.remark.defaultRemark;
     }
-    var uruelsh = $("<div>" + message + "</div>");
+    var uruelsh = document.createElement("div");
+    uruelsh.innerHTML = message;
     var uuid = this.uuid;
-    uruelsh.click(function () {
-        $("#" + uuid + "-container").collapse("toggle");
+    uruelsh.addEventListener('click', function () {
+        var el = document.getElementById(uuid + "-container");
+        if (el) {
+            var isOpen = el.classList.contains('in');
+            el.classList.toggle('in', !isOpen);
+            el.style.display = isOpen ? 'none' : '';
+        }
     });
     this.container.prepend(uruelsh);
 };
 ruleforge.Rule.prototype.initRemark = function () {
-    var remarkContainer = $("<div></div>");
+    var remarkContainer = document.createElement("div");
     this.remark = new Remark(remarkContainer);
-    this.ruleContainer.append(remarkContainer);
+    this.ruleContainer.appendChild(remarkContainer);
 };
 ruleforge.Rule.prototype.initHeader = function () {
-    this.nameContainer = $("<div></div>");
-    this.ruleContainer.append(this.nameContainer);
-    this.label = $("<span style='line-height:30px'><Strong>规则编号 <Strong></span>");
-    this.nameContainer.append(this.label);
-    this.nameEditor = $(`<input type='text' class="form-control rule-text-editor">`).hide();
+    this.nameContainer = document.createElement("div");
+    this.ruleContainer.appendChild(this.nameContainer);
+    this.label = document.createElement("span");
+    this.label.style.lineHeight = "30px";
+    this.label.innerHTML = "<Strong>规则编号 <Strong>";
+    this.nameContainer.appendChild(this.label);
+    this.nameEditor = document.createElement("input");
+    this.nameEditor.type = "text";
+    this.nameEditor.className = "form-control rule-text-editor";
+    this.nameEditor.style.display = "none";
     this.name = "rule";
-    this.nameLabel = $("<span>" + this.name + "</span>");
-    this.label.append(this.nameEditor);
-    this.label.append(this.nameLabel);
+    this.nameLabel = document.createElement("span");
+    this.nameLabel.textContent = this.name;
+    this.label.appendChild(this.nameEditor);
+    this.label.appendChild(this.nameLabel);
     var self = this;
-    this.nameLabel.click(function () {
-        self.nameLabel.hide();
-        self.nameEditor.show();
-        self.nameEditor.prop("value", self.name);
+    this.nameLabel.addEventListener('click', function () {
+        self.nameLabel.style.display = 'none';
+        self.nameEditor.style.display = '';
+        self.nameEditor.value = self.name;
         self.nameEditor.focus();
     });
 
-    this.nameEditor.blur(function () {
-        var value = self.nameEditor.prop("value");
+    this.nameEditor.addEventListener('blur', function () {
+        var value = self.nameEditor.value;
         if (!value || value.length < 2) {
             bootbox.alert("规则名不合法");
             return;
         }
         self.name = value;
-        self.nameEditor.hide();
-        self.nameLabel.show();
+        self.nameEditor.style.display = 'none';
+        self.nameLabel.style.display = '';
         RuleForge.setDomContent(self.nameLabel, self.name);
         window._setDirty();
     });
-    this.nameEditor.hide();
-    var del = $(`<i class="glyphicon glyphicon-remove rule-delete"></i>`);
-    del.click(function () {
+    this.nameEditor.style.display = "none";
+    var del = document.createElement("i");
+    del.className = "glyphicon glyphicon-remove rule-delete";
+    del.addEventListener('click', function () {
         const msg = "真的要删除规则" + self.name + "？";
         MsgBox.confirm(msg, function () {
             var pos = self.parent.rules.indexOf(self);
@@ -190,14 +206,14 @@ ruleforge.Rule.prototype.initHeader = function () {
             window._setDirty();
         });
     });
-    this.nameContainer.append(del);
+    this.nameContainer.appendChild(del);
 
-    this.propertyContainer = $("<span>");
-    this.propertyContainer.css({
-        "padding": "10px"
-    });
+    this.propertyContainer = document.createElement("span");
+    this.propertyContainer.style.padding = "10px";
 
-    var addProp = $("<span class='rule-add-property'>添加属性</span>");
+    var addProp = document.createElement("span");
+    addProp.className = "rule-add-property";
+    addProp.textContent = "添加属性";
 
     var onClick = function (menuItem) {
         var prop = new ruleforge.RuleProperty(self, menuItem.name, menuItem.defaultValue, menuItem.editorType);
@@ -260,107 +276,121 @@ ruleforge.Rule.prototype.initHeader = function () {
             onClick: onClick
         }]
     });
-    addProp.click(function (e) {
+    addProp.addEventListener('click', function (e) {
         self.menu.show(e);
     });
-    this.ruleContainer.append(addProp);
-    this.ruleContainer.append(this.propertyContainer);
+    this.ruleContainer.appendChild(addProp);
+    this.ruleContainer.appendChild(this.propertyContainer);
 };
 
 ruleforge.Rule.prototype.initIf = function () {
-    this.ifLabel = $("<div><strong>如果</strong></div>");
-    this.ruleContainer.append(this.ifLabel);
-    this.conditionContainer = $("<div>");
-    this.conditionContainer.css({
-        height: "40px",
-        position: "relative"
-    });
-    this.ruleContainer.append(this.conditionContainer);
+    this.ifLabel = document.createElement("div");
+    this.ifLabel.innerHTML = "<strong>如果</strong>";
+    this.ruleContainer.appendChild(this.ifLabel);
+    this.conditionContainer = document.createElement("div");
+    this.conditionContainer.style.height = "40px";
+    this.conditionContainer.style.position = "relative";
+    this.ruleContainer.appendChild(this.conditionContainer);
 };
 ruleforge.Rule.prototype.initThen = function () {
-    this.thenLabel = $("<span><strong>那么</strong></span>");
-    this.ruleContainer.append(this.thenLabel);
-    this.actionContainer = $("<div style='padding: 5px;'>");
-    this.ruleContainer.append(this.actionContainer);
+    this.thenLabel = document.createElement("span");
+    this.thenLabel.innerHTML = "<strong>那么</strong>";
+    this.ruleContainer.appendChild(this.thenLabel);
+    this.actionContainer = document.createElement("div");
+    this.actionContainer.style.padding = "5px";
+    this.ruleContainer.appendChild(this.actionContainer);
     const _this = this;
-    this.actionContainer.sortable({
+    Sortable.create(this.actionContainer, {
         delay: 200,
-        update: function (event, ui) {
-            var children = _this.actionContainer.children("div");
-            children.each(function (index, div) {
-                let item = $(div), id = item.prop("id"), actions = _this.actions, targetAction = null;
-                for (let action of actions) {
-                    if (action.uuid === id) {
-                        targetAction = action;
-                        break;
+        onEnd: function (evt) {
+            if (evt.oldIndex !== evt.newIndex) {
+                var children = _this.actionContainer.querySelectorAll("div");
+                children.forEach(function (div, index) {
+                    var id = div.id, actions = _this.actions, targetAction = null;
+                    for (let action of actions) {
+                        if (action.uuid === id) {
+                            targetAction = action;
+                            break;
+                        }
                     }
-                }
-                if (targetAction) {
-                    const pos = actions.indexOf(targetAction);
-                    actions.splice(pos, 1);
-                    actions.splice(index, 0, targetAction);
-                }
-            });
-            window._setDirty();
+                    if (targetAction) {
+                        const pos = actions.indexOf(targetAction);
+                        actions.splice(pos, 1);
+                        actions.splice(index, 0, targetAction);
+                    }
+                });
+                window._setDirty();
+            }
         }
     });
-    this.addActionButton = $("<span class='rule-add-action'>添加动作</span>");
+    this.addActionButton = document.createElement("span");
+    this.addActionButton.className = "rule-add-action";
+    this.addActionButton.textContent = "添加动作";
     var self = this;
-    this.addActionButton.click(function () {
+    this.addActionButton.addEventListener('click', function () {
         self.addAction();
     });
-    this.thenLabel.append(this.addActionButton);
+    this.thenLabel.appendChild(this.addActionButton);
 };
 ruleforge.Rule.prototype.initElse = function () {
-    this.elseContainer = $("<div style='margin-top: 5px;'>");
-    this.ruleContainer.append(this.elseContainer);
-    this.elseLabel = $("<span><strong>否则</strong></span>");
-    this.elseContainer.append(this.elseLabel);
-    this.elseActionContainer = $("<div style='padding: 5px'>");
-    this.elseContainer.append(this.elseActionContainer);
+    this.elseContainer = document.createElement("div");
+    this.elseContainer.style.marginTop = "5px";
+    this.ruleContainer.appendChild(this.elseContainer);
+    this.elseLabel = document.createElement("span");
+    this.elseLabel.innerHTML = "<strong>否则</strong>";
+    this.elseContainer.appendChild(this.elseLabel);
+    this.elseActionContainer = document.createElement("div");
+    this.elseActionContainer.style.padding = "5px";
+    this.elseContainer.appendChild(this.elseActionContainer);
 
     const _this = this;
-    this.elseActionContainer.sortable({
+    Sortable.create(this.elseActionContainer, {
         delay: 200,
-        update: function (event, ui) {
-            var children = _this.elseActionContainer.children("div");
-            children.each(function (index, div) {
-                let item = $(div), id = item.prop("id"), actions = _this.elseActions, targetAction = null;
-                for (let action of actions) {
-                    if (action.uuid === id) {
-                        targetAction = action;
-                        break;
+        onEnd: function (evt) {
+            if (evt.oldIndex !== evt.newIndex) {
+                var children = _this.elseActionContainer.querySelectorAll("div");
+                children.forEach(function (div, index) {
+                    var id = div.id, actions = _this.elseActions, targetAction = null;
+                    for (let action of actions) {
+                        if (action.uuid === id) {
+                            targetAction = action;
+                            break;
+                        }
                     }
-                }
-                if (targetAction) {
-                    const pos = actions.indexOf(targetAction);
-                    actions.splice(pos, 1);
-                    actions.splice(index, 0, targetAction);
-                }
-            });
-            window._setDirty();
+                    if (targetAction) {
+                        const pos = actions.indexOf(targetAction);
+                        actions.splice(pos, 1);
+                        actions.splice(index, 0, targetAction);
+                    }
+                });
+                window._setDirty();
+            }
         }
     });
 
-    this.addElseActionButton = $("<span class='rule-add-action'>添加动作</span>");
+    this.addElseActionButton = document.createElement("span");
+    this.addElseActionButton.className = "rule-add-action";
+    this.addElseActionButton.textContent = "添加动作";
     var self = this;
-    this.addElseActionButton.click(function () {
+    this.addElseActionButton.addEventListener('click', function () {
         self.addAction(null, true);
     });
-    this.elseLabel.append(this.addElseActionButton);
+    this.elseLabel.appendChild(this.addElseActionButton);
 };
 ruleforge.Rule.prototype.addAction = function (data, iselse) {
     var self = this;
-    var actionDiv = $("<div class='rule-action'>");
-    var del = $(`<i class="glyphicon glyphicon-remove rule-delete-action"></i>`);
-    actionDiv.append(del);
+    var actionDiv = document.createElement("div");
+    actionDiv.className = "rule-action";
+    var del = document.createElement("i");
+    del.className = "glyphicon glyphicon-remove rule-delete-action";
+    actionDiv.appendChild(del);
     var action = null;
     if (!iselse) {
         action = new ruleforge.ActionType(actionDiv, this);
     } else {
         action = new ruleforge.ActionType(actionDiv);
     }
-    del.click(function () {
+    del.addEventListener('click', function () {
         if (iselse) {
             var pos = self.elseActions.indexOf(action);
             self.elseActions.splice(pos, 1);
@@ -373,10 +403,10 @@ ruleforge.Rule.prototype.addAction = function (data, iselse) {
     });
     if (iselse) {
         this.elseActions.push(action);
-        this.elseActionContainer.append(actionDiv);
+        this.elseActionContainer.appendChild(actionDiv);
     } else {
         this.actions.push(action);
-        this.actionContainer.append(actionDiv);
+        this.actionContainer.appendChild(actionDiv);
     }
     if (data) {
         action.initData(data);

@@ -31,7 +31,7 @@ export default class ContentRow extends BaseRow {
      * @param {RowContext} rowContext - The row context
      */
     init(rowContext) {
-        this.tr = $('<tr></tr>');
+        this.tr = document.createElement('tr');
         this.initNewConditionCell(rowContext);
         this.initNewActionCell(rowContext);
     }
@@ -61,7 +61,7 @@ export default class ContentRow extends BaseRow {
                 } else {
                     const cell = new ConditionCell(rowContext, this, col);
                     this.conditionCells.push(cell);
-                    this.tr.append(cell.td);
+                    this.tr.appendChild(cell.td);
                 }
             }
         } else {
@@ -75,15 +75,15 @@ export default class ContentRow extends BaseRow {
                     if (cellData) {
                         const cell = new ConditionCell(rowContext, this, col);
                         this.conditionCells.push(cell);
-                        this.tr.append(cell.td);
+                        this.tr.appendChild(cell.td);
                         cell.initData(cellData);
                         const rowspan = cellData.rowspan;
-                        cell.td.prop('rowspan', rowspan);
+                        cell.td.rowSpan = rowspan;
                     }
                 } else {
                     const cell = new ConditionCell(rowContext, this, col);
                     this.conditionCells.push(cell);
-                    this.tr.append(cell.td);
+                    this.tr.appendChild(cell.td);
                 }
                 cellIndex++;
             }
@@ -119,7 +119,7 @@ export default class ContentRow extends BaseRow {
         for (const actionCol of complexTable.actionColumns) {
             const cell = new ActionCell(rowContext, this, actionCol);
             this.actionCells.push(cell);
-            this.tr.append(cell.td);
+            this.tr.appendChild(cell.td);
 
             if (rowCells) {
                 const cellData = this.findCell(rowCells, cellIndex);
@@ -145,7 +145,7 @@ export default class ContentRow extends BaseRow {
             const cell = new ConditionCell(rowContext, this, conditionCol);
             const len = this.conditionCells.length;
             if (len === 0) {
-                this.tr.children(':first-child').before(cell.td);
+                this.tr.querySelector(':first-child').before(cell.td);
             } else {
                 this.conditionCells[len - 1].td.after(cell.td);
             }
@@ -169,9 +169,9 @@ export default class ContentRow extends BaseRow {
 
         if (refCell) {
             const newCell = new ConditionCell(rowContext, this, conditionCol);
-            const rowspan = refCell.td.prop('rowspan');
+            const rowspan = refCell.td.rowSpan;
             if (rowspan) {
-                newCell.td.prop('rowspan', rowspan);
+                newCell.td.rowSpan = rowspan;
             }
             if (rowContext.before) {
                 refCell.td.before(newCell.td);
@@ -199,7 +199,7 @@ export default class ContentRow extends BaseRow {
         if (rowContext.before) {
             refCell.td.before(newCell.td);
             if (refIndex === 0) {
-                this.actionCells[0].td.css('border-left', 'inherit');
+                this.actionCells[0].td.style.borderLeft = 'inherit';
             }
             this.actionCells.splice(refIndex, 0, newCell);
         } else {

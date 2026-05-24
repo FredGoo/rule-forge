@@ -1,22 +1,20 @@
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
 
 export default class ImportExcelErrorDialog extends Component {
     constructor(props) {
         super(props);
-        this.state = {data: []};
+        this.state = {visible: false, data: []};
     }
 
     componentDidMount() {
         event.eventEmitter.on(event.OPEN_IMPORT_EXCEL_ERROR_DIALOG, (data) => {
             console.log('失败结果列表',data)
-            $(ReactDOM.findDOMNode(this)).modal('show');
-            this.setState({data});
+            this.setState({visible: true, data});
         });
         event.eventEmitter.on(event.HIDE_IMPORT_EXCEL_ERROR_DIALOG, () => {
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
 
@@ -56,11 +54,11 @@ export default class ImportExcelErrorDialog extends Component {
                 name: 'OK',
                 className: 'btn btn-primary',
                 click: function () {
-                    $(ReactDOM.findDOMNode(_this)).modal('hide');
+                    _this.setState({visible: false});
                 }
             }
         ];
-        return (<CommonDialog title="导入Excel失败" body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} title="导入Excel失败" body={body} buttons={buttons}/>);
 
     }
 }

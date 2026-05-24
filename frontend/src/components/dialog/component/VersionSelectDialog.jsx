@@ -1,5 +1,4 @@
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import Grid from '../../../components/grid/component/Grid.jsx';
 import CommonDialog from './CommonDialog.jsx';
 import * as event from '../../componentEvent.js';
@@ -8,7 +7,7 @@ import * as action from '../../componentAction.js';
 export default class VersionSelectDialog extends Component {
     constructor(props) {
         super(props);
-        this.state = {title: ''};
+        this.state = {title: '', visible: false};
     }
 
     componentDidMount() {
@@ -17,14 +16,12 @@ export default class VersionSelectDialog extends Component {
             this.callback = config.callback;
             this.file = file;
             action.loadFileVersions(file, function (data) {
-                $(ReactDOM.findDOMNode(this)).modal('show');
-                this.setState({data, title: "选择文件[" + file + "]的版本"});
+                this.setState({data, title: "选择文件[" + file + "]的版本", visible: true});
             }.bind(this));
         });
         event.eventEmitter.on(event.HIDE_VERSION_SELECT_DIALOG, () => {
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
-        $(ReactDOM.findDOMNode(this)).modal('hide');
     }
 
     componentWillUnmount() {
@@ -61,7 +58,7 @@ export default class VersionSelectDialog extends Component {
         );
         const buttons = [];
         return (
-            <CommonDialog title={this.state.title} body={body} buttons={buttons} large={true}/>
+            <CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons} large={true}/>
         );
     }
 }

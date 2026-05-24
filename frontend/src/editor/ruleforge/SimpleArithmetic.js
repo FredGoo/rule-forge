@@ -1,12 +1,12 @@
 ruleforge.SimpleArithmetic = function () {
-    this.container = $("<span>");
+    this.container = document.createElement("span");
     this.selectorLabel = generateContainer();
     RuleForge.setDomContent(this.selectorLabel, ".");
     this.selectorLabel.css({
         "color": "#FFF"
     });
     this.operator = "";
-    this.container.append(this.selectorLabel);
+    this.container.appendChild(this.selectorLabel);
     this.value = null;
     var self = this;
     var onClick = function (menuItem) {
@@ -50,7 +50,7 @@ ruleforge.SimpleArithmetic = function () {
             }
         }]
     });
-    this.selectorLabel.click(function (e) {
+    this.selectorLabel.addEventListener('click', function (e) {
         self.menu.show(e);
     });
 
@@ -94,7 +94,7 @@ ruleforge.SimpleArithmetic.prototype.setOperator = function (operator) {
     if (!this.value) {
         this.simpleArithmetic = new ruleforge.SimpleArithmetic();
         this.value = new ruleforge.SimpleValue(this.simpleArithmetic);
-        this.container.append(this.value.getContainer());
+        this.container.appendChild(this.value.getContainer());
     }
 };
 ruleforge.SimpleArithmetic.prototype.toXml = function () {

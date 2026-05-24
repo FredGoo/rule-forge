@@ -8,25 +8,38 @@ export default class AttributeCell extends Cell {
     }
 
     initCell(cellData) {
-        const container = $(`<div></div>`);
-        this.td.append(container);
-        
+        const container = document.createElement('div');
+        this.td.appendChild(container);
+
         // Category选择器
-        const categoryContainer = $(`<div style="margin-bottom: 5px;"></div>`);
-        container.append(categoryContainer);
-        const categoryLabel = $(`<label style="margin-right: 5px; color: #666;">分类：</label>`);
-        categoryContainer.append(categoryLabel);
-        this.categorySelector = $(`<span class="dropdown" style="cursor: pointer"></span>`);
-        categoryContainer.append(this.categorySelector);
-        const categorySpan = $(`<span class="dropdown-toggle" data-toggle="dropdown" style="color: #3c763d;font-weight: bold;font-size: 11px"></span>`);
-        this.categorySelector.append(categorySpan);
-        this.categoryContainer = $(`<span></span>`);
+        const categoryContainer = document.createElement('div');
+        categoryContainer.style.cssText = 'margin-bottom: 5px;';
+        container.appendChild(categoryContainer);
+        const categoryLabel = document.createElement('label');
+        categoryLabel.style.cssText = 'margin-right: 5px; color: #666;';
+        categoryLabel.textContent = '分类：';
+        categoryContainer.appendChild(categoryLabel);
+        this.categorySelector = document.createElement('span');
+        this.categorySelector.className = 'dropdown';
+        this.categorySelector.style.cursor = 'pointer';
+        categoryContainer.appendChild(this.categorySelector);
+        const categorySpan = document.createElement('span');
+        categorySpan.className = 'dropdown-toggle';
+        categorySpan.setAttribute('data-toggle', 'dropdown');
+        categorySpan.style.cssText = 'color: #3c763d;font-weight: bold;font-size: 11px';
+        this.categorySelector.appendChild(categorySpan);
+        this.categoryContainer = document.createElement('span');
         RuleForge.setDomContent(this.categoryContainer, "选择分类");
-        categorySpan.append(this.categoryContainer);
-        categorySpan.append(` <span class="caret"></span>`);
-        this.categoryMenuDef = $(`<ul class="dropdown-menu" role="menu"></ul>`);
-        this.categorySelector.append(this.categoryMenuDef);
-        
+        categorySpan.appendChild(this.categoryContainer);
+        categorySpan.appendChild(document.createTextNode(' '));
+        const caret = document.createElement('span');
+        caret.className = 'caret';
+        categorySpan.appendChild(caret);
+        this.categoryMenuDef = document.createElement('ul');
+        this.categoryMenuDef.className = 'dropdown-menu';
+        this.categoryMenuDef.setAttribute('role', 'menu');
+        this.categorySelector.appendChild(this.categoryMenuDef);
+
         this.propContainer = generateContainer();
         if (cellData) {
             this.variableLabel = cellData.variableLabel;
@@ -50,38 +63,49 @@ export default class AttributeCell extends Cell {
             RuleForge.setDomContent(this.propContainer, "请选择属性");
             console.log('AttributeCell init: no cellData provided');
         }
-        container.append(this.propContainer);
-        this.propContainer.css({color: 'green'});
+        container.appendChild(this.propContainer);
+        this.propContainer.style.cssText = 'color: green';
         const _this = this;
-        const del = $(`<span class="attribute-operation" style="color: #ff0600"><i class="glyphicon glyphicon-remove" style="cursor: pointer" title="删除当前属性行"/></span>`);
-        container.append(del);
-        del.click(function () {
+        const del = document.createElement('span');
+        del.className = 'attribute-operation';
+        del.style.cssText = 'color: #ff0600';
+        del.innerHTML = '<i class="glyphicon glyphicon-remove" style="cursor: pointer" title="删除当前属性行"/>';
+        container.appendChild(del);
+        del.addEventListener('click', function () {
             bootbox.confirm("真的要删除？", function (result) {
                 if (!result) return;
                 _this.row.remove();
             });
         });
-        const addCondition = $(`<span class="attribute-operation" style="color: #019dff"><i class="glyphicon glyphicon-plus-sign" style="cursor: pointer" title="添加条件行"/></span>`);
-        container.append(addCondition);
-        addCondition.click(function () {
+        const addCondition = document.createElement('span');
+        addCondition.className = 'attribute-operation';
+        addCondition.style.cssText = 'color: #019dff';
+        addCondition.innerHTML = '<i class="glyphicon glyphicon-plus-sign" style="cursor: pointer" title="添加条件行"/>';
+        container.appendChild(addCondition);
+        addCondition.addEventListener('click', function () {
             _this.row.addConditionRow();
         });
         // 初始化时不自动加载属性菜单，需要先选择category
-        this.weightContainer = $("<div style='margin-top: 5px;color:#999'><label>权重：</label></div>");
+        this.weightContainer = document.createElement('div');
+        this.weightContainer.style.cssText = 'margin-top: 5px;color:#999';
+        this.weightContainer.innerHTML = '<label>权重：</label>';
         if (!this.row.scoreCardTable.weightSupport) {
-            this.weightContainer.hide();
+            this.weightContainer.style.display = 'none';
         }
 
-        this.weightEditor = $(`<input type="text" class="form-control" style="width:60px;height: 25px;display: inline-block">`);
-        this.weightContainer.append(this.weightEditor);
+        this.weightEditor = document.createElement('input');
+        this.weightEditor.type = 'text';
+        this.weightEditor.className = 'form-control';
+        this.weightEditor.style.cssText = 'width:60px;height: 25px;display: inline-block';
+        this.weightContainer.appendChild(this.weightEditor);
         if (this.weight) {
-            this.weightEditor.val(this.weight);
+            this.weightEditor.value = this.weight;
         }
-        this.weightEditor.change(function () {
-            _this.weight = $(this).val();
+        this.weightEditor.addEventListener('change', function () {
+            _this.weight = this.value;
         });
-        container.append(this.weightContainer);
-        
+        container.appendChild(this.weightContainer);
+
         // 通过AttributeCol初始化category选项
         this.col.initCategoryForCell(this);
     }
@@ -89,18 +113,19 @@ export default class AttributeCell extends Cell {
     // 更新category选项
     updateCategoryOptions(categories) {
         const _this = this;
-        this.categoryMenuDef.empty();
-        
+        this.categoryMenuDef.innerHTML = '';
+
         if (!categories || categories.length === 0) {
             return;
         }
-        
+
         for (let category of categories) {
-            
+
             const categoryName = category.name || category.label || 'Unknown Category';
-            const menuItem = $(`<li><a href="###">${categoryName}</a></li>`);
-            this.categoryMenuDef.append(menuItem);
-            menuItem.click(function (e) {
+            const menuItem = document.createElement('li');
+            menuItem.innerHTML = '<a href="###">' + categoryName + '</a>';
+            this.categoryMenuDef.appendChild(menuItem);
+            menuItem.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 _this.category = category;
@@ -114,24 +139,27 @@ export default class AttributeCell extends Cell {
                 _this.datatype = null;
                 RuleForge.setDomContent(_this.propContainer, "请选择属性");
                 // 手动关闭dropdown
-                _this.categorySelector.removeClass('open');
+                _this.categorySelector.classList.remove('open');
             });
         }
-        
+
         // 确保Bootstrap dropdown正确初始化
-        if (this.categorySelector && !this.categorySelector.hasClass('dropdown-initialized')) {
-            this.categorySelector.addClass('dropdown-initialized');
+        if (this.categorySelector && !this.categorySelector.classList.contains('dropdown-initialized')) {
+            this.categorySelector.classList.add('dropdown-initialized');
             // 手动绑定dropdown toggle事件
-            this.categorySelector.find('.dropdown-toggle').off('click.dropdown').on('click.dropdown', function(e) {
+            const toggle = this.categorySelector.querySelector('.dropdown-toggle');
+            toggle.removeEventListener('click.dropdown');
+            toggle.addEventListener('click.dropdown', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                _this.categorySelector.toggleClass('open');
+                _this.categorySelector.classList.toggle('open');
             });
-            
+
             // 点击其他地方关闭dropdown
-            $(document).off('click.category-dropdown').on('click.category-dropdown', function(e) {
-                if (!_this.categorySelector.is(e.target) && _this.categorySelector.has(e.target).length === 0) {
-                    _this.categorySelector.removeClass('open');
+            document.removeEventListener('click.category-dropdown');
+            document.addEventListener('click.category-dropdown', function(e) {
+                if (!_this.categorySelector.contains(e.target)) {
+                    _this.categorySelector.classList.remove('open');
                 }
             });
         }
@@ -144,22 +172,22 @@ export default class AttributeCell extends Cell {
     }
 
     showWeight() {
-        this.weightContainer.show();
+        this.weightContainer.style.display = '';
         this.weight = null;
-        this.weightEditor.val('');
+        this.weightEditor.value = '';
     }
 
     hideWeight() {
-        this.weightContainer.hide();
+        this.weightContainer.style.display = 'none';
         this.weight = null;
-        this.weightEditor.val('');
+        this.weightEditor.value = '';
     }
 
     refreshAttributeCellMenus(variables) {
         if (!variables || variables.length === 0) {
             return;
         }
-        
+
         const menuItems = [];
         const _this = this;
         for (let variable of variables) {
@@ -172,13 +200,14 @@ export default class AttributeCell extends Cell {
                     _this.datatype = variable.type;
                     RuleForge.setDomContent(_this.propContainer, variable.label || variable.name);
                     // 更新propContainer的颜色以表示已选择
-                    _this.propContainer.css({color: 'green'});
+                    _this.propContainer.style.color = 'green';
                 }
             })
         }
         if (!this.propContainer.menu) {
             this.propContainer.menu = new RuleForge.menu.Menu({menuItems});
-            this.propContainer.off('click.property').on('click.property', function (e) {
+            this.propContainer.removeEventListener('click.property');
+            this.propContainer.addEventListener('click.property', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 _this.propContainer.menu.show(e);

@@ -5,14 +5,13 @@ export default class ScoreCell extends Cell{
         this.type="score";
     }
     initCell(cellData){
-        const container=$(`<div></div>`);
+        const container = document.createElement('div');
         this.inputType=new ruleforge.InputType(null,"无");
-        container.append(this.inputType.getContainer());
+        container.appendChild(this.inputType.getContainer());
         if(cellData && cellData.value){
             const value=cellData.value;
             this.inputType.setValueType(value.valueType,value);
         }
-        this.td.append(container);
+        this.td.appendChild(container);
     }
 }
-

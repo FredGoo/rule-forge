@@ -17,27 +17,24 @@ export default class HighlightCell extends BaseCell {
         super(rowContext);
 
         const complexTable = rowContext.complexTable;
+        const self = this;
         const highlightHandler = function () {
-            const td = $(this);
-            const width = td.get(0).clientWidth;
-            const height = td.get(0).clientHeight;
+            const tdEl = this;
+            const width = tdEl.clientWidth;
+            const height = tdEl.clientHeight;
             const highlightDiv = complexTable.getHighlightDiv();
-            highlightDiv.css({
-                width: width + 'px',
-                height: height + 'px'
-            });
-            td.prepend(highlightDiv);
-            highlightDiv.currentTD = td;
-            td.on('DOMSubtreeModified', function () {
-                const w = td.get(0).clientWidth;
-                const h = td.get(0).clientHeight;
-                highlightDiv.css({
-                    width: w + 'px',
-                    height: h + 'px'
-                });
+            highlightDiv.style.width = width + 'px';
+            highlightDiv.style.height = height + 'px';
+            tdEl.prepend(highlightDiv);
+            highlightDiv.currentTD = tdEl;
+            tdEl.addEventListener('DOMSubtreeModified', function () {
+                const w = tdEl.clientWidth;
+                const h = tdEl.clientHeight;
+                highlightDiv.style.width = w + 'px';
+                highlightDiv.style.height = h + 'px';
             });
         };
-        this.td.click(highlightHandler);
-        this.td.contextmenu(highlightHandler);
+        this.td.addEventListener('click', highlightHandler);
+        this.td.addEventListener('contextmenu', highlightHandler);
     }
 }

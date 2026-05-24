@@ -1,3 +1,4 @@
+import '../bootbox.js';
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../../node_modules/bootstrapvalidator/dist/css/bootstrapValidator.css';
 import React from 'react';
@@ -9,7 +10,7 @@ import reducer from './reducer.js';
 import PackageEditor from './components/PackageEditor.jsx';
 import * as action from './action.js';
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     const store = createStore(reducer, applyMiddleware(thunk));
     const project = _getParameter("file").replace('.rp', '');
     store.dispatch(action.loadMasterData(project));

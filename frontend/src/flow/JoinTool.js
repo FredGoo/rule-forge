@@ -19,8 +19,8 @@ export default class JoinTool extends BaseTool{
     getPropertiesProducer(){
         const _this=this;
         return function (){
-            const g=$(`<div></div>`);
-            g.append(_this.getCommonProperties(this));
+            const g=document.createElement('div');
+            g.appendChild(_this.getCommonProperties(this));
             return g;
         }
     }

@@ -16,7 +16,9 @@ export default class HeaderCell {
     constructor(row, col) {
         this.row = row;
         this.col = col;
-        this.td = $('<td style="text-align:center;vertical-align: middle;background: #f8f8f8;color: #4caf50;border: 1px solid #c6c4c4;"></td>');
+        const td = document.createElement('td');
+        td.style.cssText = 'text-align:center;vertical-align: middle;background: #f8f8f8;color: #4caf50;border: 1px solid #c6c4c4;';
+        this.td = td;
         this.init();
     }
 
@@ -24,38 +26,48 @@ export default class HeaderCell {
      * Initialize the header cell DOM: display label, text editor, and edit button.
      */
     init() {
-        this.row.tr.append(this.td);
+        this.row.tr.appendChild(this.td);
 
         this.text = 'TOP/LEFT';
-        this.label = $('<span>TOP/LEFT</span>');
-        this.td.append(this.label);
+        const label = document.createElement('span');
+        label.textContent = 'TOP/LEFT';
+        this.label = label;
+        this.td.appendChild(label);
 
-        this.editor = $('<textarea rows="3" class="form-control" style="display: none;padding: 1px;"></textarea>');
-        this.td.append(this.editor);
+        const editor = document.createElement('textarea');
+        editor.rows = 3;
+        editor.className = 'form-control';
+        editor.style.cssText = 'display: none;padding: 1px;';
+        this.editor = editor;
+        this.td.appendChild(editor);
 
-        this.editorButton = $('<div style="margin-left: 5px;cursor:pointer" title="编辑"><i class="glyphicon glyphicon-edit"></i></div>');
-        this.td.append(this.editorButton);
+        const editorButton = document.createElement('div');
+        editorButton.style.cssText = 'margin-left: 5px;cursor:pointer';
+        editorButton.title = '编辑';
+        editorButton.innerHTML = '<i class="glyphicon glyphicon-edit"></i>';
+        this.editorButton = editorButton;
+        this.td.appendChild(editorButton);
 
         const self = this;
-        this.editorButton.click(function () {
-            self.editor.show();
-            self.editor.val(self.text);
-            self.label.hide();
-            self.editorButton.hide();
+        editorButton.addEventListener('click', function () {
+            self.editor.style.display = '';
+            self.editor.value = self.text;
+            self.label.style.display = 'none';
+            self.editorButton.style.display = 'none';
             self.editor.focus();
         });
 
-        this.editor.blur(function () {
-            self.editor.hide();
-            self.label.show();
+        editor.addEventListener('blur', function () {
+            self.editor.style.display = 'none';
+            self.label.style.display = '';
             let displayText = self.text || '';
             displayText = displayText.replace(new RegExp('\n', 'gm'), '<br>');
-            self.label.html(displayText);
-            self.editorButton.show();
+            self.label.innerHTML = displayText;
+            self.editorButton.style.display = '';
         });
 
-        this.editor.change(function () {
-            self.text = $(this).val();
+        editor.addEventListener('change', function () {
+            self.text = this.value;
             window._setDirty();
         });
     }
@@ -74,15 +86,15 @@ export default class HeaderCell {
             if (text) {
                 text = text.replace(new RegExp('\n', 'gm'), '<br>');
                 this.text = text;
-                this.label.html(text);
+                this.label.innerHTML = text;
             }
             const rowspan = data.rowspan;
             if (rowspan) {
-                this.td.prop('rowspan', rowspan);
+                this.td.rowSpan = rowspan;
             }
             const colspan = data.colspan;
             if (colspan) {
-                this.td.prop('colspan', colspan);
+                this.td.colSpan = colspan;
             }
         }
     }
@@ -92,7 +104,7 @@ export default class HeaderCell {
      * @param {boolean} increment - True to increment, false to decrement
      */
     adjustColSpan(increment) {
-        let colspan = this.td.prop('colspan');
+        let colspan = this.td.colSpan;
         colspan || (colspan = 1);
         if (increment) {
             colspan++;
@@ -100,7 +112,7 @@ export default class HeaderCell {
             colspan--;
         }
         colspan || (colspan = 1);
-        this.td.prop('colspan', colspan);
+        this.td.colSpan = colspan;
     }
 
     /**
@@ -108,7 +120,7 @@ export default class HeaderCell {
      * @param {boolean} increment - True to increment, false to decrement
      */
     adjustRowSpan(increment) {
-        let rowspan = this.td.prop('rowspan');
+        let rowspan = this.td.rowSpan;
         rowspan || (rowspan = 1);
         if (increment) {
             rowspan++;
@@ -116,7 +128,7 @@ export default class HeaderCell {
             rowspan--;
         }
         rowspan || (rowspan = 1);
-        this.td.prop('rowspan', rowspan);
+        this.td.rowSpan = rowspan;
     }
 
     /**
@@ -124,7 +136,7 @@ export default class HeaderCell {
      * @returns {number}
      */
     getRowSpan() {
-        let rowspan = this.td.prop('rowspan');
+        let rowspan = this.td.rowSpan;
         rowspan || (rowspan = 1);
         return parseInt(rowspan);
     }
@@ -134,7 +146,7 @@ export default class HeaderCell {
      * @returns {number}
      */
     getColSpan() {
-        let colspan = this.td.prop('colspan');
+        let colspan = this.td.colSpan;
         colspan || (colspan = 1);
         return parseInt(colspan);
     }

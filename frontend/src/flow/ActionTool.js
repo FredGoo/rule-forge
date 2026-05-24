@@ -19,17 +19,24 @@ export default class ActionTool extends BaseTool{
     getPropertiesProducer(){
         const _this=this;
         return function (){
-            const g=$(`<div></div>`);
-            const actionBeanGroup=$(`<div class="form-group"><label>动作Bean</label></div>`);
-            const actionBeanText=$(`<input type="text" class="form-control" title="一个实现了com.ruleforge.model.flow.FlowAction接口并配置到Spring中的Bean的ID">`);
-            actionBeanGroup.append(actionBeanText);
+            const g=document.createElement('div');
+            const actionBeanGroup=document.createElement('div');
+            actionBeanGroup.className='form-group';
+            const actionBeanLabel=document.createElement('label');
+            actionBeanLabel.textContent='动作Bean';
+            actionBeanGroup.appendChild(actionBeanLabel);
+            const actionBeanText=document.createElement('input');
+            actionBeanText.type='text';
+            actionBeanText.className='form-control';
+            actionBeanText.title='一个实现了com.ruleforge.model.flow.FlowAction接口并配置到Spring中的Bean的ID';
+            actionBeanGroup.appendChild(actionBeanText);
             const self=this;
-            actionBeanText.change(function(){
-                self.actionBean=$(this).val();
+            actionBeanText.addEventListener('change',function(){
+                self.actionBean=this.value;
             });
-            actionBeanText.val(this.actionBean);
-            g.append(actionBeanGroup);
-            g.append(_this.getCommonProperties(this));
+            actionBeanText.value=this.actionBean || '';
+            g.appendChild(actionBeanGroup);
+            g.appendChild(_this.getCommonProperties(this));
             return g;
         }
     }

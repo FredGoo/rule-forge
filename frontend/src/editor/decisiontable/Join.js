@@ -4,14 +4,14 @@ ruleforge.Join = function (context) {
     this.H = 30;
     this.W = 60;
     this.children = [];
-    this.joinContainer = $("<span class='btn btn-default dropdown-toggle'></span>");
-    this.joinContainer.css({
-        border: "solid gray 1px",
-        padding: "3px",
-        background: "#fff"
-    });
-    this.joinLabel = $("<span>并且</span>");
-    this.joinContainer.append(this.joinLabel);
+    this.joinContainer = document.createElement("span");
+    this.joinContainer.className = "btn btn-default dropdown-toggle";
+    this.joinContainer.style.border = "solid gray 1px";
+    this.joinContainer.style.padding = "3px";
+    this.joinContainer.style.background = "#fff";
+    this.joinLabel = document.createElement("span");
+    this.joinLabel.textContent = "并且";
+    this.joinContainer.appendChild(this.joinLabel);
 };
 ruleforge.Join.prototype.initData = function (data) {
     var conditions = [];
@@ -56,7 +56,8 @@ ruleforge.Join.prototype.init = function (parentConnection) {
         this.parentConnection = parentConnection;
         this.parent = parentConnection.getParentJoin();
     }
-    var joinArrow = $(`<i class="glyphicon glyphicon-chevron-down rule-join-node"></i>`);
+    var joinArrow = document.createElement("i");
+    joinArrow.className = "glyphicon glyphicon-chevron-down rule-join-node";
     var self = this;
     self.menu = new RuleForge.menu.Menu({
         menuItems: [{
@@ -76,10 +77,10 @@ ruleforge.Join.prototype.init = function (parentConnection) {
             }
         }]
     });
-    this.joinContainer.click(function (e) {
+    this.joinContainer.addEventListener('click', function (e) {
         self.menu.show(e);
     });
-    this.joinContainer.append(joinArrow);
+    this.joinContainer.appendChild(joinArrow);
 };
 ruleforge.Join.prototype.clean = function () {
     while (this.children.length > 0) {
@@ -107,8 +108,8 @@ ruleforge.Join.prototype.addItem = function (isJoin) {
         this.parent.resetItemPosition(pos + 1, true);
     }
     var totalHeight = childrenCount * this.H;
-    var parentLeft = parseInt(this.joinContainer.css("left"));
-    var parentTop = parseInt(this.joinContainer.css("top"));
+    var parentLeft = parseInt(this.joinContainer.style.left);
+    var parentTop = parseInt(this.joinContainer.style.top);
     var startX = parentLeft + this.W / 2;
     var startY = parentTop + this.H / 5;
     var endX = startX + this.W - 25;
@@ -157,14 +158,12 @@ ruleforge.Join.prototype.resetItemPosition = function (index, add) {
 };
 ruleforge.Join.prototype.resetContainerSize = function () {
     var container = this.context.getCanvas();
-    var height = container.css("height");
+    var height = container.style.height;
     height = parseInt(height);
     var childrenCount = this.context.getTotalChildrenCount();
     if (childrenCount == 0) childrenCount = 1;
     var totalHeight = childrenCount * this.H + 10;
-    container.css({
-        "height": totalHeight + "px"
-    });
+    container.style.height = totalHeight + "px";
 };
 ruleforge.Join.prototype.getChildrenCount = function () {
     var total = 0;
@@ -185,19 +184,17 @@ ruleforge.Join.prototype.getChildrenCount = function () {
 ruleforge.Join.prototype.initTopJoin = function (container) {
     var left = 5;
     var top = 5;
-    this.joinContainer.css({
-        "position": "absolute",
-        "left": left,
-        "top": top
-    });
-    container.append(this.joinContainer);
+    this.joinContainer.style.position = "absolute";
+    this.joinContainer.style.left = left + "px";
+    this.joinContainer.style.top = top + "px";
+    container.appendChild(this.joinContainer);
     this.context.setRootJoin(this);
 };
 ruleforge.Join.prototype.getDisplayContainer = function () {
     if (this.children.length == 0) {
         return null;
     }
-    var container = $("<span>");
+    var container = document.createElement("span");
     for (var i = 0; i < this.children.length; i++) {
         var child = this.children[i];
         var childDisplayContainer = child.getDisplayContainer();
@@ -206,12 +203,18 @@ ruleforge.Join.prototype.getDisplayContainer = function () {
         }
         if (i > 0) {
             if (this.type == "or") {
-                container.append($("<span style='color:green'>&nbsp或&nbsp</span>"));
+                var orSpan = document.createElement("span");
+                orSpan.style.cssText = "color:green";
+                orSpan.textContent = " 或 ";
+                container.appendChild(orSpan);
             } else {
-                container.append($("<span style='color:red'>&nbsp并且&nbsp</span>"));
+                var andSpan = document.createElement("span");
+                andSpan.style.cssText = "color:red";
+                andSpan.textContent = " 并且 ";
+                container.appendChild(andSpan);
             }
         }
-        container.append(childDisplayContainer);
+        container.appendChild(childDisplayContainer);
     }
     return container;
 };

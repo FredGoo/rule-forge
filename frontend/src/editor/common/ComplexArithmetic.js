@@ -1,12 +1,10 @@
 ruleforge.ComplexArithmetic = function (rule) {
-    this.container = $("<span>");
+    this.container = document.createElement("span");
     this.operator = "";
     this.rule = rule;
     this.selectorLabel = generateContainer();
-    this.selectorLabel.css({
-        "fontWeight": "blod"
-    });
-    this.container.append(this.selectorLabel);
+    this.selectorLabel.style.fontWeight = "blod";
+    this.container.appendChild(this.selectorLabel);
     this.nextType = null;
     var self = this;
     var onClick = function (menu) {
@@ -41,16 +39,14 @@ ruleforge.ComplexArithmetic = function (rule) {
                     self.nextType.getContainer().remove();
                     self.nextType = null;
                     RuleForge.setDomContent(self.selectorLabel, ".");
-                    self.selectorLabel.css({
-                        "color": "#fff",
-                        "padding-left": "0px",
-                        "padding-right": "0px"
-                    });
+                    self.selectorLabel.style.color = "#fff";
+                    self.selectorLabel.style.paddingLeft = "0px";
+                    self.selectorLabel.style.paddingRight = "0px";
                 }
             }
         }]
     });
-    this.selectorLabel.click(function (e) {
+    this.selectorLabel.addEventListener("click", function (e) {
         self.menu.show(e);
     });
 
@@ -77,14 +73,12 @@ ruleforge.ComplexArithmetic.prototype.setOperator = function (operator) {
             break;
     }
     RuleForge.setDomContent(this.selectorLabel, this.info);
-    this.selectorLabel.css({
-        "color": "green",
-        "padding-left": "4px",
-        "padding-right": "4px"
-    });
+    this.selectorLabel.style.color = "green";
+    this.selectorLabel.style.paddingLeft = "4px";
+    this.selectorLabel.style.paddingRight = "4px";
     if (!this.nextType) {
         this.nextType = new ruleforge.NextType(this.rule);
-        this.container.append(this.nextType.getContainer());
+        this.container.appendChild(this.nextType.getContainer());
     }
 };
 ruleforge.ComplexArithmetic.prototype.initData = function (data) {
@@ -97,8 +91,9 @@ ruleforge.ComplexArithmetic.prototype.initData = function (data) {
 };
 ruleforge.ComplexArithmetic.prototype.getDisplayContainer = function () {
     if (this.nextType) {
-        var container = $("<span>" + this.info + "</span>");
-        container.append(this.nextType.getDisplayContainer());
+        var container = document.createElement("span");
+        container.textContent = this.info;
+        container.appendChild(this.nextType.getDisplayContainer());
         return container;
     }
     return null;

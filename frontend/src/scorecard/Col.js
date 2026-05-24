@@ -4,8 +4,11 @@ export default class Col {
     }
 
     buildColResizeTrigger() {
-        this.resizeTrigger = $(`<span class="col-resize-trigger">&nbsp;</span>`);
-        return this.resizeTrigger;
+        const resizeTrigger = document.createElement('span');
+        resizeTrigger.className = 'col-resize-trigger';
+        resizeTrigger.innerHTML = '&nbsp;';
+        this.resizeTrigger = resizeTrigger;
+        return resizeTrigger;
     }
 
     getColNumber() {
@@ -24,22 +27,22 @@ export default class Col {
     bindColResize() {
         let resizeStart = false, resizeTargetCol, resizeStartX, resizeStartWidth;
         const _this = this;
-        this.resizeTrigger.mousedown(function (e) {
-            resizeTargetCol = $(this).parent();
+        this.resizeTrigger.addEventListener('mousedown', function (e) {
+            resizeTargetCol = this.parentElement;
             resizeStart = true;
             resizeStartX = e.pageX;
-            resizeStartWidth = resizeTargetCol.width();
+            resizeStartWidth = resizeTargetCol.clientWidth;
             e.preventDefault();
         });
-        $(document).mousemove(function (e) {
+        document.addEventListener('mousemove', function (e) {
             if (resizeStart) {
                 const newWidth = resizeStartWidth + (e.pageX - resizeStartX);
                 _this.width = newWidth;
-                resizeTargetCol.width(newWidth);
+                resizeTargetCol.style.width = newWidth + 'px';
                 e.preventDefault();
             }
         });
-        $(document).mouseup(function (e) {
+        document.addEventListener('mouseup', function (e) {
             resizeStart = false;
             window._setDirty();
         });
