@@ -44,6 +44,7 @@ import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTree
 import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.jsx';
 import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
 import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
+import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import {buildProjectNameFromFile, getParameter} from "../../Utils";
@@ -55,6 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
     createRoot(document.getElementById("dialogContainer")).render(
         <div>
             <KnowledgeTreeDialog/>,
+            <ConfigLibraryDialog/>,
             <QuickTestDialog/>,
             <ResourceVersionDialogComponent/>,
             <ResourceListDialogComponent/>

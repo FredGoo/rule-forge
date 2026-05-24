@@ -21,6 +21,7 @@ import '../common/jquery.utils.js';
 import './ScriptDecisionTable.js';
 
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
+import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import {buildProjectNameFromFile, getParameter} from "../../Utils";
@@ -30,7 +31,10 @@ document.addEventListener('DOMContentLoaded', function () {
     window._project = buildProjectNameFromFile(file);
 
     createRoot(document.getElementById("dialogContainer")).render(
-        <KnowledgeTreeDialog/>,
-);
+        <div>
+            <KnowledgeTreeDialog/>
+            <ConfigLibraryDialog/>
+        </div>,
+    );
     new RuleForge.DecisionTable('container');
 });

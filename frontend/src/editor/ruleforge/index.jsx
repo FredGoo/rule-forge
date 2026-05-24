@@ -49,6 +49,7 @@ import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTree
 import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.jsx';
 import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
 import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
+import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
 import ReferenceDialog from '../../reference/ReferenceDialog.jsx';
 import * as refEvent from '../../reference/event.js';
 import React from 'react';
@@ -70,6 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
     root.render(
         <div>
             <KnowledgeTreeDialog/>
+            <ConfigLibraryDialog/>
             <ReferenceDialog/>
             <QuickTestDialog/>
             <ResourceVersionDialogComponent/>

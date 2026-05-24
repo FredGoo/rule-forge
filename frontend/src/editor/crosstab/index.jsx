@@ -54,6 +54,7 @@ import React from 'react';
 import {createRoot} from 'react-dom/client';
 import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
 import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
+import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
 
 document.addEventListener('DOMContentLoaded', function () {
     const crossTable = new CrossTable({
@@ -73,6 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div>
             <ResourceVersionDialogComponent/>
             <ResourceListDialogComponent/>
+            <ConfigLibraryDialog/>
         </div>
     );
 

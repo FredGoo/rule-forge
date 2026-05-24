@@ -48,6 +48,7 @@ import {saveNewVersion} from "../Utils";
 import {ajaxSave, buildProjectNameFromFile, getParameter} from '../Utils.js';
 
 import KnowledgeTreeDialog from '../components/dialog/component/KnowledgeTreeDialog.jsx';
+import ConfigLibraryDialog from '../components/dialog/component/ConfigLibraryDialog.jsx';
 
 document.addEventListener('DOMContentLoaded', function (e) {
     const file = getParameter("file");
@@ -220,6 +221,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
     createRoot(document.getElementById("dialogContainer")).render(
         <div>
             <KnowledgeTreeDialog/>
+            <ConfigLibraryDialog/>
             <QuickTestDialog/>
         </div>,
     );

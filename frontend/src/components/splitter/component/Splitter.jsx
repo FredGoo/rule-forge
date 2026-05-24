@@ -1,4 +1,3 @@
-import '../css/jquery.splitter.css';
 import React, {Component} from 'react';
 
 export default class Splitter extends Component {

@@ -51,6 +51,7 @@ import {createRoot} from 'react-dom/client';
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
 import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
 import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
+import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
 
 import ComplexScoreCard from './ComplexScoreCard.js';
 import {getParameter, buildProjectNameFromFile} from '../../Utils.js';
@@ -81,6 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
     createRoot(document.getElementById('dialogContainer')).render(
         <div>
             <KnowledgeTreeDialog/>
+            <ConfigLibraryDialog/>
             <ResourceVersionDialogComponent/>
             <ResourceListDialogComponent/>
         </div>
