@@ -1,12 +1,10 @@
 import '../../bootbox.js';
 import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
-import '../jquery.handsontable.full.min.css';
+import 'handsontable/styles/handsontable.css';
 import '../context.standalone.css';
 import '../../css/iconfont.css';
 import '../ruleforge/ruleset.css';
 import '../common/jquery.utils.js';
-import '../jquery-shim.js';
-import '../jquery.handsontable.full.js';
 import '../Math.uuid.js';
 import '../../Remark.js';
 import '../common/URule.js';

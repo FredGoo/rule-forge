@@ -14,7 +14,9 @@ window._setDirty = function () {
     saveButton.classList.remove("disabled");
 };
 
-(function (Handsontable) {
+var Handsontable = require('handsontable');
+
+(function () {
     if (!window.RuleForge) {
         window.RuleForge = {};
     }
@@ -216,6 +218,7 @@ window._setDirty = function () {
         self.load();
         window.ht = self;
         var config = {
+            "licenseKey": "non-commercial-and-evaluation",
             "type": "ruleforge",
             "manualRowResize": true,
             "manualColumnResize": true,
@@ -237,8 +240,7 @@ window._setDirty = function () {
         table.style.marginLeft = "15px";
         container.appendChild(table);
 
-        self._handsontable = new Handsontable.Core(table, config);
-        self._handsontable.init();
+        self._handsontable = new Handsontable(table, config);
         self._dom = table;
         self._handsontable.ht = self;
         config.colHeaders = function (col) {
@@ -370,15 +372,21 @@ window._setDirty = function () {
         },
 
         getMergeInfo: function (row, col) {
-            return this._handsontable.mergeCells.mergedCellInfoCollection.getInfo(row, col);
+            var plugin = this._handsontable.getPlugin('mergeCells');
+            if (plugin.mergedCellsCollection) {
+                return plugin.mergedCellsCollection.get(row, col);
+            }
+            return null;
         },
 
         setMergeInfo: function (info) {
-            this._handsontable.mergeCells.mergedCellInfoCollection.setInfo(info);
+            var plugin = this._handsontable.getPlugin('mergeCells');
+            plugin.merge(info.row, info.col, info.row + info.rowspan - 1, info.col + info.colspan - 1);
         },
 
         removeMergeInfo: function (row, col) {
-            return this._handsontable.mergeCells.mergedCellInfoCollection.removeInfo(row, col);
+            var plugin = this._handsontable.getPlugin('mergeCells');
+            plugin.unmerge(row, col, row, col);
         },
 
         clear: function () {
@@ -917,7 +925,7 @@ window._setDirty = function () {
                 TD = this.getCell(row, col);
             var value = this.getValue();
             renderer(this._handsontable, TD, row, col, prop, value, cellProperties);
-            Handsontable.hooks.run(this._handsontable, 'afterRenderer', TD, row, col, prop, value, cellProperties);
+            this._handsontable.runHooks('afterRenderer', TD, row, col, prop, value, cellProperties);
         },
 
         toXml: function () {
@@ -1410,4 +1418,4 @@ window._setDirty = function () {
             });
         }
     };
-})(Handsontable);
+})();

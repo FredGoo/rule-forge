@@ -1,3 +1,4 @@
+var Handsontable = require('handsontable');
 import {getParameter,ajaxSave,saveNewVersion} from '../../Utils.js';
 import '../../../node_modules/codemirror/addon/hint/show-hint.js';
 import '../../../node_modules/codemirror/addon/mode/simple.js';
@@ -19,7 +20,7 @@ window._setDirty=function(){
 	document.getElementById("saveButton").classList.remove("disabled");
 };
 
-(function(Handsontable){
+(function(){
 	if(!window.RuleForge){
 		window.RuleForge={};
 	}
@@ -155,6 +156,7 @@ window._setDirty=function(){
 		self.load();
 		window.ht=self;
 		var config={
+			"licenseKey":"non-commercial-and-evaluation",
 			"type":"ruleforge",
 			"manualRowResize":true,
 			"manualColumnResize":true,
@@ -176,8 +178,7 @@ window._setDirty=function(){
 		table.style.marginLeft="15px";
 		container.appendChild(table);
 
-		self._handsontable=new Handsontable.Core(table, config);
-		self._handsontable.init();
+		self._handsontable=new Handsontable(table, config);
 		self._dom=table;
 		self._handsontable.ht=self;
 		config.colHeaders=function(col){
@@ -828,7 +829,7 @@ window._setDirty=function(){
     	    TD=this.getCell(row,col);
     	    var value = this.getValue();
     	    renderer(this._handsontable, TD, row,col, prop, value, cellProperties);
-    	    Handsontable.hooks.run(this._handsontable, 'afterRenderer', TD,row, col, prop, value, cellProperties);
+    	    this._handsontable.runHooks('afterRenderer', TD,row, col, prop, value, cellProperties);
 		},
 
 		toXml:function(){
@@ -1246,4 +1247,4 @@ window._setDirty=function(){
 			});
 		}
 	};
-})(Handsontable);
+})();

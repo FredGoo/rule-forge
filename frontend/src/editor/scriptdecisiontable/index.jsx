@@ -4,7 +4,7 @@ import '../../../node_modules/codemirror/addon/hint/show-hint.css';
 import '../../../node_modules/codemirror/addon/lint/lint.css';
 import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
 import './cell.css';
-import '../jquery.handsontable.full.min.css';
+import 'handsontable/styles/handsontable.css';
 import '../context.standalone.css';
 import '../../css/iconfont.css';
 import '../ruleforge/ruleset.css';
@@ -18,8 +18,6 @@ import '../ruleforge/ConfigConstantDialog.js';
 import '../ruleforge/ConfigParameterDialog.js';
 import '../ruleforge/ConfigVariableDialog.js';
 import '../common/jquery.utils.js';
-import '../jquery-shim.js';
-import '../jquery.handsontable.full.js';
 import './ScriptDecisionTable.js';
 
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
