@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import CodeMirror from './CodeMirror.js';
 import '../../node_modules/codemirror/addon/hint/show-hint.js';
 import BaseTool from './BaseTool.js';
@@ -23,15 +20,26 @@ export default class DecisionTool extends BaseTool {
     getPropertiesProducer() {
         const _this = this;
         return function () {
-            const g = $(`<div></div>`);
-            const decisionTypeGroup = $(`<div class="form-group"><label>决策类型</label></div>`)
-            const decisionTypeSelect = $(`<select class="form-control"></select>`);
-            decisionTypeSelect.append('<option value="Criteria">条件</option>');
-            decisionTypeSelect.append('<option value="Percent">百分比</option>');
+            const g = document.createElement('div');
+            const decisionTypeGroup = document.createElement('div');
+            decisionTypeGroup.className = 'form-group';
+            const decisionTypeLabel = document.createElement('label');
+            decisionTypeLabel.textContent = '决策类型';
+            decisionTypeGroup.appendChild(decisionTypeLabel);
+            const decisionTypeSelect = document.createElement('select');
+            decisionTypeSelect.className = 'form-control';
+            const criteriaOption = document.createElement('option');
+            criteriaOption.value = 'Criteria';
+            criteriaOption.textContent = '条件';
+            decisionTypeSelect.appendChild(criteriaOption);
+            const percentOption = document.createElement('option');
+            percentOption.value = 'Percent';
+            percentOption.textContent = '百分比';
+            decisionTypeSelect.appendChild(percentOption);
             const self = this;
-            decisionTypeSelect.val(this.decisionType);
-            decisionTypeGroup.append(decisionTypeSelect);
-            const tableContainer = $('<div>');
+            decisionTypeSelect.value = this.decisionType || '';
+            decisionTypeGroup.appendChild(decisionTypeSelect);
+            const tableContainer = document.createElement('div');
             if (!this.decisionItems || this.decisionItems.length !== self.fromConnections.length) {
                 let decisionItems = [...(this.decisionItems ||[])]
                 this.decisionItems = [];
@@ -50,79 +58,95 @@ export default class DecisionTool extends BaseTool {
                 }
             }
 
-            const percentTable = $(`<table class="table table-bordered"></table>`);
-            tableContainer.append(percentTable);
-            percentTable.hide();
-            percentTable.append(`<thead><tr><td>百分比(%)</td><td style="width: 160px">流向</td></tr></thead>`);
-            const percentTbody = $(`<tbody></tbody>`);
-            percentTable.append(percentTbody);
+            // Percent table
+            const percentTable = document.createElement('table');
+            percentTable.className = 'table table-bordered';
+            tableContainer.appendChild(percentTable);
+            percentTable.style.display = 'none';
+            const percentThead = document.createElement('thead');
+            percentThead.innerHTML = '<tr><td>百分比(%)</td><td style="width: 160px">流向</td></tr>';
+            percentTable.appendChild(percentThead);
+            const percentTbody = document.createElement('tbody');
+            percentTable.appendChild(percentTbody);
             let index = 0;
             for (let conn of this.fromConnections) {
                 const item = this.decisionItems[index];
                 index++;
-                const tr = $('<tr></tr>');
-                percentTbody.append(tr);
-                const td = $('<td></td>');
-                tr.append(td);
-                const percentText = $('<input type="text" class="form-control">');
-                td.append(percentText);
-                percentText.change(function () {
-                    item.percent = $(this).val();
+                const tr = document.createElement('tr');
+                percentTbody.appendChild(tr);
+                const td = document.createElement('td');
+                tr.appendChild(td);
+                const percentText = document.createElement('input');
+                percentText.type = 'text';
+                percentText.className = 'form-control';
+                td.appendChild(percentText);
+                percentText.addEventListener('change', function () {
+                    item.percent = this.value;
                 });
-                percentText.val(item.percent);
-                const td1 = $("<td></td>");
-                tr.append(td1);
-                const pathSelect = $(`<select class="form-control"></select>`);
+                percentText.value = item.percent || '';
+                const td1 = document.createElement('td');
+                tr.appendChild(td1);
+                const pathSelect = document.createElement('select');
+                pathSelect.className = 'form-control';
                 for (let c of this.fromConnections) {
-                    pathSelect.append(`<option>${c.name ? c.name : ''}</option>`);
+                    const opt = document.createElement('option');
+                    opt.textContent = c.name ? c.name : '';
+                    pathSelect.appendChild(opt);
                 }
-                pathSelect.change(function () {
-                    item.to = $(this).val();
+                pathSelect.addEventListener('change', function () {
+                    item.to = this.value;
                 });
-                pathSelect.val(item.to);
-                td1.append(pathSelect);
+                pathSelect.value = item.to || '';
+                td1.appendChild(pathSelect);
             }
 
-            const conditionTable = $(`<table class="table table-bordered"></table>`);
-            tableContainer.append(conditionTable);
-            conditionTable.hide();
-            conditionTable.append(`<thead><tr><td>条件脚本</td><td style="width: 160px">流向</td></tr></thead>`);
-            const tbody = $(`<tbody></tbody>`);
-            conditionTable.append(tbody);
+            // Condition table
+            const conditionTable = document.createElement('table');
+            conditionTable.className = 'table table-bordered';
+            tableContainer.appendChild(conditionTable);
+            conditionTable.style.display = 'none';
+            const conditionThead = document.createElement('thead');
+            conditionThead.innerHTML = '<tr><td>条件脚本</td><td style="width: 160px">流向</td></tr>';
+            conditionTable.appendChild(conditionThead);
+            const tbody = document.createElement('tbody');
+            conditionTable.appendChild(tbody);
             index = 0;
             for (let conn of this.fromConnections) {
                 let decisionItem = this.decisionItems[index];
                 index++;
-                const tr = $('<tr></tr>');
-                tbody.append(tr);
-                const td = $('<td></td>');
-                tr.append(td);
-                const textGroup = $(`<div class="input-group"></div>`);
-                const scriptText = $(`<input type="text" class="form-control" style="font-size: 12px" value="${decisionItem.script || ''}">`);
-                textGroup.append(scriptText);
-                const openEditorButton = $(`<span class="input-group-btn"><button type="button" class="btn btn-default"><i class="glyphicon glyphicon-edit"></i></button></span>`);
-                textGroup.append(openEditorButton);
-                openEditorButton.click(function () {
-                    const codeEditorContainer = $('<div></div>');
-                    const codeEditor = $(`<textarea>${decisionItem.script || ''}</textarea>`);
-                    codeEditorContainer.append(codeEditor);
+                const tr = document.createElement('tr');
+                tbody.appendChild(tr);
+                const td = document.createElement('td');
+                tr.appendChild(td);
+                const textGroup = document.createElement('div');
+                textGroup.className = 'input-group';
+                const scriptText = document.createElement('input');
+                scriptText.type = 'text';
+                scriptText.className = 'form-control';
+                scriptText.style.fontSize = '12px';
+                scriptText.value = decisionItem.script || '';
+                textGroup.appendChild(scriptText);
+                const openEditorSpan = document.createElement('span');
+                openEditorSpan.className = 'input-group-btn';
+                const openEditorBtn = document.createElement('button');
+                openEditorBtn.type = 'button';
+                openEditorBtn.className = 'btn btn-default';
+                openEditorBtn.innerHTML = '<i class="glyphicon glyphicon-edit"></i>';
+                openEditorSpan.appendChild(openEditorBtn);
+                textGroup.appendChild(openEditorSpan);
+                openEditorBtn.addEventListener('click', function () {
+                    const codeEditorContainer = document.createElement('div');
+                    const codeEditor = document.createElement('textarea');
+                    codeEditor.value = decisionItem.script || '';
+                    codeEditorContainer.appendChild(codeEditor);
                     let codeMirror = null;
-                    // 编辑框
-                    // MsgBox.dialog('编辑脚本', codeEditorContainer, function () {
-                    //     if (codeMirror) {
-                    //         const scriptContent = codeMirror.getValue();
-                    //         codeEditor.val(scriptContent);
-                    //         scriptText.val(scriptContent);
-                    //         decisionItem.script = scriptContent;
-                    //     }
-                    // });
                     MsgBox.showDialog('编辑脚本', codeEditorContainer, [{
                         name: '确认',
                         click: function click() {
                             if (codeMirror) {
                                 const scriptContent = codeMirror.getValue();
-                                codeEditor.val(scriptContent);
-                                scriptText.val(scriptContent);
+                                codeEditor.value = scriptContent;
+                                scriptText.value = scriptContent;
                                 decisionItem.script = scriptContent;
                             }
                         },
@@ -130,12 +154,12 @@ export default class DecisionTool extends BaseTool {
                     }], [{
                         name: "hide.bs.modal",
                         callback: function () {
-                            if ($('.CodeMirror-lint-marker-error').length < 1) {
+                            if (document.querySelectorAll('.CodeMirror-lint-marker-error').length < 1) {
                                 return true;
                             } else {
                                 alert('语法错误！');
-                                codeEditor.val();
-                                scriptText.val();
+                                codeEditor.value = '';
+                                scriptText.value = '';
                                 decisionItem.script = '';
                                 return false;
                             }
@@ -143,7 +167,7 @@ export default class DecisionTool extends BaseTool {
                     }]);
 
                     setTimeout(function () {
-                        codeMirror = CodeMirror.fromTextArea(codeEditor[0], {
+                        codeMirror = CodeMirror.fromTextArea(codeEditor, {
                             lineNumbers: true,
                             mode: "if",
                             extraKeys: {"Alt-/": "autocomplete"},
@@ -164,41 +188,45 @@ export default class DecisionTool extends BaseTool {
                         });
                     }, 500);
                 });
-                td.append(textGroup);
+                td.appendChild(textGroup);
 
-                const td1 = $("<td></td>");
-                tr.append(td1);
-                const pathSelect = $(`<select class="form-control" style="font-size: 12px"></select>`);
+                const td1 = document.createElement('td');
+                tr.appendChild(td1);
+                const pathSelect = document.createElement('select');
+                pathSelect.className = 'form-control';
+                pathSelect.style.fontSize = '12px';
                 for (let c of this.fromConnections) {
-                    pathSelect.append(`<option>${c.name ? c.name : ''}</option>`);
+                    const opt = document.createElement('option');
+                    opt.textContent = c.name ? c.name : '';
+                    pathSelect.appendChild(opt);
                 }
-                pathSelect.change(function () {
-                    decisionItem.to = $(this).val();
+                pathSelect.addEventListener('change', function () {
+                    decisionItem.to = this.value;
                 });
-                pathSelect.val(decisionItem.to || '');
-                td1.append(pathSelect);
+                pathSelect.value = decisionItem.to || '';
+                td1.appendChild(pathSelect);
             }
 
-            decisionTypeSelect.change(function () {
-                self.decisionType = $(this).val();
+            decisionTypeSelect.addEventListener('change', function () {
+                self.decisionType = this.value;
                 if (self.decisionType === 'Criteria') {
-                    percentTable.hide();
-                    conditionTable.show();
+                    percentTable.style.display = 'none';
+                    conditionTable.style.display = '';
                 } else {
-                    conditionTable.hide();
-                    percentTable.show();
+                    conditionTable.style.display = 'none';
+                    percentTable.style.display = '';
                 }
             });
             if (self.decisionType === 'Criteria') {
-                percentTable.hide();
-                conditionTable.show();
+                percentTable.style.display = 'none';
+                conditionTable.style.display = '';
             } else if (self.decisionType === 'Percent') {
-                conditionTable.hide();
-                percentTable.show();
+                conditionTable.style.display = 'none';
+                percentTable.style.display = '';
             }
-            g.append(decisionTypeGroup);
-            g.append(tableContainer);
-            g.append(_this.getCommonProperties(this));
+            g.appendChild(decisionTypeGroup);
+            g.appendChild(tableContainer);
+            g.appendChild(_this.getCommonProperties(this));
             return g;
         }
     }

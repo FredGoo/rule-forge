@@ -1,18 +1,16 @@
-/**
- * @author Jacky.gao
- * @since 2016/6/6
- */
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import Dialog from '../../components/dialog/component/Dialog.jsx';
 import * as event from '../event.js';
 import * as action from '../action.js';
 
 export default class ImportXmlDialog extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {visible: false};
+    }
     componentDidMount() {
         event.eventEmitter.on(event.OPEN_IMPORT_XML_DIALOG, (rowIndex) => {
-            $(ReactDOM.findDOMNode(this)).modal('show');
-            this.setState({rowIndex});
+            this.setState({visible: true, rowIndex});
         });
     }
 
@@ -32,13 +30,13 @@ export default class ImportXmlDialog extends Component {
                 </form>
                 <iframe name={iFrameName} height="0px" width="0px" frameBorder="0" onLoad={(e) => {
                     try {
-                        const content = $(e.target).contents().text();
+                        const content = e.target.contentDocument.body.textContent;
                         if (!content || content === '') {
                             return;
                         }
-                        let jsonResult = $.parseJSON(content);
+                        let jsonResult = JSON.parse(content);
                         dispatch(action.importFields(this.state.rowIndex, jsonResult));
-                        $(ReactDOM.findDOMNode(this)).modal('hide');
+                        this.setState({visible: false});
                     } catch (error) {
                         bootbox.alert('上传文件不合法');
                     }
@@ -56,7 +54,7 @@ export default class ImportXmlDialog extends Component {
             }
         ];
         return (
-            <Dialog title="导入对象属性XML文件" body={body} buttons={buttons}/>
+            <Dialog title="导入对象属性XML文件" body={body} buttons={buttons} visible={this.state.visible}/>
         );
     }
 }

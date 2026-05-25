@@ -1,9 +1,6 @@
-/**
- * @author GJ
- */
 ruleforge.ActionType=function(parentContainer,rule){
 	this.uuid=Math.uuid();
-	parentContainer.prop('id',this.uuid);
+	parentContainer.id=this.uuid;
 	this.rule=rule;
 	this.parentContainer=parentContainer;
 	this.type="";
@@ -33,11 +30,9 @@ ruleforge.ActionType.prototype.initData=function(data){
 
 ruleforge.ActionType.prototype.init=function(){
 	this.container=generateContainer();
-	RuleForge.setDomContent(this.container,"请选择动作类型");
-	this.container.css({
-		"color":"green"
-	});
-	this.parentContainer.append(this.container);
+	this.container.textContent = "请选择动作类型";
+	this.container.style.color = "green";
+	this.parentContainer.appendChild(this.container);
 	this.action=null;
 };
 ruleforge.ActionType.prototype.initMenu=function(actionLibraries){
@@ -73,15 +68,15 @@ ruleforge.ActionType.prototype.initMenu=function(actionLibraries){
 			self.setAction("ExecuteCommonFunction");
 		}
 	}]};
-	$.each(data||[],function(index,item){
-		var springBeans=item.springBeans||[]; 
-		$.each(springBeans,function(i,springBean){
+	data||[].forEach(function(item) {
+		var springBeans=item.springBeans||[];
+		springBeans.forEach(function(springBean) {
 			var menuItem={
 				name:springBean.id,
 				label:springBean.name
 			}
 			var methods=springBean.methods||[];
-			$.each(methods,function(j,method){
+			methods.forEach(function(method) {
 				if(!menuItem.subMenu){
 					menuItem.subMenu={menuItems:[]};
 				}
@@ -101,7 +96,7 @@ ruleforge.ActionType.prototype.initMenu=function(actionLibraries){
 	}else{
 		self.menu=new RuleForge.menu.Menu(config);
 	}
-	this.container.click(function(e){
+	this.container.addEventListener('click',function(e){
 		self.menu.show(e);
 	});
 };
@@ -132,25 +127,25 @@ ruleforge.ActionType.prototype.setAction=function(type,data){
 	switch(type){
 	case "ConsolePrint":
 		this.action=new ruleforge.PrintAction(this.rule);
-		RuleForge.setDomContent(this.container,"输出:");
+		this.container.textContent = "输出:";
 		this.type="console-print";
 		break;
 	case "ExecuteMethod":
 		this.action=new ruleforge.MethodAction(this.rule);
-		RuleForge.setDomContent(this.container,"执行方法:");
+		this.container.textContent = "执行方法:";
 		this.type="execute-method";
 		break;
 	case "VariableAssign":
 		this.action=new ruleforge.AssignmentAction(this.rule);
-		RuleForge.setDomContent(this.container,"变量赋值:");
+		this.container.textContent = "变量赋值:";
 		this.type="var-assign";
 		break;
 	case "ExecuteCommonFunction":
 		this.action=new ruleforge.FunctionValue(null,null,this.rule);
-		RuleForge.setDomContent(this.container,"执行函数:");
+		this.container.textContent = "执行函数:";
 		this.type="execute-function";
 		break;
 	}
-	this.parentContainer.append(this.action.getContainer());
+	this.parentContainer.appendChild(this.action.getContainer());
 	this.action.initData(data);
 };

@@ -1,21 +1,16 @@
-/**
- * @author GJ
- */
 ruleforge.CellContent = function (element) {
-    this.container = $(element);
-    this.container.css({
-        height: "40px",
-        width: "100%"
-    });
+    this.container = element[0] || element;
+    this.container.style.height = "40px";
+    this.container.style.width = "100%";
     this.inputType = new ruleforge.InputType(null, "无");
-    this.container.append(this.inputType.getContainer());
+    this.container.appendChild(this.inputType.getContainer());
 };
 ruleforge.CellContent.prototype.clean = function (data) {
     if (this.inputType) {
         this.inputType.getContainer().remove();
     }
     this.inputType = new ruleforge.InputType(null, "无");
-    this.container.append(this.inputType.getContainer());
+    this.container.appendChild(this.inputType.getContainer());
     window._setDirty();
 };
 ruleforge.CellContent.prototype.initData = function (data) {

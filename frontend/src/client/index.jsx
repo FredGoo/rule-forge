@@ -1,10 +1,8 @@
-/**
- * Created by Jacky.gao on 2016/8/11.
- */
+import '../bootbox.js';
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {applyMiddleware, createStore} from 'redux';
 import {Provider} from 'react-redux';
 import thunk from 'redux-thunk';
@@ -14,14 +12,13 @@ import ClientConfigEditor from './component/ClientConfigEditor.jsx';
 import * as action from './action.js';
 import {getParameter} from '../Utils.js';
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     const store = createStore(reducer, applyMiddleware(thunk));
     const project = getParameter('project');
     store.dispatch(action.loadData(project));
-    ReactDOM.render(
+    createRoot(document.getElementById("container")).render(
         <Provider store={store}>
             <ClientConfigEditor project={project}/>
         </Provider>,
-        document.getElementById('container')
-    );
+);
 });

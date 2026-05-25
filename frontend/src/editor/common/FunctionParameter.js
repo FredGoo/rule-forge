@@ -1,21 +1,16 @@
-/**
- * @author GJ
- */
 ruleforge.FunctionParameter = function (rule) {
-    this.container = $("<span>");
-    this.nameContainer = $("<span>");
+    this.container = document.createElement("span");
+    this.nameContainer = document.createElement("span");
     this.rule = rule;
-    this.container.append(this.nameContainer);
-    this.nameContainer.css({
-        "color": "gray"
-    });
+    this.container.appendChild(this.nameContainer);
+    this.nameContainer.style.color = "gray";
 };
 ruleforge.FunctionParameter.prototype.initData = function (data) {
     if (!data) {
         return;
     }
     this.name = data.name;
-    RuleForge.setDomContent(this.nameContainer, this.name + ":");
+    this.nameContainer.textContent = this.name + ":";
     if (data.needProperty || data.property) {
         this.functionProperty = new ruleforge.FunctionProperty();
         this.functionProperty.setProperty({name: data.property, label: data.propertyLabel});
@@ -26,11 +21,16 @@ ruleforge.FunctionParameter.prototype.initData = function (data) {
         var valueType = value.valueType;
         this.inputType.setValueType(valueType, value);
     }
-    this.container.append(this.inputType.getContainer());
+    this.container.appendChild(this.inputType.getContainer());
     if (this.functionProperty) {
-        this.container.append($("<span>，</span>"));
-        this.container.append($("<span style='color:gray'>属性:</span>"));
-        this.container.append(this.functionProperty.getContainer());
+        var commaSpan = document.createElement("span");
+        commaSpan.textContent = "，";
+        this.container.appendChild(commaSpan);
+        var propLabel = document.createElement("span");
+        propLabel.style.color = "gray";
+        propLabel.textContent = "属性:";
+        this.container.appendChild(propLabel);
+        this.container.appendChild(this.functionProperty.getContainer());
     }
 };
 ruleforge.FunctionParameter.prototype.toXml = function () {

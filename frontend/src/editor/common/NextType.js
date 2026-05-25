@@ -1,18 +1,13 @@
-/**
- * @author GJ
- */
 ruleforge.NextType = function (rule) {
-    this.container = $("<span>");
+    this.container = document.createElement("span");
     this.rule = rule;
     this.inputType = null;
     this.paren = null;
     this.selectorLabel = generateContainer();
-    this.selectorLabel.css({
-        "fontWeight": "blod",
-        "color": "#fff"
-    });
-    this.container.append(this.selectorLabel);
-    RuleForge.setDomContent(this.selectorLabel, ".");
+    this.selectorLabel.style.fontWeight = "blod";
+    this.selectorLabel.style.color = "#fff";
+    this.container.appendChild(this.selectorLabel);
+    this.selectorLabel.textContent = ".";
     var self = this;
     var onClick = function (menu) {
         var type = menu.name;
@@ -30,7 +25,7 @@ ruleforge.NextType = function (rule) {
             onClick: onClick
         }]
     });
-    this.selectorLabel.click(function (e) {
+    this.selectorLabel.addEventListener("click", function (e) {
         self.menu.show(e);
     });
 };
@@ -72,7 +67,7 @@ ruleforge.NextType.prototype.doNext = function (type) {
         }
         if (!this.inputType) {
             this.inputType = new ruleforge.InputType(null, null, null, this.rule);
-            this.container.append(this.inputType.getContainer());
+            this.container.appendChild(this.inputType.getContainer());
         }
     } else if (type == "paren") {
         if (this.inputType) {
@@ -81,7 +76,7 @@ ruleforge.NextType.prototype.doNext = function (type) {
         }
         if (!this.paren) {
             this.paren = new ruleforge.Paren(this.rule);
-            this.container.append(this.paren.getContainer());
+            this.container.appendChild(this.paren.getContainer());
         }
     }
 };

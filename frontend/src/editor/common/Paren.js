@@ -1,30 +1,19 @@
-/**
- * @author GJ
- */
 ruleforge.Paren = function (rule) {
-    this.container = $("<span>");
-    this.leftParen = $("<span>(</span>");
-    this.leftParen.css({
-        "color": "#000",
-        "fontWeight": "blod",
-        "padding-left": "3px",
-        "padding-right": "3px"
-    });
-    this.rightParen = $("<span>)</span>");
-    this.rightParen.css({
-        "color": "#000",
-        "fontWeight": "blod",
-        "padding-left": "3px",
-        "padding-right": "3px"
-    });
-    this.parenContainer = $("<span>");
-    this.container.append(this.leftParen);
-    this.container.append(this.parenContainer);
-    this.container.append(this.rightParen);
+    this.container = document.createElement("span");
+    this.leftParen = document.createElement("span");
+    this.leftParen.textContent = "(";
+    this.leftParen.style.cssText = "color:#000;fontWeight:blod;padding-left:3px;padding-right:3px;";
+    this.rightParen = document.createElement("span");
+    this.rightParen.textContent = ")";
+    this.rightParen.style.cssText = "color:#000;fontWeight:blod;padding-left:3px;padding-right:3px;";
+    this.parenContainer = document.createElement("span");
+    this.container.appendChild(this.leftParen);
+    this.container.appendChild(this.parenContainer);
+    this.container.appendChild(this.rightParen);
     this.inputType = new ruleforge.InputType(null, null, null, rule);
-    this.parenContainer.append(this.inputType.getContainer());
+    this.parenContainer.appendChild(this.inputType.getContainer());
     this.arithmetic = new ruleforge.ComplexArithmetic(rule);
-    this.container.append(this.arithmetic.getContainer());
+    this.container.appendChild(this.arithmetic.getContainer());
 };
 ruleforge.Paren.prototype.initData = function (data) {
     var value = data["value"];

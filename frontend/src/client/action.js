@@ -1,25 +1,21 @@
-/**
- * Created by Jacky.gao on 2016/8/11.
- */
+import {handleResponseError} from '../Utils.js';
+
 export const ADD='add';
 export const DEL='del';
 export const LOADED_DATA='loaded_data';
 
 export function loadData(project) {
     return function (dispatch) {
-        $.ajax({
-            url:window._server+'/clientconfig/loadData?project='+project,
-            type:'POST',
-            success:function (data) {
-                dispatch({type:LOADED_DATA,data});
-            },
-            error:function (response) {
-                if(response && response.responseText){
-                    bootbox.alert("<span style='color: red'>服务端错误："+response.responseText+"</span>");
-                }else{
-                    bootbox.alert("<span style='color: red'>服务端出错</span>");
-                }
-            }
+        fetch(window._server+'/clientconfig/loadData?project='+project, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            dispatch({type:LOADED_DATA,data});
+        }).catch(function (response) {
+            handleResponseError(response, '服务端错误：');
         });
     };
 };
@@ -42,24 +38,17 @@ export function save(data,project) {
     }
     xml+="</client-config>";
     xml=encodeURIComponent(xml);
-    $.ajax({
-        url:window._server+'/clientconfig/save',
-        type:'POST',
-        data:{project,content:xml},
-        success:function () {
-            bootbox.alert('保存成功!');
-        },
-        error:function (response) {
-            if(response && response.status===401){
-                alert("权限不足，不能进行此操作.");
-            }else{
-                if(response && response.responseText){
-                    bootbox.alert("<span style='color: red'>保存失败，服务端错误："+response.responseText+"</span>");
-                }else{
-                    bootbox.alert("<span style='color: red'>保存失败，服务端出错</span>");
-                }
-            }
-        }
+    fetch(window._server+'/clientconfig/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({project,content:xml}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function () {
+        bootbox.alert('保存成功!');
+    }).catch(function (response) {
+        handleResponseError(response, '保存失败，服务端错误：');
     });
 };
 export function del(index) {

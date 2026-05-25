@@ -1,8 +1,4 @@
-/**
- * Created by jacky on 2016/6/17.
- */
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import Grid from '../../components/grid/component/Grid.jsx';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
@@ -12,6 +8,7 @@ export default class SimulatorPage extends Component {
     constructor(props) {
         super(props);
         this.state = {
+            visible: false,
             title: '',
             simulatorCategoryData: [],
             simulatorCategoryRow: {},
@@ -48,15 +45,11 @@ export default class SimulatorPage extends Component {
                 })
             }.bind(this));
             this.setState({files, title: "对知识包[" + rowData.name + "]进行仿真测试"});
-            $(ReactDOM.findDOMNode(this)).modal({
-                show: true,
-                backdrop: 'static',
-                keyboard: false
-            });
+            this.setState({visible: true});
         });
 
         event.eventEmitter.on(event.HIDE_SIMULATOR_DIALOG, () => {
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
 
         event.eventEmitter.on(event.REFRESH_SIMULATOR_DATA, (result) => {
@@ -166,9 +159,9 @@ export default class SimulatorPage extends Component {
                     </div>
                 </div>
             );
-            return (<CommonDialog title={this.state.title} body={body} large={true} buttons={[]}/>);
+            return (<CommonDialog visible={this.state.visible} title={this.state.title} body={body} large={true} buttons={[]}/>);
         } else {
-            return (<CommonDialog title={this.state.title} body={[]} large={true} buttons={[]}/>);
+            return (<CommonDialog visible={this.state.visible} title={this.state.title} body={[]} large={true} buttons={[]}/>);
         }
     }
 }

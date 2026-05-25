@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/2/24.
- */
 ActionTreeNode=function(parentNode){
     TreeNode.call(this,parentNode);
     this.actionTypes=[];
@@ -9,14 +6,18 @@ ActionTreeNode=function(parentNode){
 ActionTreeNode.prototype=Object.create(TreeNode.prototype);
 ActionTreeNode.prototype.constructor=ActionTreeNode;
 ActionTreeNode.prototype.initNode=function(){
-    this.nodeContainer=$("<div class='node actionNode'>");
-    this.col.append(this.nodeContainer);
-    this.actionsContainer=$("<span style='display: inline-block;'>");
-    this.nodeContainer.append(this.actionsContainer);
+    this.nodeContainer=document.createElement("div");
+    this.nodeContainer.className="node actionNode";
+    this.col.appendChild(this.nodeContainer);
+    this.actionsContainer=document.createElement("span");
+    this.actionsContainer.style.display="inline-block";
+    this.nodeContainer.appendChild(this.actionsContainer);
     this.addAction();
     var self=this;
-    var operations=$("<span class='operations'><i class='icon-ok-circle'></i></span>");
-    this.nodeContainer.append(operations);
+    var operations=document.createElement("span");
+    operations.className="operations";
+    operations.innerHTML="<i class='icon-ok-circle'></i>";
+    this.nodeContainer.appendChild(operations);
     var menuItems=[];
     menuItems.push({
         name:"delete",
@@ -35,29 +36,31 @@ ActionTreeNode.prototype.initNode=function(){
         }
     });
     var menu=new RuleForge.menu.Menu({menuItems:menuItems});
-    operations.click(function(e){
+    operations.addEventListener('click',function(e){
         menu.show(e);
     });
 };
 ActionTreeNode.prototype.addAction=function(notfirst){
-    var actionContainer=$("<span>");
+    var actionContainer=document.createElement("span");
     if(notfirst){
-        actionContainer.css("display","block");
+        actionContainer.style.display="block";
     }
-    var delIcon=$("<i class='icon-minus-sign icon-large' style='color: #ac2925;padding-right: 5px'></i>");
-    actionContainer.append(delIcon);
-    this.actionsContainer.append(actionContainer);
+    var delIcon=document.createElement("i");
+    delIcon.className="icon-minus-sign icon-large";
+    delIcon.style.cssText="color: #ac2925;padding-right: 5px";
+    actionContainer.appendChild(delIcon);
+    this.actionsContainer.appendChild(actionContainer);
     var newActionType=new ruleforge.ActionType(actionContainer);
     this.actionTypes.push(newActionType);
     actionContainer.actionType=newActionType;
     var self=this;
-    delIcon.click(function(){
+    delIcon.addEventListener('click',function(){
         if(self.actionTypes.length===1){
             RuleForge.alert("动作至少要有一个.");
             return;
         }
         var pos=-1;
-        $.each(self.actionTypes,function(i,at){
+        self.actionTypes.forEach(function(at) {
             if(at===actionContainer.actionType){
                 pos=i;
                 return false;
@@ -91,7 +94,7 @@ ActionTreeNode.prototype.initData=function(data){
 
 ActionTreeNode.prototype.toXml=function(){
     var xml="<action-tree-node>";
-    $.each(this.actionTypes,function(i,actionType){
+    this.actionTypes.forEach(function(actionType) {
         xml+=actionType.toXml();
     });
     xml+="</action-tree-node>";

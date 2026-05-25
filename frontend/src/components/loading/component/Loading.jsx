@@ -1,40 +1,36 @@
-/**
- * Created by jacky on 2016/6/18.
- */
 import '../css/loading.css';
 import * as event from '../../componentEvent.js';
-import React,{Component,PropTypes} from 'react';
+import React,{Component} from 'react';
 export default class Loading extends Component{
-    constructor(){
-        super();
-        this.state={content:'数据加载中...'};
+    constructor(props){
+        super(props);
+        this.state={visible:props.show,content:'数据加载中...'};
     }
     componentDidMount(){
-        event.eventEmitter.on(event.SHOW_LOADING,content=>{
-            const $window=$(window);
-            const width=$window.width();
-            const height=$window.height();
+        this._onShow = (content) => {
             if(content){
-                this.setState({content});
+                this.setState({visible:true,content});
             }else{
-                this.setState({content:'数据加载中...'});
+                this.setState({visible:true,content:'数据加载中...'});
             }
-            $('.loading-cover').css({height:height,width:width}).fadeIn();
-        });
-        event.eventEmitter.on(event.HIDE_LOADING,()=>{
-            $('.loading-cover').fadeOut();
-        });
+        };
+        this._onHide = () => {
+            this.setState({visible:false});
+        };
+        event.eventEmitter.on(event.SHOW_LOADING, this._onShow);
+        event.eventEmitter.on(event.HIDE_LOADING, this._onHide);
     }
     componentWillUnmount(){
-        event.eventEmitter.removeAllListeners(event.SHOW_LOADING);
-        event.eventEmitter.removeAllListeners(event.HIDE_LOADING);
+        event.eventEmitter.removeListener(event.SHOW_LOADING, this._onShow);
+        event.eventEmitter.removeListener(event.HIDE_LOADING, this._onHide);
     }
     render(){
-        const $window=$(window);
-        const width=$window.width();
-        const height=$window.height();
-        const show=this.props.show;
-        const styleObj={width:width,height:height,display:show?'block':'none'};
+        if (!this.state.visible) {
+            return null;
+        }
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const styleObj={width:width,height:height,display:'block',transition:'opacity 0.2s'};
         const coverTop=(height/2)-20;
         const coverLeft=(width/2)-20;
         const loadStyle={marginTop:coverTop,marginLeft:coverLeft,width:'40px',height:'40px'};

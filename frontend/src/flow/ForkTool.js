@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import BaseTool from './BaseTool.js';
 import ForkNode from './ForkNode.js';
 
@@ -17,8 +14,8 @@ export default class ForkTool extends BaseTool{
     getPropertiesProducer(){
         const _this=this;
         return function (){
-            const g=$(`<div></div>`);
-            g.append(_this.getCommonProperties(this));
+            const g=document.createElement('div');
+            g.appendChild(_this.getCommonProperties(this));
             return g;
         }
     }

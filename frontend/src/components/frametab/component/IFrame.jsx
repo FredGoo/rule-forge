@@ -1,33 +1,43 @@
-/**
- * Created by Jacky.gao on 2016/5/24.
- */
-import React,{Component,PropTypes} from 'react';
-import ReactDOM from 'react-dom';
+import React,{Component} from 'react';
 import * as event from '../../componentEvent.js';
 
 export default class IFrame extends Component{
+    constructor(props) {
+        super(props);
+        this.iframeRef = React.createRef();
+        this._onResize = this._onResize.bind(this);
+    }
+
     componentDidMount(){
-        const $iframe=$(ReactDOM.findDOMNode(this));
-        $iframe.ready(function(){
-            event.eventEmitter.emit(event.SHOW_LOADING);
-        });
-        $iframe.load(function(){
+        const iframe = this.iframeRef.current;
+        event.eventEmitter.emit(event.SHOW_LOADING);
+
+        iframe.addEventListener('load', function(){
             event.eventEmitter.emit(event.HIDE_LOADING);
         });
-        $iframe.css({
-            height:($(document).height()-47)+"px"
-        });
-        $(window).resize(()=>{
-            $iframe.css({
-                height:$(document).height()+"px"
-            });
-        });
+
+        const docHeight = document.documentElement.scrollHeight;
+        iframe.style.height = (docHeight - 47) + "px";
+
+        window.addEventListener('resize', this._onResize);
     }
+
+    _onResize() {
+        const iframe = this.iframeRef.current;
+        if (iframe) {
+            iframe.style.height = document.documentElement.scrollHeight + "px";
+        }
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener('resize', this._onResize);
+    }
+
     render(){
         const path=encodeURI(encodeURI(this.props.path));
         const iframeId=this.props.id;
         return (
-            <iframe src={path} id={iframeId} style={{width:'100%',border:0}} frameBorder="none"></iframe>
+            <iframe ref={this.iframeRef} src={path} id={iframeId} style={{width:'100%',border:0}} frameBorder="none"></iframe>
         );
     }
 }

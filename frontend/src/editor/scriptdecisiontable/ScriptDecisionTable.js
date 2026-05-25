@@ -1,3 +1,4 @@
+var Handsontable = require('handsontable');
 import {getParameter,ajaxSave,saveNewVersion} from '../../Utils.js';
 import '../../../node_modules/codemirror/addon/hint/show-hint.js';
 import '../../../node_modules/codemirror/addon/mode/simple.js';
@@ -15,11 +16,11 @@ window._setDirty=function(){
 		return;
 	}
 	window._dirty=true;
-	$("#saveButton").html("<i class='rf rf-save'></i> *保存");
-	$("#saveButton").removeClass("disabled");
+	document.getElementById("saveButton").innerHTML="<i class='rf rf-save'></i> *保存";
+	document.getElementById("saveButton").classList.remove("disabled");
 };
 
-(function(Handsontable){
+(function(){
 	if(!window.RuleForge){
 		window.RuleForge={};
 	}
@@ -32,14 +33,14 @@ window._setDirty=function(){
 		var table;
 		window._VariableValueArray.push(this);
 		window._ParameterValueArray.push(this);
-		const container=$("#"+id);
+		const container=document.getElementById(id);
 		this.hasMod = true;
 		this.container=container;
 		const self=this;
 		var saveButton = `<div class="btn-group btn-group-sm navbar-btn" style="margin-top:0px;margin-bottom: 0px" role="group" aria-label="...">
-								<button id="saveButton" type="button" class="btn btn-default navbar-btn" ><i class="rf rf-save"></i> 保存</button>
-								<button id="saveButtonNewVersion" type="button" class="btn btn-default navbar-btn" style="display: none;"><i class="rf rf-savenewversion"></i> 生成版本</button>
-							</div>`;
+									<button id="saveButton" type="button" class="btn btn-default navbar-btn" ><i class="rf rf-save"></i> 保存</button>
+									<button id="saveButtonNewVersion" type="button" class="btn btn-default navbar-btn" style="display: none;"><i class="rf rf-savenewversion"></i> 生成版本</button>
+								</div>`;
 		var addCriteriaButton = `<button id="addCriteriaButton" type="button" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-plus"></i> 添加条件行</button>`;
 		var deleteCriteriaButton = 	`<button id="deleteCriteriaButton" type="button" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-minus"></i> 删除条件行</button>`;
 		const buttons=`<nav class="navbar navbar-default" style="margin: 5px">
@@ -59,10 +60,10 @@ window._setDirty=function(){
 		        </div>
 			</div>
 		</nav>`;
-		
-		container.append(buttons);
-		
-		$("#addCriteriaButton").click(function(){
+
+		container.insertAdjacentHTML('beforeend', buttons);
+
+		document.getElementById("addCriteriaButton").addEventListener('click',function(){
 			var cellData=self.getCurrentCellData(),
 				row=cellData.row+cellData.rowspan,
 				col=cellData.col;
@@ -73,11 +74,11 @@ window._setDirty=function(){
 			self.insertRow(row-1);
 			self.renderCells();
 			self.setDirty();
-			$("#deleteCriteriaButton").removeClass("disabled");
+			document.getElementById("deleteCriteriaButton").classList.remove("disabled");
 			self.invoke("render");
 		});
 
-		$("#deleteCriteriaButton").click(function(){
+		document.getElementById("deleteCriteriaButton").addEventListener('click',function(){
 			var highlight=self.getHighlight(),
 				row=highlight.row,
 				col=highlight.col,
@@ -92,49 +93,49 @@ window._setDirty=function(){
 			self.setDirty();
 			self.invoke("render");
 			if(self.countRows()==1){
-				$(this).addClass("disabled");
+				this.classList.add("disabled");
 			}
 		});
 
 
-		$("#configVarButton").click(function(){
+		document.getElementById("configVarButton").addEventListener('click',function(){
 			if(!self.configVarDialog){
-				self.configVarDialog=new ruleforge.ConfigVariableDialog(self);				
+				self.configVarDialog=new ruleforge.ConfigVariableDialog(self);
 			}
 			self.configVarDialog.open();
 		});
-				
-		$("#configConstantsButton").click(function(){
+
+		document.getElementById("configConstantsButton").addEventListener('click',function(){
 			if(!self.configConstantDialog){
-				self.configConstantDialog=new ruleforge.ConfigConstantDialog(self);				
+				self.configConstantDialog=new ruleforge.ConfigConstantDialog(self);
 			}
 			self.configConstantDialog.open();
 		});
-				
-		$("#configActionButton").click(function(){
+
+		document.getElementById("configActionButton").addEventListener('click',function(){
 			if(!self.configActionDialog){
-				self.configActionDialog=new ruleforge.ConfigActionDialog(self);				
+				self.configActionDialog=new ruleforge.ConfigActionDialog(self);
 			}
 			self.configActionDialog.open();
 		});
 
-		$("#configParameterButton").click(function(){
+		document.getElementById("configParameterButton").addEventListener('click',function(){
 			if(!self.configParameterDialog){
-				self.configParameterDialog=new ruleforge.ConfigParameterDialog(self);				
+				self.configParameterDialog=new ruleforge.ConfigParameterDialog(self);
 			}
-			self.configParameterDialog.open();			
+			self.configParameterDialog.open();
 		});
-		
-		$("#saveButton").click(function(){			
+
+		document.getElementById("saveButton").addEventListener('click',function(){
 			save(false);
 		});
-		
-		$("#saveButtonNewVersion").click(function(){			
+
+		document.getElementById("saveButtonNewVersion").addEventListener('click',function(){
 			save(true);
 		});
-		
+
 		function save(newVersion) {
-			if($("#saveButton").hasClass("disabled")){
+			if(document.getElementById("saveButton").classList.contains("disabled")){
 				return false;
 			}
 			let file=getParameter('file'),xml=self.toXml();
@@ -155,6 +156,7 @@ window._setDirty=function(){
 		self.load();
 		window.ht=self;
 		var config={
+			"licenseKey":"non-commercial-and-evaluation",
 			"type":"ruleforge",
 			"manualRowResize":true,
 			"manualColumnResize":true,
@@ -172,11 +174,12 @@ window._setDirty=function(){
 			"outsideClickDeselects":false,
 			"colWidths":120
 		};
-		table=$("<div style='margin-left:15px'></div>");
-		container.append(table);
-		
-		table.handsontable(config);
-		self._handsontable=table.handsontable("getInstance");
+		table=document.createElement("div");
+		table.style.marginLeft="15px";
+		container.appendChild(table);
+
+		self._handsontable=new Handsontable(table, config);
+		self._dom=table;
 		self._handsontable.ht=self;
 		config.colHeaders=function(col){
 			var column=self.getColData(col),
@@ -206,7 +209,7 @@ window._setDirty=function(){
 		};
 		config.rowHeaders=function(row){
 			var rowData=self.getRowData(row),
-			height=rowData.height;
+				height=rowData.height;
 			self.setRowHeight(row,height);
 			return row+1;
 		};
@@ -217,15 +220,15 @@ window._setDirty=function(){
 		};
 		self.updateSettings(config);
 		self.renderCells();
-		
-		
+
+
 		self.addHook("afterSelectionEnd",function(){
 			var colData=self.getCurrentColData(),
 			rowData=self.getCurrentRowData(),
 			cellData=self.getCurrentCellData();
 
 			if(colData.type=="Criteria"){
-				$("#addCriteriaButton").removeClass("disabled");
+				document.getElementById("addCriteriaButton").classList.remove("disabled");
 				if(self.dialogCondition && self.dialogCondition.isShow){
 					var project = self.getRequestParameter("project");
 					if(colData.variableCategory){
@@ -236,15 +239,15 @@ window._setDirty=function(){
 					self.dialogCondition.refresh(project,"scriptdecisiontable",colData.variableName);
 				}
 			}else{
-				$("#addCriteriaButton").addClass("disabled");
+				document.getElementById("addCriteriaButton").classList.add("disabled");
 				if(self.dialogCondition && self.dialogCondition.isShow){
 					self.dialogCondition.setOption({title : "动作列不支持插入条件！"})
 					self.dialogCondition.refresh(project,"scriptdecisiontable","");
 				}
 			}
-			
+
 		});
-		
+
 		self.addHook("beforeColumnResize",function(col,size){
 			var colData=self.getColData(col);
 			colData.width=size;
@@ -257,31 +260,35 @@ window._setDirty=function(){
 			rowData.height=size;
 		    self.setDirty();
 		});
-		
-		self.addHook("afterRender",function(){
-//			$(".htCore th").css("background-color","rgb(223, 222, 203)")
-			$(".htCore tr").each(function(){
-				$(this).children().css("border-right-width","");
-				$(this).children().eq(self.countCriteriaCols()).css("border-right-width","3px");
-			});
 
+		self.addHook("afterRender",function(){
+				self._dom.querySelectorAll(".htCore tr").forEach(function(tr){
+					var children=tr.children;
+					for(var i=0;i<children.length;i++){
+						children[i].style.borderRightWidth="";
+					}
+					var criteriaCol=Array.from(children)[self.countCriteriaCols()];
+					if(criteriaCol){
+						criteriaCol.style.borderRightWidth="3px";
+					}
+				});
 		});
 		self.initMenu();
 		self.resetState();
-		table.find(".handsontable").remove();
+		table.querySelector(".handsontable").remove();
 		self.invoke("render");
 
 	};
-	
+
 	RuleForge.DecisionTable.prototype={
-		
+
 		updateSettings:function(options){
 			this._handsontable.updateSettings(options);
 		},
 		getCellRenderer:function(cellProperties){
 			return this._handsontable.getCellRenderer(cellProperties);
 		},
-		
+
 		getValue:function(){
 			return this._handsontable.getValue();
 		},
@@ -313,15 +320,15 @@ window._setDirty=function(){
 		getSelectedRange:function(){
 			return this._handsontable.getSelectedRange();
 		},
-		
+
 		getMergeInfo:function(row,col){
 			return this._handsontable.mergeCells.mergedCellInfoCollection.getInfo(row,col);
 		},
-		
+
 		setMergeInfo:function(info){
 			this._handsontable.mergeCells.mergedCellInfoCollection.setInfo(info);
 		},
-		
+
 		removeMergeInfo:function(row,col){
 			return this._handsontable.mergeCells.mergedCellInfoCollection.removeInfo(row,col);
 		},
@@ -361,11 +368,11 @@ window._setDirty=function(){
 		propToCol:function(property){
 			return this._handsontable.propToCol(property);
 		},
-		
+
 		addHook:function(name,func){
 			this._handsontable.addHook(name,func);
 		},
-		
+
 		invoke:function(methodName,args){
 			if(methodName=="render"){
 				if(args===true){
@@ -376,50 +383,72 @@ window._setDirty=function(){
 
 				}
 			}else{
-				jQuery(this._dom).handsontable(methodName,args);
+				this._handsontable[methodName](args);
 			}
 		},
-		
+
 		getInstance:function(){
 			return this._handsontable;
 		},
-		
+
 		setDirty:function(){
 			window._setDirty();
 		},
-		
+
 		resetState:function(){
 			window._dirty=false;
-			$("#saveButton").html("<i class='rf rf-save'></i> 保存");
-			$("#saveButton").addClass("disabled");
+			document.getElementById("saveButton").innerHTML="<i class='rf rf-save'></i> 保存";
+			document.getElementById("saveButton").classList.add("disabled");
 		},
-		
+
 		insertRow:function(index){
 			this.alter("insert_row");
-			$(".htCore > tbody > tr:eq("+this.getLastRowIndex()+")").insertAfter(".htCore > tbody > tr:eq("+index+")");
+			var tbody=this._dom.querySelector(".htCore > tbody");
+			if(tbody){
+				var lastRow=tbody.children[tbody.children.length-1];
+				var targetRow=tbody.children[index];
+				if(targetRow&&lastRow){
+					targetRow.after(lastRow);
+				}
+			}
 		},
-		
+
 		removeRow:function(index,count){
-			for(var r=index;r<index+count;r++){
-				$(".htCore > tbody > tr:eq("+index+")").insertAfter(".htCore > tbody > tr:last");
+			var tbody=this._dom.querySelector(".htCore > tbody");
+			if(tbody){
+				for(var r=index;r<index+count;r++){
+					tbody.appendChild(tbody.children[index]);
+				}
 			}
 			this.alter("remove_row",index,count);
 		},
-		
+
 		insertCol:function(index){
 			this.alter("insert_col");
-			$(".htCore > tbody > tr").each(function(){
-				$(this).find("td:last").insertAfter($(this).find("td:eq("+index+")"));
+			var rows=this._dom.querySelectorAll(".htCore > tbody > tr");
+			rows.forEach(function(tr){
+				var tds=tr.querySelectorAll("td");
+				var lastTd=tds[tds.length-1];
+				var targetTd=tds[index];
+				if(targetTd&&lastTd){
+					targetTd.after(lastTd);
+				}
 			});
 		},
-		
+
 		removeCol:function(index){
-			$(".htCore > tbody > tr").each(function(){
-				$(this).find("td:eq("+index+")").insertAfter($(this).find("td:last"));
+			var rows=this._dom.querySelectorAll(".htCore > tbody > tr");
+			rows.forEach(function(tr){
+				var tds=tr.querySelectorAll("td");
+				var targetTd=tds[index];
+				var lastTd=tds[tds.length-1];
+				if(targetTd&&lastTd){
+					lastTd.after(targetTd);
+				}
 			});
 			this.alter("remove_col");
 		},
-		
+
 		renderSelection:function(){
 			var range=this.getSelectedRange();
 			if(range){
@@ -431,32 +460,32 @@ window._setDirty=function(){
 					}
 				}
         	}
-			
+
 		},
-		
+
 		getTableData:function(){
 			return this.decisionTable;
 		},
-		
+
 		getCurrentCellData:function(){
 			var highlight=this.getHighlight(),
 			row=highlight.row,
 			col=highlight.col;
 			return this.getCellData(row,col);
 		},
-		
+
 		getCurrentRowData:function(){
 			var highlight=this.getHighlight(),
 			row=highlight.row;
 			return this.getRowData(row);
 		},
-		
+
 		getCurrentColData:function(){
 			var highlight=this.getHighlight(),
 			col=highlight.col;
 			return this.getColData(col);
 		},
-		
+
 		getCellDatas:function(){
 			var cellMap=this.decisionTable.cellMap;
 			if(!this.decisionTable.cells&&cellMap){
@@ -467,16 +496,16 @@ window._setDirty=function(){
 			}
 			return this.decisionTable.cells;
 		},
-		
-		
+
+
 		getRowDatas:function(){
 			return this.decisionTable.rows||[];
 		},
-		
+
 		getColDatas:function(){
 			return this.decisionTable.columns||[];
 		},
-		
+
 		getColData:function(col){
 			var colDatas=this.getColDatas();
 			for(var i=0;i<colDatas.length;i++){
@@ -485,7 +514,7 @@ window._setDirty=function(){
 				}
 			}
 		},
-		
+
 		getRowData:function(row){
 			var rowDatas=this.getRowDatas();
 			for(var i=0;i<rowDatas.length;i++){
@@ -494,7 +523,7 @@ window._setDirty=function(){
 				}
 			}
 		},
-		
+
 		getCellData:function(row,col){
 			var cells=this.getCellDatas();
 			for(var i=0;i<cells.length;i++){
@@ -504,7 +533,7 @@ window._setDirty=function(){
 			}
 			return null;
 		},
-		
+
 		getCellDataByCol:function(col){
 			var cells=this.getCellDatas(),result=[];
 			for(var i=0;i<cells.length;i++){
@@ -514,7 +543,7 @@ window._setDirty=function(){
 			}
 			return result;
 		},
-		
+
 		getCellDataByRow:function(row){
 			var cells=this.getCellDatas(),result=[];
 			for(var i=0;i<cells.length;i++){
@@ -524,7 +553,7 @@ window._setDirty=function(){
 			}
 			return result;
 		},
-		
+
 		createCellDataRange:function(fromRow,toRow,fromCol,toCol){
 			for(var r=fromRow;r<=toRow;r++){
 				for(var c=fromCol;c<=toCol;c++){
@@ -532,7 +561,7 @@ window._setDirty=function(){
 				}
 			}
 		},
-		
+
 		createCellData:function(row,col){
 			var cellData={
 				row:row,
@@ -542,16 +571,16 @@ window._setDirty=function(){
 			this.getCellDatas().push(cellData);
 			return cellData;
 		},
-		
+
 		createCellDataByCopyNextCol:function(col){
 			var self=this,
 			cellDatas=self.getCellDataByCol(col+1);
-			$.each(cellDatas,function(index,cellData){
+			cellDatas.forEach(function(cellData){
 				var cell=self.createCellData(cellData.row,col);
 				cell.rowspan=cellData.rowspan;
 			});
 		},
-		
+
 		removeCellDataRange:function(fromRow,toRow,fromCol,toCol){
 			for(var r=fromRow;r<=toRow;r++){
 				for(var c=fromCol;c<=toCol;c++){
@@ -559,7 +588,7 @@ window._setDirty=function(){
 				}
 			}
 		},
-		
+
 		removeCellData:function(row,col){
 			var cellDatas=this.getCellDatas();
 			var cellData=this.getCellData(row,col);
@@ -568,7 +597,7 @@ window._setDirty=function(){
 				cellDatas.splice(index,1);
 			}
 		},
-		
+
 		createRowData:function(row){
 			var rowData={
 				num:row,
@@ -577,7 +606,7 @@ window._setDirty=function(){
 			this.getRowDatas().push(rowData);
 			return rowData;
 		},
-		
+
 		removeRowData:function(row){
 			var rowDatas=this.getRowDatas();
 			var rowData=this.getRowData(row);
@@ -586,14 +615,14 @@ window._setDirty=function(){
 				rowDatas.splice(index,1);
 			}
 		},
-		
+
 		removeRowDataRange:function(start,count){
 			count=count||1;
 			for(var r=start;r<start+count;r++){
 				this.removeRowData(r);
 			}
 		},
-		
+
 		createColData:function(col){
 			var colData={
 					num:col
@@ -601,7 +630,7 @@ window._setDirty=function(){
 			this.getColDatas().push(colData);
 			return colData;
 		},
-		
+
 		removeColData:function(col){
 			var colDatas=this.getColDatas();
 			var colData=this.getColData(col);
@@ -610,7 +639,7 @@ window._setDirty=function(){
 				colDatas.splice(index,1);
 			}
 		},
-		
+
 		translateRow:function(start,count){
 			count=count||1;
 			if(count>0){
@@ -632,9 +661,9 @@ window._setDirty=function(){
 					}
 				}
 			}
-			
+
 		},
-		
+
 		translateCol:function(start,count){
 			count=count||1;
 			if(count>0){
@@ -657,7 +686,7 @@ window._setDirty=function(){
 				}
 			}
 		},
-		
+
 		translateCell:function(row,col,rowCount,colCount){
 			var cellData=this.getCellData(row,col);
 			if(cellData){
@@ -665,21 +694,21 @@ window._setDirty=function(){
 				cellData.col=cellData.col+colCount;
 			}
 		},
-		
+
 		translateRowHeader:function(row,count){
 			var rowData=this.getRowData(row);
 			if(rowData){
 				rowData.num=rowData.num+count;
 			}
 		},
-		
+
 		translateColHeader:function(col,count){
 			var colData=this.getColData(col);
 			if(colData){
 				colData.num=colData.num+count;
 			}
 		},
-		
+
 		translateColHeaderRange:function(start,count){
 			count=count||1;
 			for(var c=start;c<this.countCols();c++){
@@ -696,7 +725,7 @@ window._setDirty=function(){
 			}
 			return count;
 		},
-		
+
 		countActionCols:function(){
 			var colDatas=this.getColDatas();
 			var count=0;
@@ -707,16 +736,16 @@ window._setDirty=function(){
 			}
 			return count;
 		},
-		
-		
+
+
 		getLastRowIndex:function(){
 			return this.countRows()-1;
 		},
-		
+
 		getLastColIndex:function(){
 			return this.countCols()-1;
 		},
-		
+
 		getHighlight:function(){
 			var range= this._handsontable.getSelectedRange();
 			if(range){
@@ -724,15 +753,15 @@ window._setDirty=function(){
 			}
 			return null;
 		},
-		
+
 		setRowHeight:function(row,height){
 			this.getInstance().manualRowHeights[row]=height;
 		},
-		
+
 		setColWidth:function(col,width){
 			this.getInstance().manualColumnWidths[col]=width;
 		},
-		
+
 		mergeRange:function(end,rowspan){
 			var cellData=this.getCurrentCellData(),
 			row=cellData.row+cellData.rowspan-1,
@@ -742,7 +771,7 @@ window._setDirty=function(){
 				this.merge(row,c,rowspan);
 			}
 		},
-		
+
 		merge:function(row,col,rowspan){
 			var cellData=this.getCellData(row,col);
 			while(!cellData){
@@ -755,24 +784,24 @@ window._setDirty=function(){
 				cellData.rowspan=cellData.rowspan+rowspan;
 			}
 		},
-		
+
 		unmerge:function(row,col){
 			var cellData=this.getCellData(row,col);
 			cellData.rowspan=1;
 		},
-		
+
 		renderRowRange:function(start){
 			for(r=start;r<this.countRows();r++){
 				this.renderCells(r);
 			}
 		},
-		
+
 		renderColRange:function(start){
 			for(c=start;c<this.countCols();c++){
 				this.renderCells(null,c);
 			}
 		},
-		
+
 		renderCells:function(row,col){
 			if(row&&col){
 				this.renderCell(row,col);
@@ -792,7 +821,7 @@ window._setDirty=function(){
 				}
 			}
 		},
-		
+
 		renderCell:function(row,col){
 			var prop = this.colToProp(col),
     	    cellProperties = this.getCellMeta(row, col),
@@ -800,9 +829,9 @@ window._setDirty=function(){
     	    TD=this.getCell(row,col);
     	    var value = this.getValue();
     	    renderer(this._handsontable, TD, row,col, prop, value, cellProperties);
-    	    Handsontable.hooks.run(this._handsontable, 'afterRenderer', TD,row, col, prop, value, cellProperties);
+    	    this._handsontable.runHooks('afterRenderer', TD,row, col, prop, value, cellProperties);
 		},
-		
+
 		toXml:function(){
 			var decisionTable=this.getTableData(),
 				cells=decisionTable.cells||[],
@@ -811,37 +840,37 @@ window._setDirty=function(){
 				libraries=[],
 				self=this,
 				xml;
-			$.each(constantLibraries,function(index,path){
+			constantLibraries.forEach(function(path){
 				libraries.push({
 					type:"Constant",
 					path:path
 				});
 			});
-			
-			$.each(actionLibraries,function(index,path){
+
+			actionLibraries.forEach(function(path){
 				libraries.push({
 					type:"Action",
 					path:path
 				});
 			});
-			
-			$.each(variableLibraries,function(index,path){
+
+			variableLibraries.forEach(function(path){
 				libraries.push({
 					type:"Variable",
 					path:path
 				});
 			});
 
-			$.each(parameterLibraries,function(index,path){
+			parameterLibraries.forEach(function(path){
 				libraries.push({
 					type:"Parameter",
 					path:path
 				});
 			});
-			
+
 			xml="<script-decision-table>";
-			
-			$.each(libraries,function(index,library){
+
+			libraries.forEach(function(library){
 				var type=library.type,
 					path=library.path;
 				if(type=="Variable"){
@@ -854,47 +883,44 @@ window._setDirty=function(){
 					xml+="<import-parameter-library path=\""+path+"\"/>";
 				}
 			});
-			
-			$.each(cells,function(index,cell){
+
+			cells.forEach(function(cell){
 				xml+="<script-cell row=\""+cell.row+"\" col=\""+cell.col+"\" rowspan=\""+cell.rowspan+"\">";
 				xml+="<![CDATA[" + (cell.script || "")+ "]]>";
 				xml+="</script-cell>"
-				
+
 			});
-			
-			$.each(rows,function(index,row){
+
+			rows.forEach(function(row){
 				xml+="<row num=\""+row.num+"\" height=\""+row.height+"\"/>"
 			});
-			
-			$.each(cols,function(index,col){
+
+			cols.forEach(function(col){
 				var variableName=col.variableName;
 				if(variableName){
 					xml+="<col num=\""+col.num+"\" width=\""+col.width+"\" type=\""+col.type+"\" var-category=\""+(col.variableCategory=="parameter"?"参数":col.variableCategory)+"\" var-label=\""+col.variableLabel+"\" var=\""+col.variableName+"\" datatype=\""+col.datatype+"\"/>"
 				}else{
-					xml+="<col num=\""+col.num+"\" width=\""+col.width+"\" type=\""+col.type+"\"/>"	
+					xml+="<col num=\""+col.num+"\" width=\""+col.width+"\" type=\""+col.type+"\"/>"
 				}
 			});
-			
+
 			xml+="</script-decision-table>";
 			return xml;
-				
+
 		},load:function(callback){
 			var files,version,self,url;
 			self=this;
 			files=self.getRequestParameter("file");
 			url=window._server+'/common/loadXml';
-			$.ajax({
-				url,
-				async:false,
-				type:'POST',
-				data:{files},
-				error:function(req,error){
-					alert("加载文件失败！");
-				},
-				success:function(data){
+			var xhr = new XMLHttpRequest();
+				xhr.open("POST", url, false);
+				xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				xhr.send(new URLSearchParams({files}).toString());
+				if (xhr.status === 200) {
+					var data = JSON.parse(xhr.responseText);
 					var decisionTable=data[0];
 					var libraries=decisionTable.libraries||[];
-					$.each(libraries,function(index,library){
+					libraries.forEach(function(library){
 						var type,path;
 						type=library.type;
 						path=library.path;
@@ -922,7 +948,6 @@ window._setDirty=function(){
 						callback();
 					}
 				}
-			});
 		},getRequestParameter:function(name){
 			var value=null;
 			var params=window.location.search.substring(1).split("&");
@@ -941,14 +966,14 @@ window._setDirty=function(){
 			return value;
 		},initMenu:function(){
 			const self=this,variableLibrary=[],project=getParameter("project"),oldVariableLibrary=window._ruleforgeEditorVariableLibraries || [];
-			$.each(oldVariableLibrary,function(index,lib){
+			oldVariableLibrary.forEach(function(lib){
 				if(lib.type!="parameter"){
 					variableLibrary.push(lib);
 				}
 			});
 			const parameter=window._ruleforgeEditorParameterLibraries||[];
 			if(parameter.length>0){
-				$.each(parameter,function(index,p){
+				parameter.forEach(function(p){
 					variableLibrary.push([{
 						name:"parameter",
 						type:"parameter",
@@ -974,7 +999,7 @@ window._setDirty=function(){
 				self.setDirty();
 				self.invoke("render");
 			};
-			
+
 			const onShow=function(){
 				var ationCount,criteriaCount,menuItem;
 				ationCount=self.countActionCols();
@@ -1021,7 +1046,7 @@ window._setDirty=function(){
 				name:"delete",
 				onClick:function(){
 					var highlight=self.getHighlight(),
-					col=highlight.col;
+						col=highlight.col;
 					self.removeCellDataRange(0,self.getLastRowIndex(),col,col);
 					self.removeColData(col);
 					self.translateCol(col,-1);
@@ -1100,7 +1125,7 @@ window._setDirty=function(){
 					self.invoke("render");
 				}
 			}];
-			
+
 			const onClick=function(menuItem){
 				var highlight=self.getHighlight(),
 					row=highlight.row,
@@ -1115,14 +1140,14 @@ window._setDirty=function(){
 				self.invoke("render");
 			};
 			const variabeMenuItem=[];
-			$.each(variableLibrary,function(index,categories){
-				$.each(categories,function(i,category){
+			variableLibrary.forEach(function(categories){
+				categories.forEach(function(category){
 					var menuItem={
 						label:category.name=="parameter"?"参数":category.name,
 						icon:category.type=="parameter"?"glyphicon glyphicon-th-list":"glyphicon glyphicon-tasks"
 					};
 					var variables=category.variables;
-					$.each(variables||[],function(j,variable){
+					(variables||[]).forEach(function(variable){
 						if(!menuItem.subMenu){
 							menuItem.subMenu={menuItems:[]};
 						}
@@ -1135,12 +1160,12 @@ window._setDirty=function(){
 							onClick:onClick
 						};
 						menuItem.subMenu.menuItems.push(subMenuItem);
-						
+
 					});
 					variabeMenuItem.push(menuItem);
 				});
 			});
-			
+
 			const criteriaConfig={
 					onShow:onShow,
 					menuItems:[]
@@ -1153,7 +1178,7 @@ window._setDirty=function(){
 					onShow:onShow,
 					menuItems:[]
 			};
-			
+
 			const assignmentConfig={
 					onShow:onShow
 			};
@@ -1197,27 +1222,20 @@ window._setDirty=function(){
 			}
 
 
-			this.container.contextmenu(function(e){
-				var parent= $(e.target);
-				for(var i=0;i<50;i++){
-					if(parent.is("th")){
-						break;
-					}
-					if(parent.is("tr")){
-						break;
-					}
-					parent=parent.parent();
-				}
-				if(parent.is("th")||parent.is("tr")){
-					var isCriteriaColHeader=parent.has("span.colHeader .glyphicon-filter").length,
-					    isAssignmentColHeader=parent.has("span.colHeader .glyphicon-tasks").length,
-					    isColHeader=parent.has("span.colHeader").length,
-					    isRowHeader=parent.has("span.rowHeader").length&&$.trim(parent.has(".rowHeader").text()),
-						isCell=parent.has("td").length,
-						colData=self.getCurrentColData(),
-						highlight=self.getHighlight(),
-						col=highlight.col,
-						count=self.countCriteriaCols();
+			self.container.addEventListener('contextmenu',function(e){
+				var th=e.target.closest('th');
+				var tr=e.target.closest('tr');
+				var parent=th||tr;
+				if(parent){
+					var isCriteriaColHeader=parent.querySelectorAll('span.colHeader .glyphicon-filter').length>0,
+					    isAssignmentColHeader=parent.querySelectorAll('span.colHeader .glyphicon-tasks').length>0,
+					    isColHeader=parent.querySelectorAll('span.colHeader').length>0,
+					    isRowHeader=parent.querySelectorAll('span.rowHeader').length>0&&parent.textContent.trim(),
+					    isCell=parent.querySelectorAll('td').length>0,
+					    colData=self.getCurrentColData(),
+					    highlight=self.getHighlight(),
+					    col=highlight.col,
+					    count=self.countCriteriaCols();
 					if(isCriteriaColHeader && self.criteriaMenu.menuItems.length >0){
 						self.criteriaMenu.show(e);
 					}else if(isAssignmentColHeader && self.assignmentMenu.menuItems.length >0){
@@ -1229,4 +1247,4 @@ window._setDirty=function(){
 			});
 		}
 	};
-})(Handsontable);
+})();

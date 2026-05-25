@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/8/31.
- */
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import Grid from '../../components/grid/component/Grid.jsx';
@@ -9,16 +6,16 @@ import * as action from '../action.js';
 
 class ResourceSecurityConfigEditor extends Component {
     refreshDetail(data = {}) {
-        var filePermissionConfig = $(".filePermissionConfig");
+        var filePermissionConfig = document.querySelector(".filePermissionConfig");
 
-        $('.detailPart').show();
+        document.querySelector('.detailPart').style.display = '';
         if (!data.readProject) {
-            $("input[name='readProject'][value='false']").prop("checked", true);
-            filePermissionConfig.hide();
+            document.querySelector("input[name='readProject'][value='false']").checked = true;
+            filePermissionConfig.style.display = 'none';
             return;
         }
-        filePermissionConfig.show();
-        $("input[name='readProject'][value='true']").prop("checked", true);
+        filePermissionConfig.style.display = '';
+        document.querySelector("input[name='readProject'][value='true']").checked = true;
 
         resetDetail(data.readPackage, "Package");
         resetDetail(data.readVariableFile, "VariableFile");
@@ -33,16 +30,16 @@ class ResourceSecurityConfigEditor extends Component {
 
         function resetDetail(permission, name) {
             if (permission) {
-                $("input[name='read" + name + "'][value='true']").prop("checked", true);
-                $(".write" + name + "Config").show();
+                document.querySelector("input[name='read" + name + "'][value='true']").checked = true;
+                document.querySelector(".write" + name + "Config").style.display = '';
                 if (data["write" + name]) {
-                    $("input[name='write" + name + "'][value='true']").prop("checked", true);
+                    document.querySelector("input[name='write" + name + "'][value='true']").checked = true;
                 } else {
-                    $("input[name='write" + name + "'][value='false']").prop("checked", true);
+                    document.querySelector("input[name='write" + name + "'][value='false']").checked = true;
                 }
             } else {
-                $("input[name='read" + name + "'][value='false']").prop("checked", true);
-                $(".write" + name + "Config").hide();
+                document.querySelector("input[name='read" + name + "'][value='false']").checked = true;
+                document.querySelector(".write" + name + "Config").style.display = 'none';
             }
         }
     }
@@ -82,7 +79,7 @@ class ResourceSecurityConfigEditor extends Component {
                             </div>
                         </div>
                         <Grid headers={masterHeaders} dispatch={dispatch} rows={masterData} rowClick={(rowData) => {
-                            $('.detailPart').hide();
+                            document.querySelector('.detailPart').style.display = 'none';
                             dispatch(action.loadSlave(rowData));
                         }}/>
                     </div>

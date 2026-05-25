@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/21.
- */
 import Col from './Col.js';
 
 export default class ScoreCol extends Col{
@@ -12,11 +9,15 @@ export default class ScoreCol extends Col{
         this.init();
     }
     init(){
-        this.td=$(`<td style="width: ${this.width}px;padding-right: 0;background: #fded02;border:1px solid #607D8B"></td>`);
-        this.td.append(this.buildColResizeTrigger());
-        const container=$(`<span style="cursor: pointer">${this.name}</span>`);
-        this.td.append(container);
-        this.scoreCardTable.headerRow.append(this.td);
+        const td = document.createElement('td');
+        td.style.cssText = 'width: ' + this.width + 'px;padding-right: 0;background: #fded02;border:1px solid #607D8B';
+        this.td = td;
+        this.td.appendChild(this.buildColResizeTrigger());
+        const container = document.createElement('span');
+        container.style.cursor = 'pointer';
+        container.textContent = this.name;
+        this.td.appendChild(container);
+        this.scoreCardTable.headerRow.appendChild(this.td);
         this.bindColResize();
     }
     toXml(){

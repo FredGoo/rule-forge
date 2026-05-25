@@ -1,13 +1,13 @@
-/**
- * Created by Jacky.gao on 2016/2/22.
- */
+import {handleResponseError} from '../../Utils.js';
+
 DecisionTree = function (container) {
     this.container = container;
     this.topNode = new VariableTreeNode();
     this.initToolbar();
-    var content = $("<div style='text-align: center'>");
-    container.append(content);
-    content.append(this.topNode.container);
+    var content = document.createElement("div");
+    content.style.textAlign = "center";
+    container.appendChild(content);
+    content.appendChild(this.topNode.container);
 };
 
 DecisionTree.prototype.initToolbar = function () {
@@ -35,68 +35,67 @@ DecisionTree.prototype.initToolbar = function () {
         ' </div>' +
         '</div>' +
         '</nav>';
-    var toolbar = $(toolbarHtml);
-    toolbar.css({
-        diaplay: "inline-block"
-    });
-    var toolbarContainer = $("<div>");
-    toolbarContainer.append(toolbar);
-    this.container.append(toolbarContainer);
+    var toolbar = document.createElement("div");
+    toolbar.innerHTML = toolbarHtml;
+    toolbar.style.display = "inline-block";
+    var toolbarContainer = document.createElement("div");
+    toolbarContainer.appendChild(toolbar.firstElementChild || toolbar);
+    this.container.appendChild(toolbarContainer);
     var self = this;
-    $("#configVarButton").click(function () {
+    document.getElementById("configVarButton").addEventListener('click', function () {
         if (!self.configVarDialog) {
             self.configVarDialog = new ruleforge.ConfigVariableDialog(self);
         }
         self.configVarDialog.open();
     });
 
-    $("#configConstantsButton").click(function () {
+    document.getElementById("configConstantsButton").addEventListener('click', function () {
         if (!self.configConstantDialog) {
             self.configConstantDialog = new ruleforge.ConfigConstantDialog(self);
         }
         self.configConstantDialog.open();
     });
 
-    $("#configActionButton").click(function () {
+    document.getElementById("configActionButton").addEventListener('click', function () {
         if (!self.configActionDialog) {
             self.configActionDialog = new ruleforge.ConfigActionDialog(self);
         }
         self.configActionDialog.open();
     });
 
-    $("#configParameterButton").click(function () {
+    document.getElementById("configParameterButton").addEventListener('click', function () {
         if (!self.configParameterDialog) {
             self.configParameterDialog = new ruleforge.ConfigParameterDialog(self);
         }
         self.configParameterDialog.open();
     });
 
-    $("#saveButton").click(function () {
+    document.getElementById("saveButton").addEventListener('click', function () {
         _save(false);
     });
-    $("#saveButtonNewVersion").click(function () {
+    document.getElementById("saveButtonNewVersion").addEventListener('click', function () {
         _save(true);
     });
-    $("#saveButton").addClass("disabled");
-    // $("#saveButtonNewVersion").addClass("disabled");
+    document.getElementById("saveButton").classList.add("disabled");
+    // document.getElementById("saveButtonNewVersion").classList.add("disabled");
     _loadDecisionTreeFileData();
 
     function _save(newVersion) {
-        if ($("#saveButton").hasClass("disabled")) {
+        if (document.getElementById("saveButton").classList.contains("disabled")) {
             return false;
         }
         var xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
         xml += "<decision-tree>";
-        $.each(parameterLibraries, function (index, item) {
+        parameterLibraries.forEach(function (item) {
             xml += "<import-parameter-library path=\"" + item + "\"/>";
         });
-        $.each(variableLibraries, function (index, item) {
+        variableLibraries.forEach(function (item) {
             xml += "<import-variable-library path=\"" + item + "\"/>";
         });
-        $.each(constantLibraries, function (index, item) {
+        constantLibraries.forEach(function (item) {
             xml += "<import-constant-library path=\"" + item + "\"/>";
         });
-        $.each(actionLibraries, function (index, item) {
+        actionLibraries.forEach(function (item) {
             xml += "<import-action-library path=\"" + item + "\"/>";
         });
         try {
@@ -108,52 +107,44 @@ DecisionTree.prototype.initToolbar = function () {
         xml += "</decision-tree>";
         xml = encodeURI(xml);
         var url = (ruleforgeServer || "") + "ruleforge?action=savexml&file=" + file + "";
-        var dialog = $("<div style='width:100px;height:50px'>文件保存中...</div>");
-        $.ajax({
-            cache: false,
-            url: url,
-            type: "POST",
-            data: {xml: xml, newVersion: newVersion},
-            beforeSend: function (req) {
-                dialog.dialog({
-                    modal: true,
-                    height: 80,
-                    width: 50,
-                    open: function (event, ui) {
-                        $(".ui-dialog-titlebar", $(this).parent()).hide();
-                    }
-                });
-            },
-            error: function (response) {
-                dialog.dialog("close");
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>保存失败：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>保存失败,服务端出错</span>");
-                }
-            },
-            success: function (data) {
-                cancelDirty();
-                dialog.dialog("close");
-            }
+        var dialog = document.createElement("div");
+        dialog.style.cssText = "width:100px;height:50px";
+        dialog.textContent = "文件保存中...";
+        dialog.style.position = 'fixed';
+        dialog.style.top = '50%';
+        dialog.style.left = '50%';
+        dialog.style.transform = 'translate(-50%, -50%)';
+        dialog.style.zIndex = '10000';
+        dialog.style.background = '#fff';
+        dialog.style.padding = '20px';
+        dialog.style.borderRadius = '5px';
+        dialog.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
+        document.body.appendChild(dialog);
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({xml: xml, newVersion: newVersion}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            cancelDirty();
+            dialog.remove();
+        }).catch(function (response) {
+            dialog.remove();
+            handleResponseError(response, '保存失败：');
         });
     };
 
     function _loadDecisionTreeFileData() {
         var url = (ruleforgeServer || "") + "ruleforge?action=loadxml&files=" + file + "," + version + "";
-        $.ajax({
-            cache: false,
-            dataType: "json",
-            type: 'POST',
-            url: url,
-            error: function (response) {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>加载文件失败：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>加载文件失败,服务端出错</span>");
-                }
-            },
-            success: function (data) {
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
                 var treeData = data[0];
                 var libraries = treeData["libraries"];
                 if (libraries) {
@@ -185,6 +176,8 @@ DecisionTree.prototype.initToolbar = function () {
                 self.topNode.initData(treeData["variableTreeNode"]);
                 cancelDirty();
             }
+        }).catch(function (response) {
+            handleResponseError(response, '加载文件失败：');
         });
     };
 
@@ -213,8 +206,9 @@ window._setDirty = function () {
         return;
     }
     window._dirty = true;
-    $("#saveButton").html("<i class='icon-save'></i> *保存");
-    $("#saveButton").removeClass("disabled");
+    var saveBtn = document.getElementById("saveButton");
+    saveBtn.innerHTML = "<i class='icon-save'></i> *保存";
+    saveBtn.classList.remove("disabled");
 };
 
 function cancelDirty() {
@@ -222,6 +216,7 @@ function cancelDirty() {
         return;
     }
     window._dirty = false;
-    $("#saveButton").html("<i class='icon-save'></i> 保存");
-    $("#saveButton").addClass("disabled");
+    var saveBtn = document.getElementById("saveButton");
+    saveBtn.innerHTML = "<i class='icon-save'></i> 保存";
+    saveBtn.classList.add("disabled");
 };

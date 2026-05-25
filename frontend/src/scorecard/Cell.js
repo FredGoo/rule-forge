@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/18.
- */
 export default class Cell {
     constructor(row, col, cellData) {
         row.cells.push(this);
@@ -10,7 +7,9 @@ export default class Cell {
     }
 
     init(cellData) {
-        this.td = $(`<td style="border:1px solid #607D8B"/>`);
+        const td = document.createElement('td');
+        td.style.cssText = 'border:1px solid #607D8B';
+        this.td = td;
         this.initCell(cellData);
     }
 

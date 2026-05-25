@@ -1,18 +1,12 @@
-/**
- * Created by Jacky.gao on 2016/8/3.
- */
+import '../../bootbox.js';
 import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
-import '../jquery.handsontable.full.min.css';
-import '../bootstrap-table.min.css';
+import 'handsontable/styles/handsontable.css';
 import '../context.standalone.css';
 import '../../css/iconfont.css';
 import '../ruleforge/ruleset.css';
-import '../common/jquery.utils.js';
-import '../jquery.handsontable.full.js';
-import '../bootstrap-table.min.js';
 import '../Math.uuid.js';
 import '../../Remark.js';
-import '../common/RuleForge.js';
+import '../common/URule.js';
 import '../common/contextMenu.js';
 import '../common/Context.js';
 import '../ruleforge/RuleFactory.js';
@@ -55,20 +49,24 @@ import '../ruleforge/Rule.js';
 import './DecisionTable.js';
 import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.jsx';
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
-import React from 'react';
-import ReactDOM from 'react-dom';
+import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
+import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
+import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
+import { createRoot } from 'react-dom/client';
 import {buildProjectNameFromFile, getParameter} from "../../Utils";
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     const file = getParameter('file');
     window._project = buildProjectNameFromFile(file);
 
-    ReactDOM.render(
+    createRoot(document.getElementById("dialogContainer")).render(
         <div>
             <KnowledgeTreeDialog/>,
-            <QuickTestDialog/>
+            <ConfigLibraryDialog/>,
+            <QuickTestDialog/>,
+            <ResourceVersionDialogComponent/>,
+            <ResourceListDialogComponent/>
         </div>,
-        document.getElementById('dialogContainer')
-    );
+);
     new RuleForge.DecisionTable('container');
 });

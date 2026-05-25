@@ -1,7 +1,4 @@
 
-/**
- * @author GJ
- */
 import CodeMirror from 'codemirror';
 
 CodeMirror.defineMode("rulemixed", function(config, parserConfig) {

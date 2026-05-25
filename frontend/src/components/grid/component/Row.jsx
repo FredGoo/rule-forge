@@ -1,20 +1,28 @@
 import '../css/grid.css';
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import Cell from './Cell.jsx';
 import {uniqueID} from '../../componentAction.js';
 
 export default class Row extends Component {
-    componentDidMount() {
-        const $dom = $(ReactDOM.findDOMNode(this));
-        const {rowData, rowIndex, rowClick} = this.props;
-        $dom.click(function (e) {
-            if (rowClick) {
-                rowClick(rowData, rowIndex);
-            }
-            $(this).addClass("bg-warning").siblings().removeClass("bg-warning");
-        });
+    constructor(props) {
+        super(props);
+        this.trRef = React.createRef();
     }
+
+    _handleClick = (e) => {
+        const {rowData, rowIndex, rowClick} = this.props;
+        if (rowClick) {
+            rowClick(rowData, rowIndex);
+        }
+        const tr = this.trRef.current;
+        if (tr) {
+            const siblings = tr.parentElement.children;
+            for (let i = 0; i < siblings.length; i++) {
+                siblings[i].classList.remove('bg-warning');
+            }
+            tr.classList.add('bg-warning');
+        }
+    };
 
     render() {
         const {headers, rowData, rowIndex, operations, select} = this.props;
@@ -53,7 +61,7 @@ export default class Row extends Component {
         let trClass = select ? 'bg-warning' : '';
         trClass += ' content-tr';
         return (
-            <tr style={{height: '26px'}} className={trClass}>
+            <tr ref={this.trRef} style={{height: '26px'}} className={trClass} onClick={this._handleClick}>
                 {tds}
             </tr>
         );

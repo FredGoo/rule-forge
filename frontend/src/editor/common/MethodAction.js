@@ -1,18 +1,13 @@
-/**
- * @author GJ
- */
 ruleforge.MethodAction=function(rule){
 	this.parameters=[];
 	this.rule=rule;
 	this.init();
 };
 ruleforge.MethodAction.prototype.init=function(){
-	this.container=$("<span>");
-	this.nameContainer=$("<span>");
-	this.container.append(this.nameContainer);
-	this.nameContainer.css({
-		"color":"darkblue"
-	});
+	this.container=document.createElement("span");
+	this.nameContainer=document.createElement("span");
+	this.container.appendChild(this.nameContainer);
+	this.nameContainer.style.color="darkblue";
 };
 ruleforge.MethodAction.prototype.initData=function(data){
 	if(!data){
@@ -28,11 +23,13 @@ ruleforge.MethodAction.prototype.initData=function(data){
 		this.parameterCount=parameters.length;
 	}
 	if(this.parameterCount===0){
-        RuleForge.setDomContent(this.nameContainer,this.methodLabel);
-		var parameterLabel=$("<span style='color:gray'>(无参数)</span>");
-		this.container.append(parameterLabel);
+        this.nameContainer.textContent = this.methodLabel;
+		var parameterLabel=document.createElement("span");
+		parameterLabel.style.color="gray";
+		parameterLabel.textContent="(无参数)";
+		this.container.appendChild(parameterLabel);
 	}else{
-        RuleForge.setDomContent(this.nameContainer,this.methodLabel+"(");
+        this.nameContainer.textContent = this.methodLabel+"(";
     }
 	if(this.parameterCount==0){
 		return;
@@ -40,19 +37,24 @@ ruleforge.MethodAction.prototype.initData=function(data){
 	for(var i=0;i<this.parameterCount;i++){
 		var p=parameters[i];
 		if(i>0){
-			var comma=$("<span>;</span>");
-			this.container.append(comma);
+			var comma=document.createElement("span");
+			comma.textContent=";";
+			this.container.appendChild(comma);
 		}
 		if(this.parameterCount>0){
-			var seqLabel=$("<span style='color:purple'>&nbsp;"+p["name"]+":</span>");
-			this.container.append(seqLabel);			
+			var seqLabel=document.createElement("span");
+			seqLabel.style.color="purple";
+			seqLabel.innerHTML="&nbsp;"+p["name"]+":";
+			this.container.appendChild(seqLabel);
 		}
 		var parameter=new ruleforge.MethodParameter(this.rule);
 		this.parameters.push(parameter);
-		this.container.append(parameter.getContainer());
+		this.container.appendChild(parameter.getContainer());
 		parameter.initData(p);
 	}
-	this.container.append(")");
+	var rightParen=document.createElement("span");
+	rightParen.textContent=")";
+	this.container.appendChild(rightParen);
 };
 ruleforge.MethodAction.prototype.toXml=function(){
 	if(!this.name || this.name==""){

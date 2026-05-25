@@ -1,8 +1,4 @@
-/**
- * Created by Jacky.gao on 2016/7/28.
- */
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
 import * as action from '../action.js';
@@ -13,17 +9,16 @@ import {formatDate} from '../../Utils.js';
 export default class VersionListDialog extends Component {
     constructor(props) {
         super(props);
-        this.state = {title: '', list: [], num: 0};
+        this.state = {title: '', list: [], num: 0, visible: false};
     }
 
     componentDidMount() {
         event.eventEmitter.on(event.OPEN_FILE_VERSION_DIALOG, config => {
-            $(ReactDOM.findDOMNode(this)).modal('show');
             const {files, data, num} = config, file = data.fullPath;
-            this.setState({title: `${file}文件版本列表`, list: files, num: num, data});
+            this.setState({title: `${file}文件版本列表`, list: files, num: num, data, visible: true});
         });
         event.eventEmitter.on(event.CLOSE_FILE_VERSION_DIALOG, () => {
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
 
@@ -168,7 +163,7 @@ export default class VersionListDialog extends Component {
                 </nav>
             </div>
         );
-        return (<CommonDialog body={body} title={this.state.title} buttons={[]} large={true} dialogStyle={{  // 直接设置样式对象
+        return (<CommonDialog visible={this.state.visible} body={body} title={this.state.title} buttons={[]} large={true} dialogStyle={{  // 直接设置样式对象
             minWidth: '700px'
         }}/>);
     }

@@ -1,17 +1,14 @@
-/**
- * @author GJ
- */
 ruleforge.PrintAction=function(rule){
-	this.container=$("<span>");
-	this.beforeContainer=$("<span>");
-	RuleForge.setDomContent(this.beforeContainer,"");
-	this.container.append(this.beforeContainer);
+	this.container=document.createElement("span");
+	this.beforeContainer=document.createElement("span");
+	this.beforeContainer.textContent = "";
+	this.container.appendChild(this.beforeContainer);
 	this.inputType=new ruleforge.InputType(null,null,null,rule);
 	this.inputTypeContainer=this.inputType.getContainer();
-	this.container.append(this.inputTypeContainer);
-	this.afterContainer=$("<span>");
-	RuleForge.setDomContent(this.afterContainer,"");
-	this.container.append(this.afterContainer);
+	this.container.appendChild(this.inputTypeContainer);
+	this.afterContainer=document.createElement("span");
+	this.afterContainer.textContent = "";
+	this.container.appendChild(this.afterContainer);
 };
 ruleforge.PrintAction.prototype.initData=function(data){
 	if(!data){

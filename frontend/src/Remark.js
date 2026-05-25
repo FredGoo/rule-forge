@@ -1,37 +1,64 @@
-/**
- * @author Jacky.gao
- * 2016/10/25
- */
 window.Remark = function (container) {
     this.remark = "";
     this.defaultRemark = "请输入备注内容";
-    this.init(container);
+    this.container = container;
+    this._collapsed = true;
+    this._buildUI();
 };
-Remark.prototype.init = function (container) {
-    var toolbar = $("<div style='cursor:pointer;color:#777;font-size:12px'>备注</div>");
-    container.append(toolbar);
-    var icon = $("<i class='glyphicon glyphicon-circle-arrow-down'></i>");
-    toolbar.append(icon);
-    var contentContainer = $("<div class='collapse in'></div>");
-    container.append(contentContainer);
-    this.remarkLabel = $("<div style='color:#999;background: #fdfdfd;padding:5px;border:solid 1px #ddd;border-radius: 5px;font-size: 12px'>" + this.defaultRemark + "</div>");
-    contentContainer.append(this.remarkLabel);
-    this.remarkEditor = $("<textarea class='form-control' rows='4'>" + this.defaultRemark + "</textarea>");
-    contentContainer.append(this.remarkEditor);
-    this.remarkEditor.hide();
-    var _this = this;
-    this.remarkLabel.click(function () {
-        _this.remarkEditor.show();
-        _this.remarkEditor.focus();
-        _this.remarkLabel.hide();
-    });
 
-    this.remarkEditor.change(function () {
-        _this.remark = $(this).val();
-        if (_this.remark === "") {
-            _this.remarkLabel.text(_this.defaultRemark);
+Remark.prototype._buildUI = function () {
+    const container = this.container;
+
+    const toolbar = document.createElement('div');
+    toolbar.style.cssText = 'cursor:pointer;color:#777;font-size:12px';
+    toolbar.textContent = '备注';
+
+    this.icon = document.createElement('i');
+    this.icon.className = 'glyphicon glyphicon-circle-arrow-right';
+    toolbar.appendChild(this.icon);
+
+    const _this = this;
+    toolbar.addEventListener('click', function () {
+        _this._collapsed = !_this._collapsed;
+        if (_this._collapsed) {
+            _this.contentContainer.style.display = 'none';
+            _this.icon.classList.remove('glyphicon-circle-arrow-down');
+            _this.icon.classList.add('glyphicon-circle-arrow-right');
         } else {
-            _this.remarkLabel.html(_this.parseBreak(_this.remark));
+            _this.contentContainer.style.display = '';
+            _this.icon.classList.remove('glyphicon-circle-arrow-right');
+            _this.icon.classList.add('glyphicon-circle-arrow-down');
+        }
+    });
+    container.appendChild(toolbar);
+
+    this.contentContainer = document.createElement('div');
+    this.contentContainer.style.display = 'none';
+    container.appendChild(this.contentContainer);
+
+    this.remarkLabel = document.createElement('div');
+    this.remarkLabel.style.cssText = 'color:#999;background: #fdfdfd;padding:5px;border:solid 1px #ddd;border-radius: 5px;font-size: 12px';
+    this.remarkLabel.textContent = this.defaultRemark;
+
+    this.remarkLabel.addEventListener('click', function () {
+        _this.remarkEditor.style.display = '';
+        _this.remarkEditor.focus();
+        _this.remarkLabel.style.display = 'none';
+    });
+    this.contentContainer.appendChild(this.remarkLabel);
+
+    this.remarkEditor = document.createElement('textarea');
+    this.remarkEditor.className = 'form-control';
+    this.remarkEditor.rows = 4;
+    this.remarkEditor.value = this.defaultRemark;
+    this.remarkEditor.style.display = 'none';
+
+    this.remarkEditor.addEventListener('change', function () {
+        _this.remark = this.value;
+        if (_this.remark === "") {
+            _this.remarkLabel.textContent = _this.defaultRemark;
+        } else {
+            _this.remarkLabel.innerHTML = _this.parseBreak(_this.remark);
         }
         if (window.setDirty) {
             window.setDirty();
@@ -40,24 +67,11 @@ Remark.prototype.init = function (container) {
             window._setDirty();
         }
     });
-    this.remarkEditor.blur(function () {
-        _this.remarkEditor.hide();
-        _this.remarkLabel.show();
+    this.remarkEditor.addEventListener('blur', function () {
+        _this.remarkEditor.style.display = 'none';
+        _this.remarkLabel.style.display = '';
     });
-
-    toolbar.click(function () {
-        contentContainer.collapse("toggle");
-    });
-
-    contentContainer.on('show.bs.collapse', function () {
-        icon.removeClass("glyphicon-circle-arrow-right");
-        icon.addClass("glyphicon-circle-arrow-down");
-    });
-    contentContainer.on('hide.bs.collapse', function () {
-        icon.removeClass("glyphicon-circle-arrow-down");
-        icon.addClass("glyphicon-circle-arrow-right");
-    });
-    contentContainer.collapse('hide');
+    this.contentContainer.appendChild(this.remarkEditor);
 };
 
 Remark.prototype.setData = function (data) {
@@ -65,8 +79,8 @@ Remark.prototype.setData = function (data) {
         return;
     }
     this.remark = data;
-    this.remarkEditor.val(data);
-    this.remarkLabel.html(this.parseBreak(data));
+    this.remarkEditor.value = data;
+    this.remarkLabel.innerHTML = this.parseBreak(data);
 };
 
 Remark.prototype.toXml = function () {

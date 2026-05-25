@@ -1,9 +1,4 @@
-/**
- * @author jacky
- * @since 2016/6/24
- */
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
 import * as action from '../action.js';
@@ -11,20 +6,15 @@ import * as action from '../action.js';
 export default class BatchTestDialog extends Component {
     constructor(props) {
         super(props);
-        this.state = {data: null, files: null, slaveData: null, filters: []};
+        this.state = {visible: false, data: null, files: null, slaveData: null, filters: []};
     }
 
     componentDidMount() {
         event.eventEmitter.on(event.OPEN_BATCH_TEST_DIALOG, (config) => {
-            $(ReactDOM.findDOMNode(this)).modal({
-                show: true,
-                backdrop: 'static',
-                keyboard: false
-            });
-            this.setState({data: config.data, files: config.files});
+            this.setState({visible: true, data: config.data, files: config.files});
         });
         event.eventEmitter.on(event.HIDE_BATCH_TEST_DIALOG, () => {
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
 
@@ -54,6 +44,6 @@ export default class BatchTestDialog extends Component {
                 }
             }
         ];
-        return (<CommonDialog large={true} title='对导入的Excel数据进行批量测试' body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} large={true} title='对导入的Excel数据进行批量测试' body={body} buttons={buttons}/>);
     }
 };

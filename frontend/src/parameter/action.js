@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/12.
- */
 import {ajaxSave} from '../Utils.js';
 export const DEL='del';
 export const SAVE='save';
@@ -14,19 +11,24 @@ export function add(){
 export function loadData(files){
     return function (dispatch) {
         var url=window._server+"/xml";
-        $.ajax({
-            url,
-            type:'POST',
-            data:{files},
-            success:function (data) {
-                dispatch({type:LOAD_DATA_COMPLETED,data:data[0]});
-            },
-            error:function (response) {
-                if(response && response.responseText){
-                    bootbox.alert("<span style='color: red'>加载数据失败,服务端错误："+response.responseText+"</span>");
-                }else{
-                    bootbox.alert("<span style='color: red'>加载数据失败,服务端出错</span>");
-                }
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({files}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            dispatch({type:LOAD_DATA_COMPLETED,data:data[0]});
+        }).catch(function (response) {
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>加载数据失败,服务端错误：" + text + "</span>");
+                });
+            } else {
+                bootbox.alert("<span style='color: red'>加载数据失败,服务端出错</span>");
             }
         });
     }

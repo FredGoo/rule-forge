@@ -1,9 +1,5 @@
-/**
- * Created by Jacky.gao on 2016/7/28.
- */
 import '../../../node_modules/codemirror/mode/xml/xml.js';
 import React,{Component,PropTypes} from 'react';
-import ReactDOM from 'react-dom';
 import CodeMirror from 'codemirror';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
@@ -13,7 +9,7 @@ export default class SourceDialog extends Component{
     constructor(props){
         super(props);
         this.editorId='__file_source_editor';
-        this.state={title:''};
+        this.state={title:'', visible: false};
     }
     componentDidMount(){
         const editorId=this.editorId;
@@ -22,10 +18,9 @@ export default class SourceDialog extends Component{
             lineNumbers:true
         });
         event.eventEmitter.on(event.OPEN_SOURCE_DIALOG,(file,content)=>{
-            $(ReactDOM.findDOMNode(this)).modal('show');
-            this.setState({file,codeMirror,title:`[${file}]源码`});
+            this.setState({file,codeMirror,title:`[${file}]源码`, visible: true});
             setTimeout(function () {
-                const winHeight=$(window).height();
+                const winHeight=window.innerHeight;
                 const height=winHeight > 800 ? winHeight-160 : winHeight ;
                 codeMirror.setSize('100%',height+'px');
                 codeMirror.setValue(content);
@@ -33,7 +28,7 @@ export default class SourceDialog extends Component{
             },400);
         });
         event.eventEmitter.on(event.CLOSE_SOURCE_DIALOG,()=>{
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
     componentWillUnmount(){
@@ -53,6 +48,6 @@ export default class SourceDialog extends Component{
                 action.saveFileSource(fullPath,newContent);
             }.bind(this)
         }];
-        return (<CommonDialog title={this.state.title} body={body} buttons={buttons} large={true}/>);
+        return (<CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons} large={true}/>);
     }
 }

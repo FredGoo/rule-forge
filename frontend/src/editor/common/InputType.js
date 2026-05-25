@@ -1,21 +1,14 @@
-/**
- * @author GJ
- */
 ruleforge.InputType = function (endInfo, tip, functionProperty, rule) {
-    this.container = $("<span>");
+    this.container = document.createElement("span");
     this.label = generateContainer();
     this.rule = rule;
-    this.container.append(this.label);
+    this.container.appendChild(this.label);
     if (tip) {
-        RuleForge.setDomContent(this.label, tip);
-        this.label.css({
-            "color": "gray"
-        });
+        this.label.textContent = tip;
+        this.label.style.color = "gray";
     } else {
-        RuleForge.setDomContent(this.label, "选择值类型");
-        this.label.css({
-            "color": "blue"
-        });
+        this.label.textContent = "选择值类型";
+        this.label.style.color = "blue";
     }
     this.functionProperty = functionProperty;
     this.variableValue = null;
@@ -24,8 +17,8 @@ ruleforge.InputType = function (endInfo, tip, functionProperty, rule) {
     this.methodValue = null;
     this.constantValue = null;
     this.functionValue = null;
-    this.dataContainer = $("<span>");
-    this.container.append(this.dataContainer);
+    this.dataContainer = document.createElement("span");
+    this.container.appendChild(this.dataContainer);
     this.type = "";
     var self = this;
     var onClick = function (menuItem) {
@@ -68,32 +61,34 @@ ruleforge.InputType = function (endInfo, tip, functionProperty, rule) {
         name: "CommonFunction",
         onClick: onClick
     });
-    this.label.click(function (e) {
+    this.label.addEventListener("click", function (e) {
         self.menu.show(e);
     });
 
     if (endInfo) {
-        var endInfoContainer = $("<span style='color:red;font-size:11pt'><strong>" + endInfo + "</strong></span>");
-        this.container.append(endInfoContainer);
+        var endInfoContainer = document.createElement("span");
+        endInfoContainer.style.cssText = "color:red;font-size:11pt";
+        endInfoContainer.innerHTML = "<strong>" + endInfo + "</strong>";
+        this.container.appendChild(endInfoContainer);
     }
 };
 
 ruleforge.InputType.prototype.getDisplayContainer = function () {
-    var container = $("<span>");
+    var container = document.createElement("span");
     if (this.type == "Input") {
-        container.append(this.simpleValue.getDisplayContainer());
+        container.appendChild(this.simpleValue.getDisplayContainer());
     } else if (this.type == "Variable" || this.type == "VariableCategory") {
-        container.append(this.variableValue.getDisplayContainer());
+        container.appendChild(this.variableValue.getDisplayContainer());
     } else if (this.type == "Constant") {
-        container.append(this.constantValue.getDisplayContainer());
+        container.appendChild(this.constantValue.getDisplayContainer());
     } else if (this.type == "Method") {
-        container.append(this.methodValue.getDisplayContainer());
+        container.appendChild(this.methodValue.getDisplayContainer());
     } else if (this.type == "Parameter") {
-        container.append(this.parameterValue.getDisplayContainer());
+        container.appendChild(this.parameterValue.getDisplayContainer());
     } else if (this.type == "CommonFunction") {
-        container.append(this.functionValue.getDisplayContainer());
+        container.appendChild(this.functionValue.getDisplayContainer());
     } else if (this.type == "NamedReference") {
-        container.append(this.referenceValue.getDisplayContainer());
+        container.appendChild(this.referenceValue.getDisplayContainer());
     }
     return container;
 };
@@ -102,92 +97,90 @@ ruleforge.InputType.prototype.setValueType = function (valueType, value) {
     window._setDirty();
     this.type = valueType;
     if (this.variableValue) {
-        this.variableValue.getContainer().hide();
+        this.variableValue.getContainer().style.display = "none";
     }
     if (this.constantValue) {
-        this.constantValue.getContainer().hide();
+        this.constantValue.getContainer().style.display = "none";
     }
     if (this.simpleValue) {
-        this.simpleValue.getContainer().hide();
+        this.simpleValue.getContainer().style.display = "none";
     }
     if (this.referenceValue) {
-        this.referenceValue.getContainer().hide();
+        this.referenceValue.getContainer().style.display = "none";
     }
     if (this.methodValue) {
-        this.methodValue.getContainer().hide();
+        this.methodValue.getContainer().style.display = "none";
     }
     if (this.parameterValue) {
-        this.parameterValue.getContainer().hide();
+        this.parameterValue.getContainer().style.display = "none";
     }
     if (this.functionValue) {
-        this.functionValue.getContainer().hide();
+        this.functionValue.getContainer().style.display = "none";
     }
-    RuleForge.setDomContent(this.label, ".");
-    this.label.css({
-        "color": "#FDFDFD"
-    });
+    this.label.textContent = ".";
+    this.label.style.color = "#FDFDFD";
     switch (valueType) {
         case "Input":
             if (!this.simpleValue) {
                 this.arithmetic = new ruleforge.ComplexArithmetic(this.rule);
                 this.simpleValue = new ruleforge.SimpleValue(this.arithmetic, value);
-                this.dataContainer.append(this.simpleValue.getContainer());
+                this.dataContainer.appendChild(this.simpleValue.getContainer());
             }
-            this.simpleValue.getContainer().show();
+            this.simpleValue.getContainer().style.display = "";
             this.type = "Input";
             break;
         case "NamedReference":
             if (!this.referenceValue) {
                 this.arithmetic = new ruleforge.ComplexArithmetic(this.rule);
                 this.referenceValue = new ruleforge.NamedReferenceValue(this.arithmetic, value, this.rule);
-                this.dataContainer.append(this.referenceValue.getContainer());
+                this.dataContainer.appendChild(this.referenceValue.getContainer());
             }
-            this.referenceValue.getContainer().show();
+            this.referenceValue.getContainer().style.display = "";
             this.type = "NamedReference";
             break;
         case "Constant":
             if (!this.constantValue) {
                 this.arithmetic = new ruleforge.ComplexArithmetic(this.rule);
                 this.constantValue = new ruleforge.ConstantValue(this.arithmetic, value);
-                this.dataContainer.append(this.constantValue.getContainer());
+                this.dataContainer.appendChild(this.constantValue.getContainer());
             }
-            this.constantValue.getContainer().show();
+            this.constantValue.getContainer().style.display = "";
             this.type = "Constant";
             break;
         case "Method":
             if (!this.methodValue) {
                 this.arithmetic = new ruleforge.ComplexArithmetic(this.rule);
                 this.methodValue = new ruleforge.MethodValue(this.arithmetic, value, this.dataContainer);
-                this.dataContainer.append(this.methodValue.getContainer());
+                this.dataContainer.appendChild(this.methodValue.getContainer());
             }
-            this.methodValue.getContainer().show();
+            this.methodValue.getContainer().style.display = "";
             this.type = "Method";
             break;
         case "Parameter":
             if (!this.parameterValue) {
                 this.arithmetic = new ruleforge.ComplexArithmetic(this.rule);
                 this.parameterValue = new ruleforge.ParameterValue(this.arithmetic, value, "In");
-                this.dataContainer.append(this.parameterValue.getContainer());
+                this.dataContainer.appendChild(this.parameterValue.getContainer());
             }
-            this.parameterValue.getContainer().show();
+            this.parameterValue.getContainer().style.display = "";
             this.type = "Parameter";
             break;
         case "CommonFunction":
             if (!this.functionValue) {
                 this.arithmetic = new ruleforge.ComplexArithmetic(this.rule);
                 this.functionValue = new ruleforge.FunctionValue(this.arithmetic, value, "In");
-                this.dataContainer.append(this.functionValue.getContainer());
+                this.dataContainer.appendChild(this.functionValue.getContainer());
             }
-            this.functionValue.getContainer().show();
+            this.functionValue.getContainer().style.display = "";
             this.type = "CommonFunction";
             break;
         default :
             if (!this.variableValue) {
                 this.arithmetic = new ruleforge.ComplexArithmetic(this.rule);
                 this.variableValue = new ruleforge.VariableValue(this.arithmetic, value, "In", this.functionProperty);
-                this.dataContainer.append(this.variableValue.getContainer());
+                this.dataContainer.appendChild(this.variableValue.getContainer());
             }
-            this.variableValue.getContainer().show();
+            this.variableValue.getContainer().style.display = "";
             this.type = "Variable";
             break;
     }

@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/19.
- */
 import {MsgBox} from 'flowdesigner';
 import Cell from './Cell.js';
 
@@ -12,20 +9,24 @@ export default class ConditionCell extends Cell {
 
     initCell(cellData) {
         const _this = this;
-        const container = $(`<div></div>`);
-        this.td.append(container);
-        const conditionContainer = $('<span><span style="color:#999">无</span></span>');
-        container.append(conditionContainer);
-        const configCondition = $(`<span class="attribute-operation" style="color:#3c763d;margin-left: 5px"><i class="glyphicon glyphicon-cog" style="cursor: pointer" title="配置条件"/></span>`);
-        container.append(configCondition);
+        const container = document.createElement('div');
+        this.td.appendChild(container);
+        const conditionContainer = document.createElement('span');
+        conditionContainer.innerHTML = '<span style="color:#999">无</span>';
+        container.appendChild(conditionContainer);
+        const configCondition = document.createElement('span');
+        configCondition.className = 'attribute-operation';
+        configCondition.style.cssText = 'color:#3c763d;margin-left: 5px';
+        configCondition.innerHTML = '<i class="glyphicon glyphicon-cog" style="cursor: pointer" title="配置条件"/>';
+        container.appendChild(configCondition);
         if (cellData) {
             this.cellCondition = new ruleforge.CellCondition("<div/>");
             this.cellCondition.initData(cellData.joint);
-            conditionContainer.empty();
-            conditionContainer.append(this.cellCondition.getDisplayContainer());
+            conditionContainer.innerHTML = '';
+            conditionContainer.appendChild(this.cellCondition.getDisplayContainer());
         }
-        configCondition.click(function () {
-            const dialogContent = $("<div/>");
+        configCondition.addEventListener('click', function () {
+            const dialogContent = document.createElement("div");
             if (!_this.cellCondition) {
                 _this.cellCondition = new ruleforge.CellCondition("<div/>");
             }
@@ -34,17 +35,20 @@ export default class ConditionCell extends Cell {
             MsgBox.showDialog(caption, dialogContent, [], [{
                 name: 'hide.bs.modal',
                 callback: function () {
-                    conditionContainer.empty();
-                    conditionContainer.append(_this.cellCondition.getDisplayContainer());
+                    conditionContainer.innerHTML = '';
+                    conditionContainer.appendChild(_this.cellCondition.getDisplayContainer());
                 }
             }], true);
         });
 
         if (this.row.rowType && this.row.rowType === 'condition') {
             const _this = this;
-            const del = $(`<span class="attribute-operation" style="color: #03A9F4;margin-left: 3px"><i class="glyphicon glyphicon-trash" style="cursor: pointer" title="删除当前行"/></span>`);
-            container.append(del);
-            del.click(function () {
+            const del = document.createElement('span');
+            del.className = 'attribute-operation';
+            del.style.cssText = 'color: #03A9F4;margin-left: 3px';
+            del.innerHTML = '<i class="glyphicon glyphicon-trash" style="cursor: pointer" title="删除当前行"/>';
+            container.appendChild(del);
+            del.addEventListener('click', function () {
                 bootbox.confirm("真的要删除？", function (result) {
                     if (!result) return;
                     _this.row.remove();

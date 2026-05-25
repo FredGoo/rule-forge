@@ -1,9 +1,4 @@
-/**
- * @author jacky
- * @since 2016/6/23
- */
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import * as event from '../event.js';
 import * as action from '../action.js';
 import Grid from '../../components/grid/component/Grid.jsx';
@@ -20,7 +15,8 @@ import JoinTool from "../../flow/JoinTool";
 import RulesPackageTool from "../../flow/RulesPackageTool";
 
 function downloadSvg(div, prefix) {
-    var svgXml = $(div).html();
+    var divEl = document.querySelector(div);
+    var svgXml = divEl.innerHTML;
 
     var image = new Image();
     // 给图片对象写入base64编码的svg流
@@ -29,8 +25,9 @@ function downloadSvg(div, prefix) {
     image.onload = function () {
         // 准备空画布
         var canvas = document.createElement('canvas');
-        canvas.width = $(div + ' svg').width();
-        canvas.height = $(div + ' svg').height();
+        var svgEl = divEl.querySelector('svg');
+        canvas.width = svgEl.clientWidth;
+        canvas.height = svgEl.clientHeight;
 
         // 取得画布的2d绘图上下文
         var context = canvas.getContext('2d');
@@ -51,18 +48,18 @@ function downloadSvg(div, prefix) {
 export default class FlowDialog extends Component {
     constructor(props) {
         super(props);
-        this.state = {flows: null, project: '', packageId: ''};
+        this.state = {visible: false, flows: null, project: '', packageId: ''};
     }
 
     componentDidMount() {
         event.eventEmitter.on(event.OPEN_FLOW_DIALOG, (config) => {
             this.setState({
+                visible: true,
                 project: config.project,
                 packageId: config.packageId,
             });
 
             this.rowData = null;
-            $(ReactDOM.findDOMNode(this)).modal('show');
             var files = config.files;
             var data = config.data;
             action.loadFlows(files, function (result) {
@@ -72,7 +69,7 @@ export default class FlowDialog extends Component {
             }.bind(this));
         });
         event.eventEmitter.on(event.HIDE_FLOW_DIALOG, () => {
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
 
@@ -133,49 +130,52 @@ export default class FlowDialog extends Component {
                             bootbox.alert(JSON.stringify(errorList));
 
                             // 展示流程图
-                            $.ajax({
-                                url: window._server + '/ruleflowdesigner/loadFlowDefinition',
-                                data: {file: files.split(':')[1].split(',')[0]},
-                                success: function (flowJson) {
-                                    $('#' + containerId).html('');
+                            fetch(window._server + '/ruleflowdesigner/loadFlowDefinition', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                body: new URLSearchParams({file: files.split(':')[1].split(',')[0]}).toString()
+                            }).then(function(response) {
+                                if (!response.ok) throw response;
+                                return response.json();
+                            }).then(function (flowJson) {
+                                document.getElementById(containerId).innerHTML = '';
 
-                                    const designer = new RuleFlowDesigner(containerId);
-                                    delete flowJson.libraries;
-                                    designer.addTool(new StartTool());
-                                    designer.addTool(new RuleTool());
-                                    designer.addTool(new PackageTool());
-                                    designer.addTool(new ActionTool());
-                                    designer.addTool(new ScriptTool());
-                                    designer.addTool(new DecisionTool());
-                                    designer.addTool(new ForkTool());
-                                    designer.addTool(new JoinTool());
-                                    designer.addTool(new RulesPackageTool());
-                                    designer.buildDesigner();
+                                const designer = new RuleFlowDesigner(containerId);
+                                delete flowJson.libraries;
+                                designer.addTool(new StartTool());
+                                designer.addTool(new RuleTool());
+                                designer.addTool(new PackageTool());
+                                designer.addTool(new ActionTool());
+                                designer.addTool(new ScriptTool());
+                                designer.addTool(new DecisionTool());
+                                designer.addTool(new ForkTool());
+                                designer.addTool(new JoinTool());
+                                designer.addTool(new RulesPackageTool());
+                                designer.buildDesigner();
 
-                                    $('.fd-toolbar').hide();
-                                    $('.fd-property-panel').remove();
-                                    $('.fd-node-toolbar').hide();
+                                document.querySelector('.fd-toolbar').style.display = 'none';
+                                var propPanel = document.querySelector('.fd-property-panel');
+                                if (propPanel) propPanel.remove();
+                                document.querySelector('.fd-node-toolbar').style.display = 'none';
 
-                                    for (const index in flowJson.nodes) {
-                                        const num = testResult['flowMap'][flowJson.nodes[index].name];
-                                        if (num != null) {
-                                            flowJson.nodes[index].text = flowJson.nodes[index].name + ' (' + num + ')';
-                                        }
+                                for (const index in flowJson.nodes) {
+                                    const num = testResult['flowMap'][flowJson.nodes[index].name];
+                                    if (num != null) {
+                                        flowJson.nodes[index].text = flowJson.nodes[index].name + ' (' + num + ')';
                                     }
-                                    designer.fromJson(flowJson);
-
-                                    const datetime = new Date();
-                                    const filePrefix = '' + datetime.getFullYear() + (datetime.getMonth() + 1) + datetime.getDate()
-                                        + datetime.getHours() + datetime.getMinutes() + datetime.getSeconds() + '_';
-                                    // 下载excel
-                                    document.getElementById("input-prefix").value = filePrefix;
-                                    document.getElementById(formId).submit();
-                                    // 下载图片
-                                    downloadSvg('.fd-canvas-container', filePrefix)
-                                },
-                                error: function () {
-                                    alert(`加载决策流${files}失败！`);
                                 }
+                                designer.fromJson(flowJson);
+
+                                const datetime = new Date();
+                                const filePrefix = '' + datetime.getFullYear() + (datetime.getMonth() + 1) + datetime.getDate()
+                                    + datetime.getHours() + datetime.getMinutes() + datetime.getSeconds() + '_';
+                                // 下载excel
+                                document.getElementById("input-prefix").value = filePrefix;
+                                document.getElementById(formId).submit();
+                                // 下载图片
+                                downloadSvg('.fd-canvas-container', filePrefix);
+                            }).catch(function () {
+                                alert(`加载决策流${files}失败！`);
                             });
                         });
                     }
@@ -207,7 +207,7 @@ export default class FlowDialog extends Component {
         ];
 
         return (
-            <CommonDialog title='测试决策流' body={body} buttons={buttons}/>
+            <CommonDialog visible={this.state.visible} title='测试决策流' body={body} buttons={buttons}/>
         );
     }
 }

@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/19.
- */
 import '../../../css/iconfont.css';
 import React, {Component} from 'react';
 import CommonDialog from './CommonDialog.jsx';
@@ -10,10 +7,9 @@ import * as event from '../../componentEvent.js';
 import VersionSelectDialog from './VersionSelectDialog.jsx';
 
 export default class KnowledgeTreeDialog extends Component {
-
     constructor(props) {
         super(props);
-        this.state = {title: '选择资源'};
+        this.state = {title: '选择资源', visible: false};
     }
 
     componentDidMount() {
@@ -25,12 +21,11 @@ export default class KnowledgeTreeDialog extends Component {
                 forLib: config.forLib,
                 fileType: config.fileType
             }, function (data) {
-                this.setState({data, fileType: config.fileType});
-                $("#_knowledge_tree_dialog_container").children('.modal').modal('show');
+                this.setState({data, fileType: config.fileType, visible: true});
             }.bind(this));
         });
         event.eventEmitter.on(event.HIDE_KNOWLEDGE_TREE_DIALOG, () => {
-            $("#_knowledge_tree_dialog_container").children('.modal').modal('hide');
+            this.setState({visible: false});
         });
         event.eventEmitter.on(event.TREE_NODE_CLICK, (nodeData) => {
             this.currentNodeData = nodeData;
@@ -41,7 +36,8 @@ export default class KnowledgeTreeDialog extends Component {
     }
 
     search() {
-        const searchFileName = $('.resSearchText').val();
+        const searchInput = document.querySelector('.resSearchText');
+        const searchFileName = searchInput ? searchInput.value : '';
         const config = this._config;
         action.loadResourceTreeData({
             project: config.project,
@@ -105,9 +101,7 @@ export default class KnowledgeTreeDialog extends Component {
         return (
             <div>
                 <VersionSelectDialog/>
-                <div id="_knowledge_tree_dialog_container">
-                    <CommonDialog title={this.state.title} body={body} buttons={buttons}/>
-                </div>
+                <CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons}/>
             </div>
         );
     }

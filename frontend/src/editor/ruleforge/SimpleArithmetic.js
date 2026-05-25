@@ -1,15 +1,10 @@
-/**
- * @author GJ
- */
 ruleforge.SimpleArithmetic = function () {
-    this.container = $("<span>");
+    this.container = document.createElement("span");
     this.selectorLabel = generateContainer();
-    RuleForge.setDomContent(this.selectorLabel, ".");
-    this.selectorLabel.css({
-        "color": "#FFF"
-    });
+    this.selectorLabel.textContent = ".";
+    this.selectorLabel.style.color = "#FFF";
     this.operator = "";
-    this.container.append(this.selectorLabel);
+    this.container.appendChild(this.selectorLabel);
     this.value = null;
     var self = this;
     var onClick = function (menuItem) {
@@ -43,17 +38,15 @@ ruleforge.SimpleArithmetic = function () {
                     self.value.getContainer().remove();
                     self.operator = null;
                     self.value = null;
-                    RuleForge.setDomContent(self.selectorLabel, ".");
-                    self.selectorLabel.css({
-                        "color": "#FFF",
-                        "padding-left": "0px",
-                        "padding-right": "0px"
-                    });
+                    self.selectorLabel.textContent = ".";
+                    self.selectorLabel.style.color = "#FFF";
+                    self.selectorLabel.style.paddingLeft = "0px";
+                    self.selectorLabel.style.paddingRight = "0px";
                 }
             }
         }]
     });
-    this.selectorLabel.click(function (e) {
+    this.selectorLabel.addEventListener('click', function (e) {
         self.menu.show(e);
     });
 
@@ -87,17 +80,15 @@ ruleforge.SimpleArithmetic.prototype.setOperator = function (operator) {
             info = "%";
             break;
     }
-    this.selectorLabel.css({
-        "color": "green",
-        "fontWeight": "blod",
-        "padding-left": "5px",
-        "padding-right": "5px"
-    });
-    RuleForge.setDomContent(this.selectorLabel, info);
+    this.selectorLabel.style.color = "green";
+    this.selectorLabel.style.fontWeight = "bold";
+    this.selectorLabel.style.paddingLeft = "5px";
+    this.selectorLabel.style.paddingRight = "5px";
+    this.selectorLabel.textContent = info;
     if (!this.value) {
         this.simpleArithmetic = new ruleforge.SimpleArithmetic();
         this.value = new ruleforge.SimpleValue(this.simpleArithmetic);
-        this.container.append(this.value.getContainer());
+        this.container.appendChild(this.value.getContainer());
     }
 };
 ruleforge.SimpleArithmetic.prototype.toXml = function () {

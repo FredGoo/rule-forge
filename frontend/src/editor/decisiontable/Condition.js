@@ -1,17 +1,14 @@
-/**
- * @author GJ
- */
 ruleforge.Condition = function (parentContainer) {
-    this.container = $("<span>");
+    this.container = document.createElement("span");
     parentContainer.append(this.container);
     var self = this;
     this.operator = new ruleforge.ComparisonOperator(function () {
         self.inputType = self.operator.getInputType();
         if (self.inputType) {
-            self.container.append(self.inputType.getContainer());
+            self.container.appendChild(self.inputType.getContainer());
         }
     });
-    self.container.append(this.operator.getContainer());
+    self.container.appendChild(this.operator.getContainer());
 };
 ruleforge.Condition.prototype.initData = function (data) {
     var op = data["op"];
@@ -19,15 +16,18 @@ ruleforge.Condition.prototype.initData = function (data) {
     this.operator.initRightValue(data["value"]);
     this.inputType = this.operator.getInputType();
     if (this.inputType) {
-        this.container.append(this.inputType.getContainer());
+        this.container.appendChild(this.inputType.getContainer());
     }
 };
 ruleforge.Condition.prototype.getDisplayContainer = function () {
-    var container = $("<span>");
-    var operator = RuleForge.getDomContent(this.operator.getContainer());
-    container.append($("<span style='color:blue'>" + operator + "</span>"));
+    var container = document.createElement("span");
+    var operator = this.operator.getContainer().textContent;
+    var opSpan = document.createElement("span");
+    opSpan.style.cssText = "color:blue";
+    opSpan.textContent = operator;
+    container.appendChild(opSpan);
     if (this.inputType) {
-        container.append(this.inputType.getDisplayContainer());
+        container.appendChild(this.inputType.getDisplayContainer());
     }
     return container;
 };

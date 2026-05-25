@@ -1,8 +1,4 @@
-/**
- * Created by jacky on 2016/6/19.
- */
 import React,{Component,PropTypes} from 'react';
-import ReactDOM from 'react-dom';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
 import * as action from '../action.js';
@@ -12,6 +8,7 @@ export default class VersionsDialog extends Component{
     constructor(props){
         super(props);
         this.state={
+            visible: false,
             title:'',
             rowData:null,
             diffList: [],
@@ -21,11 +18,10 @@ export default class VersionsDialog extends Component{
     componentDidMount(){
         event.eventEmitter.on(event.OPEN_VERSION_DIALOG,(rowData)=>{
             console.log('生成版本', rowData)
-            this.setState({ title: "生成版本", rowData, diffList: [], versionComment: ''})
-            $(ReactDOM.findDOMNode(this)).modal('show');
+            this.setState({visible: true, title: "生成版本", rowData, diffList: [], versionComment: ''})
         });
         event.eventEmitter.on(event.HIDE_VERSION_DIALOG,()=>{
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
     componentWillUnmount(){
@@ -138,6 +134,6 @@ export default class VersionsDialog extends Component{
                 <span style={{fontSize:'14px'}}>项目名称：<span style={{color: 'red'}}>{project || ''}</span></span>
             </div>
         )
-        return (<CommonDialog title={this.state.title} htmlContent={htmlContent} body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} title={this.state.title} htmlContent={htmlContent} body={body} buttons={buttons}/>);
     };
 }

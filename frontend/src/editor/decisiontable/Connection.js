@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 ruleforge.Connection = function (context, isJoin, parentJoin) {
     this.isJoin = isJoin;
     this.context = context;
@@ -39,11 +36,9 @@ ruleforge.Connection.prototype.initJoin = function () {
     var joinContainer = this.join.getContainer();
     var left = (this.endX + 10) + "px";
     var top = this.endY + "px";
-    joinContainer.css({
-        "position": "absolute",
-        "left": left,
-        "top": top
-    });
+    joinContainer.style.position = "absolute";
+    joinContainer.style.left = left;
+    joinContainer.style.top = top;
     this.context.getCanvas().append(joinContainer);
 };
 
@@ -66,21 +61,21 @@ ruleforge.Connection.prototype.remove = function () {
 };
 
 ruleforge.Connection.prototype.initCondition = function () {
-    this.conditionContainer = $("<div>");
+    this.conditionContainer = document.createElement("div");
     var left = (this.endX + 10) + "px";
     var top = this.endY + "px";
-    this.conditionContainer.css({
-        "position": "absolute",
-        "left": left,
-        "top": top
-    });
+    this.conditionContainer.style.position = "absolute";
+    this.conditionContainer.style.left = left;
+    this.conditionContainer.style.top = top;
     this.condition = new ruleforge.Condition(this.conditionContainer);
-    var del = $(`<i class="glyphicon glyphicon-trash" style="color: #019dff;cursor: pointer;font-size: 9pt;padding-left:5px"></i>`);
+    var del = document.createElement("i");
+    del.className = "glyphicon glyphicon-trash";
+    del.style.cssText = "color: #019dff;cursor: pointer;font-size: 9pt;padding-left:5px";
     var self = this;
-    del.click(function () {
+    del.addEventListener('click', function () {
         self.parentJoin.removeConnection(self);
     });
-    this.conditionContainer.append(del);
+    this.conditionContainer.appendChild(del);
     this.context.getCanvas().append(this.conditionContainer);
 };
 ruleforge.Connection.prototype.update = function (add) {
@@ -88,13 +83,9 @@ ruleforge.Connection.prototype.update = function (add) {
     this.path.attr("path", pathInfo);
     var top = this.endY + "px";
     if (this.conditionContainer) {
-        this.conditionContainer.css({
-            "top": top
-        });
+        this.conditionContainer.style.top = top;
     } else {
-        this.join.getContainer().css({
-            "top": top
-        });
+        this.join.getContainer().style.top = top;
     }
     if (this.join) {
         this.join.resetItemPosition(0, add);

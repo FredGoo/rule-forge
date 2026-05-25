@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/5/24.
- */
 import React, {Component} from 'react';
 import QuickStart from '../../../frame/QuickStart.jsx';
 import IFrame from './IFrame.jsx';
@@ -12,7 +9,9 @@ import {nextIFrameId} from '../../../Utils.js';
 export default class FrameTab extends Component {
     constructor(props) {
         super(props);
-        this.state = {data: []};
+        this.state = {data: [], activeContextMenuId: null, contextMenuX: 0, contextMenuY: 0};
+        this._handleContextMenu = this._handleContextMenu.bind(this);
+        this._handleClickOutside = this._handleClickOutside.bind(this);
     }
 
     addTab(newTabData) {
@@ -25,7 +24,8 @@ export default class FrameTab extends Component {
         }
         if (exist) {
             setTimeout(function () {
-                $('#tabLink' + fullPath).trigger('click');
+                const el = document.getElementById('tabLink' + fullPath);
+                if (el) el.click();
             }, 100);
             return;
         }
@@ -34,13 +34,8 @@ export default class FrameTab extends Component {
             this.setState({data});
         }
         setTimeout(function () {
-            $('#tabLink' + fullPath).trigger('click');
-        }, 100);
-        const menuId = 'tabmenu' + fullPath;
-        setTimeout(function () {
-            $('#li' + fullPath).contextmenu({
-                target: '#' + menuId
-            });
+            const el = document.getElementById('tabLink' + fullPath);
+            if (el) el.click();
         }, 100);
     }
 
@@ -48,10 +43,28 @@ export default class FrameTab extends Component {
         event.eventEmitter.on(event.TREE_NODE_CLICK, (data) => {
             this.addTab(data);
         });
+        document.addEventListener('click', this._handleClickOutside);
     };
 
     componentWillUnmount() {
         event.eventEmitter.removeAllListeners(event.TREE_NODE_CLICK);
+        document.removeEventListener('click', this._handleClickOutside);
+    }
+
+    _handleContextMenu(e, menuId) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.setState({
+            activeContextMenuId: menuId,
+            contextMenuX: e.clientX,
+            contextMenuY: e.clientY
+        });
+    }
+
+    _handleClickOutside() {
+        if (this.state.activeContextMenuId) {
+            this.setState({activeContextMenuId: null});
+        }
     }
 
     _processFullPath(fullPath) {
@@ -92,10 +105,10 @@ export default class FrameTab extends Component {
                 type = item.fullPath.substring(1, item.fullPath.length);
             }
             tabs.push(
-                <li id={liId} className={active} key={key}>
+                <li id={liId} className={active} key={key} onContextMenu={(e) => this._handleContextMenu(e, menuId)}>
                     <a id={linkId} href={tableContainerLink} data-toggle="tab">
                         <button className="close closeTab" type="button" style={{marginLeft: '5px'}} onClick={() => {
-                            const frame = $(`#${iframeId}`).get(0);
+                            const frame = document.getElementById(iframeId);
                             if (frame && frame.contentWindow && frame.contentWindow._dirty) {
                                 const result = confirm('当前页面内容未保存，确实要关闭吗？');
                                 if (!result) {
@@ -114,7 +127,8 @@ export default class FrameTab extends Component {
                             this.setState({data});
                             if (nextLinkId) {
                                 setTimeout(function () {
-                                    $('#' + nextLinkId).trigger('click');
+                                    const el = document.getElementById(nextLinkId);
+                                    if (el) el.click();
                                 }, 100);
                             }
                         }}>×
@@ -122,7 +136,8 @@ export default class FrameTab extends Component {
                         {(type === 'AUTH') ? fileName : type + ':' + fileName}
                     </a>
                     {
-                        <Menu menuId={menuId} items={[
+                        <Menu menuId={menuId} visible={this.state.activeContextMenuId === menuId}
+                              x={this.state.contextMenuX} y={this.state.contextMenuY} items={[
                             {
                                 name: '关闭所有标签页',
                                 click: function () {
@@ -137,7 +152,8 @@ export default class FrameTab extends Component {
                                     data.push(item);
                                     this.setState({data});
                                     setTimeout(function () {
-                                        $('#' + linkId).trigger('click');
+                                        const el = document.getElementById(linkId);
+                                        if (el) el.click();
                                     }, 100);
                                 }.bind(this)
                             }

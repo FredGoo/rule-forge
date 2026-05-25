@@ -1,7 +1,5 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import {Event, FlowDesigner, MsgBox, Node} from 'flowdesigner';
+import {handleResponseError} from '../Utils.js';
 import BaseNode from './BaseNode.js';
 import * as event from '../components/componentEvent.js';
 import * as action from '../frame/action.js';
@@ -81,7 +79,7 @@ export default class RuleFlowDesigner extends FlowDesigner {
         // 检查节点类型和合并条件
         var hasRulesPackageNodes = false;
         var hasPackageRules = false;
-        
+
         if (json.nodes && Array.isArray(json.nodes)) {
             for (var i = 0; i < json.nodes.length; i++) {
                 var node = json.nodes[i];
@@ -95,7 +93,7 @@ export default class RuleFlowDesigner extends FlowDesigner {
                 }
             }
         }
-        
+
         // 如果已经有规则包节点，直接跳过合并逻辑
         if (hasRulesPackageNodes) {
             console.log('检测到已有规则包节点，跳过合并逻辑');
@@ -106,7 +104,7 @@ export default class RuleFlowDesigner extends FlowDesigner {
                 // 收集所有需要合并的规则节点
                 var packageGroups = {};
                 var standaloneRules = [];
-                
+
                 for (var i = 0; i < json.nodes.length; i++) {
                     var node = json.nodes[i];
                     if (node.type === 'Rule' || node.type === '规则') {
@@ -122,7 +120,7 @@ export default class RuleFlowDesigner extends FlowDesigner {
                         }
                     }
                 }
-            
+
                 // 对每个 packageName 组内的规则按 index 排序
                 for (var packageName in packageGroups) {
                     packageGroups[packageName].sort(function(a, b) {
@@ -131,7 +129,7 @@ export default class RuleFlowDesigner extends FlowDesigner {
                         return indexA - indexB;
                     });
                 }
-                
+
                 // 创建合并后的规则包节点
                 var mergedPackages = [];
                 var packageIndex = 0;
@@ -147,7 +145,7 @@ export default class RuleFlowDesigner extends FlowDesigner {
                                 break;
                             }
                         }
-                
+
                         // 如果存在已保存的规则包节点，使用其坐标；否则使用第一个规则的坐标
                         var packageX, packageY;
                         if (existingPackageNode) {
@@ -159,7 +157,7 @@ export default class RuleFlowDesigner extends FlowDesigner {
                             packageY = parseInt(rules[0].y);
                             console.log(`使用第一个规则的位置: ${packageName} (${packageX}, ${packageY})`);
                         }
-                        
+
                         // 创建规则包节点
                         var packageNode = {
                             name: packageName,
@@ -171,11 +169,11 @@ export default class RuleFlowDesigner extends FlowDesigner {
                             rulesList: [],
                             connections: []
                         };
-                        
+
                         // 将规则添加到规则包中，保持原始坐标
                         for (var j = 0; j < rules.length; j++) {
                             var rule = rules[j];
-                            
+
                             packageNode.rulesList.push({
                                 name: rule.name,
                                 file: rule.file,
@@ -187,14 +185,14 @@ export default class RuleFlowDesigner extends FlowDesigner {
                                 index: rule.index
                             });
                         }
-                        
+
                         // 处理最后一个规则的连接关系
                         var lastRule = rules[rules.length - 1];
                         if (lastRule.connections && lastRule.connections.length > 0) {
                             for (var k = 0; k < lastRule.connections.length; k++) {
                                 var conn = lastRule.connections[k];
                                 var targetName = conn.toName;
-                                
+
                                 // 检查目标是否指向另一个合并的规则包
                                 var targetPackageName = null;
                                 for (var targetRule of json.nodes) {
@@ -203,24 +201,24 @@ export default class RuleFlowDesigner extends FlowDesigner {
                                         break;
                                     }
                                 }
-                                
+
                                 // 如果目标指向合并的规则包，则修改连接目标为规则包名称
                                 if (targetPackageName && targetPackageName !== packageName) {
                                     conn.toName = targetPackageName;
                                 }
-                                
+
                                 packageNode.connections.push(conn);
                             }
                         }
-                        
+
                         mergedPackages.push(packageNode);
                         packageIndex++;
                     }
                 }
-                
+
                 // 重建 nodes 数组：保留非规则节点 + 独立规则节点 + 合并后的规则包节点
                 var newNodes = [];
-                
+
                 // 添加非规则节点
                 for (var i = 0; i < json.nodes.length; i++) {
                     var node = json.nodes[i];
@@ -228,13 +226,13 @@ export default class RuleFlowDesigner extends FlowDesigner {
                         newNodes.push(node);
                     }
                 }
-                
+
                 // 添加独立规则节点
                 newNodes = newNodes.concat(standaloneRules);
-                
+
                 // 添加合并后的规则包节点
                 newNodes = newNodes.concat(mergedPackages);
-                
+
                 // 处理其他节点连接到规则包节点的连接关系
                 for (var i = 0; i < newNodes.length; i++) {
                     var node = newNodes[i];
@@ -242,7 +240,7 @@ export default class RuleFlowDesigner extends FlowDesigner {
                         for (var j = 0; j < node.connections.length; j++) {
                             var conn = node.connections[j];
                             var targetName = conn.toName;
-                            
+
                             // 检查目标是否指向规则包中的某个规则
                             for (var packageName in packageGroups) {
                                 var rules = packageGroups[packageName];
@@ -258,12 +256,12 @@ export default class RuleFlowDesigner extends FlowDesigner {
                         }
                     }
                 }
-                
+
                 // 更新 json.nodes
                 json.nodes = newNodes;
             }
         }
-        
+
         this.flowId = json.id;
         this.debug = json.debug;
         const libs = json.libraries || [];
@@ -347,37 +345,66 @@ export default class RuleFlowDesigner extends FlowDesigner {
     getPropertiesProducer() {
         const _this = this;
         return function () {
-            const g = $('<div></div>');
-            const flowIdGroup = $(`<div class="form-group"><label>决策流ID</label></div>`);
-            const flowIdText = $(`<input type="text" class="form-control">`);
-            flowIdGroup.append(flowIdText);
+            const g = document.createElement('div');
+            // Flow ID group
+            const flowIdGroup = document.createElement('div');
+            flowIdGroup.className = 'form-group';
+            const flowIdLabel = document.createElement('label');
+            flowIdLabel.textContent = '决策流ID';
+            flowIdGroup.appendChild(flowIdLabel);
+            const flowIdText = document.createElement('input');
+            flowIdText.type = 'text';
+            flowIdText.className = 'form-control';
+            flowIdGroup.appendChild(flowIdText);
             const _this = this;
-            flowIdText.change(function () {
-                _this.flowId = $(this).val();
+            flowIdText.addEventListener('change', function () {
+                _this.flowId = this.value;
             });
-            flowIdText.val(this.flowId);
-            g.append(flowIdGroup);
+            flowIdText.value = this.flowId || '';
+            g.appendChild(flowIdGroup);
 
-            const debugGroup = $(`<div class="form-group"><label>允许调试信息输出</label></div>`);
-            const debugSelect = $(`<select class="form-control">
-                <option value="true">是</option>
-                <option value="false">否</option>
-            </select>`);
+            // Debug group
+            const debugGroup = document.createElement('div');
+            debugGroup.className = 'form-group';
+            const debugLabel = document.createElement('label');
+            debugLabel.textContent = '允许调试信息输出';
+            debugGroup.appendChild(debugLabel);
+            const debugSelect = document.createElement('select');
+            debugSelect.className = 'form-control';
+            const debugTrueOption = document.createElement('option');
+            debugTrueOption.value = 'true';
+            debugTrueOption.textContent = '是';
+            debugSelect.appendChild(debugTrueOption);
+            const debugFalseOption = document.createElement('option');
+            debugFalseOption.value = 'false';
+            debugFalseOption.textContent = '否';
+            debugSelect.appendChild(debugFalseOption);
             if (_this.debug) {
-                debugSelect.val('true');
+                debugSelect.value = 'true';
             } else {
-                debugSelect.val('false');
+                debugSelect.value = 'false';
             }
-            debugGroup.append(debugSelect);
-            debugSelect.change(function () {
-                _this.debug = $(this).val() === 'true';
+            debugGroup.appendChild(debugSelect);
+            debugSelect.addEventListener('change', function () {
+                _this.debug = this.value === 'true';
             });
-            g.append(debugGroup);
+            g.appendChild(debugGroup);
 
-            const libGroup = $('<div class="form-group"><label>库文件</label></div>');
-            const addButton = $(`<span style="float: right;"><button type="button" class="btn btn-info"><i class="glyphicon glyphicon-plus"/> 添加</button></span>`);
-            libGroup.append(addButton);
-            addButton.click(function () {
+            // Lib group
+            const libGroup = document.createElement('div');
+            libGroup.className = 'form-group';
+            const libLabel = document.createElement('label');
+            libLabel.textContent = '库文件';
+            libGroup.appendChild(libLabel);
+            const addBtnSpan = document.createElement('span');
+            addBtnSpan.style.float = 'right';
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'btn btn-info';
+            addBtn.innerHTML = '<i class="glyphicon glyphicon-plus"/> 添加';
+            addBtnSpan.appendChild(addBtn);
+            libGroup.appendChild(addBtnSpan);
+            addBtn.addEventListener('click', function () {
                 event.eventEmitter.emit(event.OPEN_KNOWLEDGE_TREE_DIALOG, {
                     project: window._project,
                     forLib: true,
@@ -405,35 +432,56 @@ export default class RuleFlowDesigner extends FlowDesigner {
                             return;
                         }
                         const extCName = action.buildType(extName);
-                        const newRow = $(`<tr>
-                            <td style="font-size: 11px;word-break: break-all">${fullFileName}</td>
-                            <td style="text-align: center">${extCName}</td>
-                        </tr>`);
+                        const newRow = document.createElement('tr');
+                        const nameCell = document.createElement('td');
+                        nameCell.style.fontSize = '11px';
+                        nameCell.style.wordBreak = 'break-all';
+                        nameCell.textContent = fullFileName;
+                        newRow.appendChild(nameCell);
+                        const typeCell = document.createElement('td');
+                        typeCell.style.textAlign = 'center';
+                        typeCell.textContent = extCName;
+                        newRow.appendChild(typeCell);
                         importLibs.push(fullFileName);
-                        const delCol = $('<td style="text-align: center"/>');
-                        newRow.append(delCol);
-                        const delButton = $(`<div class="btn btn-link" style="padding: 0">删除</div>`);
-                        delCol.append(delButton);
-                        delButton.click(function () {
+                        const delCol = document.createElement('td');
+                        delCol.style.textAlign = 'center';
+                        newRow.appendChild(delCol);
+                        const delButton = document.createElement('div');
+                        delButton.className = 'btn btn-link';
+                        delButton.style.padding = '0';
+                        delButton.textContent = '删除';
+                        delCol.appendChild(delButton);
+                        delButton.addEventListener('click', function () {
                             const pos = importLibs.indexOf(fullFileName);
                             importLibs.splice(pos, 1);
                             newRow.remove();
                             _this._refreshLibraries(importLibs, extName);
                         });
-                        tbody.append(newRow);
+                        tbody.appendChild(newRow);
                         _this._refreshLibraries(importLibs, extName);
                     }
                 });
             });
-            const table = $('<table class="table table-bordered" style="table-layout: fixed">');
-            const thead = $(`<thead>
-                <tr>
-                    <td>库文件路径</td><td style="width: 60px">类型</td><td style="width: 50px">删除</td>
-                </tr>
-            </thead>`);
-            table.append(thead);
-            const tbody = $('<tbody>');
-            table.append(tbody);
+            const table = document.createElement('table');
+            table.className = 'table table-bordered';
+            table.style.tableLayout = 'fixed';
+            const thead = document.createElement('thead');
+            const headRow = document.createElement('tr');
+            const headTd1 = document.createElement('td');
+            headTd1.textContent = '库文件路径';
+            headRow.appendChild(headTd1);
+            const headTd2 = document.createElement('td');
+            headTd2.style.width = '60px';
+            headTd2.textContent = '类型';
+            headRow.appendChild(headTd2);
+            const headTd3 = document.createElement('td');
+            headTd3.style.width = '50px';
+            headTd3.textContent = '删除';
+            headRow.appendChild(headTd3);
+            thead.appendChild(headRow);
+            table.appendChild(thead);
+            const tbody = document.createElement('tbody');
+            table.appendChild(tbody);
 
             function initLibraries(libraries) {
                 for (let lib of libraries) {
@@ -447,21 +495,31 @@ export default class RuleFlowDesigner extends FlowDesigner {
                         extName = lib.substring(pos, lib.length);
                     }
                     const extCName = action.buildType(extName);
-                    const newRow = $(`<tr>
-                    <td style="font-size: 11px;word-break: break-all">${lib}</td>
-                    <td style="text-align: center">${extCName}</td>
-                </tr>`);
-                    const delCol = $('<td style="text-align: center"></td>');
-                    newRow.append(delCol);
-                    const delButton = $(`<div class="btn btn-link" style="padding: 0">删除</div>`);
-                    delCol.append(delButton);
-                    delButton.click(function () {
+                    const newRow = document.createElement('tr');
+                    const nameCell = document.createElement('td');
+                    nameCell.style.fontSize = '11px';
+                    nameCell.style.wordBreak = 'break-all';
+                    nameCell.textContent = lib;
+                    newRow.appendChild(nameCell);
+                    const typeCell = document.createElement('td');
+                    typeCell.style.textAlign = 'center';
+                    typeCell.textContent = extCName;
+                    newRow.appendChild(typeCell);
+                    const delCol = document.createElement('td');
+                    delCol.style.textAlign = 'center';
+                    newRow.appendChild(delCol);
+                    const delButton = document.createElement('div');
+                    delButton.className = 'btn btn-link';
+                    delButton.style.padding = '0';
+                    delButton.textContent = '删除';
+                    delCol.appendChild(delButton);
+                    delButton.addEventListener('click', function () {
                         const pos = libraries.indexOf(lib);
                         libraries.splice(pos, 1);
                         newRow.remove();
                         _this._refreshLibraries(libraries, extName);
                     });
-                    tbody.append(newRow);
+                    tbody.appendChild(newRow);
                 }
             }
 
@@ -470,8 +528,8 @@ export default class RuleFlowDesigner extends FlowDesigner {
             initLibraries(_this.importConstantLibraries);
             initLibraries(_this.importActionLibraries);
 
-            libGroup.append(table);
-            g.append(libGroup);
+            libGroup.appendChild(table);
+            g.appendChild(libGroup);
             return g;
         }
     }
@@ -551,20 +609,17 @@ export default class RuleFlowDesigner extends FlowDesigner {
             return;
         }
         var url = window._server + "/common/loadXml";
-        $.ajax({
-            url,
-            data: {files},
-            type: 'POST',
-            error: function (response) {
-                if (response && response.responseText) {
-                    bootbox.alert("<span style='color: red'>加载库文件失败，服务端错误：" + response.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>加载库文件失败,服务端出错</span>");
-                }
-            },
-            success: function (data) {
-                callback(data);
-            }
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({files}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            callback(data);
+        }).catch(function (response) {
+            handleResponseError(response, '加载库文件失败，服务端错误：');
         });
     };
 }

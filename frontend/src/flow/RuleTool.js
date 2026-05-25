@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import BaseTool from './BaseTool.js';
 import RuleNode from './RuleNode.js';
 import * as event from '../components/componentEvent.js';
@@ -28,41 +25,62 @@ export default class RuleTool extends BaseTool {
     getPropertiesProducer() {
         const _this = this;
         return function () {
-            const g = $(`<div></div>`);
-            const fileGroup = $(`<div class="form-group"><label>目标规则文件</label></div>`);
-            const fileInputGroup = $('<div class="input-group"></div>');
-            fileGroup.append(fileInputGroup);
-            const fileText = $(`<input type="text" disabled class="form-control">`);
+            const g = document.createElement('div');
+            const fileGroup = document.createElement('div');
+            fileGroup.className = 'form-group';
+            const fileLabel = document.createElement('label');
+            fileLabel.textContent = '目标规则文件';
+            fileGroup.appendChild(fileLabel);
+            const fileInputGroup = document.createElement('div');
+            fileInputGroup.className = 'input-group';
+            fileGroup.appendChild(fileInputGroup);
+            const fileText = document.createElement('input');
+            fileText.type = 'text';
+            fileText.disabled = true;
+            fileText.className = 'form-control';
             const self = this;
-            fileInputGroup.append(fileText);
-            fileText.change(function () {
-                self.file = $(this).val();
+            fileInputGroup.appendChild(fileText);
+            fileText.addEventListener('change', function () {
+                self.file = this.value;
             });
-            fileText.val(this.file);
+            fileText.value = this.file || '';
 
-            const fileButton = $(`<span class="input-group-btn" title="选择目标文件"><button class="btn btn-default"><i class="glyphicon glyphicon-search"/></span>`);
-            fileInputGroup.append(fileButton);
-            const openFileButton = $(`<span class="input-group-btn" title="打开这个文件">
-                                        <button class="btn btn-default"><i class="glyphicon glyphicon glyphicon-folder-open"/>
-                                      </span>`);
-            fileInputGroup.append(openFileButton);
+            const fileBtnSpan = document.createElement('span');
+            fileBtnSpan.className = 'input-group-btn';
+            fileBtnSpan.title = '选择目标文件';
+            const fileBtn = document.createElement('button');
+            fileBtn.className = 'btn btn-default';
+            fileBtn.innerHTML = '<i class="glyphicon glyphicon-search"/>';
+            fileBtnSpan.appendChild(fileBtn);
+            fileInputGroup.appendChild(fileBtnSpan);
+
+            const openFileBtnSpan = document.createElement('span');
+            openFileBtnSpan.className = 'input-group-btn';
+            openFileBtnSpan.title = '打开这个文件';
+            const openFileBtn = document.createElement('button');
+            openFileBtn.className = 'btn btn-default';
+            openFileBtn.innerHTML = '<i class="glyphicon glyphicon glyphicon-folder-open"/>';
+            openFileBtnSpan.appendChild(openFileBtn);
+            fileInputGroup.appendChild(openFileBtnSpan);
+
             if (!this.file || this.file === '') {
-                openFileButton.addClass("disabled");
+                openFileBtn.classList.add("disabled");
             }
-            fileButton.click(function () {
+            let versionText;
+            fileBtn.addEventListener('click', function () {
                 event.eventEmitter.emit(event.OPEN_KNOWLEDGE_TREE_DIALOG, {
                     project: window._project,
                     callback: function (file, version) {
                         file = 'jcr:' + file;
                         self.file = file;
                         self.version = version;
-                        fileText.val(file);
-                        versionText.val(version);
-                        openFileButton.removeClass("disabled");
+                        fileText.value = file;
+                        versionText.value = version;
+                        openFileBtn.classList.remove("disabled");
                     }
                 });
             });
-            openFileButton.click(function () {
+            openFileBtn.addEventListener('click', function () {
                 if (!self.file || self.file === '') {
                     MsgBox.alert("请先选择文件");
                     return;
@@ -109,13 +127,20 @@ export default class RuleTool extends BaseTool {
                     });
                 }
             });
-            g.append(fileGroup);
-            const versionGroup = $(`<div class="form-group"><label>文件版本</label></div>`);
-            const versionText = $(`<input type="text" disabled class="form-control">`);
-            versionGroup.append(versionText);
-            g.append(versionGroup);
-            versionText.val(this.version);
-            g.append(_this.getCommonProperties(this));
+            g.appendChild(fileGroup);
+            const versionGroup = document.createElement('div');
+            versionGroup.className = 'form-group';
+            const versionLabel = document.createElement('label');
+            versionLabel.textContent = '文件版本';
+            versionGroup.appendChild(versionLabel);
+            versionText = document.createElement('input');
+            versionText.type = 'text';
+            versionText.disabled = true;
+            versionText.className = 'form-control';
+            versionGroup.appendChild(versionText);
+            g.appendChild(versionGroup);
+            versionText.value = this.version || '';
+            g.appendChild(_this.getCommonProperties(this));
             return g;
         }
     }

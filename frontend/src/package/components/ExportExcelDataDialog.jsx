@@ -1,30 +1,19 @@
-/**
- * @author jacky
- * @since 2016/6/24
- */
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
 
 export default class ExportExcelDataDialog extends Component {
     constructor(props) {
         super(props);
-        this.state = {files: ''};
+        this.state = {visible: false, files: ''};
     }
 
     componentDidMount() {
         event.eventEmitter.on(event.OPEN_EXPORT_EXCEL_DIALOG, (files) => {
-            $(ReactDOM.findDOMNode(this)).modal('show');
-            this.setState({files});
-
-            $('.datepicker').datepicker({
-                format: 'yyyy-mm-dd',
-                autoclose: true
-            });
+            this.setState({visible: true, files});
         });
         event.eventEmitter.on(event.HIDE_EXPORT_EXCEL_DIALOG, () => {
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
     }
 
@@ -41,11 +30,11 @@ export default class ExportExcelDataDialog extends Component {
                     <div>
                         <div className="form-group">
                             <label>开始时间:</label>
-                            <input type="text" className="form-control datepicker" name="startTime" autoComplete="off"/>
+                            <input type="date" className="form-control" name="startTime" autoComplete="off"/>
                         </div>
                         <div className="form-group">
                             <label>结束时间:</label>
-                            <input type="text" className="form-control datepicker" name="endTime" autoComplete="off"/>
+                            <input type="date" className="form-control" name="endTime" autoComplete="off"/>
                         </div>
                         <div className="form-group">
                             <label>项目名:</label>
@@ -71,6 +60,6 @@ export default class ExportExcelDataDialog extends Component {
                 }
             }
         ];
-        return (<CommonDialog title="导出Excel" body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} title="导出Excel" body={body} buttons={buttons}/>);
     }
 }

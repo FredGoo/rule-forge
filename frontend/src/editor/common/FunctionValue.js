@@ -1,22 +1,21 @@
-/**
- * @author GJ
- */
 ruleforge.FunctionValue = function (arithmetic, data, rule) {
     this.arithmetic = arithmetic;
-    this.container = $("<span>");
+    this.container = document.createElement("span");
     this.rule = rule;
-    this.leftParn = $("<span style='color:blue'>(</span>");
-    this.rightParn = $("<span style='color:blue'>)</span>");
+    this.leftParn = document.createElement("span");
+    this.leftParn.style.color = "blue";
+    this.leftParn.textContent = "(";
+    this.rightParn = document.createElement("span");
+    this.rightParn.style.color = "blue";
+    this.rightParn.textContent = ")";
     this.label = generateContainer();
-    this.container.append(this.label);
-    this.label.css({
-        "color": "#008080"
-    });
-    this.functionContainer = $("<span></span>");
-    this.container.append(this.functionContainer);
-    RuleForge.setDomContent(this.label, "请选择函数");
+    this.container.appendChild(this.label);
+    this.label.style.color = "#008080";
+    this.functionContainer = document.createElement("span");
+    this.container.appendChild(this.functionContainer);
+    this.label.textContent = "请选择函数";
     if (arithmetic) {
-        this.container.append(arithmetic.getContainer());
+        this.container.appendChild(arithmetic.getContainer());
     }
     if (data) {
         this.setFunction(data);
@@ -29,11 +28,12 @@ ruleforge.FunctionValue = function (arithmetic, data, rule) {
 };
 
 ruleforge.FunctionValue.prototype.getDisplayContainer = function () {
-    var container = $("<span>" + this.functionName + "</span>");
+    var container = document.createElement("span");
+    container.textContent = this.functionName;
     if (this.arithmetic) {
         var dis = this.arithmetic.getDisplayContainer();
         if (dis) {
-            container.append(dis);
+            container.appendChild(dis);
         }
     }
     return container;
@@ -65,7 +65,7 @@ ruleforge.FunctionValue.prototype.initMenu = function (functionLibraries) {
         });
     };
     config = {menuItems: []};
-    $.each(data || [], function (index, item) {
+    data || [].forEach(function(item) {
         config.menuItems.push({
             name: item.name,
             label: item.label,
@@ -78,7 +78,7 @@ ruleforge.FunctionValue.prototype.initMenu = function (functionLibraries) {
     } else {
         self.menu = new RuleForge.menu.Menu(config);
     }
-    this.label.click(function (e) {
+    this.label.addEventListener("click", function (e) {
         self.menu.show(e);
     });
 };
@@ -90,15 +90,15 @@ ruleforge.FunctionValue.prototype.initData = function (data) {
 
 ruleforge.FunctionValue.prototype.setFunction = function (data) {
     window._setDirty();
-    this.functionContainer.empty();
-    RuleForge.setDomContent(this.label, data.label);
-    this.functionContainer.append(this.leftParn);
+    this.functionContainer.innerHTML = "";
+    this.label.textContent = data.label;
+    this.functionContainer.appendChild(this.leftParn);
     this.functionLabel = data.label;
     this.functionName = data.name;
     this.parameter = new ruleforge.FunctionParameter(this.rule);
     this.parameter.initData(data.parameter);
-    this.functionContainer.append(this.parameter.getContainer());
-    this.functionContainer.append(this.rightParn);
+    this.functionContainer.appendChild(this.parameter.getContainer());
+    this.functionContainer.appendChild(this.rightParn);
 };
 ruleforge.FunctionValue.prototype.getFirstParameter = function () {
     return this.firstParameter;

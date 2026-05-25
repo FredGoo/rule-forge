@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/17.
- */
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import Grid from '../../components/grid/component/Grid.jsx';
@@ -22,7 +19,7 @@ import VersionsDialog from './VersionsDialog.jsx'
 
 class PackageEditor extends Component {
     render() {
-        var containerWidth = $('#container').width();
+        var containerWidth = document.getElementById('container').clientWidth;
         const {masterData, masterRowData, dispatch, project, packageConfig} = this.props, _this = this;
         const masterGridHeaders = [
             {id: 'm-id', name: 'id', label: '编码', filterable: true},

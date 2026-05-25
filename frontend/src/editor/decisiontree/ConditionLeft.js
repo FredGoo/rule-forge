@@ -1,21 +1,16 @@
-/**
- * @author GJ
- */
 ruleforge.ConditionLeft=function(parentContainer){
-	this.container=$("<span>");
-	parentContainer.append(this.container);
+	this.container=document.createElement("span");
+	parentContainer.appendChild(this.container);
 	this.arithmetic=new ruleforge.SimpleArithmetic();
-	
+
 	this.label=generateContainer();
-	this.container.append(this.label);
-	this.label.css({
-		"color":"blue"
-	});
-	RuleForge.setDomContent(this.label,"请选择类型");
-	this.valueContainer=$("<span>");
-	this.container.append(this.valueContainer);
+	this.container.appendChild(this.label);
+	this.label.style.color="blue";
+	this.label.textContent = "请选择类型";
+	this.valueContainer=document.createElement("span");
+	this.container.appendChild(this.valueContainer);
 	this.initMenu();
-	
+
 };
 ruleforge.ConditionLeft.prototype.initMenu=function(constantLibraries){
 	var self=this;
@@ -25,24 +20,22 @@ ruleforge.ConditionLeft.prototype.initMenu=function(constantLibraries){
 			onClick:function(){
 				self.type="variable";
 				if(self.parameterValue){
-					self.parameterValue.getContainer().hide();
+					self.parameterValue.getContainer().style.display="none";
 				}
 				if(self.functionValue){
-					self.functionValue.getContainer().hide();
+					self.functionValue.getContainer().style.display="none";
 				}
 				if(self.methodValue){
-					self.methodValue.getContainer().hide();				
+					self.methodValue.getContainer().style.display="none";
 				}
 				if(self.variableValue){
-					self.variableValue.getContainer().show();
+					self.variableValue.getContainer().style.display="";
 				}else{
 					self.variableValue=new ruleforge.VariableValue(self.arithmetic,null,"In");
-					self.valueContainer.append(self.variableValue.getContainer());				
+					self.valueContainer.appendChild(self.variableValue.getContainer());
 				}
-				self.label.css({
-					"color":"white"
-				});
-				RuleForge.setDomContent(self.label,".");
+				self.label.style.color="white";
+				self.label.textContent = ".";
 				window._setDirty();
 			}
 		},{
@@ -50,24 +43,22 @@ ruleforge.ConditionLeft.prototype.initMenu=function(constantLibraries){
 			onClick:function(){
 				self.type="parameter";
 				if(self.variableValue){
-					self.variableValue.getContainer().hide();
+					self.variableValue.getContainer().style.display="none";
 				}
 				if(self.methodValue){
-					self.methodValue.getContainer().hide();				
+					self.methodValue.getContainer().style.display="none";
 				}
 				if(self.functionValue){
-					self.functionValue.getContainer().hide();
+					self.functionValue.getContainer().style.display="none";
 				}
 				if(self.parameterValue){
-					self.parameterValue.getContainer().show();
+					self.parameterValue.getContainer().style.display="";
 				}else{
 					self.parameterValue=new ruleforge.ParameterValue(self.arithmetic,null,"In");
-					self.valueContainer.append(self.parameterValue.getContainer());				
+					self.valueContainer.appendChild(self.parameterValue.getContainer());
 				}
-				self.label.css({
-					"color":"white"
-				});
-				RuleForge.setDomContent(self.label,".");
+				self.label.style.color="white";
+				self.label.textContent = ".";
 				window._setDirty();
 			}
 		},{
@@ -75,24 +66,22 @@ ruleforge.ConditionLeft.prototype.initMenu=function(constantLibraries){
 			onClick:function(){
 				self.type="method";
 				if(self.variableValue){
-					self.variableValue.getContainer().hide();
+					self.variableValue.getContainer().style.display="none";
 				}
 				if(self.parameterValue){
-					self.parameterValue.getContainer().hide();
+					self.parameterValue.getContainer().style.display="none";
 				}
 				if(self.functionValue){
-					self.functionValue.getContainer().hide();
+					self.functionValue.getContainer().style.display="none";
 				}
 				if(self.methodValue){
-					self.methodValue.getContainer().show();				
+					self.methodValue.getContainer().style.display="";
 				}else{
 					self.methodValue=new ruleforge.MethodValue(self.arithmetic,null);
-					self.valueContainer.append(self.methodValue.getContainer());				
+					self.valueContainer.appendChild(self.methodValue.getContainer());
 				}
-				self.label.css({
-					"color":"white"
-				});
-				RuleForge.setDomContent(self.label,".");
+				self.label.style.color="white";
+				self.label.textContent = ".";
 				window._setDirty();
 			}
 		},{
@@ -100,41 +89,37 @@ ruleforge.ConditionLeft.prototype.initMenu=function(constantLibraries){
 			onClick:function(){
 				self.type="commonfunction";
 				if(self.variableValue){
-					self.variableValue.getContainer().hide();
+					self.variableValue.getContainer().style.display="none";
 				}
 				if(self.parameterValue){
-					self.parameterValue.getContainer().hide();
+					self.parameterValue.getContainer().style.display="none";
 				}
 				if(self.methodValue){
-					self.methodValue.getContainer().hide();				
+					self.methodValue.getContainer().style.display="none";
 				}
 				if(self.functionValue){
-					self.functionValue.getContainer().show();
+					self.functionValue.getContainer().style.display="";
 				}else{
 					self.functionValue=new ruleforge.FunctionValue(self.arithmetic,null,"In");
-					self.valueContainer.append(self.functionValue.getContainer());				
+					self.valueContainer.appendChild(self.functionValue.getContainer());
 				}
-				self.label.css({
-					"color":"white"
-				});
-				RuleForge.setDomContent(self.label,".");
+				self.label.style.color="white";
+				self.label.textContent = ".";
 				window._setDirty();
 			}
 		}]
 	});
-	this.label.click(function(e){
+	this.label.addEventListener('click',function(e){
 		self.menu.show(e);
 	});
-	
+
 };
 ruleforge.ConditionLeft.prototype.initData=function(leftData){
 	if(!leftData){
 		return;
 	}
-	this.label.css({
-		"color":"white",
-	});
-	RuleForge.setDomContent(this.label,".");
+	this.label.style.color="white";
+	this.label.textContent = ".";
 	var leftPart=leftData["leftPart"];
 	leftPart.arithmetic=leftData["arithmetic"];
 	this.type=leftData["type"];
@@ -143,53 +128,53 @@ ruleforge.ConditionLeft.prototype.initData=function(leftData){
 	}
 	if(this.type=="parameter"){
 		if(this.variableValue){
-			this.variableValue.getContainer().hide();
+			this.variableValue.getContainer().style.display="none";
 		}
 		if(this.methodValue){
-			this.methodValue.getContainer().hide();
+			this.methodValue.getContainer().style.display="none";
 		}
 		if(this.functionValue){
-			this.functionValue.getContainer().hide();
+			this.functionValue.getContainer().style.display="none";
 		}
 		this.parameterValue=new ruleforge.ParameterValue(this.arithmetic,leftPart,"In");
-		this.valueContainer.append(this.parameterValue.getContainer());						
+		this.valueContainer.appendChild(this.parameterValue.getContainer());
 	}else if(this.type=="variable"){
 		if(this.parameterValue){
-			this.parameterValue.getContainer().hide();
+			this.parameterValue.getContainer().style.display="none";
 		}
 		if(this.methodValue){
-			this.methodValue.getContainer().hide();
+			this.methodValue.getContainer().style.display="none";
 		}
 		if(this.functionValue){
-			this.functionValue.getContainer().hide();
+			this.functionValue.getContainer().style.display="none";
 		}
 		this.variableValue=new ruleforge.VariableValue(this.arithmetic,leftPart,"In");
-		this.valueContainer.append(this.variableValue.getContainer());			
+		this.valueContainer.appendChild(this.variableValue.getContainer());
 	}else if(this.type=="method"){
 		if(this.parameterValue){
-			this.parameterValue.getContainer().hide();
+			this.parameterValue.getContainer().style.display="none";
 		}
 		if(this.variableValue){
-			this.variableValue.getContainer().hide();
+			this.variableValue.getContainer().style.display="none";
 		}
 		if(this.functionValue){
-			this.functionValue.getContainer().hide();
+			this.functionValue.getContainer().style.display="none";
 		}
 		this.methodValue=new ruleforge.MethodValue(this.arithmetic,leftPart);
-		this.valueContainer.append(this.methodValue.getContainer());			
-		
+		this.valueContainer.appendChild(this.methodValue.getContainer());
+
 	}else if(this.type=="commonfunction"){
 		if(this.parameterValue){
-			this.parameterValue.getContainer().hide();
+			this.parameterValue.getContainer().style.display="none";
 		}
 		if(this.variableValue){
-			this.variableValue.getContainer().hide();
+			this.variableValue.getContainer().style.display="none";
 		}
 		if(this.methodValue){
-			this.methodValue.getContainer().hide();
+			this.methodValue.getContainer().style.display="none";
 		}
 		this.functionValue=new ruleforge.FunctionValue(this.arithmetic,leftPart);
-		this.valueContainer.append(this.functionValue.getContainer());
+		this.valueContainer.appendChild(this.functionValue.getContainer());
 	}
 };
 ruleforge.ConditionLeft.prototype.toXml=function(){
@@ -198,9 +183,9 @@ ruleforge.ConditionLeft.prototype.toXml=function(){
 	if(this.type=="variable"){
 		xml+=this.variableValue.toXml();
 	}else if(this.type=="parameter"){
-		xml+=this.parameterValue.toXml();		
+		xml+=this.parameterValue.toXml();
 	}else if(this.type=="method"){
-		xml+=this.methodValue.toXml();				
+		xml+=this.methodValue.toXml();
 	}else if(this.type=="commonfunction"){
 		xml+=this.functionValue.toXml();
 	}

@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/15.
- */
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import Splitter from '../../components/splitter/component/Splitter.jsx';

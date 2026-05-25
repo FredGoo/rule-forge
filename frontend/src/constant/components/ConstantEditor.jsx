@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/11.
- */
 import React from 'react';
 import {connect} from 'react-redux';
 import Grid from '../../components/grid/component/Grid.jsx';

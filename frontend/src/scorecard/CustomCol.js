@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/18.
- */
 import Col from './Col.js';
 
 export default class CustomCol extends Col {
@@ -15,20 +12,25 @@ export default class CustomCol extends Col {
 
     init() {
         const _this = this;
-        this.td = $(`<td style="width:${this.width}px;background: #dbfd60;border:1px solid #607D8B;padding-right: 0">${this.name}</td>`);
-        const del = $("<span style='color: #999;margin-left: 4px;cursor: pointer'><i class='glyphicon glyphicon-remove'/></span>");
-        this.td.append(del);
-        del.click(function () {
+        const td = document.createElement('td');
+        td.style.cssText = 'width:' + this.width + 'px;background: #dbfd60;border:1px solid #607D8B;padding-right: 0';
+        td.textContent = this.name;
+        this.td = td;
+        const del = document.createElement('span');
+        del.style.cssText = 'color: #999;margin-left: 4px;cursor: pointer';
+        del.innerHTML = "<i class='glyphicon glyphicon-remove'/>";
+        this.td.appendChild(del);
+        del.addEventListener('click', function () {
             bootbox.confirm("真的要删除当前列？", function (result) {
                 if (!result) return;
                 _this.remove();
             });
         });
-        this.td.append(this.buildColResizeTrigger());
+        this.td.appendChild(this.buildColResizeTrigger());
         for (let row of this.scoreCardTable.attributeRows) {
             row.addCustomCol(this);
         }
-        this.scoreCardTable.headerRow.append(this.td);
+        this.scoreCardTable.headerRow.appendChild(this.td);
         this.bindColResize();
     }
 

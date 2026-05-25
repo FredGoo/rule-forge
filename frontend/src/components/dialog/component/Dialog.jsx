@@ -1,33 +1,39 @@
-/**
- * Created by Jacky.gao on 2016/5/27.
- */
 import React, {Component} from 'react';
 import * as event from '../../../frame/event.js';
-import ReactDOM from 'react-dom';
 
 export default class Dialog extends Component {
     constructor(props) {
         super(props);
-        this.state = {title: this.props.title || '', buttons: this.props.buttons || [], body: this.props.body || []};
+        this.state = {
+            title: this.props.title || '',
+            buttons: this.props.buttons || [],
+            body: this.props.body || [],
+            visible: this.props.visible || false,
+            init: null,
+            destroy: null
+        };
     }
 
     componentDidMount() {
         event.eventEmitter.on(event.OPEN_DIALOG, (data) => {
-            const title = data.title || this.state.title;
-            const body = data.body || this.state.body;
-            const buttons = data.buttons || this.state.buttons;
-            const init = data.init, destroy = data.destroy;
-            this.setState({title, body, buttons, init, destroy});
-            $(ReactDOM.findDOMNode(this)).modal('show');
+            this.setState({
+                title: data.title || this.state.title,
+                body: data.body || this.state.body,
+                buttons: data.buttons || this.state.buttons,
+                init: data.init,
+                destroy: data.destroy,
+                visible: true
+            });
         });
         event.eventEmitter.on(event.CLOSE_DIALOG, () => {
-            $(ReactDOM.findDOMNode(this)).modal('hide');
+            this.setState({visible: false});
         });
         event.eventEmitter.on(event.DIALOG_CONTNET_CHANGE, (data) => {
-            const title = data.title || this.state.title;
-            const body = data.body || this.state.body;
-            const buttons = data.buttons || this.state.buttons;
-            this.setState({title, body, buttons});
+            this.setState({
+                title: data.title || this.state.title,
+                body: data.body || this.state.body,
+                buttons: data.buttons || this.state.buttons
+            });
         });
     }
 
@@ -36,48 +42,40 @@ export default class Dialog extends Component {
         event.eventEmitter.removeAllListeners(event.CLOSE_DIALOG);
     }
 
-    componentDidUpdate() {
-        const init = this.state.init;
-        if (init) {
-            init(this.props.dispatch);
+    componentDidUpdate(prevProps, prevState) {
+        if (this.props.visible !== undefined && this.props.visible !== prevProps.visible) {
+            this.setState({visible: this.props.visible});
         }
-    }
-
-    componentWillUpdate() {
-        const destroy = this.state.destroy;
-        if (destroy) {
-            destroy();
+        if (!prevState.visible && this.state.visible && this.state.init) {
+            this.state.init(this.props.dispatch);
         }
     }
 
     render() {
-        const buttons = [];
-        this.state.buttons.forEach((btn, index) => {
-            buttons.push(<button type="button" key={index} className={btn.className} onClick={(e) => {
-                btn.click(this.props.dispatch);
-            }}><i className={btn.icon}/> {btn.name}</button>)
-        });
+        const {visible, title, body, buttons} = this.state;
+        const buttonElements = (buttons || []).map((btn, index) => (
+            <button type="button" key={index} className={btn.className} onClick={() => btn.click(this.props.dispatch)}>
+                <i className={btn.icon}/> {btn.name}
+            </button>
+        ));
         return (
-            <div className="modal fade" tabIndex="-1" role="dialog" aria-hidden="true">
-                <div className="modal-dialog">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <button type="button" className="close" data-dismiss="modal" aria-hidden="true">
-                                &times;
-                            </button>
-                            <h4 className="modal-title" id="myModalLabel">
-                                {this.state.title}
-                            </h4>
-                        </div>
-                        <div className="modal-body">
-                            {this.state.body}
-                        </div>
-                        <div className="modal-footer">
-                            {buttons}
+            <div>
+                {visible && <div className="modal-backdrop fade in"></div>}
+                <div className={`modal fade ${visible ? 'in' : ''}`}
+                     style={{display: visible ? 'block' : 'none'}}
+                     tabIndex="-1" role="dialog" aria-hidden={!visible}>
+                    <div className="modal-dialog">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <button type="button" className="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                                <h4 className="modal-title">{title}</h4>
+                            </div>
+                            <div className="modal-body">{body}</div>
+                            <div className="modal-footer">{buttonElements}</div>
                         </div>
                     </div>
                 </div>
             </div>
         );
     }
-};
+}

@@ -1,8 +1,6 @@
-/**
- * Created by jacky on 2016/6/10.
- */
 import { version } from 'react';
 import Styles from '../Styles.js';
+import {handleResponseError} from '../Utils.js';
 
 let __ui_id = 1;
 
@@ -13,161 +11,152 @@ export function uniqueID() {
 // todo unused function
 export function refactorContent(file, callback) {
     var url = window._server + "/common/refactorContent";
-    $.ajax({
-        url: url,
-        type: "POST",
-        data: file,
-        success: function () {
-            callback.call(this)
-        }, error: function (t) {
-            if (t.status === 401) {
-                bootbox.alert("权限不足，不能进行此操作.");
-            } else {
-                if (t && t.responseText) {
-                    bootbox.alert("<span style='color: red'>服务端错误：" + t.responseText + "</span>");
-                } else {
-                    bootbox.alert("<span style='color: red'>服务端出错</span>");
-                }
-            }
-        }
-    })
+    fetch(url, {
+        method: "POST",
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams(file).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function () {
+        callback.call(this)
+    }).catch(function (response) {
+        handleResponseError(response, '服务端错误：');
+    });
 }
 
 export function loadFileVersions(file, callback) {
     var url = window._server + '/frame/fileVersions';
-    $.ajax({
-        url,
-        data: {
-            path: file
-        },
-        type: 'POST',
-        success: function (data) {
-            if (data && data.files && data.files.length) {
-                buildData(data.files);
-                callback(data.files);
-            } else {
-                alert("未获取到文件[" + file + "]的版本信息.");
-            }
-        },
-        error: function () {
-            alert("加载文件[" + file + "]的版本信息失败.");
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({path: file}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        if (data && data.files && data.files.length) {
+            buildData(data.files);
+            callback(data.files);
+        } else {
+            alert("未获取到文件[" + file + "]的版本信息.");
         }
+    }).catch(function () {
+        alert("加载文件[" + file + "]的版本信息失败.");
     });
 }
 
 export function loadResourceTreeData(data, callback) {
     var url = window._server + '/common/loadResourceTreeData';
-    $.ajax({
-        url,
-        data,
-        type: 'POST',
-        success: function (data) {
-            buildData(data);
-            callback(data);
-        },
-        error: function () {
-            alert('加载资源失败.');
-        }
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams(data).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        buildData(data);
+        callback(data);
+    }).catch(function () {
+        alert('加载资源失败.');
     });
 }
 
 // 获取测试规则集
 export function loadTestRuleSets(file, version, callback) {
     var url = window._server + '/common/loadXml';
-    $.ajax({
-        url,
-        data: {
-            files: `${file}:${version}`
-        },
-        type: 'POST',
-        success: function (data) {
-            var ruleset = data[0] || {};
-            var rules = ruleset["rules"] || [];
-            console.log('获取规则集', rules)
-            callback(rules)
-        },
-        error: function () {
-            bootbox.alert('加载资源失败.');
-            callback([])
-        }
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({files: `${file}:${version}`}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        var ruleset = data[0] || {};
+        var rules = ruleset["rules"] || [];
+        console.log('获取规则集', rules)
+        callback(rules)
+    }).catch(function () {
+        bootbox.alert('加载资源失败.');
+        callback([])
     });
 }
 
 // 选择版本和规则测试集后获取数据源
 export function loadVariableCategories(params, callback) {
     var url = window._server + '/test/variableCategories/load';
-    $.ajax({
-        url,
-        data: JSON.stringify(params),
-        contentType: 'application/json',
-        type: 'POST',
-        success: function (data) {
-            callback(data)
-        },
-        error: function () {
-            bootbox.alert('加载资源失败.');
-            callback([])
-        }
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(params)
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        callback(data)
+    }).catch(function () {
+        bootbox.alert('加载资源失败.');
+        callback([])
     });
 }
 
 // 根据订单号获取数据源
 export function searchForAppId(appId, projectId, callback) {
     var url = window._server + '/test/data/appId';
-    $.ajax({
-        url,
-        data: {
-            appId,
-            projectId
-        },
-        type: 'POST',
-        success: function (res) {
-            if(res.status) {
-                callback(res.data)
-            } else {
-                bootbox.alert(res.msg || '加载资源失败.');
-                callback([]);
-            }
-        },
-        error: function () {
-            bootbox.alert('加载资源失败.');
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({appId, projectId}).toString()
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (res) {
+        if(res.status) {
+            callback(res.data)
+        } else {
+            bootbox.alert(res.msg || '加载资源失败.');
             callback([]);
         }
+    }).catch(function () {
+        bootbox.alert('加载资源失败.');
+        callback([]);
     });
 }
 
 // 开始测试
 export function beginTest(postData, type, callback) {
     var url = window._server + '/test/fast';
-    $.ajax({
-        url,
-        data: JSON.stringify(postData),
-        contentType: 'application/json',
-        type: 'POST',
-        success: function (res) {
-            if (res.status) {
-                callback(res.data, true);
-            } else {
-                if(type === 'json') {
-                    bootbox.alert('JSON格式错误，请检查输入内容.');
-                } else {
-                    bootbox.alert(res.msg || '测试失败');
-                }
-                callback([], false);
-            }
-        },
-        error: function () {
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(postData)
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (res) {
+        if (res.status) {
+            callback(res.data, true);
+        } else {
             if(type === 'json') {
                 bootbox.alert('JSON格式错误，请检查输入内容.');
             } else {
-                bootbox.alert('接口调用失败.');
+                bootbox.alert(res.msg || '测试失败');
             }
             callback([], false);
         }
+    }).catch(function () {
+        if(type === 'json') {
+            bootbox.alert('JSON格式错误，请检查输入内容.');
+        } else {
+            bootbox.alert('接口调用失败.');
+        }
+        callback([], false);
     });
 }
 
-function buildData(data) {
+export function buildData(data) {
     switch (data.type) {
         case "root":
             data._icon = Styles.frameStyle.getRootIcon();

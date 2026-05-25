@@ -1,13 +1,11 @@
-/**
- * @author GJ
- */
 import {MsgBox} from 'flowdesigner';
+import Sortable from 'sortablejs';
 
 ruleforge.LoopRule=function(parent,container,data){
 	this.uuid=Math.uuid();
 	this.namedMap=new Map();
 	this.namedReferenceValues=[];
-	container.prop('id',this.uuid);
+	container.id=this.uuid;
 	this.parent=parent;
 	this.container=container;
 	this.data=data;
@@ -20,8 +18,8 @@ ruleforge.LoopRule=function(parent,container,data){
 	this.initData();
 };
 ruleforge.LoopRule.prototype.init=function(){
-	this.ruleContainer=$("<div>");
-	this.container.append(this.ruleContainer);
+	this.ruleContainer=document.createElement("div");
+	this.container.appendChild(this.ruleContainer);
 	this.initRemark();
 	this.initHeader();
     this.initLoopTarget();
@@ -36,7 +34,7 @@ ruleforge.LoopRule.prototype.initData=function(){
 		return;
 	}
 	this.name=this.data["name"];
-	this.nameLabel.prop("innerText",this.name);
+	this.nameLabel.innerText=this.name;
 	var salience=this.data["salience"];
 	if(salience){
 		this.addProperty(new ruleforge.RuleProperty(this,"salience",salience,1));
@@ -106,7 +104,7 @@ ruleforge.LoopRule.prototype.initData=function(){
 		if(criterion){
 			this.initCriterion(criterion);
 		}else{
-			this.initCriterion();			
+			this.initCriterion();
 		}
 	}else{
 		this.initCriterion();
@@ -148,7 +146,7 @@ ruleforge.LoopRule.prototype.initTopJoin=function(){
 	this.join=new ruleforge.Join(context);
 	this.join.init(null);
 	this.join.initTopJoin(this.conditionContainer);
-	this.join.setType("and");	
+	this.join.setType("and");
 };
 ruleforge.LoopRule.prototype.initCriterion=function(criterion){
 	var context=new ruleforge.Context(this.conditionContainer,this);
@@ -157,57 +155,62 @@ ruleforge.LoopRule.prototype.initCriterion=function(criterion){
 	this.join.initTopJoin(this.conditionContainer);
 	var junctionType="and";
 	if(criterion){
-		junctionType=criterion["junctionType"];		
+		junctionType=criterion["junctionType"];
 	}
 	this.join.setType(junctionType);
-	if(criterion){		
+	if(criterion){
 		this.join.initData(criterion);
 	}
 };
 ruleforge.LoopRule.prototype.addProperty=function(property){
-	this.propertyContainer.append(property.getContainer());
+	this.propertyContainer.appendChild(property.getContainer());
 	this.properties.push(property);
 	window._setDirty();
 };
 
 ruleforge.LoopRule.prototype.initRemark=function(){
-	var remarkContainer=$("<div></div>");
+	var remarkContainer=document.createElement("div");
 	this.remark=new Remark(remarkContainer);
-	this.ruleContainer.append(remarkContainer);
+	this.ruleContainer.appendChild(remarkContainer);
 };
 
 ruleforge.LoopRule.prototype.initHeader=function(){
-	this.nameContainer=$("<div></div>");
-	this.ruleContainer.append(this.nameContainer);
-	this.label=$("<span style='line-height:30px;'><Strong>循环规则 <Strong></span>");
-	this.nameContainer.append(this.label);
-	this.nameEditor=$("<input type='text' class='form-control rule-text-editor'>").hide();
+	this.nameContainer=document.createElement("div");
+	this.ruleContainer.appendChild(this.nameContainer);
+	this.label=document.createElement("span");
+	this.label.style.lineHeight="30px";
+	this.label.innerHTML="<Strong>循环规则 <Strong>";
+	this.nameContainer.appendChild(this.label);
+	this.nameEditor=document.createElement("input");
+	this.nameEditor.type="text";
+	this.nameEditor.className="form-control rule-text-editor";
+	this.nameEditor.style.display="none";
 	this.name="rule";
-	this.nameLabel=$("<span>"+this.name+"</span>");
-	this.label.append(this.nameEditor);
-	this.label.append(this.nameLabel);
+	this.nameLabel=document.createElement("span");
+	this.nameLabel.textContent=this.name;
+	this.label.appendChild(this.nameEditor);
+	this.label.appendChild(this.nameLabel);
 	var self=this;
-	this.nameLabel.click(function(){
-		self.nameLabel.hide();
-		self.nameEditor.show();
-		self.nameEditor.prop("value",self.name);
+	this.nameLabel.addEventListener('click',function(){
+		self.nameLabel.style.display='none';
+		self.nameEditor.style.display='';
+		self.nameEditor.value=self.name;
 		self.nameEditor.focus();
 	});
 
-	this.nameEditor.blur(function(){
-		self.name=self.nameEditor.prop("value");
-		self.nameEditor.hide();
-		self.nameLabel.show();
-		RuleForge.setDomContent(self.nameLabel,self.name);
+	this.nameEditor.addEventListener('blur',function(){
+		self.name=self.nameEditor.value;
+		self.nameEditor.style.display='none';
+		self.nameLabel.style.display='';
+		self.nameLabel.textContent = self.name;
 		window._setDirty();
 	});
-	this.nameEditor.hide();
-	var del=$(`<i class="glyphicon glyphicon-remove rule-delete"></i>`);
-	del.css({
-		"vertical-align":"middle",
-		"cursor":"pointer"
-	});
-	del.click(function(){
+	this.nameEditor.style.display="none";
+	var del=document.createElement("i");
+	del.className="glyphicon glyphicon-remove rule-delete";
+	del.style.verticalAlign="middle";
+	del.style.cursor="pointer";
+	del.addEventListener('click',function(){
 		const msg="真的要删除规则"+self.name+"？";
 		MsgBox.confirm(msg,function(){
 			var pos=self.parent.rules.indexOf(self);
@@ -217,14 +220,14 @@ ruleforge.LoopRule.prototype.initHeader=function(){
 		});
 	});
 
-	this.nameContainer.append(del);
-	
-	this.propertyContainer=$("<span>");
-	this.propertyContainer.css({
-		"padding":"10px"
-	});
-	
-	var addProp=$("<span class='rule-add-property'>添加属性</span>");
+	this.nameContainer.appendChild(del);
+
+	this.propertyContainer=document.createElement("span");
+	this.propertyContainer.style.padding="10px";
+
+	var addProp=document.createElement("span");
+	addProp.className="rule-add-property";
+	addProp.textContent="添加属性";
 	var onClick=function(menuItem){
 		var prop=new ruleforge.RuleProperty(self,menuItem.name,menuItem.defaultValue,menuItem.editorType);
 		self.addProperty(prop);
@@ -280,62 +283,70 @@ ruleforge.LoopRule.prototype.initHeader=function(){
 			onClick:onClick
 		}]
 	});
-	addProp.click(function(e){
+	addProp.addEventListener('click',function(e){
 		self.menu.show(e);
 	});
-	this.ruleContainer.append(addProp);
-	this.ruleContainer.append(this.propertyContainer);
+	this.ruleContainer.appendChild(addProp);
+	this.ruleContainer.appendChild(this.propertyContainer);
 };
 
 ruleforge.LoopRule.prototype.initLoopStart=function(){
-	this.loopStartLabel=$("<span><strong>开始前动作</strong></span>");
-	this.ruleContainer.append(this.loopStartLabel);
-	this.loopStartActionContainer=$("<div style='padding: 5px'>");
+	this.loopStartLabel=document.createElement("span");
+	this.loopStartLabel.innerHTML="<strong>开始前动作</strong>";
+	this.ruleContainer.appendChild(this.loopStartLabel);
+	this.loopStartActionContainer=document.createElement("div");
+	this.loopStartActionContainer.style.padding="5px";
 	const _this=this;
-	this.loopStartActionContainer.sortable({
+	Sortable.create(this.loopStartActionContainer, {
 		delay: 200,
-		update: function (event, ui) {
-			var children=_this.loopStartActionContainer.children("div");
-			children.each(function(index,div){
-				let item=$(div),id=item.prop("id"),actions=_this.loopStartActions,targetAction=null;
-				for(let action of actions){
-					if(action.uuid===id){
-						targetAction=action;
-						break;
+		onEnd: function (evt) {
+			if (evt.oldIndex !== evt.newIndex) {
+				var children=_this.loopStartActionContainer.querySelectorAll("div");
+				children.forEach(function(div, index){
+					var id=div.id,actions=_this.loopStartActions,targetAction=null;
+					for(let action of actions){
+						if(action.uuid===id){
+							targetAction=action;
+							break;
+						}
 					}
-				}
-				if(targetAction){
-					const pos=actions.indexOf(targetAction);
-					actions.splice(pos,1);
-					actions.splice(index,0,targetAction);
-				}
-			});
-			window._setDirty();
+					if(targetAction){
+						const pos=actions.indexOf(targetAction);
+						actions.splice(pos,1);
+						actions.splice(index,0,targetAction);
+					}
+				});
+				window._setDirty();
+			}
 		}
 	});
-	this.ruleContainer.append(this.loopStartActionContainer);
-	this.addLoopStartActionButton=$("<span class='rule-add-action'>添加动作</span>");
+	this.ruleContainer.appendChild(this.loopStartActionContainer);
+	this.addLoopStartActionButton=document.createElement("span");
+	this.addLoopStartActionButton.className="rule-add-action";
+	this.addLoopStartActionButton.textContent="添加动作";
 	var self=this;
-	this.addLoopStartActionButton.click(function(){
+	this.addLoopStartActionButton.addEventListener('click',function(){
 		self.addLoopStartAction();
 	});
-	this.loopStartLabel.append(this.addLoopStartActionButton);
+	this.loopStartLabel.appendChild(this.addLoopStartActionButton);
 };
 
 ruleforge.LoopRule.prototype.addLoopStartAction=function(data){
 	var self=this;
-	var actionDiv=$("<div style='padding: 5px'>");
-	var del=$(`<i class="glyphicon glyphicon-remove rule-delete-action"></i>`);
-	actionDiv.append(del);
+	var actionDiv=document.createElement("div");
+	actionDiv.style.padding="5px";
+	var del=document.createElement("i");
+	del.className="glyphicon glyphicon-remove rule-delete-action";
+	actionDiv.appendChild(del);
 	var action=new ruleforge.ActionType(actionDiv);
-	del.click(function(){
+	del.addEventListener('click',function(){
 		var pos=self.loopStartActions.indexOf(action);
 		self.loopStartActions.splice(pos, 1);
 		actionDiv.remove();
 		window._setDirty();
 	});
 	this.loopStartActions.push(action);
-	this.loopStartActionContainer.append(actionDiv);
+	this.loopStartActionContainer.appendChild(actionDiv);
 	if(data){
 		action.initData(data);
 	}
@@ -343,104 +354,128 @@ ruleforge.LoopRule.prototype.addLoopStartAction=function(data){
 };
 
 ruleforge.LoopRule.prototype.initIf=function(){
-    this.ifLabel=$("<div style='margin-left: 5px;color:#337ab7'><strong>如果</strong></div>");
-    this.ruleContainer.append(this.ifLabel);
-    this.conditionContainer=$("<div style='margin-left: 5px'>");
-    this.conditionContainer.css({
-        height:"40px",
-        position:"relative"
-    });
-    this.ruleContainer.append(this.conditionContainer);
+    this.ifLabel=document.createElement("div");
+    this.ifLabel.style.marginLeft="5px";
+    this.ifLabel.style.color="#337ab7";
+    this.ifLabel.innerHTML="<strong>如果</strong>";
+    this.ruleContainer.appendChild(this.ifLabel);
+    this.conditionContainer=document.createElement("div");
+    this.conditionContainer.style.marginLeft="5px";
+    this.conditionContainer.style.height="40px";
+    this.conditionContainer.style.position="relative";
+    this.ruleContainer.appendChild(this.conditionContainer);
 };
 ruleforge.LoopRule.prototype.initLoopTarget=function(){
-    this.ruleContainer.append("<div><strong>循环对象</strong></div>");
-    this.loopTargetContainer=$("<div style='padding: 5px'>");
-    this.ruleContainer.append(this.loopTargetContainer);
+    var loopTargetLabel=document.createElement("div");
+    loopTargetLabel.innerHTML="<strong>循环对象</strong>";
+    this.ruleContainer.appendChild(loopTargetLabel);
+    this.loopTargetContainer=document.createElement("div");
+    this.loopTargetContainer.style.padding="5px";
+    this.ruleContainer.appendChild(this.loopTargetContainer);
     this.loopTargetInputType = new ruleforge.InputType();
-    this.loopTargetContainer.append(this.loopTargetInputType.getContainer());
+    this.loopTargetContainer.appendChild(this.loopTargetInputType.getContainer());
 };
 
 ruleforge.LoopRule.prototype.initThen=function(){
-	this.thenLabel=$("<span style='margin-left: 5px;color:#337ab7'><strong>那么</strong></span>");
-	this.ruleContainer.append(this.thenLabel);
-	this.actionContainer=$("<div style='padding: 5px'>");
-	this.ruleContainer.append(this.actionContainer);
+	this.thenLabel=document.createElement("span");
+	this.thenLabel.style.marginLeft="5px";
+	this.thenLabel.style.color="#337ab7";
+	this.thenLabel.innerHTML="<strong>那么</strong>";
+	this.ruleContainer.appendChild(this.thenLabel);
+	this.actionContainer=document.createElement("div");
+	this.actionContainer.style.padding="5px";
+	this.ruleContainer.appendChild(this.actionContainer);
 
 	const _this=this;
-	this.actionContainer.sortable({
+	Sortable.create(this.actionContainer, {
 		delay: 200,
-		update: function (event, ui) {
-			var children=_this.actionContainer.children("div");
-			children.each(function(index,div){
-				let item=$(div),id=item.prop("id"),actions=_this.actions,targetAction=null;
-				for(let action of actions){
-					if(action.uuid===id){
-						targetAction=action;
-						break;
+		onEnd: function (evt) {
+			if (evt.oldIndex !== evt.newIndex) {
+				var children=_this.actionContainer.querySelectorAll("div");
+				children.forEach(function(div, index){
+					var id=div.id,actions=_this.actions,targetAction=null;
+					for(let action of actions){
+						if(action.uuid===id){
+							targetAction=action;
+							break;
+						}
 					}
-				}
-				if(targetAction){
-					const pos=actions.indexOf(targetAction);
-					actions.splice(pos,1);
-					actions.splice(index,0,targetAction);
-				}
-			});
-			window._setDirty();
+					if(targetAction){
+						const pos=actions.indexOf(targetAction);
+						actions.splice(pos,1);
+						actions.splice(index,0,targetAction);
+					}
+				});
+				window._setDirty();
+			}
 		}
 	});
 
-	this.addActionButton=$("<span class='rule-add-action'>添加动作</span>");
+	this.addActionButton=document.createElement("span");
+	this.addActionButton.className="rule-add-action";
+	this.addActionButton.textContent="添加动作";
 	var self=this;
-	this.addActionButton.click(function(){
+	this.addActionButton.addEventListener('click',function(){
 		self.addAction();
 	});
-	this.thenLabel.append(this.addActionButton);
+	this.thenLabel.appendChild(this.addActionButton);
 };
 ruleforge.LoopRule.prototype.initElse=function(){
-	this.elseContainer=$("<div style='margin-top: 5px;'>");
-	this.ruleContainer.append(this.elseContainer);
-	this.elseLabel=$("<span style='margin-left: 5px;color:#337ab7'><strong>否则</strong></span>");
-	this.elseContainer.append(this.elseLabel);
-	this.elseActionContainer=$("<div style='padding: 5px'>");
-	this.elseContainer.append(this.elseActionContainer);
+	this.elseContainer=document.createElement("div");
+	this.elseContainer.style.marginTop="5px";
+	this.ruleContainer.appendChild(this.elseContainer);
+	this.elseLabel=document.createElement("span");
+	this.elseLabel.style.marginLeft="5px";
+	this.elseLabel.style.color="#337ab7";
+	this.elseLabel.innerHTML="<strong>否则</strong>";
+	this.elseContainer.appendChild(this.elseLabel);
+	this.elseActionContainer=document.createElement("div");
+	this.elseActionContainer.style.padding="5px";
+	this.elseContainer.appendChild(this.elseActionContainer);
 
 	const _this=this;
-	this.elseActionContainer.sortable({
+	Sortable.create(this.elseActionContainer, {
 		delay: 200,
-		update: function (event, ui) {
-			var children=_this.elseActionContainer.children("div");
-			children.each(function(index,div){
-				let item=$(div),id=item.prop("id"),actions=_this.elseActions,targetAction=null;
-				for(let action of actions){
-					if(action.uuid===id){
-						targetAction=action;
-						break;
+		onEnd: function (evt) {
+			if (evt.oldIndex !== evt.newIndex) {
+				var children=_this.elseActionContainer.querySelectorAll("div");
+				children.forEach(function(div, index){
+					var id=div.id,actions=_this.elseActions,targetAction=null;
+					for(let action of actions){
+						if(action.uuid===id){
+							targetAction=action;
+							break;
+						}
 					}
-				}
-				if(targetAction){
-					const pos=actions.indexOf(targetAction);
-					actions.splice(pos,1);
-					actions.splice(index,0,targetAction);
-				}
-			});
-			window._setDirty();
+					if(targetAction){
+						const pos=actions.indexOf(targetAction);
+						actions.splice(pos,1);
+						actions.splice(index,0,targetAction);
+					}
+				});
+				window._setDirty();
+			}
 		}
 	});
 
-	this.addElseActionButton=$("<span class='rule-add-action'>添加动作</span>");
+	this.addElseActionButton=document.createElement("span");
+	this.addElseActionButton.className="rule-add-action";
+	this.addElseActionButton.textContent="添加动作";
 	var self=this;
-	this.addElseActionButton.click(function(){
+	this.addElseActionButton.addEventListener('click',function(){
 		self.addAction(null,true);
 	});
-	this.elseLabel.append(this.addElseActionButton);
+	this.elseLabel.appendChild(this.addElseActionButton);
 };
 ruleforge.LoopRule.prototype.addAction=function(data,iselse){
 	var self=this;
-	var actionDiv=$("<div style='padding: 5px'>");
-	var del=$(`<i class="glyphicon glyphicon-remove rule-delete-action"></i>`);
-	actionDiv.append(del);
+	var actionDiv=document.createElement("div");
+	actionDiv.style.padding="5px";
+	var del=document.createElement("i");
+	del.className="glyphicon glyphicon-remove rule-delete-action";
+	actionDiv.appendChild(del);
 	var action=new ruleforge.ActionType(actionDiv,this);
-	del.click(function(){
+	del.addEventListener('click',function(){
 		if(iselse){
 			var pos=self.elseActions.indexOf(action);
 			self.elseActions.splice(pos, 1);
@@ -453,10 +488,10 @@ ruleforge.LoopRule.prototype.addAction=function(data,iselse){
 	});
 	if(iselse){
 		this.elseActions.push(action);
-		this.elseActionContainer.append(actionDiv);
+		this.elseActionContainer.appendChild(actionDiv);
 	}else{
 		this.actions.push(action);
-		this.actionContainer.append(actionDiv);
+		this.actionContainer.appendChild(actionDiv);
 	}
 	if(data){
 		action.initData(data);
@@ -466,56 +501,64 @@ ruleforge.LoopRule.prototype.addAction=function(data,iselse){
 
 
 ruleforge.LoopRule.prototype.initLoopEnd=function(){
-	this.loopEndLabel=$("<span><strong>结束后动作</strong></span>");
-	this.ruleContainer.append(this.loopEndLabel);
-	this.loopEndActionContainer=$("<div style='padding: 5px;'>");
-	this.ruleContainer.append(this.loopEndActionContainer);
+	this.loopEndLabel=document.createElement("span");
+	this.loopEndLabel.innerHTML="<strong>结束后动作</strong>";
+	this.ruleContainer.appendChild(this.loopEndLabel);
+	this.loopEndActionContainer=document.createElement("div");
+	this.loopEndActionContainer.style.padding="5px";
+	this.ruleContainer.appendChild(this.loopEndActionContainer);
 
 	const _this=this;
-	this.loopEndActionContainer.sortable({
+	Sortable.create(this.loopEndActionContainer, {
 		delay: 200,
-		update: function (event, ui) {
-			var children=_this.loopEndActionContainer.children("div");
-			children.each(function(index,div){
-				let item=$(div),id=item.prop("id"),actions=_this.loopEndActions,targetAction=null;
-				for(let action of actions){
-					if(action.uuid===id){
-						targetAction=action;
-						break;
+		onEnd: function (evt) {
+			if (evt.oldIndex !== evt.newIndex) {
+				var children=_this.loopEndActionContainer.querySelectorAll("div");
+				children.forEach(function(div, index){
+					var id=div.id,actions=_this.loopEndActions,targetAction=null;
+					for(let action of actions){
+						if(action.uuid===id){
+							targetAction=action;
+							break;
+						}
 					}
-				}
-				if(targetAction){
-					const pos=actions.indexOf(targetAction);
-					actions.splice(pos,1);
-					actions.splice(index,0,targetAction);
-				}
-			});
-			window._setDirty();
+					if(targetAction){
+						const pos=actions.indexOf(targetAction);
+						actions.splice(pos,1);
+						actions.splice(index,0,targetAction);
+					}
+				});
+				window._setDirty();
+			}
 		}
 	});
 
-	this.addLoopEndActionButton=$("<span class='rule-add-action'>添加动作</span>");
+	this.addLoopEndActionButton=document.createElement("span");
+	this.addLoopEndActionButton.className="rule-add-action";
+	this.addLoopEndActionButton.textContent="添加动作";
 	var self=this;
-	this.addLoopEndActionButton.click(function(){
+	this.addLoopEndActionButton.addEventListener('click',function(){
 		self.addLoopEndAction();
 	});
-	this.loopEndLabel.append(this.addLoopEndActionButton);
+	this.loopEndLabel.appendChild(this.addLoopEndActionButton);
 };
 
 ruleforge.LoopRule.prototype.addLoopEndAction=function(data){
 	var self=this;
-	var actionDiv=$("<div style='padding: 5px'>");
-	var del=$(`<i class="glyphicon glyphicon-remove rule-delete-action"></i>`);
-	actionDiv.append(del);
+	var actionDiv=document.createElement("div");
+	actionDiv.style.padding="5px";
+	var del=document.createElement("i");
+	del.className="glyphicon glyphicon-remove rule-delete-action";
+	actionDiv.appendChild(del);
 	var action=new ruleforge.ActionType(actionDiv);
-	del.click(function(){
+	del.addEventListener('click',function(){
 		var pos=self.loopEndActions.indexOf(action);
 		self.loopEndActions.splice(pos, 1);
 		actionDiv.remove();
 		window._setDirty();
 	});
 	this.loopEndActions.push(action);
-	this.loopEndActionContainer.append(actionDiv);
+	this.loopEndActionContainer.appendChild(actionDiv);
 	if(data){
 		action.initData(data);
 	}

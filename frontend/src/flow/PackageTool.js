@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import BaseTool from './BaseTool.js';
 import PackageNode from './PackageNode.js';
 
@@ -26,36 +23,49 @@ export default class PackageTool extends BaseTool {
     getPropertiesProducer() {
         const _this = this;
         return function () {
-            const g = $(`<div></div>`);
-            const packageIdGroup = $(`<div class="form-group"><label>知识包ID</label></div>`);
-            const packageIdSelect = $(`<select class="form-control"><option/></select>`);
-            packageIdGroup.append(packageIdSelect);
+            const g = document.createElement('div');
+            const packageIdGroup = document.createElement('div');
+            packageIdGroup.className = 'form-group';
+            const packageIdLabel = document.createElement('label');
+            packageIdLabel.textContent = '知识包ID';
+            packageIdGroup.appendChild(packageIdLabel);
+            const packageIdSelect = document.createElement('select');
+            packageIdSelect.className = 'form-control';
+            const defaultOption = document.createElement('option');
+            packageIdSelect.appendChild(defaultOption);
+            packageIdGroup.appendChild(packageIdSelect);
             const self = this;
-            packageIdSelect.change(function () {
-                self.packageId = $(this).val();
+            packageIdSelect.addEventListener('change', function () {
+                self.packageId = this.value;
             });
             if (!_this.packages) {
-                $.ajax({
-                    url: window._server + '/ruleflowdesigner/loadPackages?project=' + window._project,
-                    success: function (packages) {
-                        _this.packages = packages;
-                        for (let p of packages) {
-                            packageIdSelect.append(`<option>${p.id}</option>`);
-                        }
-                        packageIdSelect.val(self.packageId);
-                    },
-                    error: function () {
-                        alert('加载知识包出错！');
+                fetch(window._server + '/ruleflowdesigner/loadPackages?project=' + window._project, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+                }).then(function(response) {
+                    if (!response.ok) throw response;
+                    return response.json();
+                }).then(function (packages) {
+                    _this.packages = packages;
+                    for (let p of packages) {
+                        const option = document.createElement('option');
+                        option.textContent = p.id;
+                        packageIdSelect.appendChild(option);
                     }
+                    packageIdSelect.value = self.packageId || '';
+                }).catch(function () {
+                    alert('加载知识包出错！');
                 });
             } else {
                 for (let p of _this.packages) {
-                    packageIdSelect.append(`<option>${p.id}</option>`);
+                    const option = document.createElement('option');
+                    option.textContent = p.id;
+                    packageIdSelect.appendChild(option);
                 }
-                packageIdSelect.val(this.packageId);
+                packageIdSelect.value = this.packageId || '';
             }
-            g.append(packageIdGroup);
-            g.append(_this.getCommonProperties(this));
+            g.appendChild(packageIdGroup);
+            g.appendChild(_this.getCommonProperties(this));
             return g;
         }
     }

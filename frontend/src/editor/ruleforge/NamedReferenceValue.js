@@ -1,9 +1,6 @@
-/**
- * @author GJ
- */
 ruleforge.NamedReferenceValue=function(arithmetic,data,rule){
 	this.arithmetic=arithmetic;
-	this.container=$("<span>");
+	this.container=document.createElement("span");
     this.referenceName=null;
 	this.propertyName=null;
 	this.propertyLabel=null;
@@ -12,21 +9,17 @@ ruleforge.NamedReferenceValue=function(arithmetic,data,rule){
 		rule.namedReferenceValues.push(this);
 	}
 	this.referenceNamelabel=generateContainer();
-    this.container.append(this.referenceNamelabel);
-    this.referenceNamelabel.css({
-		"color":"#9C27B0"
-	});
-	RuleForge.setDomContent(this.referenceNamelabel,"请选择引用变量名");
+    this.container.appendChild(this.referenceNamelabel);
+	    this.referenceNamelabel.style.color = "#9C27B0";
+	this.referenceNamelabel.textContent = "请选择引用变量名";
 
 	this.referencePropertylabel=generateContainer();
-	this.referencePropertylabel.css({
-		"color":"#673AB7"
-	});
-	this.container.append(this.referencePropertylabel);
-	RuleForge.setDomContent(this.referencePropertylabel,"请选择变量属性");
+	this.referencePropertylabel.style.color = "#673AB7";
+	this.container.appendChild(this.referencePropertylabel);
+	this.referencePropertylabel.textContent = "请选择变量属性";
 
 	if(arithmetic){
-		this.container.append(arithmetic.getContainer());		
+		this.container.appendChild(arithmetic.getContainer());
 	}
 	if(data){
 		this.initData(data);
@@ -35,12 +28,13 @@ ruleforge.NamedReferenceValue=function(arithmetic,data,rule){
 };
 
 ruleforge.NamedReferenceValue.prototype.getDisplayContainer=function(){
-	var container=$("<span>"+this.propertyName+"."+this.propertyLabel+"</span>");
+	var container=document.createElement("span");
+	container.textContent=this.propertyName+"."+this.propertyLabel;
 	if(this.arithmetic){
 		var dis=this.arithmetic.getDisplayContainer();
 		if(dis){
-			container.append(dis);			
-		}	
+			container.appendChild(dis);
+		}
 	}
 	return container;
 };
@@ -54,7 +48,7 @@ ruleforge.NamedReferenceValue.prototype.initMenu=function(){
 			label:name,
 			onClick:function (item) {
 				self.referenceName=name;
-				RuleForge.setDomContent(self.referenceNamelabel,self.referenceName+".");
+				self.referenceNamelabel.textContent = self.referenceName+".";
 				var category=self.rule.namedMap.get(name) || {};
 				var variables=category.variables || [];
 				self.initPropertyMenu(variables);
@@ -74,7 +68,7 @@ ruleforge.NamedReferenceValue.prototype.initMenu=function(){
 	}else{
 		self.menu=new RuleForge.menu.Menu(refNamedMenuConfig);
 	}
-	this.referenceNamelabel.click(function(e){
+	this.referenceNamelabel.addEventListener('click',function(e){
 		self.menu.show(e);
 	});
 };
@@ -88,7 +82,7 @@ ruleforge.NamedReferenceValue.prototype.initPropertyMenu=function(variables){
 				self.propertyName=variable.name;
 				self.propertyLabel=variable.label;
 				self.datatype=variable.type;
-				RuleForge.setDomContent(self.referencePropertylabel,self.propertyLabel);
+				self.referencePropertylabel.textContent = self.propertyLabel;
 				window._setDirty();
 			}
 		});
@@ -98,7 +92,7 @@ ruleforge.NamedReferenceValue.prototype.initPropertyMenu=function(variables){
 	}else{
 		self.propertyMenu=new RuleForge.menu.Menu(propertyMenuConfig);
 	}
-	self.referencePropertylabel.click(function(e){
+	self.referencePropertylabel.addEventListener('click',function(e){
 		self.propertyMenu.show(e);
 	});
 };
@@ -108,14 +102,14 @@ ruleforge.NamedReferenceValue.prototype.setValue=function(data){
 	this.propertyName=data["propertyName"] || data["variableName"];
 	this.propertyLabel=data["propertyLabel"] || data["variableLabel"];
 	this.datatype=data["datatype"];
-	RuleForge.setDomContent(this.referenceNamelabel,this.referenceName+".");
-	RuleForge.setDomContent(this.referencePropertylabel,this.propertyLabel);
+	this.referenceNamelabel.textContent = this.referenceName+".";
+	this.referencePropertylabel.textContent = this.propertyLabel;
 	window._setDirty();
 };
 ruleforge.NamedReferenceValue.prototype.initData=function(data){
 	this.setValue(data);
 	if(this.arithmetic){
-		this.arithmetic.initData(data["arithmetic"]);			
+		this.arithmetic.initData(data["arithmetic"]);
 	}
 };
 

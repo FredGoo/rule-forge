@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/8/11.
- */
 import * as ACTIONS from './action.js';
 
 export default function clientConfig(state={},action) {

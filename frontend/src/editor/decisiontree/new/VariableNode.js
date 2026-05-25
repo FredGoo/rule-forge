@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.Gao on 2016/3/23.
- */
 import {MsgBox} from 'flowdesigner';
 import BaseNode from './BaseNode.js';
 export default class VariableNode extends BaseNode{
@@ -10,15 +7,18 @@ export default class VariableNode extends BaseNode{
         this.init();
     }
     init(){
-        this.nodeContainer=$("<div class='node varNode'>");
-        this.context.container.append(this.nodeContainer);
+        this.nodeContainer=document.createElement("div");
+        this.nodeContainer.className="node varNode";
+        this.context.container.appendChild(this.nodeContainer);
         this.initBindResizeEvent();
-        var contentContainer=$("<span>");
-        this.nodeContainer.append(contentContainer);
+        var contentContainer=document.createElement("span");
+        this.nodeContainer.appendChild(contentContainer);
         this.condition=new ruleforge.ConditionLeft(contentContainer);
         var self=this;
-        var operations=$("<span class='operations'><i class='glyphicon glyphicon-ok-circle'></i></span>");
-        this.nodeContainer.append(operations);
+        var operations=document.createElement("span");
+        operations.className="operations";
+        operations.innerHTML="<i class='glyphicon glyphicon-ok-circle'></i>";
+        this.nodeContainer.appendChild(operations);
         var menuItems=[];
         menuItems.push({
             name:"addCondition",
@@ -39,11 +39,11 @@ export default class VariableNode extends BaseNode{
             });
         }
         var menu=new RuleForge.menu.Menu({menuItems:menuItems});
-        operations.click(function(e){
+        operations.addEventListener('click',function(e){
             menu.show(e);
         });
-        this.nodeHeight=this.nodeContainer.height()+15;
-        this.nodeWidth=this.nodeContainer.width();
+        this.nodeHeight=this.nodeContainer.offsetHeight+15;
+        this.nodeWidth=this.nodeContainer.offsetWidth;
     }
     initData(data){
         if(!data){
@@ -59,7 +59,7 @@ export default class VariableNode extends BaseNode{
         }
         var xml="<variable-tree-node>";
         xml+=this.condition.toXml();
-        $.each(this.children,function(i,connection){
+        this.children.forEach(function(connection) {
             xml+=connection.node.toXml();
         });
         xml+="</variable-tree-node>";

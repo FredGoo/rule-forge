@@ -1,111 +1,70 @@
-/**
- * @author GJ
- */
-ruleforge.ComparisonOperator = function (menuCallFun) {
-    this.inputType = null;
-    this.operator = "";
-    this.container = generateContainer();
-    RuleForge.setDomContent(this.container, "请选择比较操作符");
-    this.container.css({
-        "font-size": "13px",
-        "color": "red",
-        "fontWeight": "bold",
-        "margin-right": "3px"
-    });
-    var self = this;
-    var onClick = function (menu) {
-        self.setOperator(menu.name);
-    };
-    self.menu = new RuleForge.menu.Menu({
-        onHide: function () {
-            menuCallFun();
-        },
-        menuItems: [{
-            label: "大于",
-            name: "GreaterThen",
-            onClick: onClick
-        }, {
-            label: "大于或等于",
-            name: "GreaterThenEquals",
-            onClick: onClick
-        }, {
-            label: "小于",
-            name: "LessThen",
-            onClick: onClick
-        }, {
-            label: "小于或等于",
-            name: "LessThenEquals",
-            onClick: onClick
-        }, {
-            label: "等于",
-            name: "Equals",
-            onClick: onClick
-        }, {
-            label: "等于(不分大小写)",
-            name: "EqualsIgnoreCase",
-            onClick: onClick
-        }, {
-            label: "开始于",
-            name: "StartWith",
-            onClick: onClick
-        }, {
-            label: "不开始于",
-            name: "NotStartWith",
-            onClick: onClick
-        }, {
-            label: "结束于",
-            name: "EndWith",
-            onClick: onClick
-        }, {
-            label: "不结束于",
-            name: "NotEndWith",
-            onClick: onClick
-        }, {
-            label: "不等于",
-            name: "NotEquals",
-            onClick: onClick
-        }, {
-            label: "不等于(不分大小写)",
-            name: "NotEqualsIgnoreCase",
-            onClick: onClick
-        }, {
-            label: "在集合",
-            name: "In",
-            onClick: onClick
-        }, {
-            label: "不在集合",
-            name: "NotIn",
-            onClick: onClick
-        }, {
-            label: "为空",
-            name: "Null",
-            onClick: onClick
-        }, {
-            label: "不为空",
-            name: "NotNull",
-            onClick: onClick
-        }, {
-            label: "匹配正则表达式",
-            name: "Match",
-            onClick: onClick
-        }, {
-            label: "不匹配正则表达式",
-            name: "NotMatch",
-            onClick: onClick
-        }, {
-            label: "包含",
-            name: "Contain",
-            onClick: onClick
-        }, {
-            label: "不包含",
-            name: "NotContain",
-            onClick: onClick
-        }]
-    });
-    this.container.click(function (e) {
-        self.menu.show(e);
-    });
+import {renderReact} from '../../components/react-bridge.js';
+import ComparisonOperatorWidget from '../../components/widgets/ComparisonOperatorWidget.jsx';
 
+var OPERATORS = {
+    GreaterThen: {label: '大于'},
+    GreaterThenEquals: {label: '大于或等于'},
+    LessThen: {label: '小于'},
+    LessThenEquals: {label: '小于或等于'},
+    Equals: {label: '等于'},
+    EqualsIgnoreCase: {label: '等于(不分大小写)'},
+    StartWith: {label: '开始于'},
+    NotStartWith: {label: '不开始于'},
+    EndWith: {label: '结束于'},
+    NotEndWith: {label: '不结束于'},
+    NotEquals: {label: '不等于'},
+    NotEqualsIgnoreCase: {label: '不等于(不分大小写)'},
+    In: {label: '在集合', endInfo: '之中'},
+    NotIn: {label: '不在集合', endInfo: '之中'},
+    Null: {label: '为空', noInput: true},
+    NotNull: {label: '不为空', noInput: true},
+    Match: {label: '匹配正则表达式'},
+    NotMatch: {label: '不匹配正则表达式'},
+    Contain: {label: '包含'},
+    NotContain: {label: '不包含'},
+};
+
+ruleforge.ComparisonOperator = function (menuCallFun) {
+    this.container = document.createElement("span");
+    this.inputType = null;
+    this.operatorName = '';
+    this.widgetRef = null;
+    this._pendingOperator = null;
+    var self = this;
+    renderReact(ComparisonOperatorWidget, {
+        onMenuHide: function () {
+            if (menuCallFun) menuCallFun();
+        },
+        onSelect: function (name) {
+            self._applyOperator(name);
+        },
+        ref: function (ref) {
+            self.widgetRef = ref;
+            if (self._pendingOperator) {
+                ref.setOperator(self._pendingOperator);
+                self._pendingOperator = null;
+            }
+        },
+    }, this.container);
+};
+
+ruleforge.ComparisonOperator.prototype._applyOperator = function (operator) {
+    var config = OPERATORS[operator];
+    if (!config) return;
+    this.operatorName = operator;
+    if (this.inputType) {
+        this.inputType.getContainer().remove();
+        this.inputType = null;
+    }
+    if (!config.noInput) {
+        this.inputType = new ruleforge.InputType(config.endInfo || null);
+    }
+    if (this.widgetRef) {
+        this.widgetRef.setOperator(operator);
+    } else {
+        this._pendingOperator = operator;
+    }
+    window._setDirty();
 };
 
 ruleforge.ComparisonOperator.prototype.initRightValue = function (data) {
@@ -116,176 +75,14 @@ ruleforge.ComparisonOperator.prototype.initRightValue = function (data) {
 };
 
 ruleforge.ComparisonOperator.prototype.setOperator = function (operator) {
-    switch (operator) {
-        case "GreaterThen":
-            this.operator = "GreaterThen";
-            RuleForge.setDomContent(this.container, "大于");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "GreaterThenEquals":
-            this.operator = "GreaterThenEquals";
-            RuleForge.setDomContent(this.container, "大于或等于");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "LessThen":
-            this.operator = "LessThen";
-            RuleForge.setDomContent(this.container, "小于");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "LessThenEquals":
-            this.operator = "LessThenEquals";
-            RuleForge.setDomContent(this.container, "小于或等于");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "StartWith":
-            this.operator = "StartWith";
-            RuleForge.setDomContent(this.container, "开始于");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "Equals":
-            this.operator = "Equals";
-            RuleForge.setDomContent(this.container, "等于");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "EqualsIgnoreCase":
-            this.operator = "EqualsIgnoreCase";
-            RuleForge.setDomContent(this.container, "等于(不分大小写)");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "NotStartWith":
-            this.operator = "NotStartWith";
-            RuleForge.setDomContent(this.container, "不开始于");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "EndWith":
-            this.operator = "EndWith";
-            RuleForge.setDomContent(this.container, "结束于");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "NotEndWith":
-            this.operator = "NotEndWith";
-            RuleForge.setDomContent(this.container, "不结束于");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "NotEquals":
-            this.operator = "NotEquals";
-            RuleForge.setDomContent(this.container, "不等于");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "NotEqualsIgnoreCase":
-            this.operator = "NotEqualsIgnoreCase";
-            RuleForge.setDomContent(this.container, "不等于(不分大小写)");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "In":
-            this.operator = "In";
-            RuleForge.setDomContent(this.container, "在集合");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType("之中");
-            break;
-        case "NotIn":
-            this.operator = "NotIn";
-            RuleForge.setDomContent(this.container, "不在集合");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType("之中");
-            break;
-        case "Null":
-            this.operator = "Null";
-            RuleForge.setDomContent(this.container, "为空");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-                this.inputType = null;
-            }
-            break;
-        case "NotNull":
-            this.operator = "NotNull";
-            RuleForge.setDomContent(this.container, "不为空");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-                this.inputType = null;
-            }
-            break;
-        case "Match":
-            this.operator = "Match";
-            RuleForge.setDomContent(this.container, "匹配正则表达式");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "NotMatch":
-            this.operator = "NotMatch";
-            RuleForge.setDomContent(this.container, "不匹配正则表达式");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "Contain":
-            this.operator = "Contain";
-            RuleForge.setDomContent(this.container, "包含");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-        case "NotContain":
-            this.operator = "NotContain";
-            RuleForge.setDomContent(this.container, "不包含");
-            if (this.inputType) {
-                this.inputType.getContainer().remove();
-            }
-            this.inputType = new ruleforge.InputType();
-            break;
-    }
-    window._setDirty();
+    this._applyOperator(operator);
 };
 
 ruleforge.ComparisonOperator.prototype.getOperator = function () {
-    if (this.operator == "") {
+    if (!this.operatorName) {
         throw "请选择比较操作符！";
     }
-    return this.operator;
+    return this.operatorName;
 };
 
 ruleforge.ComparisonOperator.prototype.getInputType = function () {

@@ -1,6 +1,3 @@
-/**
- * Created by Jacky.gao on 2016/9/21.
- */
 import Col from './Col.js';
 export default class AttributeCol extends Col{
     constructor(table,name,width){
@@ -11,11 +8,15 @@ export default class AttributeCol extends Col{
         this.init();
     }
     init(){
-        this.td=$(`<td style="width: ${this.width}px;padding-right: 0;background: #3c763d;color: #ffffff;border:1px solid #607D8B"></td>`);
-        const container=$(`<span style="cursor: pointer">${this.name}</span>`);
-        this.td.append(container);
-        this.td.append(this.buildColResizeTrigger());
-        this.scoreCardTable.headerRow.append(this.td);
+        const td = document.createElement('td');
+        td.style.cssText = 'width: ' + this.width + 'px;padding-right: 0;background: #3c763d;color: #ffffff;border:1px solid #607D8B';
+        this.td = td;
+        const container = document.createElement('span');
+        container.style.cursor = 'pointer';
+        container.textContent = this.name;
+        this.td.appendChild(container);
+        this.td.appendChild(this.buildColResizeTrigger());
+        this.scoreCardTable.headerRow.appendChild(this.td);
         window._VariableValueArray.push(this);
         this.bindColResize();
     }
@@ -37,12 +38,12 @@ export default class AttributeCol extends Col{
                 }
             }
         }
-        
+
         // 遍历所有AttributeCell，如果category是字符串，尝试转换为对象
         if (!this.scoreCardTable || !this.scoreCardTable.attributeRows) {
             return;
         }
-        
+
         this.scoreCardTable.attributeRows.forEach((row, index) => {
             const cell = row.attributeCell;
             if (cell && cell.category && typeof cell.category === 'string') {
@@ -51,7 +52,7 @@ export default class AttributeCol extends Col{
                 if (categoryObj) {
                     cell.category = categoryObj;
                     // 更新显示
-                    RuleForge.setDomContent(cell.categoryContainer, categoryObj.name);
+                    cell.categoryContainer.textContent = categoryObj.name;
                 }
             }
             if (cell) {

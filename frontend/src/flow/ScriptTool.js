@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import CodeMirror from './CodeMirror.js';
 import '../../node_modules/codemirror/addon/hint/show-hint.js';
 import BaseTool from './BaseTool.js';
@@ -28,18 +25,22 @@ export default class ScriptTool extends BaseTool {
     getPropertiesProducer() {
         const _this = this;
         return function () {
-            const g = $(`<div></div>`);
-            const scriptGroup = $(`<div class="form-group"><label>动作脚本</label></div>`);
-            const scriptArea = $(`<textarea></textarea>`);
-            scriptGroup.append(scriptArea);
+            const g = document.createElement('div');
+            const scriptGroup = document.createElement('div');
+            scriptGroup.className = 'form-group';
+            const scriptLabel = document.createElement('label');
+            scriptLabel.textContent = '动作脚本';
+            scriptGroup.appendChild(scriptLabel);
+            const scriptArea = document.createElement('textarea');
+            scriptGroup.appendChild(scriptArea);
             const self = this;
-            scriptArea.change(function () {
-                self.script = $(this).val();
+            scriptArea.addEventListener('change', function () {
+                self.script = this.value;
             });
-            scriptArea.val(this.script);
+            scriptArea.value = this.script || '';
 
             setTimeout(function () {
-                const codeMirror = CodeMirror.fromTextArea(scriptArea[0], {
+                const codeMirror = CodeMirror.fromTextArea(scriptArea, {
                     lineNumbers: true,
                     mode: "then",
                     extraKeys: {"Alt-/": "autocomplete"},
@@ -58,13 +59,13 @@ export default class ScriptTool extends BaseTool {
                         CodeMirror.commands.autocomplete(cm);
                     }
                     const scriptContent = codeMirror.getValue();
-                    scriptArea.val(scriptContent);
+                    scriptArea.value = scriptContent;
                     self.script = scriptContent;
                 });
             }, 100);
 
-            g.append(scriptGroup);
-            g.append(_this.getCommonProperties(this));
+            g.appendChild(scriptGroup);
+            g.appendChild(_this.getCommonProperties(this));
             return g;
         }
     }

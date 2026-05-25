@@ -1,6 +1,3 @@
-/**
- * @author GJ
- */
 import CodeMirror from 'codemirror';
 
 CodeMirror.defineSimpleMode("if", {

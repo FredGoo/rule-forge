@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/18.
- */
 import events from 'events';
 
 export const SHOW_LOADING = 'show_loading';
@@ -13,6 +10,13 @@ export const OPEN_VERSION_SELECT_DIALOG = 'open_version_select_dialog';
 export const HIDE_VERSION_SELECT_DIALOG = 'hide_version_select_dialog';
 export const OPEN_QUICK_TEST_DIALOG = 'open_quick_test_dialog';
 export const HIDE_QUICK_TEST_DIALOG = 'hide_quick_test_dialog';
+export const OPEN_RESOURCE_VERSION_DIALOG = 'open_resource_version_dialog';
+export const CLOSE_RESOURCE_VERSION_DIALOG = 'close_resource_version_dialog';
+export const OPEN_CONDITION_LIST_DIALOG = 'open_condition_list_dialog';
+export const CLOSE_CONDITION_LIST_DIALOG = 'close_condition_list_dialog';
+export const REFRESH_CONDITION_LIST_DIALOG = 'refresh_condition_list_dialog';
+export const OPEN_RESOURCE_LIST_DIALOG = 'open_resource_list_dialog';
+export const CLOSE_RESOURCE_LIST_DIALOG = 'close_resource_list_dialog';
 
 export const eventEmitter = new events.EventEmitter();
 

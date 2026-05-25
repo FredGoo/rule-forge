@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/6/12.
- */
 import * as ACTIONS from './action.js';
 export default function parameter(state={},action){
     switch (action.type){

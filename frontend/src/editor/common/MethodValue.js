@@ -1,24 +1,21 @@
-/**
- * @author GJ
- */
 ruleforge.MethodValue = function (arithmetic, data) {
     this.arithmetic = arithmetic;
-    this.container = $("<span>");
-    this.rightParn = $("<span style='color:blue'>]</span>");
+    this.container = document.createElement("span");
+    this.rightParn = document.createElement("span");
+    this.rightParn.style.color = "blue";
+    this.rightParn.textContent = "]";
     this.label = generateContainer();
     this.fetchLength = false;
     this.uppercase = false;
     this.lowercase = false;
     this.fetchSize = false;
-    this.container.append(this.label);
-    this.label.css({
-        "color": "blue"
-    });
-    this.actionContainer = $("<span></span>");
-    this.container.append(this.actionContainer);
-    RuleForge.setDomContent(this.label, "请选择方法");
+    this.container.appendChild(this.label);
+    this.label.style.color = "blue";
+    this.actionContainer = document.createElement("span");
+    this.container.appendChild(this.actionContainer);
+    this.label.textContent = "请选择方法";
     if (arithmetic) {
-        this.container.append(arithmetic.getContainer());
+        this.container.appendChild(arithmetic.getContainer());
     }
     if (data) {
         this.setAction(data);
@@ -46,15 +43,15 @@ ruleforge.MethodValue.prototype.initMenu = function (actionLibraries) {
         });
     };
     config = {menuItems: []};
-    $.each(data || [], function (index, item) {
+    data || [].forEach(function(item) {
         var springBeans = item.springBeans || [];
-        $.each(springBeans, function (i, springBean) {
+        springBeans.forEach(function(springBean) {
             var menuItem = {
                 name: springBean.id,
                 label: springBean.name
             };
             var methods = springBean.methods || [];
-            $.each(methods, function (j, method) {
+            methods.forEach(function(method) {
                 if (!menuItem.subMenu) {
                     menuItem.subMenu = {menuItems: []};
                 }
@@ -74,7 +71,7 @@ ruleforge.MethodValue.prototype.initMenu = function (actionLibraries) {
     } else {
         self.menu = new RuleForge.menu.Menu(config);
     }
-    this.label.click(function (e) {
+    this.label.addEventListener("click", function (e) {
         self.menu.show(e);
     });
 
@@ -86,9 +83,9 @@ ruleforge.MethodValue.prototype.setAction = function (data) {
         this.action.getContainer().remove();
     }
     this.action = new ruleforge.MethodAction();
-    RuleForge.setDomContent(this.label, "[");
-    this.actionContainer.append(this.action.getContainer());
-    this.actionContainer.append(this.rightParn);
+    this.label.textContent = "[";
+    this.actionContainer.appendChild(this.action.getContainer());
+    this.actionContainer.appendChild(this.rightParn);
 
     this.action.initData(data);
 };
@@ -99,11 +96,12 @@ ruleforge.MethodValue.prototype.getDisplayContainer = function () {
         name = this.action.name;
         method = this.action.methodLabel;
     }
-    var container = $("<span>" + method + "</span>");
+    var container = document.createElement("span");
+    container.textContent = method;
     if (this.arithmetic) {
         var dis = this.arithmetic.getDisplayContainer();
         if (dis) {
-            container.append(dis);
+            container.appendChild(dis);
         }
     }
     return container;

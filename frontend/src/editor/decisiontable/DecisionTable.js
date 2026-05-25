@@ -9,12 +9,14 @@ window._setDirty = function () {
         return;
     }
     window._dirty = true;
-    var saveButton = $("#saveButton");
-    saveButton.html("<i class='rf rf-save'/> *保存");
-    saveButton.removeClass("disabled");
+    var saveButton = document.getElementById("saveButton");
+    saveButton.innerHTML = "<i class='rf rf-save'/> *保存";
+    saveButton.classList.remove("disabled");
 };
 
-(function (Handsontable) {
+var Handsontable = require('handsontable');
+
+(function () {
     if (!window.RuleForge) {
         window.RuleForge = {};
     }
@@ -22,14 +24,14 @@ window._setDirty = function () {
         var table;
         window._VariableValueArray.push(this);
         window._ParameterValueArray.push(this);
-        const container = $("#" + id);
+        const container = document.getElementById(id);
         this.hasMod = true;
         this.container = container;
         const self = this;
         var saveButton = `<div class="btn-group btn-group-sm navbar-btn" style="margin-top:0;margin-bottom: 0" role="group" aria-label="...">
-								<button id="saveButtonNewVersion" type="button" class="btn btn-default navbar-btn"><i class="rf rf-savenewversion"/> 生成版本</button>
-								<button id="saveButton" type="button" class="btn btn-default navbar-btn" ><i class="rf rf-save"/> 保存</button>
-							</div>`;
+									<button id="saveButtonNewVersion" type="button" class="btn btn-default navbar-btn"><i class="rf rf-savenewversion"/> 生成版本</button>
+									<button id="saveButton" type="button" class="btn btn-default navbar-btn" ><i class="rf rf-save"/> 保存</button>
+								</div>`;
         var testButton = '<div class="btn-group btn-group-sm navbar-btn" style="margin-left:5px;margin-top:0;margin-bottom: 0" role="group" aria-label="...">' +
             '<button id="testButton" type="button" class="btn btn-success navbar-btn"><i class="glyphicon glyphicon-flash"/> 快速测试</button>' +
             '</div>';
@@ -37,41 +39,44 @@ window._setDirty = function () {
         var deleteCriteriaButton = `<button id="deleteCriteriaButton" type="button" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-minus"/> 删除条件行</button>`;
 
         const buttons = `<nav class="navbar navbar-default" style="margin: 5px">
-			<div>
 				<div>
-					<div class="btn-group navbar-btn" style="margin-top:0;margin-bottom: 0;margin-left: 5px" role="group" aria-label="...">
-					 ${addCriteriaButton}
-					 ${deleteCriteriaButton}
-					</div>
-					<div class="btn-group btn-group-sm navbar-btn" style="margin-left:5px;margin-top:0;margin-bottom: 0" role="group" aria-label="...">
-						<button id="configVarButton" type="button" class="btn btn-default"><i class="rf rf-variable"/> 变量库</button>
-						<button id="configConstantsButton" type="button" class="btn btn-default"><i class="rf rf-constant"/> 常量库</button>
-						<button id="configActionButton" type="button" class="btn btn-default"><i class="rf rf-action"/> 动作库</button>
-						<button id="configParameterButton" type="button" class="btn btn-default"><i class="rf rf-parameter"/> 参数库</button>
-					</div>
-					${saveButton}
-					${testButton}
-		        </div>
-			</div>
-		</nav>`;
+					<div>
+						<div class="btn-group navbar-btn" style="margin-top:0;margin-bottom: 0;margin-left: 5px" role="group" aria-label="...">
+						 ${addCriteriaButton}
+						 ${deleteCriteriaButton}
+						</div>
+						<div class="btn-group btn-group-sm navbar-btn" style="margin-left:5px;margin-top:0;margin-bottom: 0" role="group" aria-label="...">
+							<button id="configVarButton" type="button" class="btn btn-default"><i class="rf rf-variable"/> 变量库</button>
+							<button id="configConstantsButton" type="button" class="btn btn-default"><i class="rf rf-constant"/> 常量库</button>
+							<button id="configActionButton" type="button" class="btn btn-default"><i class="rf rf-action"/> 动作库</button>
+							<button id="configParameterButton" type="button" class="btn btn-default"><i class="rf rf-parameter"/> 参数库</button>
+						</div>
+						${saveButton}
+						${testButton}
+			        </div>
+				</div>
+			</nav>`;
 
-        container.append(buttons);
+        container.insertAdjacentHTML('beforeend', buttons);
 
-        const remarkContainer = $("<div style='margin:5px 5px 5px 15px'></div>");
-        container.append(remarkContainer);
+        var remarkContainer = document.createElement("div");
+        remarkContainer.style.cssText = "margin:5px 5px 5px 15px";
+        container.appendChild(remarkContainer);
         this.remark = new Remark(remarkContainer);
 
         this.properties = [];
 
-        var propContainer = $("<div style='margin:5px 5px 5px 15px;border: solid 1px #dddddd;border-radius:5px'></div>");
-        container.append(propContainer);
-        this.propertyContainer = $("<span>");
-        this.propertyContainer.css({
-            "padding": "10px"
-        });
-        var addProp = $("<button type='button' class='rule-add-property btn btn-link'>添加属性</button>");
-        propContainer.append(addProp);
-        propContainer.append(this.propertyContainer);
+        var propContainer = document.createElement("div");
+        propContainer.style.cssText = "margin:5px 5px 5px 15px;border: solid 1px #dddddd;border-radius:5px";
+        container.appendChild(propContainer);
+        this.propertyContainer = document.createElement("span");
+        this.propertyContainer.style.padding = "10px";
+        var addProp = document.createElement("button");
+        addProp.type = "button";
+        addProp.className = "rule-add-property btn btn-link";
+        addProp.textContent = "添加属性";
+        propContainer.appendChild(addProp);
+        propContainer.appendChild(this.propertyContainer);
         var onClick = function (menuItem) {
             var prop = new ruleforge.RuleProperty(self, menuItem.name, menuItem.defaultValue, menuItem.editorType);
             self.addProperty(prop);
@@ -109,11 +114,11 @@ window._setDirty = function () {
                 onClick: onClick
             }]
         });
-        addProp.click(function (e) {
+        addProp.addEventListener('click', function (e) {
             self.menu.show(e);
         });
 
-        $("#addCriteriaButton").click(function () {
+        document.getElementById("addCriteriaButton").addEventListener('click', function () {
             var cellData = self.getCurrentCellData(),
                 row = cellData.row + cellData.rowspan,
                 col = cellData.col;
@@ -124,11 +129,11 @@ window._setDirty = function () {
             self.insertRow(row - 1);
             self.renderCells();
             self.setDirty();
-            $("#deleteCriteriaButton").removeClass("disabled");
+            document.getElementById("deleteCriteriaButton").classList.remove("disabled");
             self.invoke("render");
         });
 
-        $("#deleteCriteriaButton").click(function () {
+        document.getElementById("deleteCriteriaButton").addEventListener('click', function () {
             var highlight = self.getHighlight(),
                 row = highlight.row,
                 col = highlight.col,
@@ -143,54 +148,54 @@ window._setDirty = function () {
             self.setDirty();
             self.invoke("render");
             if (self.countRows() == 1) {
-                $(this).addClass("disabled");
+                this.classList.add("disabled");
             }
         });
 
 
-        $("#configVarButton").click(function () {
+        document.getElementById("configVarButton").addEventListener('click', function () {
             if (!self.configVarDialog) {
                 self.configVarDialog = new ruleforge.ConfigVariableDialog(self);
             }
             self.configVarDialog.open();
         });
 
-        $("#configConstantsButton").click(function () {
+        document.getElementById("configConstantsButton").addEventListener('click', function () {
             if (!self.configConstantDialog) {
                 self.configConstantDialog = new ruleforge.ConfigConstantDialog(self);
             }
             self.configConstantDialog.open();
         });
 
-        $("#configActionButton").click(function () {
+        document.getElementById("configActionButton").addEventListener('click', function () {
             if (!self.configActionDialog) {
                 self.configActionDialog = new ruleforge.ConfigActionDialog(self);
             }
             self.configActionDialog.open();
         });
 
-        $("#configParameterButton").click(function () {
+        document.getElementById("configParameterButton").addEventListener('click', function () {
             if (!self.configParameterDialog) {
                 self.configParameterDialog = new ruleforge.ConfigParameterDialog(self);
             }
             self.configParameterDialog.open();
         });
 
-        $("#saveButtonNewVersion").click(function () {
+        document.getElementById("saveButtonNewVersion").addEventListener('click', function () {
             save(true);
         });
-        $("#saveButton").click(function () {
+        document.getElementById("saveButton").addEventListener('click', function () {
             save(false);
         });
 
-        $("#testButton").click(function() {
+        document.getElementById("testButton").addEventListener('click', function() {
             let file = getParameter('file')
             let decodedFile = decodeURIComponent(file)
             event.eventEmitter.emit(event.OPEN_QUICK_TEST_DIALOG, {project: window._project, file: decodedFile});
         })
 
         function save(newVersion) {
-            if (!newVersion && $("#saveButton").hasClass("disabled")) {
+            if (!newVersion && document.getElementById("saveButton").classList.contains("disabled")) {
                 return false;
             }
             let file = getParameter('file'), xml = self.toXml();
@@ -213,6 +218,7 @@ window._setDirty = function () {
         self.load();
         window.ht = self;
         var config = {
+            "licenseKey": "non-commercial-and-evaluation",
             "type": "ruleforge",
             "manualRowResize": true,
             "manualColumnResize": true,
@@ -230,11 +236,12 @@ window._setDirty = function () {
             "outsideClickDeselects": false,
             "colWidths": 120
         };
-        table = $("<div style='margin-left:15px'></div>");
-        container.append(table);
+        table = document.createElement("div");
+        table.style.marginLeft = "15px";
+        container.appendChild(table);
 
-        table.handsontable(config);
-        self._handsontable = table.handsontable("getInstance");
+        self._handsontable = new Handsontable(table, config);
+        self._dom = table;
         self._handsontable.ht = self;
         config.colHeaders = function (col) {
             var column = self.getColData(col),
@@ -282,9 +289,9 @@ window._setDirty = function () {
                 cellData = self.getCurrentCellData();
 
             if (colData.type == "Criteria") {
-                $("#addCriteriaButton").removeClass("disabled");
+                document.getElementById("addCriteriaButton").classList.remove("disabled");
             } else {
-                $("#addCriteriaButton").addClass("disabled");
+                document.getElementById("addCriteriaButton").classList.add("disabled");
             }
         });
 
@@ -302,22 +309,26 @@ window._setDirty = function () {
         });
 
         self.addHook("afterRender", function () {
-//			$(".htCore th").css("background-color","rgb(223, 222, 203)")
-            $(".htCore tr").each(function () {
-                $(this).children().css({"border-right-width": ""});
-                $(this).children().eq(self.countCriteriaCols()).css({"border-right-width": "4px"});
+            self._dom.querySelectorAll(".htCore tr").forEach(function (tr) {
+                var children = tr.children;
+                for (var i = 0; i < children.length; i++) {
+                    children[i].style.borderRightWidth = "";
+                }
+                var criteriaCol = Array.from(children)[self.countCriteriaCols()];
+                if (criteriaCol) {
+                    criteriaCol.style.borderRightWidth = "4px";
+                }
             });
-
         });
         self.initMenu();
         self.resetState();
-        table.find(".handsontable").remove();
+        table.querySelector(".handsontable").remove();
         self.invoke("render");
     };
 
     RuleForge.DecisionTable.prototype = {
         addProperty: function (property) {
-            this.propertyContainer.append(property.getContainer());
+            this.propertyContainer.appendChild(property.getContainer());
             this.properties.push(property);
             window._setDirty();
         },
@@ -361,15 +372,21 @@ window._setDirty = function () {
         },
 
         getMergeInfo: function (row, col) {
-            return this._handsontable.mergeCells.mergedCellInfoCollection.getInfo(row, col);
+            var plugin = this._handsontable.getPlugin('mergeCells');
+            if (plugin.mergedCellsCollection) {
+                return plugin.mergedCellsCollection.get(row, col);
+            }
+            return null;
         },
 
         setMergeInfo: function (info) {
-            this._handsontable.mergeCells.mergedCellInfoCollection.setInfo(info);
+            var plugin = this._handsontable.getPlugin('mergeCells');
+            plugin.merge(info.row, info.col, info.row + info.rowspan - 1, info.col + info.colspan - 1);
         },
 
         removeMergeInfo: function (row, col) {
-            return this._handsontable.mergeCells.mergedCellInfoCollection.removeInfo(row, col);
+            var plugin = this._handsontable.getPlugin('mergeCells');
+            plugin.unmerge(row, col, row, col);
         },
 
         clear: function () {
@@ -422,7 +439,7 @@ window._setDirty = function () {
 
                 }
             } else {
-                jQuery(this._dom).handsontable(methodName, args);
+                this._handsontable[methodName](args);
             }
         },
 
@@ -436,32 +453,54 @@ window._setDirty = function () {
 
         resetState: function () {
             window._dirty = false;
-            $("#saveButton").html("<i class='rf rf-save'></i> 保存");
-            $("#saveButton").addClass("disabled");
+            document.getElementById("saveButton").innerHTML = "<i class='rf rf-save'></i> 保存";
+            document.getElementById("saveButton").classList.add("disabled");
         },
 
         insertRow: function (index) {
             this.alter("insert_row");
-            $(".htCore > tbody > tr:eq(" + this.getLastRowIndex() + ")").insertAfter(".htCore > tbody > tr:eq(" + index + ")");
+            var tbody = this._dom.querySelector(".htCore > tbody");
+            if (tbody) {
+                var lastRow = tbody.children[tbody.children.length - 1];
+                var targetRow = tbody.children[index];
+                if (targetRow && lastRow) {
+                    targetRow.after(lastRow);
+                }
+            }
         },
 
         removeRow: function (index, count) {
-            for (var r = index; r < index + count; r++) {
-                $(".htCore > tbody > tr:eq(" + index + ")").insertAfter(".htCore > tbody > tr:last");
+            var tbody = this._dom.querySelector(".htCore > tbody");
+            if (tbody) {
+                for (var r = index; r < index + count; r++) {
+                    tbody.appendChild(tbody.children[index]);
+                }
             }
             this.alter("remove_row", index, count);
         },
 
         insertCol: function (index) {
             this.alter("insert_col");
-            $(".htCore > tbody > tr").each(function () {
-                $(this).find("td:last").insertAfter($(this).find("td:eq(" + index + ")"));
+            var rows = this._dom.querySelectorAll(".htCore > tbody > tr");
+            rows.forEach(function (tr) {
+                var tds = tr.querySelectorAll("td");
+                var lastTd = tds[tds.length - 1];
+                var targetTd = tds[index];
+                if (targetTd && lastTd) {
+                    targetTd.after(lastTd);
+                }
             });
         },
 
         removeCol: function (index) {
-            $(".htCore > tbody > tr").each(function () {
-                $(this).find("td:eq(" + index + ")").insertAfter($(this).find("td:last"));
+            var rows = this._dom.querySelectorAll(".htCore > tbody > tr");
+            rows.forEach(function (tr) {
+                var tds = tr.querySelectorAll("td");
+                var targetTd = tds[index];
+                var lastTd = tds[tds.length - 1];
+                if (targetTd && lastTd) {
+                    lastTd.after(targetTd);
+                }
             });
             this.alter("remove_col");
         },
@@ -592,7 +631,7 @@ window._setDirty = function () {
         createCellDataByCopyNextCol: function (col) {
             var self = this,
                 cellDatas = self.getCellDataByCol(col + 1);
-            $.each(cellDatas, function (index, cellData) {
+            cellDatas.forEach(function (cellData) {
                 var cell = self.createCellData(cellData.row, col);
                 cell.rowspan = cellData.rowspan;
             });
@@ -886,7 +925,7 @@ window._setDirty = function () {
                 TD = this.getCell(row, col);
             var value = this.getValue();
             renderer(this._handsontable, TD, row, col, prop, value, cellProperties);
-            Handsontable.hooks.run(this._handsontable, 'afterRenderer', TD, row, col, prop, value, cellProperties);
+            this._handsontable.runHooks('afterRenderer', TD, row, col, prop, value, cellProperties);
         },
 
         toXml: function () {
@@ -897,27 +936,27 @@ window._setDirty = function () {
                 libraries = [],
                 self = this,
                 xml;
-            $.each(constantLibraries, function (index, path) {
+            constantLibraries.forEach(function (path) {
                 libraries.push({
                     type: "Constant",
                     path: path
                 });
             });
 
-            $.each(actionLibraries, function (index, path) {
+            actionLibraries.forEach(function (path) {
                 libraries.push({
                     type: "Action",
                     path: path
                 });
             });
 
-            $.each(variableLibraries, function (index, path) {
+            variableLibraries.forEach(function (path) {
                 libraries.push({
                     type: "Variable",
                     path: path
                 });
             });
-            $.each(parameterLibraries, function (index, path) {
+            parameterLibraries.forEach(function (path) {
                 libraries.push({
                     type: "Parameter",
                     path: path
@@ -930,7 +969,7 @@ window._setDirty = function () {
             }
             xml += ">";
             xml += this.remark.toXml();
-            $.each(libraries, function (index, library) {
+            libraries.forEach(function (library) {
                 var type = library.type,
                     path = library.path;
                 if (type == "Variable") {
@@ -944,18 +983,18 @@ window._setDirty = function () {
                 }
             });
 
-            $.each(cells, function (index, cell) {
+            cells.forEach(function (cell) {
                 xml += "<cell row=\"" + cell.row + "\" col=\"" + cell.col + "\" rowspan=\"" + cell.rowspan + "\">";
                 xml += self.getCellContent(cell).toXml();
                 xml += "</cell>"
 
             });
 
-            $.each(rows, function (index, row) {
+            rows.forEach(function (row) {
                 xml += "<row num=\"" + row.num + "\" height=\"" + row.height + "\"/>"
             });
 
-            $.each(cols, function (index, col) {
+            cols.forEach(function (col) {
                 var variableName = col.variableName;
                 if (variableName) {
                     xml += "<col num=\"" + col.num + "\" width=\"" + col.width + "\" type=\"" + col.type + "\" var-category=\"" + (col.variableCategory == "parameter" ? "参数" : col.variableCategory) + "\" var-label=\"" + col.variableLabel + "\" var=\"" + col.variableName + "\" datatype=\"" + col.datatype + "\"/>"
@@ -974,89 +1013,81 @@ window._setDirty = function () {
             files = getParameter("file");
             version = getParameter("version");
             url = window._server + '/common/loadXml';
-            $.ajax({
-                url,
-                async: false,
-                type: 'POST',
-                data: {files},
-                error: function (response) {
-                    if (response && response.responseText) {
-                        bootbox.alert("<span style='color: red'>加载文件失败：" + response.responseText + "</span>");
-                    } else {
-                        bootbox.alert("<span style='color: red'>加载文件失败,服务端出错</span>");
-                    }
-                },
-                success: function (data) {
-                    var decisionTable = data[0];
-                    self.remark.setData(decisionTable["remark"]);
-                    var salience = decisionTable["salience"];
-                    if (salience) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "salience", salience, 1));
-                    }
-                    var loop = decisionTable["loop"];
-                    if (loop != null) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "loop", loop, 3));
-                    }
-                    var effectiveDate = decisionTable["effectiveDate"];
-                    if (effectiveDate) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "effective-date", effectiveDate, 2));
-                    }
-                    var expiresDate = decisionTable["expiresDate"];
-                    if (expiresDate) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "expires-date", expiresDate, 2));
-                    }
-                    var enabled = decisionTable["enabled"];
-                    if (enabled != null) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "enabled", enabled, 3));
-                    }
-                    var debug = decisionTable["debug"];
-                    if (debug != null) {
-                        self.addProperty(new ruleforge.RuleProperty(self, "debug", debug, 3));
-                    }
-
-                    var libraries = decisionTable.libraries || [];
-                    $.each(libraries, function (index, library) {
-                        var type, path;
-                        type = library.type;
-                        path = library.path;
-                        switch (type) {
-                            case "Constant":
-                                constantLibraries.push(path);
-                                break;
-                            case "Action":
-                                actionLibraries.push(path);
-                                break;
-                            case "Variable":
-                                variableLibraries.push(path);
-                                break;
-                            case "Parameter":
-                                parameterLibraries.push(path);
-                                break;
-                        }
-                    });
-                    self.decisionTable = decisionTable;
-                    refreshActionLibraries();
-                    refreshConstantLibraries();
-                    refreshVariableLibraries();
-                    refreshParameterLibraries();
-                    refreshFunctionLibraries();
-                    if (callback) {
-                        callback();
-                    }
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", url, false);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.send(new URLSearchParams({files}).toString());
+            if (xhr.status === 200) {
+                var data = JSON.parse(xhr.responseText);
+                var decisionTable = data[0];
+                self.remark.setData(decisionTable["remark"]);
+                var salience = decisionTable["salience"];
+                if (salience) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "salience", salience, 1));
                 }
-            });
+                var loop = decisionTable["loop"];
+                if (loop != null) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "loop", loop, 3));
+                }
+                var effectiveDate = decisionTable["effectiveDate"];
+                if (effectiveDate) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "effective-date", effectiveDate, 2));
+                }
+                var expiresDate = decisionTable["expiresDate"];
+                if (expiresDate) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "expires-date", expiresDate, 2));
+                }
+                var enabled = decisionTable["enabled"];
+                if (enabled != null) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "enabled", enabled, 3));
+                }
+                var debug = decisionTable["debug"];
+                if (debug != null) {
+                    self.addProperty(new ruleforge.RuleProperty(self, "debug", debug, 3));
+                }
+
+                var libraries = decisionTable.libraries || [];
+                libraries.forEach(function (library) {
+                    var type, path;
+                    type = library.type;
+                    path = library.path;
+                    switch (type) {
+                        case "Constant":
+                            constantLibraries.push(path);
+                            break;
+                        case "Action":
+                            actionLibraries.push(path);
+                            break;
+                        case "Variable":
+                            variableLibraries.push(path);
+                            break;
+                        case "Parameter":
+                            parameterLibraries.push(path);
+                            break;
+                    }
+                });
+                self.decisionTable = decisionTable;
+                refreshActionLibraries();
+                refreshConstantLibraries();
+                refreshVariableLibraries();
+                refreshParameterLibraries();
+                refreshFunctionLibraries();
+                if (callback) {
+                    callback();
+                }
+            }
         },
         initMenu: function () {
             var self = this, variableLibrary = [];
             var oldVariableLibrary = window._ruleforgeEditorVariableLibraries || [];
-            $.each(oldVariableLibrary, function (index, lib) {
+            oldVariableLibrary.forEach(function (lib) {
                 if (lib.type != "parameter") {
                     variableLibrary.push(lib);
                 }
             });
             var parameter = window._ruleforgeEditorParameterLibraries || [];
             if (parameter.length > 0) {
-                $.each(parameter, function (index, p) {
+                parameter.forEach(function (p) {
                     variableLibrary.push([{
                         name: "参数",
                         type: "parameter",
@@ -1213,7 +1244,7 @@ window._setDirty = function () {
                         MsgBox.alert('当前条件列未定义对应的参数或变量，不能进行[配置条件]操作.');
                         return;
                     }
-                    const dialogContent = $("<div/>");
+                    const dialogContent = document.createElement("div");
                     let cellData = self.getCurrentCellData(), content = self.getCellContent(cellData);
                     content.renderTo(dialogContent);
                     const category = colData.variableCategory === "parameter" ? "参数" : colData.variableCategory;
@@ -1237,25 +1268,25 @@ window._setDirty = function () {
                     });
                 }
             }/*, {
-				label : "复制",
-				icon:"glyphicon glyphicon-copyright-mark",
-				name:"copy",
-				onClick:function(){
-					let cellData=self.getCurrentCellData();
-					window._tableCellContent=self.getCellContent(cellData);
-				}
-			}, {
-				label : "粘贴",
-				icon:"glyphicon glyphicon-registration-mark",
-				name:"paste",
-				onClick:function(){
-					if(!window._tableCellContent){
-						MsgBox.alert("请先复制目标单元格内容！");
-						return;
+					label : "复制",
+					icon:"glyphicon glyphicon-copyright-mark",
+					name:"copy",
+					onClick:function(){
+						let cellData=self.getCurrentCellData();
+						window._tableCellContent=self.getCellContent(cellData);
 					}
+				}, {
+					label : "粘贴",
+					icon:"glyphicon glyphicon-registration-mark",
+					name:"paste",
+					onClick:function(){
+						if(!window._tableCellContent){
+							MsgBox.alert("请先复制目标单元格内容！");
+							return;
+						}
 
-				}
-			}*/];
+					}
+				}*/];
 
             var onClick = function (menuItem) {
                 var highlight = self.getHighlight(),
@@ -1271,14 +1302,14 @@ window._setDirty = function () {
                 self.invoke("render");
             };
             var variabeMenuItem = [];
-            $.each(variableLibrary, function (index, categories) {
-                $.each(categories, function (i, category) {
+            variableLibrary.forEach(function (categories) {
+                categories.forEach(function (category) {
                     var menuItem = {
                         label: category.name == "parameter" ? "参数" : category.name,
                         icon: category.type == "parameter" ? "glyphicon glyphicon-th-list" : "glyphicon glyphicon-tasks"
                     };
                     var variables = category.variables;
-                    $.each(variables || [], function (j, variable) {
+                    (variables || []).forEach(function (variable) {
                         if (!menuItem.subMenu) {
                             menuItem.subMenu = {menuItems: []};
                         }
@@ -1356,23 +1387,16 @@ window._setDirty = function () {
                 self.actionCellMenu.setConfig(actionCellConfig);
             }
 
-            this.container.contextmenu(function (e) {
-                var parent = $(e.target);
-                for (var i = 0; i < 50; i++) {
-                    if (parent.is("th")) {
-                        break;
-                    }
-                    if (parent.is("tr")) {
-                        break;
-                    }
-                    parent = parent.parent();
-                }
-                if (parent.is("th") || parent.is("tr")) {
-                    var isCriteriaColHeader = parent.has("span.colHeader .glyphicon-filter").length,
-                        isAssignmentColHeader = parent.has("span.colHeader .glyphicon-tasks").length,
-                        isColHeader = parent.has("span.colHeader").length,
-                        isRowHeader = parent.has("span.rowHeader").length && $.trim(parent.has(".rowHeader").text()),
-                        isCell = parent.has("td").length,
+            this.container.addEventListener('contextmenu', function (e) {
+                var th = e.target.closest('th');
+                var tr = e.target.closest('tr');
+                var parent = th || tr;
+                if (parent) {
+                    var isCriteriaColHeader = parent.querySelectorAll('span.colHeader .glyphicon-filter').length > 0,
+                        isAssignmentColHeader = parent.querySelectorAll('span.colHeader .glyphicon-tasks').length > 0,
+                        isColHeader = parent.querySelectorAll('span.colHeader').length > 0,
+                        isRowHeader = parent.querySelectorAll('span.rowHeader').length > 0 && parent.textContent.trim(),
+                        isCell = parent.querySelectorAll('td').length > 0,
                         colData = self.getCurrentColData(),
                         highlight = self.getHighlight(),
                         col = highlight.col,
@@ -1394,4 +1418,4 @@ window._setDirty = function () {
             });
         }
     };
-})(Handsontable);
+})();

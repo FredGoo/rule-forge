@@ -1,5 +1,5 @@
+import '../css/grid.css';
 import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
 import Row from './Row.jsx';
 import CellEditor from './CellEditor.jsx';
 import {uniqueID} from '../../componentAction.js';
@@ -7,8 +7,7 @@ import {uniqueID} from '../../componentAction.js';
 class Grid extends Component {
     constructor(props) {
         super(props);
-        this.state = {display: 'none'};
-        this.filterData = {};
+        this.state = {display: 'none', filterTexts: {}};
     }
 
     onFilter(colIndex, e) {
@@ -17,33 +16,34 @@ class Grid extends Component {
         }
         const value = e.target.value;
         const name = e.target.name;
-        var oldData = this.filterData[name];
+        const oldData = this.state.filterTexts[name];
         if (value === oldData) {
             return;
         }
-        this.filterData[name] = value;
-        const $dom = $(ReactDOM.findDOMNode(this));
-        const $tbody = $dom.children('tbody');
-        const $trs = $tbody.children('tr');
-        for (var i = 1; i < $trs.length; i++) {
-            const $tr = $($trs[i]);
-            let contain = false;
-            $tr.children('td').each((index, td) => {
-                let $td = $(td);
-                if (index === colIndex) {
-                    let content = $td.children('div').html();
-                    if (content.indexOf(value) > -1) {
-                        contain = true;
-                    }
-                    return false;
-                }
-            });
-            if (!contain) {
-                $tr.hide();
-            } else {
-                $tr.show();
+        this.setState(prevState => ({
+            filterTexts: {...prevState.filterTexts, [name]: value}
+        }));
+    }
+
+    _matchesFilter(rowData, headers) {
+        const filterTexts = this.state.filterTexts;
+        const filterNames = Object.keys(filterTexts);
+        for (let i = 0; i < filterNames.length; i++) {
+            const filterName = filterNames[i];
+            const filterValue = filterTexts[filterName];
+            if (!filterValue) continue;
+            const header = headers.find(h => h.id === filterName);
+            if (!header) continue;
+            let cellValue = rowData[header.name];
+            if (cellValue && typeof cellValue === 'object') {
+                cellValue = JSON.stringify(cellValue);
+            }
+            const cellStr = cellValue != null ? String(cellValue) : '';
+            if (cellStr.indexOf(filterValue) === -1) {
+                return false;
             }
         }
+        return true;
     }
 
     render() {
@@ -84,7 +84,7 @@ class Grid extends Component {
                                    className="form-control" style={{height: '26px'}}
                                    placeholder='请输入过滤条件，回车查询...'/>
                         </td>);
-                    } else if(!header.hideFilterRow) {
+                    } else if (!header.hideFilterRow) {
                         return (<td key={uniqueID()}>&nbsp;</td>);
                     }
                 })}
@@ -95,6 +95,9 @@ class Grid extends Component {
         rows.forEach((row, rowIndex) => {
             if (!row.id) {
                 row.id = uniqueID();
+            }
+            if (!this._matchesFilter(row, headers)) {
+                return;
             }
             var rowKey = row.id;
             if (rowIndex === 0 && selectFirst) {

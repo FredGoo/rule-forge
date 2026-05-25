@@ -1,6 +1,3 @@
-/**
- * Created by jacky on 2016/7/18.
- */
 import scriptSVG from './svg/script.svg';
 import BaseNode from './BaseNode.js';
 
