@@ -30,7 +30,7 @@ ruleforge.ActionType.prototype.initData=function(data){
 
 ruleforge.ActionType.prototype.init=function(){
 	this.container=generateContainer();
-	RuleForge.setDomContent(this.container,"请选择动作类型");
+	this.container.textContent = "请选择动作类型";
 	this.container.style.color = "green";
 	this.parentContainer.appendChild(this.container);
 	this.action=null;
@@ -127,22 +127,22 @@ ruleforge.ActionType.prototype.setAction=function(type,data){
 	switch(type){
 	case "ConsolePrint":
 		this.action=new ruleforge.PrintAction(this.rule);
-		RuleForge.setDomContent(this.container,"输出:");
+		this.container.textContent = "输出:";
 		this.type="console-print";
 		break;
 	case "ExecuteMethod":
 		this.action=new ruleforge.MethodAction(this.rule);
-		RuleForge.setDomContent(this.container,"执行方法:");
+		this.container.textContent = "执行方法:";
 		this.type="execute-method";
 		break;
 	case "VariableAssign":
 		this.action=new ruleforge.AssignmentAction(this.rule);
-		RuleForge.setDomContent(this.container,"变量赋值:");
+		this.container.textContent = "变量赋值:";
 		this.type="var-assign";
 		break;
 	case "ExecuteCommonFunction":
 		this.action=new ruleforge.FunctionValue(null,null,this.rule);
-		RuleForge.setDomContent(this.container,"执行函数:");
+		this.container.textContent = "执行函数:";
 		this.type="execute-function";
 		break;
 	}

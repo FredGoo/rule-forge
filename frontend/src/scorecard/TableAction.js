@@ -22,15 +22,15 @@ export default class TableAction {
             if (assignTargetType === 'variable') {
                 this.variableTarget.getContainer().style.display = '';
                 this.variableTarget.setValue(data);
-                RuleForge.setDomContent(this.assignTargetContainer, ".");
+                this.assignTargetContainer.textContent = ".";
                 this.assignTargetContainer.style.color = "white";
             } else if (assignTargetType === 'parameter') {
                 this.parameterTarget.getContainer().style.display = '';
                 this.parameterTarget.setValue(data);
-                RuleForge.setDomContent(this.assignTargetContainer, ".");
+                this.assignTargetContainer.textContent = ".";
                 this.assignTargetContainer.style.color = "white";
             } else {
-                RuleForge.setDomContent(this.assignTargetContainer, "不赋值");
+                this.assignTargetContainer.textContent = "不赋值";
                 this.assignTargetContainer.style.color = "#999";
             }
         }
@@ -83,7 +83,7 @@ export default class TableAction {
         this.container.appendChild(assignSettingContainer);
         this.assignTargetContainer = generateContainer();
         assignSettingContainer.appendChild(this.assignTargetContainer);
-        RuleForge.setDomContent(this.assignTargetContainer, "请选择值类型");
+        this.assignTargetContainer.textContent = "请选择值类型";
         this.assignTargetContainer.style.color = "blue";
         this.variableTarget = new ruleforge.VariableValue(null, null, "Out");
         this.parameterTarget = new ruleforge.ParameterValue(null, null, "Out");
@@ -99,7 +99,7 @@ export default class TableAction {
                     self.parameterTarget.getContainer().style.display = 'none';
                     self.variableTarget.getContainer().style.display = '';
                     self.assignTargetType = "variable";
-                    RuleForge.setDomContent(self.assignTargetContainer, ".");
+                    self.assignTargetContainer.textContent = ".";
                     self.assignTargetContainer.style.color = "white";
                 }
             }, {
@@ -108,7 +108,7 @@ export default class TableAction {
                     self.variableTarget.getContainer().style.display = 'none';
                     self.parameterTarget.getContainer().style.display = '';
                     self.assignTargetType = "parameter";
-                    RuleForge.setDomContent(self.assignTargetContainer, ".");
+                    self.assignTargetContainer.textContent = ".";
                     self.assignTargetContainer.style.color = "white";
                 }
             }, {
@@ -117,7 +117,7 @@ export default class TableAction {
                     self.variableTarget.getContainer().style.display = 'none';
                     self.parameterTarget.getContainer().style.display = 'none';
                     self.assignTargetType = "none";
-                    RuleForge.setDomContent(self.assignTargetContainer, "不赋值");
+                    self.assignTargetContainer.textContent = "不赋值";
                     self.assignTargetContainer.style.color = "#999";
                 }
             }]

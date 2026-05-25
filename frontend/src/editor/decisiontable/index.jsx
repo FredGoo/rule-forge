@@ -4,7 +4,6 @@ import 'handsontable/styles/handsontable.css';
 import '../context.standalone.css';
 import '../../css/iconfont.css';
 import '../ruleforge/ruleset.css';
-import '../common/jquery.utils.js';
 import '../Math.uuid.js';
 import '../../Remark.js';
 import '../common/URule.js';

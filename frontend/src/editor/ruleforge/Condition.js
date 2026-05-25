@@ -6,7 +6,7 @@ ruleforge.Condition = function (parentContainer) {
     this.label = generateContainer();
     this.container.appendChild(this.label);
     this.label.style.color = "blue";
-    RuleForge.setDomContent(this.label, "请选择类型");
+    this.label.textContent = "请选择类型";
     this.valueContainer = document.createElement("span");
     this.container.appendChild(this.valueContainer);
     this.initMenu();
@@ -46,7 +46,7 @@ ruleforge.Condition.prototype.initMenu = function (constantLibraries) {
                     self.container.appendChild(self.operator.getContainer());
                 }
                 self.label.style.color = "white";
-                RuleForge.setDomContent(self.label, ".");
+                self.label.textContent = ".";
                 window._setDirty();
             }
         }, {
@@ -80,7 +80,7 @@ ruleforge.Condition.prototype.initMenu = function (constantLibraries) {
                     self.container.appendChild(self.operator.getContainer());
                 }
                 self.label.style.color = "white";
-                RuleForge.setDomContent(self.label, ".");
+                self.label.textContent = ".";
                 window._setDirty();
             }
         }]
@@ -92,7 +92,7 @@ ruleforge.Condition.prototype.initMenu = function (constantLibraries) {
 };
 ruleforge.Condition.prototype.initData = function (data) {
     this.label.style.color = "white";
-    RuleForge.setDomContent(this.label, ".");
+    this.label.textContent = ".";
     var leftData = data["left"];
     var leftPart = leftData["leftPart"];
     leftPart.arithmetic = leftData["arithmetic"];

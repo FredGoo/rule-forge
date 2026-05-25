@@ -40,7 +40,7 @@ export default class CrossCellVariableBundle {
                     self.parameterTarget.getContainer().style.display = 'none';
                     self.variableTarget.getContainer().style.display = '';
                     self.assignTargetType = 'variable';
-                    RuleForge.setDomContent(self.assignTargetContainer, '.');
+                    self.assignTargetContainer.textContent = '.';
                     self.assignTargetContainer.style.color = 'white';
                 }
             }, {
@@ -49,7 +49,7 @@ export default class CrossCellVariableBundle {
                     self.variableTarget.getContainer().style.display = 'none';
                     self.parameterTarget.getContainer().style.display = '';
                     self.assignTargetType = 'parameter';
-                    RuleForge.setDomContent(self.assignTargetContainer, '.');
+                    self.assignTargetContainer.textContent = '.';
                     self.assignTargetContainer.style.color = 'white';
                 }
             }]
@@ -59,7 +59,7 @@ export default class CrossCellVariableBundle {
             self.menu.show(e);
         });
 
-        RuleForge.setDomContent(this.assignTargetContainer, '选择...');
+        this.assignTargetContainer.textContent = '选择...';
     }
 
     /**
@@ -90,13 +90,13 @@ export default class CrossCellVariableBundle {
                 this.parameterTarget.getContainer().style.display = '';
                 this.parameterTarget.setValue(valueData);
             } else {
-                RuleForge.setDomContent(this.assignTargetContainer, '请选择要赋值的对象...');
+                this.assignTargetContainer.textContent = '请选择要赋值的对象...';
                 this.assignTargetContainer.style.color = '#03A9F4';
             }
 
             if (data.assignTargetType) {
                 this.assignTargetType = data.assignTargetType;
-                RuleForge.setDomContent(this.assignTargetContainer, '.');
+                this.assignTargetContainer.textContent = '.';
                 this.assignTargetContainer.style.color = '#fff';
             }
         }

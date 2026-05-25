@@ -191,7 +191,7 @@ ruleforge.Rule.prototype.initHeader = function () {
         self.name = value;
         self.nameEditor.style.display = 'none';
         self.nameLabel.style.display = '';
-        RuleForge.setDomContent(self.nameLabel, self.name);
+        self.nameLabel.textContent = self.name;
         window._setDirty();
     });
     this.nameEditor.style.display = "none";

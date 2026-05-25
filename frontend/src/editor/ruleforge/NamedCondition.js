@@ -9,7 +9,7 @@ ruleforge.NamedCondition=function(context,parentContainer,parentJoin){
 	this.label=generateContainer();
 	this.container.appendChild(this.label);
 	this.label.style.color = "#673AB7";
-	RuleForge.setDomContent(this.label,"请选择属性");
+	this.label.textContent = "请选择属性";
 	this.valueContainer=document.createElement("span");
 	this.container.appendChild(this.valueContainer);
 	this.initMenu();
@@ -29,7 +29,7 @@ ruleforge.NamedCondition.prototype.initMenu=function(){
 				self.variableName=variable.name;
 				self.variableLabel=variable.label;
 				self.datatype=variable.type;
-				RuleForge.setDomContent(self.label,item.label);
+				self.label.textContent = item.label;
 				if(self.operator){
 					self.operator.getContainer().style.display='';
 				}else{
@@ -54,7 +54,7 @@ ruleforge.NamedCondition.prototype.initData=function(data){
 	this.variableName=data["variableName"];
 	this.variableLabel=data["variableLabel"];
 	this.datatype=data["datatype"];
-	RuleForge.setDomContent(this.label,this.variableLabel);
+	this.label.textContent = this.variableLabel;
 	var self=this;
 	if(this.operator){
 		this.operator.getContainer().style.display='';

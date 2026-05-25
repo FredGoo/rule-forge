@@ -14,7 +14,7 @@ ruleforge.NamedJoin=function(context){
 	this.namedLabel.style.color="#9C27B0";
 	this.namedLabel.style.cursor="pointer";
 	this.namedLabel.style.fontSize="12px";
-	RuleForge.setDomContent(this.namedLabel,"请输入引用名");
+	this.namedLabel.textContent = "请输入引用名";
 	this.container.appendChild(this.namedLabel);
 	var namedEditor=document.createElement("input");
 	namedEditor.type="text";
@@ -38,13 +38,13 @@ ruleforge.NamedJoin=function(context){
 		var value=this.value;
 		if(value && value!==''){
 			self.referenceName=value;
-			RuleForge.setDomContent(self.namedLabel,value+":");
+			self.namedLabel.textContent = value+":";
 			if(self.variableCategory){
 				self.context.putToNamedMap(self.referenceName,self.variableCategory);
 			}
 		}else{
 			self.referenceName=null;
-			RuleForge.setDomContent(self.namedLabel,"请输入引用名");
+			self.namedLabel.textContent = "请输入引用名";
 		}
 		for(let refValue of self.context.rule.namedReferenceValues){
 			if(refValue){
@@ -60,7 +60,7 @@ ruleforge.NamedJoin=function(context){
 	this.variableCategoryLabel.style.color="#03A9F4";
 	this.variableCategoryLabel.style.cursor="pointer";
 	this.variableCategoryLabel.style.fontSize="12px";
-	RuleForge.setDomContent(this.variableCategoryLabel,"请选择变量对象");
+	this.variableCategoryLabel.textContent = "请选择变量对象";
 	this.container.appendChild(this.variableCategoryLabel);
 	this.initMenu();
 
@@ -95,7 +95,7 @@ ruleforge.NamedJoin.prototype.initMenu=function(variableLibraries){
 								self.variableCategory=item.category;
 								self.variableCategoryName=item.category.name;
 								self.context.putToNamedMap(self.referenceName,self.variableCategory);
-								RuleForge.setDomContent(self.variableCategoryLabel,item.label);
+								self.variableCategoryLabel.textContent = item.label;
 								self.resetItemPosition(0,null);
 								for(let child of self.children){
 									child.remove();
@@ -107,7 +107,7 @@ ruleforge.NamedJoin.prototype.initMenu=function(variableLibraries){
 						self.variableCategory=item.category;
 						self.variableCategoryName=item.category.name;
 						self.context.putToNamedMap(self.referenceName,self.variableCategory);
-						RuleForge.setDomContent(self.variableCategoryLabel,item.label);
+						self.variableCategoryLabel.textContent = item.label;
 						self.resetItemPosition(0,null);
 					}
 					for(let refValue of self.context.rule.namedReferenceValues){
@@ -161,8 +161,8 @@ ruleforge.NamedJoin.prototype.initMenu=function(variableLibraries){
 ruleforge.NamedJoin.prototype.initData=function(data){
 	this.referenceName=data["referenceName"];
 	this.variableCategoryName=data["variableCategory"];
-	RuleForge.setDomContent(this.namedLabel,this.referenceName+":");
-	RuleForge.setDomContent(this.variableCategoryLabel,this.variableCategoryName);
+	this.namedLabel.textContent = this.referenceName+":";
+	this.variableCategoryLabel.textContent = this.variableCategoryName;
 	var items=data["items"];
 	this.setType(data["junctionType"]);
 	if(!items){
@@ -176,9 +176,9 @@ ruleforge.NamedJoin.prototype.initData=function(data){
 ruleforge.NamedJoin.prototype.setType=function(type){
 	this.type=type;
 	if(type==="or"){
-		RuleForge.setDomContent(this.joinLabel,"或者");
+		this.joinLabel.textContent = "或者";
 	}else{
-		RuleForge.setDomContent(this.joinLabel,"并且");
+		this.joinLabel.textContent = "并且";
 	}
 	window._setDirty();
 };

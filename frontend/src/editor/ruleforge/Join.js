@@ -40,9 +40,9 @@ ruleforge.Join.prototype.initData=function(data){
 ruleforge.Join.prototype.setType=function(type){
 	this.type=type;
 	if(type=="or"){
-		RuleForge.setDomContent(this.joinLabel,"或者");
+		this.joinLabel.textContent = "或者";
 	}else{
-		RuleForge.setDomContent(this.joinLabel,"并且");
+		this.joinLabel.textContent = "并且";
 	}
 	window._setDirty();
 };

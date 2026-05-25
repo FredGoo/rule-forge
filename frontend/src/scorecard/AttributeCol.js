@@ -52,7 +52,7 @@ export default class AttributeCol extends Col{
                 if (categoryObj) {
                     cell.category = categoryObj;
                     // 更新显示
-                    RuleForge.setDomContent(cell.categoryContainer, categoryObj.name);
+                    cell.categoryContainer.textContent = categoryObj.name;
                 }
             }
             if (cell) {

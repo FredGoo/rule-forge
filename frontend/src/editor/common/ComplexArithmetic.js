@@ -38,7 +38,7 @@ ruleforge.ComplexArithmetic = function (rule) {
                 if (self.nextType) {
                     self.nextType.getContainer().remove();
                     self.nextType = null;
-                    RuleForge.setDomContent(self.selectorLabel, ".");
+                    self.selectorLabel.textContent = ".";
                     self.selectorLabel.style.color = "#fff";
                     self.selectorLabel.style.paddingLeft = "0px";
                     self.selectorLabel.style.paddingRight = "0px";
@@ -72,7 +72,7 @@ ruleforge.ComplexArithmetic.prototype.setOperator = function (operator) {
             this.info = "%";
             break;
     }
-    RuleForge.setDomContent(this.selectorLabel, this.info);
+    this.selectorLabel.textContent = this.info;
     this.selectorLabel.style.color = "green";
     this.selectorLabel.style.paddingLeft = "4px";
     this.selectorLabel.style.paddingRight = "4px";

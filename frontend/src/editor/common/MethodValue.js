@@ -13,7 +13,7 @@ ruleforge.MethodValue = function (arithmetic, data) {
     this.label.style.color = "blue";
     this.actionContainer = document.createElement("span");
     this.container.appendChild(this.actionContainer);
-    RuleForge.setDomContent(this.label, "请选择方法");
+    this.label.textContent = "请选择方法";
     if (arithmetic) {
         this.container.appendChild(arithmetic.getContainer());
     }
@@ -83,7 +83,7 @@ ruleforge.MethodValue.prototype.setAction = function (data) {
         this.action.getContainer().remove();
     }
     this.action = new ruleforge.MethodAction();
-    RuleForge.setDomContent(this.label, "[");
+    this.label.textContent = "[";
     this.actionContainer.appendChild(this.action.getContainer());
     this.actionContainer.appendChild(this.rightParn);
 

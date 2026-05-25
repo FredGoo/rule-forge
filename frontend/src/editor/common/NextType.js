@@ -7,7 +7,7 @@ ruleforge.NextType = function (rule) {
     this.selectorLabel.style.fontWeight = "blod";
     this.selectorLabel.style.color = "#fff";
     this.container.appendChild(this.selectorLabel);
-    RuleForge.setDomContent(this.selectorLabel, ".");
+    this.selectorLabel.textContent = ".";
     var self = this;
     var onClick = function (menu) {
         var type = menu.name;

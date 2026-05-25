@@ -17,7 +17,6 @@ import '../ruleforge/ConfigActionDialog.js';
 import '../ruleforge/ConfigConstantDialog.js';
 import '../ruleforge/ConfigParameterDialog.js';
 import '../ruleforge/ConfigVariableDialog.js';
-import '../common/jquery.utils.js';
 import './ScriptDecisionTable.js';
 
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';

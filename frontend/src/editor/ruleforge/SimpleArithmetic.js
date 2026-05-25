@@ -1,7 +1,7 @@
 ruleforge.SimpleArithmetic = function () {
     this.container = document.createElement("span");
     this.selectorLabel = generateContainer();
-    RuleForge.setDomContent(this.selectorLabel, ".");
+    this.selectorLabel.textContent = ".";
     this.selectorLabel.style.color = "#FFF";
     this.operator = "";
     this.container.appendChild(this.selectorLabel);
@@ -38,7 +38,7 @@ ruleforge.SimpleArithmetic = function () {
                     self.value.getContainer().remove();
                     self.operator = null;
                     self.value = null;
-                    RuleForge.setDomContent(self.selectorLabel, ".");
+                    self.selectorLabel.textContent = ".";
                     self.selectorLabel.style.color = "#FFF";
                     self.selectorLabel.style.paddingLeft = "0px";
                     self.selectorLabel.style.paddingRight = "0px";
@@ -84,7 +84,7 @@ ruleforge.SimpleArithmetic.prototype.setOperator = function (operator) {
     this.selectorLabel.style.fontWeight = "bold";
     this.selectorLabel.style.paddingLeft = "5px";
     this.selectorLabel.style.paddingRight = "5px";
-    RuleForge.setDomContent(this.selectorLabel, info);
+    this.selectorLabel.textContent = info;
     if (!this.value) {
         this.simpleArithmetic = new ruleforge.SimpleArithmetic();
         this.value = new ruleforge.SimpleValue(this.simpleArithmetic);

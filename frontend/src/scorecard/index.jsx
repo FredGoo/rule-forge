@@ -7,7 +7,6 @@ import '../editor/context.standalone.css';
 import '../editor/ruleforge/ruleset.css';
 import {createRoot} from 'react-dom/client';
 import '../Remark.js';
-import '../editor/common/jquery.utils.js';
 import '../editor/common/URule.js';
 import '../editor/common/contextMenu.js';
 import '../editor/Math.uuid.js';

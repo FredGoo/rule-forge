@@ -11,12 +11,12 @@ ruleforge.NamedReferenceValue=function(arithmetic,data,rule){
 	this.referenceNamelabel=generateContainer();
     this.container.appendChild(this.referenceNamelabel);
 	    this.referenceNamelabel.style.color = "#9C27B0";
-	RuleForge.setDomContent(this.referenceNamelabel,"请选择引用变量名");
+	this.referenceNamelabel.textContent = "请选择引用变量名";
 
 	this.referencePropertylabel=generateContainer();
 	this.referencePropertylabel.style.color = "#673AB7";
 	this.container.appendChild(this.referencePropertylabel);
-	RuleForge.setDomContent(this.referencePropertylabel,"请选择变量属性");
+	this.referencePropertylabel.textContent = "请选择变量属性";
 
 	if(arithmetic){
 		this.container.appendChild(arithmetic.getContainer());
@@ -48,7 +48,7 @@ ruleforge.NamedReferenceValue.prototype.initMenu=function(){
 			label:name,
 			onClick:function (item) {
 				self.referenceName=name;
-				RuleForge.setDomContent(self.referenceNamelabel,self.referenceName+".");
+				self.referenceNamelabel.textContent = self.referenceName+".";
 				var category=self.rule.namedMap.get(name) || {};
 				var variables=category.variables || [];
 				self.initPropertyMenu(variables);
@@ -82,7 +82,7 @@ ruleforge.NamedReferenceValue.prototype.initPropertyMenu=function(variables){
 				self.propertyName=variable.name;
 				self.propertyLabel=variable.label;
 				self.datatype=variable.type;
-				RuleForge.setDomContent(self.referencePropertylabel,self.propertyLabel);
+				self.referencePropertylabel.textContent = self.propertyLabel;
 				window._setDirty();
 			}
 		});
@@ -102,8 +102,8 @@ ruleforge.NamedReferenceValue.prototype.setValue=function(data){
 	this.propertyName=data["propertyName"] || data["variableName"];
 	this.propertyLabel=data["propertyLabel"] || data["variableLabel"];
 	this.datatype=data["datatype"];
-	RuleForge.setDomContent(this.referenceNamelabel,this.referenceName+".");
-	RuleForge.setDomContent(this.referencePropertylabel,this.propertyLabel);
+	this.referenceNamelabel.textContent = this.referenceName+".";
+	this.referencePropertylabel.textContent = this.propertyLabel;
 	window._setDirty();
 };
 ruleforge.NamedReferenceValue.prototype.initData=function(data){

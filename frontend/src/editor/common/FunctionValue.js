@@ -13,7 +13,7 @@ ruleforge.FunctionValue = function (arithmetic, data, rule) {
     this.label.style.color = "#008080";
     this.functionContainer = document.createElement("span");
     this.container.appendChild(this.functionContainer);
-    RuleForge.setDomContent(this.label, "请选择函数");
+    this.label.textContent = "请选择函数";
     if (arithmetic) {
         this.container.appendChild(arithmetic.getContainer());
     }
@@ -91,7 +91,7 @@ ruleforge.FunctionValue.prototype.initData = function (data) {
 ruleforge.FunctionValue.prototype.setFunction = function (data) {
     window._setDirty();
     this.functionContainer.innerHTML = "";
-    RuleForge.setDomContent(this.label, data.label);
+    this.label.textContent = data.label;
     this.functionContainer.appendChild(this.leftParn);
     this.functionLabel = data.label;
     this.functionName = data.name;

@@ -23,13 +23,13 @@ ruleforge.MethodAction.prototype.initData=function(data){
 		this.parameterCount=parameters.length;
 	}
 	if(this.parameterCount===0){
-        RuleForge.setDomContent(this.nameContainer,this.methodLabel);
+        this.nameContainer.textContent = this.methodLabel;
 		var parameterLabel=document.createElement("span");
 		parameterLabel.style.color="gray";
 		parameterLabel.textContent="(无参数)";
 		this.container.appendChild(parameterLabel);
 	}else{
-        RuleForge.setDomContent(this.nameContainer,this.methodLabel+"(");
+        this.nameContainer.textContent = this.methodLabel+"(";
     }
 	if(this.parameterCount==0){
 		return;

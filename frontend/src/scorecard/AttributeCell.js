@@ -29,7 +29,7 @@ export default class AttributeCell extends Cell {
         categorySpan.style.cssText = 'color: #3c763d;font-weight: bold;font-size: 11px';
         this.categorySelector.appendChild(categorySpan);
         this.categoryContainer = document.createElement('span');
-        RuleForge.setDomContent(this.categoryContainer, "选择分类");
+        this.categoryContainer.textContent = "选择分类";
         categorySpan.appendChild(this.categoryContainer);
         categorySpan.appendChild(document.createTextNode(' '));
         const caret = document.createElement('span');
@@ -56,11 +56,11 @@ export default class AttributeCell extends Cell {
                 // 处理category可能是字符串或对象的情况
                 const categoryName = typeof categoryValue === 'string' ? categoryValue : categoryValue.name;
             this.categoryName = categoryName;
-                RuleForge.setDomContent(this.categoryContainer, categoryName);
+                this.categoryContainer.textContent = categoryName;
             }
-            RuleForge.setDomContent(this.propContainer, this.variableLabel || this.variableName);
+            this.propContainer.textContent = this.variableLabel || this.variableName;
         } else {
-            RuleForge.setDomContent(this.propContainer, "请选择属性");
+            this.propContainer.textContent = "请选择属性";
             console.log('AttributeCell init: no cellData provided');
         }
         container.appendChild(this.propContainer);
@@ -129,7 +129,7 @@ export default class AttributeCell extends Cell {
                 e.preventDefault();
                 e.stopPropagation();
                 _this.category = category;
-                RuleForge.setDomContent(_this.categoryContainer, categoryName);
+                _this.categoryContainer.textContent = categoryName;
                 // 更新属性选项
                 _this.refreshAttributeCellMenus(category.variables || []);
                 // 清空当前选择的属性
@@ -137,7 +137,7 @@ export default class AttributeCell extends Cell {
                 _this.variableName = null;
                 _this.variableLabel = null;
                 _this.datatype = null;
-                RuleForge.setDomContent(_this.propContainer, "请选择属性");
+                _this.propContainer.textContent = "请选择属性";
                 // 手动关闭dropdown
                 _this.categorySelector.classList.remove('open');
             });
@@ -198,7 +198,7 @@ export default class AttributeCell extends Cell {
                     _this.variableName = variable.name;
                     _this.variableLabel = variable.label;
                     _this.datatype = variable.type;
-                    RuleForge.setDomContent(_this.propContainer, variable.label || variable.name);
+                    _this.propContainer.textContent = variable.label || variable.name;
                     // 更新propContainer的颜色以表示已选择
                     _this.propContainer.style.color = 'green';
                 }

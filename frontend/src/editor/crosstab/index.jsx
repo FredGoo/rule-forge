@@ -39,7 +39,6 @@ import '../common/SimpleValue.js';
 import '../decisiontable/Join.js';
 import '../decisiontable/Condition.js';
 import '../decisiontable/CellCondition.js';
-import '../common/jquery.utils.js';
 
 import CrossTable from './CrossTable.js';
 import ExcelImportDialog from './ExcelImportDialog.js';

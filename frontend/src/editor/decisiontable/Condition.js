@@ -21,7 +21,7 @@ ruleforge.Condition.prototype.initData = function (data) {
 };
 ruleforge.Condition.prototype.getDisplayContainer = function () {
     var container = document.createElement("span");
-    var operator = RuleForge.getDomContent(this.operator.getContainer());
+    var operator = this.operator.getContainer().textContent;
     var opSpan = document.createElement("span");
     opSpan.style.cssText = "color:blue";
     opSpan.textContent = operator;

@@ -6,7 +6,7 @@ ruleforge.ConditionLeft=function(parentContainer){
 	this.label=generateContainer();
 	this.container.appendChild(this.label);
 	this.label.style.color="blue";
-	RuleForge.setDomContent(this.label,"请选择类型");
+	this.label.textContent = "请选择类型";
 	this.valueContainer=document.createElement("span");
 	this.container.appendChild(this.valueContainer);
 	this.initMenu();
@@ -35,7 +35,7 @@ ruleforge.ConditionLeft.prototype.initMenu=function(constantLibraries){
 					self.valueContainer.appendChild(self.variableValue.getContainer());
 				}
 				self.label.style.color="white";
-				RuleForge.setDomContent(self.label,".");
+				self.label.textContent = ".";
 				window._setDirty();
 			}
 		},{
@@ -58,7 +58,7 @@ ruleforge.ConditionLeft.prototype.initMenu=function(constantLibraries){
 					self.valueContainer.appendChild(self.parameterValue.getContainer());
 				}
 				self.label.style.color="white";
-				RuleForge.setDomContent(self.label,".");
+				self.label.textContent = ".";
 				window._setDirty();
 			}
 		},{
@@ -81,7 +81,7 @@ ruleforge.ConditionLeft.prototype.initMenu=function(constantLibraries){
 					self.valueContainer.appendChild(self.methodValue.getContainer());
 				}
 				self.label.style.color="white";
-				RuleForge.setDomContent(self.label,".");
+				self.label.textContent = ".";
 				window._setDirty();
 			}
 		},{
@@ -104,7 +104,7 @@ ruleforge.ConditionLeft.prototype.initMenu=function(constantLibraries){
 					self.valueContainer.appendChild(self.functionValue.getContainer());
 				}
 				self.label.style.color="white";
-				RuleForge.setDomContent(self.label,".");
+				self.label.textContent = ".";
 				window._setDirty();
 			}
 		}]
@@ -119,7 +119,7 @@ ruleforge.ConditionLeft.prototype.initData=function(leftData){
 		return;
 	}
 	this.label.style.color="white";
-	RuleForge.setDomContent(this.label,".");
+	this.label.textContent = ".";
 	var leftPart=leftData["leftPart"];
 	leftPart.arithmetic=leftData["arithmetic"];
 	this.type=leftData["type"];

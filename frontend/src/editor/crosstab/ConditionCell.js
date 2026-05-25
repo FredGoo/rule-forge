@@ -63,7 +63,7 @@ export default class ConditionCell extends BaseCell {
                     self.parameterTarget.getContainer().style.display = 'none';
                     self.variableTarget.getContainer().style.display = '';
                     self.assignTargetType = 'variable';
-                    RuleForge.setDomContent(self.propContainer, '.');
+                    self.propContainer.textContent = '.';
                     self.propContainer.style.color = 'white';
                 }
             }, {
@@ -72,7 +72,7 @@ export default class ConditionCell extends BaseCell {
                     self.variableTarget.getContainer().style.display = 'none';
                     self.parameterTarget.getContainer().style.display = '';
                     self.assignTargetType = 'parameter';
-                    RuleForge.setDomContent(self.propContainer, '.');
+                    self.propContainer.textContent = '.';
                     self.propContainer.style.color = 'white';
                 }
             }]
@@ -87,7 +87,7 @@ export default class ConditionCell extends BaseCell {
         if (!this.row.istop) {
             placeholder = '选择条件列属性';
         }
-        RuleForge.setDomContent(this.propContainer, placeholder);
+        this.propContainer.textContent = placeholder;
 
         // Condition display area
         const conditionWrapper = document.createElement('span');
@@ -189,14 +189,14 @@ export default class ConditionCell extends BaseCell {
             this.parameterTarget.getContainer().style.display = 'none';
             this.variableTarget.getContainer().style.display = '';
             this.assignTargetType = 'variable';
-            RuleForge.setDomContent(this.propContainer, '.');
+            this.propContainer.textContent = '.';
             this.propContainer.style.color = 'white';
             this.variableTarget.setValue(data);
         } else {
             this.variableTarget.getContainer().style.display = 'none';
             this.parameterTarget.getContainer().style.display = '';
             this.assignTargetType = 'parameter';
-            RuleForge.setDomContent(this.propContainer, '.');
+            this.propContainer.textContent = '.';
             this.propContainer.style.color = 'white';
             this.parameterTarget.setValue(data);
         }
@@ -216,7 +216,7 @@ export default class ConditionCell extends BaseCell {
                 label: prop.label || prop.name,
                 onClick: function () {
                     self.variable = prop;
-                    RuleForge.setDomContent(self.propContainer, prop.label || prop.name);
+                    self.propContainer.textContent = prop.label || prop.name;
                 }
             });
         };

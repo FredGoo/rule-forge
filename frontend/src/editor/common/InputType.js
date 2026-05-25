@@ -4,10 +4,10 @@ ruleforge.InputType = function (endInfo, tip, functionProperty, rule) {
     this.rule = rule;
     this.container.appendChild(this.label);
     if (tip) {
-        RuleForge.setDomContent(this.label, tip);
+        this.label.textContent = tip;
         this.label.style.color = "gray";
     } else {
-        RuleForge.setDomContent(this.label, "选择值类型");
+        this.label.textContent = "选择值类型";
         this.label.style.color = "blue";
     }
     this.functionProperty = functionProperty;
@@ -117,7 +117,7 @@ ruleforge.InputType.prototype.setValueType = function (valueType, value) {
     if (this.functionValue) {
         this.functionValue.getContainer().style.display = "none";
     }
-    RuleForge.setDomContent(this.label, ".");
+    this.label.textContent = ".";
     this.label.style.color = "#FDFDFD";
     switch (valueType) {
         case "Input":

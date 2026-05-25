@@ -37,7 +37,6 @@ import '../ruleforge/NamedReferenceValue.js';
 import './ConditionLeft.js';
 import '../ruleforge/RuleProperty.js';
 
-import '../common/jquery.utils.js';
 import DecisionTree from './new/DecisionTree.js';
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
 import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.jsx';

@@ -7,13 +7,13 @@ ruleforge.RuleProperty=function(parent,name,defaultValue,editorType){
 	var nameContainer=document.createElement("span");
 	this.name=name;
 	var label=this.getLabel();
-	RuleForge.setDomContent(nameContainer,label+"：");
+	nameContainer.textContent = label+"：";
 	this.container.appendChild(nameContainer);
 	var valueContainer=document.createElement("span");
 	var valueLabel=generateContainer();
 	if(defaultValue=="")defaultValue="无";
 	valueLabel.style.color="#000";
-	RuleForge.setDomContent(valueLabel,defaultValue);
+	valueLabel.textContent = defaultValue;
 	valueContainer.appendChild(valueLabel);
 	this.container.appendChild(valueContainer);
 	var editor=null;
@@ -47,9 +47,9 @@ ruleforge.RuleProperty=function(parent,name,defaultValue,editorType){
 			self.value=editor.value;
 			editor.style.display='none';
 			if(self.value==""){
-				RuleForge.setDomContent(valueLabel,"无");
+				valueLabel.textContent = "无";
 			}else{
-				RuleForge.setDomContent(valueLabel,self.value);
+				valueLabel.textContent = self.value;
 			}
 			valueLabel.style.display='';
 			window._setDirty();
@@ -66,7 +66,7 @@ ruleforge.RuleProperty=function(parent,name,defaultValue,editorType){
 			if(defaultValue!=="无"){
 				var defaultDate=new Date(defaultValue);
 				this.value=defaultValue;//formatDate(defaultDate,'Y-m-d H:m:s');
-				RuleForge.setDomContent(valueLabel,this.value);
+				valueLabel.textContent = this.value;
 			}
 		}
 	}else{

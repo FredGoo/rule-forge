@@ -10,7 +10,7 @@ ruleforge.FunctionParameter.prototype.initData = function (data) {
         return;
     }
     this.name = data.name;
-    RuleForge.setDomContent(this.nameContainer, this.name + ":");
+    this.nameContainer.textContent = this.name + ":";
     if (data.needProperty || data.property) {
         this.functionProperty = new ruleforge.FunctionProperty();
         this.functionProperty.setProperty({name: data.property, label: data.propertyLabel});

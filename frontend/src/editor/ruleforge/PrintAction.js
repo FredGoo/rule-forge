@@ -1,13 +1,13 @@
 ruleforge.PrintAction=function(rule){
 	this.container=document.createElement("span");
 	this.beforeContainer=document.createElement("span");
-	RuleForge.setDomContent(this.beforeContainer,"");
+	this.beforeContainer.textContent = "";
 	this.container.appendChild(this.beforeContainer);
 	this.inputType=new ruleforge.InputType(null,null,null,rule);
 	this.inputTypeContainer=this.inputType.getContainer();
 	this.container.appendChild(this.inputTypeContainer);
 	this.afterContainer=document.createElement("span");
-	RuleForge.setDomContent(this.afterContainer,"");
+	this.afterContainer.textContent = "";
 	this.container.appendChild(this.afterContainer);
 };
 ruleforge.PrintAction.prototype.initData=function(data){

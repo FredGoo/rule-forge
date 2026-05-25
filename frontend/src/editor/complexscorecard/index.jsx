@@ -44,7 +44,6 @@ import '../common/SimpleValue.js';
 import '../decisiontable/Join.js';
 import '../decisiontable/Condition.js';
 import '../decisiontable/CellCondition.js';
-import '../common/jquery.utils.js';
 
 import {createRoot} from 'react-dom/client';
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';

@@ -4,7 +4,7 @@ ruleforge.CellExecuteMethod=function(element){
 	this.parentContainer.style.width="100%";
 	this.container=generateContainer();
 //	this.container.prop("innerText","无");
-	RuleForge.setDomContent(this.container,"无");
+	this.container.textContent = "无";
 	this.container.style.color="gray";
 	this.parentContainer.appendChild(this.container);
 	window._ActionTypeArray.push(this);
@@ -65,7 +65,7 @@ ruleforge.CellExecuteMethod.prototype.clean=function(){
 	if(this.action){
 		this.action.getContainer().remove();
 	}
-	RuleForge.setDomContent(this.container,"无");
+	this.container.textContent = "无";
 	this.container.style.color="gray";
 	this.action=null;
 };
@@ -75,7 +75,7 @@ ruleforge.CellExecuteMethod.prototype.setAction=function(data){
 		this.action.getContainer().remove();
 	}
 	this.action=new ruleforge.MethodAction();
-	RuleForge.setDomContent(this.container,".");
+	this.container.textContent = ".";
 	this.container.style.color="white";
 	this.parentContainer.appendChild(this.action.getContainer());
 	this.action.initData(data);
