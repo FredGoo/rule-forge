@@ -37,7 +37,6 @@ import '../ruleforge/NamedReferenceValue.js';
 import './ConditionLeft.js';
 import '../ruleforge/RuleProperty.js';
 
-
 import '../common/jquery.utils.js';
 import DecisionTree from './new/DecisionTree.js';
 import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTreeDialog.jsx';
@@ -45,22 +44,99 @@ import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.j
 import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
 import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
 import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
+import EditorToolbar from '../../components/editor-toolbar/EditorToolbar.jsx';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import {buildProjectNameFromFile, getParameter} from "../../Utils";
+import {getParameter, ajaxSave, saveNewVersion, buildProjectNameFromFile} from "../../Utils.js";
+import * as event from '../../components/componentEvent.js';
 
 document.addEventListener('DOMContentLoaded', function () {
     const file = getParameter('file');
+    if (!file || file.length < 1) {
+        alert("未指定具体的决策树文件！");
+        return;
+    }
+
     window._project = buildProjectNameFromFile(file);
 
-    createRoot(document.getElementById("dialogContainer")).render(
+    const decisionTree = new DecisionTree(document.getElementById('container'));
+
+    let toolbarApi = null;
+
+    function saveFile(isNewVersion) {
+        var xml;
+        try {
+            xml = decisionTree.toXml();
+        } catch (error) {
+            alert(error);
+            return;
+        }
+        xml = encodeURIComponent(xml);
+        var postData = {content: xml, file: file, newVersion: isNewVersion};
+        var url = window._server + '/common/saveFile';
+        if (isNewVersion) {
+            saveNewVersion(url, postData, function () {
+                toolbarApi.clearDirty();
+                bootbox.alert('保存成功!');
+            });
+        } else {
+            ajaxSave(url, postData, function () {
+                toolbarApi.clearDirty();
+                bootbox.alert('保存成功!');
+            });
+        }
+    }
+
+    function loadData() {
+        var url = window._server + '/common/loadXml';
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({files: file}).toString()
+        }).then(function(response) {
+            if (!response.ok) throw response;
+            return response.json();
+        }).then(function (data) {
+            decisionTree.loadData(data[0]);
+            toolbarApi.clearDirty();
+        }).catch(function (response) {
+            if (response && response.status === 401) {
+                bootbox.alert("权限不足，不能进行此操作.");
+            } else if (response && response.text) {
+                response.text().then(function(text) {
+                    bootbox.alert("<span style='color: red'>加载文件失败：" + text + "</span>");
+                });
+            } else {
+                alert("加载文件失败！");
+            }
+        });
+    }
+
+    createRoot(document.getElementById('toolbarContainer')).render(
+        <EditorToolbar
+            onSave={saveFile}
+            onReady={(api) => { toolbarApi = api; }}
+            extraButtons={[
+                <button key="quicktest" type="button" className="btn btn-success"
+                        onClick={function() {
+                            var decodedFile = decodeURIComponent(file);
+                            event.eventEmitter.emit(event.OPEN_QUICK_TEST_DIALOG, {project: window._project, file: decodedFile});
+                        }}>
+                    <i className="glyphicon glyphicon-flash"></i> 快速测试
+                </button>
+            ]}
+        />
+    );
+
+    createRoot(document.getElementById('dialogContainer')).render(
         <div>
-            <KnowledgeTreeDialog/>,
-            <ConfigLibraryDialog/>,
-            <QuickTestDialog/>,
-            <ResourceVersionDialogComponent/>,
+            <KnowledgeTreeDialog/>
+            <ConfigLibraryDialog/>
+            <QuickTestDialog/>
+            <ResourceVersionDialogComponent/>
             <ResourceListDialogComponent/>
-        </div>,
-);
-    new DecisionTree(document.getElementById('container'));
+        </div>
+    );
+
+    loadData();
 });

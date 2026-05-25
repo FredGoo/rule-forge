@@ -33,37 +33,13 @@ export default class ComplexScoreCard {
     }
 
     /**
-     * Build the entire UI: toolbar, remark, property config, table, and scoring action.
+     * Build the entire UI: remark, property config, table, and scoring action.
+     * Toolbar is rendered separately by the React EditorToolbar component.
      *
      * @param {HTMLElement} container - The container element
      */
     init(container) {
         const self = this;
-
-        // Toolbar
-        const toolbarNav = document.createElement('nav');
-        toolbarNav.className = 'navbar navbar-default';
-        toolbarNav.style.margin = '5px';
-        toolbarNav.innerHTML = `
-            <div>
-                <div>
-                    <div class="btn-group btn-group-sm navbar-btn" style="margin-top:5px;margin-bottom: 0;margin-left: 5px" >
-                        <button id="saveButtonNewVersion" type="button" class="btn btn-default btn-sm"><i class="rf rf-savenewversion" style="font-size: 14px"/> 生成版本</button>
-                        <button id="saveButton" type="button" class="btn btn-default btn-sm" ><i class="rf rf-save" style="font-size: 14px"/> 保存</button>
-                        <div class="btn-group btn-group-sm navbar-btn" style="margin-top:3px;margin-bottom: 0;margin-left: 5px" >
-                            <button id="addCriteriaButton" type="button" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-plus" style="font-size: 16px"/> 添加条件行</button>
-                            <button id="deleteCriteriaButton" type="button" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-minus" style="font-size: 16px"/> 删除条件行</button>
-                        </div>
-                    </div>
-                    <div class="btn-group btn-group-sm navbar-btn" style="margin-top:5px;margin-bottom: 0">
-                        <button id="configVarButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-variable" style="font-size: 13px"/> 变量库</button>
-                        <button id="configConstantsButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-constant" style="font-size: 13px"/> 常量库</button>
-                        <button id="configActionButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-action" style="font-size: 13px"/> 动作库</button>
-                        <button id="configParameterButton" type="button" class="btn btn-default btn-sm"><i class="rf rf-parameter" style="font-size: 13px"/> 参数库</button>
-                    </div>
-                </div>
-            </div>`;
-        container.appendChild(toolbarNav);
 
         // Remark
         const remarkContainer = document.createElement('div');
@@ -91,86 +67,6 @@ export default class ComplexScoreCard {
             self.properties.push(prop);
             window._setDirty();
         };
-
-        /**
-         * Save the scorecard file.
-         * @param {boolean} isNewVersion - Whether to save as a new version
-         */
-        function save(isNewVersion) {
-            if (!isNewVersion && document.getElementById('saveButton').classList.contains('disabled')) return false;
-
-            const file = getParameter('file');
-            let xml = null;
-            try {
-                xml = self.toXml();
-            } catch (e) {
-                bootbox.alert(e);
-                return;
-            }
-
-            const postData = {
-                content: encodeURIComponent(xml),
-                file: file,
-                newVersion: isNewVersion
-            };
-            const saveUrl = window._server + '/common/saveFile';
-
-            if (isNewVersion) {
-                fetch(window._server + '/common/checkFileDirty', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: new URLSearchParams({
-                        filePath: file,
-                        content: encodeURIComponent(xml)
-                    }).toString()
-                }).then(function(response) {
-                    if (!response.ok) throw response;
-                    return response.json();
-                }).then(function (res) {
-                    if (res.status) {
-                        if (res.data) {
-                            let decodedFileName = decodeURIComponent(file);
-                            if (decodedFileName.includes('%')) {
-                                decodedFileName = decodeURIComponent(decodedFileName);
-                            }
-                            bootbox.confirm('是否对【' + decodedFileName + '】生成新版本?', function (confirmed) {
-                                if (confirmed) {
-                                    ajaxSave(saveUrl, postData, function (res) {
-                                        if (res.status) {
-                                            bootbox.alert('保存成功!', function () {
-                                                self.resetState();
-                                            });
-                                        } else {
-                                            bootbox.alert(res.message || '保存失败');
-                                        }
-                                    });
-                                }
-                            });
-                        } else {
-                            bootbox.alert('与最新版本无差异，无需生成新版本');
-                        }
-                    } else {
-                        bootbox.alert("<span style='color: red'>服务端出错</span>");
-                    }
-                }).catch(function (response) {
-                    if (response && response.status === 401) {
-                        bootbox.alert("权限不足，不能进行此操作.");
-                    } else if (response && response.text) {
-                        response.text().then(function(text) {
-                            bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
-                        });
-                    } else {
-                        bootbox.alert("<span style='color: red'>服务端出错</span>");
-                    }
-                });
-            } else {
-                ajaxSave(saveUrl, postData, function () {
-                    bootbox.alert('保存成功!', function () {
-                        self.resetState();
-                    });
-                });
-            }
-        }
 
         // Property menu
         self.menu = new URule.menu.Menu({
@@ -211,60 +107,6 @@ export default class ComplexScoreCard {
             self.menu.show(e);
         });
 
-        // Bind toolbar buttons
-        document.getElementById('addCriteriaButton').addEventListener('click', function () {
-            const rowContext = new RowContext(self);
-            rowContext.setRefConditionCell(window._currentConditionCell);
-            self.addRow(rowContext);
-        });
-
-        document.getElementById('deleteCriteriaButton').addEventListener('click', function () {
-            if (!window._currentConditionCell) {
-                bootbox.alert('请先选中目标行的一个条件单元格');
-                return;
-            }
-            MsgBox.confirm('真的要删除当前单元格所在的所有行？', function () {
-                window._currentConditionCell.deleteRow(self);
-                window._currentConditionCell = null;
-            });
-        });
-
-        document.getElementById('configVarButton').addEventListener('click', function () {
-            if (!self.configVarDialog) {
-                self.configVarDialog = new urule.ConfigVariableDialog(self);
-            }
-            self.configVarDialog.open();
-        });
-
-        document.getElementById('configConstantsButton').addEventListener('click', function () {
-            if (!self.configConstantDialog) {
-                self.configConstantDialog = new urule.ConfigConstantDialog(self);
-            }
-            self.configConstantDialog.open();
-        });
-
-        document.getElementById('configActionButton').addEventListener('click', function () {
-            if (!self.configActionDialog) {
-                self.configActionDialog = new urule.ConfigActionDialog(self);
-            }
-            self.configActionDialog.open();
-        });
-
-        document.getElementById('configParameterButton').addEventListener('click', function () {
-            if (!self.configParameterDialog) {
-                self.configParameterDialog = new urule.ConfigParameterDialog(self);
-            }
-            self.configParameterDialog.open();
-        });
-
-        document.getElementById('saveButton').addEventListener('click', function () {
-            save(false);
-        });
-
-        document.getElementById('saveButtonNewVersion').addEventListener('click', function () {
-            save(true);
-        });
-
         // Main table
         const table = document.createElement('table');
         table.className = 'table table-bordered';
@@ -293,10 +135,113 @@ export default class ComplexScoreCard {
     }
 
     /**
+     * Save the scorecard file.
+     *
+     * @param {boolean} isNewVersion - Whether to save as a new version
+     */
+    save(isNewVersion) {
+        const self = this;
+        const file = getParameter('file');
+        let xml = null;
+        try {
+            xml = self.toXml();
+        } catch (e) {
+            bootbox.alert(e);
+            return;
+        }
+
+        const postData = {
+            content: encodeURIComponent(xml),
+            file: file,
+            newVersion: isNewVersion
+        };
+        const saveUrl = window._server + '/common/saveFile';
+
+        if (isNewVersion) {
+            fetch(window._server + '/common/checkFileDirty', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    filePath: file,
+                    content: encodeURIComponent(xml)
+                }).toString()
+            }).then(function(response) {
+                if (!response.ok) throw response;
+                return response.json();
+            }).then(function (res) {
+                if (res.status) {
+                    if (res.data) {
+                        let decodedFileName = decodeURIComponent(file);
+                        if (decodedFileName.includes('%')) {
+                            decodedFileName = decodeURIComponent(decodedFileName);
+                        }
+                        bootbox.confirm('是否对【' + decodedFileName + '】生成新版本?', function (confirmed) {
+                            if (confirmed) {
+                                ajaxSave(saveUrl, postData, function (res) {
+                                    if (res.status) {
+                                        bootbox.alert('保存成功!', function () {
+                                            self.resetState();
+                                        });
+                                    } else {
+                                        bootbox.alert(res.message || '保存失败');
+                                    }
+                                });
+                            }
+                        });
+                    } else {
+                        bootbox.alert('与最新版本无差异，无需生成新版本');
+                    }
+                } else {
+                    bootbox.alert("<span style='color: red'>服务端出错</span>");
+                }
+            }).catch(function (response) {
+                if (response && response.status === 401) {
+                    bootbox.alert("权限不足，不能进行此操作.");
+                } else if (response && response.text) {
+                    response.text().then(function(text) {
+                        bootbox.alert("<span style='color: red'>服务端错误：" + text + "</span>");
+                    });
+                } else {
+                    bootbox.alert("<span style='color: red'>服务端出错</span>");
+                }
+            });
+        } else {
+            ajaxSave(saveUrl, postData, function () {
+                bootbox.alert('保存成功!', function () {
+                    self.resetState();
+                });
+            });
+        }
+    }
+
+    /**
+     * Add a criteria row at the currently selected condition cell.
+     */
+    addCriteriaRow() {
+        const rowContext = new RowContext(this);
+        rowContext.setRefConditionCell(window._currentConditionCell);
+        this.addRow(rowContext);
+    }
+
+    /**
+     * Delete criteria rows at the currently selected condition cell.
+     */
+    deleteCriteriaRow() {
+        if (!window._currentConditionCell) {
+            bootbox.alert('请先选中目标行的一个条件单元格');
+            return;
+        }
+        MsgBox.confirm('真的要删除当前单元格所在的所有行？', () => {
+            window._currentConditionCell.deleteRow(this);
+            window._currentConditionCell = null;
+        });
+    }
+
+    /**
      * Reset the dirty state after saving.
      */
     resetState() {
-        window.cancelDirty();
+        if (window.cancelDirty) window.cancelDirty();
     }
 
     /**

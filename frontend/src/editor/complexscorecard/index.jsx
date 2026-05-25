@@ -3,7 +3,7 @@ import '../../bootbox.js';
  * Complex Scorecard Editor - Entry point.
  *
  * Replaces the original jQuery-based bootstrap from the webpack bundle.
- * Initializes the ComplexScoreCard, toolbar, save/load logic, and dialogs.
+ * Initializes the ComplexScoreCard, React EditorToolbar, save/load logic, and dialogs.
  */
 
 import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
@@ -52,23 +52,12 @@ import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTree
 import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
 import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
 import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
+import EditorToolbar from '../../components/editor-toolbar/EditorToolbar.jsx';
 
 import ComplexScoreCard from './ComplexScoreCard.js';
 import {getParameter, buildProjectNameFromFile} from '../../Utils.js';
 
-window._setDirty = function () {
-    if (window._dirty) return;
-    window._dirty = true;
-    document.getElementById('saveButton').innerHTML = "<i class='rf rf-save'></i> *保存";
-    document.getElementById('saveButton').disabled = false;
-};
-
-window.cancelDirty = function () {
-    if (!window._dirty) return;
-    window._dirty = false;
-    document.getElementById('saveButton').innerHTML = "<i class='rf rf-save'></i> 保存";
-    document.getElementById('saveButton').disabled = true;
-};
+let scoreCardInstance = null;
 
 document.addEventListener('DOMContentLoaded', function () {
     const file = getParameter('file');
@@ -78,7 +67,35 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     window._project = buildProjectNameFromFile(file);
 
-    // Render KnowledgeTreeDialog
+    // Initialize the complex scorecard
+    scoreCardInstance = new ComplexScoreCard(document.getElementById('container'));
+
+    // Render EditorToolbar into toolbarContainer
+    createRoot(document.getElementById('toolbarContainer')).render(
+        <EditorToolbar
+            onSave={(isNewVersion) => {
+                if (scoreCardInstance) {
+                    scoreCardInstance.save(isNewVersion);
+                }
+            }}
+            extraButtons={[
+                <button key="addCriteria" type="button" className="btn btn-default"
+                        onClick={() => {
+                            if (scoreCardInstance) scoreCardInstance.addCriteriaRow();
+                        }}>
+                    <i className="glyphicon glyphicon-plus" style={{fontSize: '16px'}}/> 添加条件行
+                </button>,
+                <button key="deleteCriteria" type="button" className="btn btn-default"
+                        onClick={() => {
+                            if (scoreCardInstance) scoreCardInstance.deleteCriteriaRow();
+                        }}>
+                    <i className="glyphicon glyphicon-minus" style={{fontSize: '16px'}}/> 删除条件行
+                </button>
+            ]}
+        />
+    );
+
+    // Render dialogs
     createRoot(document.getElementById('dialogContainer')).render(
         <div>
             <KnowledgeTreeDialog/>
@@ -87,7 +104,4 @@ document.addEventListener('DOMContentLoaded', function () {
             <ResourceListDialogComponent/>
         </div>
     );
-
-    // Initialize the complex scorecard
-    new ComplexScoreCard(document.getElementById('container'));
 });

@@ -1,10 +1,4 @@
 import '../../bootbox.js';
-/**
- * Crosstab Decision Table Editor - Entry point.
- *
- * Replaces the original jQuery-based bootstrap from the webpack bundle.
- * Initializes the CrossTable, toolbar, save/load logic, and Excel import.
- */
 
 import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../context.standalone.css';
@@ -50,11 +44,11 @@ import '../common/jquery.utils.js';
 import CrossTable from './CrossTable.js';
 import ExcelImportDialog from './ExcelImportDialog.js';
 import {getParameter, ajaxSave, buildProjectNameFromFile} from '../../Utils.js';
-import React from 'react';
 import {createRoot} from 'react-dom/client';
 import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
 import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
 import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
+import EditorToolbar from '../../components/editor-toolbar/EditorToolbar.jsx';
 
 document.addEventListener('DOMContentLoaded', function () {
     const crossTable = new CrossTable({
@@ -69,145 +63,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window._project = buildProjectNameFromFile(file);
 
-    // Mount React dialog components
-    createRoot(document.getElementById('dialogContainer')).render(
-        <div>
-            <ResourceVersionDialogComponent/>
-            <ResourceListDialogComponent/>
-            <ConfigLibraryDialog/>
-        </div>
-    );
+    let toolbarApi = null;
 
-    // Build toolbar
-    const toolbarContainer = document.getElementById('toolbarContainer');
-
-    const toolbar = document.createElement('div');
-    toolbar.className = 'btn-toolbar';
-    toolbar.style.cssText = 'border: solid 1px #d0d0d0;padding:5px;margin:3px;border-radius: 5px;background: #fdfdfd';
-    toolbarContainer.appendChild(toolbar);
-
-    const group1 = document.createElement('div');
-    group1.className = 'btn-group btn-group-sm';
-    toolbar.appendChild(group1);
-
-    // Save button (starts disabled)
-    const saveButton = document.createElement('button');
-    saveButton.type = 'button';
-    saveButton.className = 'btn btn-default disabled';
-    saveButton.innerHTML = "<i class='rf rf-save'></i> 保存";
-    group1.appendChild(saveButton);
-
-    // Save new version button (starts disabled)
-    const saveNewVersionButton = document.createElement('button');
-    saveNewVersionButton.type = 'button';
-    saveNewVersionButton.className = 'btn btn-default disabled';
-    saveNewVersionButton.innerHTML = "<i class='rf rf-savenewversion'></i> 保存新版本";
-    group1.appendChild(saveNewVersionButton);
-
-    const context = {};
-
-    const group2 = document.createElement('div');
-    group2.className = 'btn-group btn-group-sm';
-    toolbar.appendChild(group2);
-
-    // Variable library button
-    const varButton = document.createElement('button');
-    varButton.type = 'button';
-    varButton.className = 'btn btn-default';
-    varButton.innerHTML = "<i class='rf rf-variable'></i> 变量库";
-    group2.appendChild(varButton);
-    varButton.addEventListener('click', function () {
-        if (!context.configVarDialog) {
-            context.configVarDialog = new ruleforge.ConfigVariableDialog(context);
-        }
-        context.configVarDialog.open();
-    });
-
-    // Constant library button
-    const constButton = document.createElement('button');
-    constButton.type = 'button';
-    constButton.className = 'btn btn-default';
-    constButton.innerHTML = "<i class='rf rf-constant'></i> 常量库";
-    group2.appendChild(constButton);
-    constButton.addEventListener('click', function () {
-        if (!context.configConstantDialog) {
-            context.configConstantDialog = new ruleforge.ConfigConstantDialog(context);
-        }
-        context.configConstantDialog.open();
-    });
-
-    // Action library button
-    const actionButton = document.createElement('button');
-    actionButton.type = 'button';
-    actionButton.className = 'btn btn-default';
-    actionButton.innerHTML = "<i class='rf rf-action'></i> 动作库";
-    group2.appendChild(actionButton);
-    actionButton.addEventListener('click', function () {
-        if (!context.configActionDialog) {
-            context.configActionDialog = new ruleforge.ConfigActionDialog(context);
-        }
-        context.configActionDialog.open();
-    });
-
-    // Parameter library button
-    const paramButton = document.createElement('button');
-    paramButton.type = 'button';
-    paramButton.className = 'btn btn-default';
-    paramButton.innerHTML = "<i class='rf rf-parameter'></i> 参数库";
-    group2.appendChild(paramButton);
-    paramButton.addEventListener('click', function () {
-        if (!context.configParameterDialog) {
-            context.configParameterDialog = new ruleforge.ConfigParameterDialog(context);
-        }
-        context.configParameterDialog.open();
-    });
-
-    // Excel import button
-    const excelButton = document.createElement('button');
-    excelButton.type = 'button';
-    excelButton.className = 'btn btn-default';
-    excelButton.style.height = '36px';
-    excelButton.innerHTML = "<i class='glyphicon glyphicon-share-alt' style='font-size: 16px'></i> 导入Excel";
-    group2.appendChild(excelButton);
-    excelButton.addEventListener('click', function () {
-        new ExcelImportDialog().show();
-    });
-
-    // Dirty state management
-    window._setDirty = function () {
-        if (context._dirty) return;
-        context._dirty = true;
-        window._dirty = true;
-        saveButton.innerHTML = "<i class='rf rf-save'></i> *保存";
-        saveButton.classList.remove('disabled');
-        saveNewVersionButton.innerHTML = "<i class='rf rf-savenewversion'></i> *保存新版本";
-        saveNewVersionButton.classList.remove('disabled');
-    };
-
-    saveButton.addEventListener('click', function () {
-        saveFile(false);
-    });
-
-    saveNewVersionButton.addEventListener('click', function () {
-        saveFile(true);
-    });
-
-    /**
-     * Clear the dirty state (after successful save).
-     */
-    function clearDirty() {
-        context._dirty = false;
-        window._dirty = false;
-        saveButton.innerHTML = "<i class='rf rf-save'></i> 保存";
-        saveButton.classList.add('disabled');
-        saveNewVersionButton.innerHTML = "<i class='rf rf-savenewversion'></i> 保存新版本";
-        saveNewVersionButton.classList.add('disabled');
-    }
-
-    /**
-     * Save the crosstab file.
-     * @param {boolean} isNewVersion - Whether to save as a new version
-     */
     function saveFile(isNewVersion) {
         let xml = null;
         try {
@@ -230,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         newVersion: isNewVersion,
                         versionComment: comment
                     }, function () {
-                        clearDirty();
+                        toolbarApi.clearDirty();
                     });
                 }
             });
@@ -240,10 +97,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 file: file,
                 newVersion: isNewVersion
             }, function () {
-                clearDirty();
+                toolbarApi.clearDirty();
             });
         }
     }
+
+    createRoot(document.getElementById('toolbarContainer')).render(
+        <EditorToolbar
+            onSave={saveFile}
+            onReady={(api) => { toolbarApi = api; }}
+            extraButtons={[
+                <button key="excel" type="button" className="btn btn-default" style={{height: '36px'}}
+                        onClick={() => new ExcelImportDialog().show()}>
+                    <i className="glyphicon glyphicon-share-alt" style={{fontSize: '16px'}}></i> 导入Excel
+                </button>
+            ]}
+        />
+    );
+
+    createRoot(document.getElementById('dialogContainer')).render(
+        <div>
+            <ResourceVersionDialogComponent/>
+            <ResourceListDialogComponent/>
+            <ConfigLibraryDialog/>
+        </div>
+    );
 
     // Load the crosstab data from server
     let loadUrl = window._server + '/common/loadXml';
@@ -262,7 +140,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }).then(function (response) {
         const data = response[0];
 
-        // Convert cells array to a Map keyed by "rowNumber,columnNumber"
         data.cellsMap = function (tableData) {
             const map = new Map();
             const cells = tableData.cells;
@@ -275,7 +152,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         crossTable.init(data);
 
-        // Load library references
         const libraries = data.libraries;
         if (libraries) {
             for (let i = 0; i < libraries.length; i++) {
@@ -304,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function () {
         refreshVariableLibraries();
         refreshParameterLibraries();
         refreshFunctionLibraries();
-        clearDirty();
+        toolbarApi.clearDirty();
     }).catch(function (error) {
         document.body.innerHTML = '';
         if (error && error.status === 401) {
