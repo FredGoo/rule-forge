@@ -8,6 +8,7 @@ export default defineConfig({
         baseURL: 'http://localhost:3001',
         headless: true,
         screenshot: 'only-on-failure',
+        storageState: undefined,
     },
     projects: [
         {
