@@ -12,7 +12,7 @@ import * as event from '../components/componentEvent.js';
 document.addEventListener('DOMContentLoaded', function () {
     const file = getParameter('file');
     if (!file || file.length < 1) {
-        bootbox.alert("当前编辑器未指定具体文件！");
+        window.bootbox.alert("当前编辑器未指定具体文件！");
         return;
     }
     window._project = buildProjectNameFromFile(file);
@@ -29,12 +29,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (newVersion) {
                 saveNewVersion(url, postData, function () {
                     event.eventEmitter.emit(event.HIDE_LOADING);
-                    bootbox.alert('保存成功!');
+                    window.bootbox.alert('保存成功!');
                 });
             } else {
                 ajaxSave(url, postData, function () {
                     event.eventEmitter.emit(event.HIDE_LOADING);
-                    bootbox.alert('保存成功!');
+                    window.bootbox.alert('保存成功!');
                 });
             }
         });

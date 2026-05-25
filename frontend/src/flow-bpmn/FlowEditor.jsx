@@ -1,8 +1,12 @@
 import {Component, createRef} from 'react';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
+import RuleForgePaletteModule from './palette';
+import RuleForgePropertiesPanel from './properties/RuleForgePropertiesPanel';
+import ruleforgeModdle from './moddle/ruleforge.json';
 import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 import 'bpmn-js/dist/assets/bpmn-js.css';
+import './palette/ruleforge-palette.css';
 
 export default class FlowEditor extends Component {
     containerRef = createRef();
@@ -12,6 +16,10 @@ export default class FlowEditor extends Component {
         this.modeler = new BpmnModeler({
             container: this.containerRef.current,
             keyboard: {bindTo: document},
+            additionalModules: [RuleForgePaletteModule],
+            moddleExtensions: {
+                ruleforge: ruleforgeModdle
+            }
         });
 
         if (this.props.xml) {
@@ -75,10 +83,15 @@ export default class FlowEditor extends Component {
 
     render() {
         return (
-            <div
-                ref={this.containerRef}
-                style={{width: '100%', height: '100%', minHeight: 500}}
-            />
+            <div style={{width: '100%', height: '100%', minHeight: 500, position: 'relative'}}>
+                <div ref={this.containerRef} style={{width: '100%', height: '100%'}}/>
+                {this.modeler && (
+                    <RuleForgePropertiesPanel
+                        eventBus={this.modeler.get('eventBus')}
+                        modeling={this.modeler.get('modeling')}
+                    />
+                )}
+            </div>
         );
     }
 }

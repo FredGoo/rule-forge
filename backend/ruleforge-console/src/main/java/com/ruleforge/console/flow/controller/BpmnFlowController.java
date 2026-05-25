@@ -3,6 +3,7 @@ package com.ruleforge.console.flow.controller;
 import com.ruleforge.Utils;
 import com.ruleforge.console.model.User;
 import com.ruleforge.console.service.RuleForgeRepositoryService;
+import com.ruleforge.console.flow.converter.FlowXmlConverter;
 import com.ruleforge.console.util.EnvironmentUtils;
 import com.ruleforge.exception.RuleException;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class BpmnFlowController {
 
     private final RuleForgeRepositoryService repositoryService;
     private final RepositoryService flowableRepositoryService;
+    private final FlowXmlConverter flowXmlConverter;
 
     @GetMapping(value = "/load", produces = "text/xml;charset=UTF-8")
     public String loadBpmn(@RequestParam String file,
@@ -72,6 +74,18 @@ public class BpmnFlowController {
                     .deploy()
                     .getId();
             return "{\"deploymentId\":\"" + deploymentId + "\"}";
+        } catch (Exception ex) {
+            throw new RuleException(ex);
+        }
+    }
+
+    @PostMapping(value = "/convert", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+            produces = "text/xml;charset=UTF-8")
+    public String convertToBpmn(@RequestParam String file) {
+        try {
+            InputStream inputStream = repositoryService.readFile(file, null);
+            String oldXml = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            return flowXmlConverter.convertToBpmn(oldXml);
         } catch (Exception ex) {
             throw new RuleException(ex);
         }
