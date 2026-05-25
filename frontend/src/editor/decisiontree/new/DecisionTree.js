@@ -141,33 +141,6 @@ export default class DecisionTree {
             this.addProperty(new ruleforge.RuleProperty(this, "debug", debug, 3));
         }
 
-        var libraries = treeData["libraries"];
-        if (libraries) {
-            for (var i = 0; i < libraries.length; i++) {
-                var lib = libraries[i];
-                var type = lib["type"];
-                var path = lib["path"];
-                switch (type) {
-                    case "Constant":
-                        constantLibraries.push(path);
-                        break;
-                    case "Action":
-                        actionLibraries.push(path);
-                        break;
-                    case "Variable":
-                        variableLibraries.push(path);
-                        break;
-                    case "Parameter":
-                        parameterLibraries.push(path);
-                        break;
-                }
-            }
-        }
-        refreshActionLibraries();
-        refreshConstantLibraries();
-        refreshVariableLibraries();
-        refreshParameterLibraries();
-        refreshFunctionLibraries();
         this.topNode.initData(treeData["variableTreeNode"]);
     }
 };

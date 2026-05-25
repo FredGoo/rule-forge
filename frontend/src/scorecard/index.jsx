@@ -46,7 +46,7 @@ import ConfigLibraryDialog from '../components/dialog/component/ConfigLibraryDia
 import EditorToolbar from '../components/editor-toolbar/EditorToolbar.jsx';
 import {saveNewVersion} from "../Utils";
 
-import {ajaxSave, buildProjectNameFromFile, getParameter} from '../Utils.js';
+import {ajaxSave, buildProjectNameFromFile, getParameter, loadEditorData} from '../Utils.js';
 
 import KnowledgeTreeDialog from '../components/dialog/component/KnowledgeTreeDialog.jsx';
 
@@ -120,44 +120,9 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>,
     );
 
-    fetch(window._server + "/common/loadXml", {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({files: file}).toString()
-    }).then(function(response) {
-        if (!response.ok) throw response;
-        return response.json();
-    }).then(function (data) {
-        const card = data[0];
+    loadEditorData(file).then(function (card) {
         cardTable.init(card);
-        var libraries = card.libraries;
-        if (libraries) {
-            for (var i = 0; i < libraries.length; i++) {
-                var lib = libraries[i];
-                var type = lib["type"];
-                var path = lib["path"];
-                switch (type) {
-                    case "Constant":
-                        constantLibraries.push(path);
-                        break;
-                    case "Action":
-                        actionLibraries.push(path);
-                        break;
-                    case "Variable":
-                        variableLibraries.push(path);
-                        break;
-                    case "Parameter":
-                        parameterLibraries.push(path);
-                        break;
-                }
-                refreshActionLibraries();
-                refreshConstantLibraries();
-                refreshVariableLibraries();
-                refreshParameterLibraries();
-                refreshFunctionLibraries();
-            }
-            toolbarApi.clearDirty();
-        }
+        toolbarApi.clearDirty();
     }).catch(function (response) {
         if (response && response.status === 401) {
             bootbox.alert("权限不足，不能进行此操作.");

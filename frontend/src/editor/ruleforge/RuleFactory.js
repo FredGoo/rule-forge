@@ -97,34 +97,7 @@ RuleFactory.prototype.toXml = function () {
 
 RuleFactory.prototype.loadData = function (ruleset) {
     var self = this.container;
-    var libraries = ruleset['libraries'];
     self.remark.setData(ruleset['remark']);
-    if (libraries) {
-        for (var i = 0; i < libraries.length; i++) {
-            var lib = libraries[i];
-            var type = lib['type'];
-            var path = lib['path'];
-            switch (type) {
-                case 'Constant':
-                    constantLibraries.push(path);
-                    break;
-                case 'Action':
-                    actionLibraries.push(path);
-                    break;
-                case 'Variable':
-                    variableLibraries.push(path);
-                    break;
-                case 'Parameter':
-                    parameterLibraries.push(path);
-                    break;
-            }
-        }
-    }
-    refreshActionLibraries();
-    refreshConstantLibraries();
-    refreshVariableLibraries();
-    refreshParameterLibraries();
-    refreshFunctionLibraries();
     var rules = ruleset['rules'];
     for (var i = 0; i < rules.length; i++) {
         var rule = rules[i];

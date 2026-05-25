@@ -45,9 +45,8 @@ import ResourceVersionDialogComponent from '../common/ResourceVersionDialogCompo
 import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
 import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
 import EditorToolbar from '../../components/editor-toolbar/EditorToolbar.jsx';
-import React from 'react';
 import { createRoot } from 'react-dom/client';
-import {getParameter, ajaxSave, saveNewVersion, buildProjectNameFromFile} from "../../Utils.js";
+import {getParameter, ajaxSave, saveNewVersion, buildProjectNameFromFile, loadEditorData} from "../../Utils.js";
 import * as event from '../../components/componentEvent.js';
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -88,16 +87,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadData() {
-        var url = window._server + '/common/loadXml';
-        fetch(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({files: file}).toString()
-        }).then(function(response) {
-            if (!response.ok) throw response;
-            return response.json();
-        }).then(function (data) {
-            decisionTree.loadData(data[0]);
+        loadEditorData(file).then(function (editorData) {
+            decisionTree.loadData(editorData);
             toolbarApi.clearDirty();
         }).catch(function (response) {
             if (response && response.status === 401) {

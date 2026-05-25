@@ -53,7 +53,6 @@ import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTree
 import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
 import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
 import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
-import React from 'react';
 import { createRoot } from 'react-dom/client';
 import {buildProjectNameFromFile, getParameter} from "../../Utils";
 

@@ -116,3 +116,43 @@ export function saveNewVersion(url, postData, cb) {
         bootbox.alert("<span style='color: red'>服务端出错</span>");
     });
 }
+
+export function loadLibraries(libraries) {
+    if (!libraries) return;
+    for (var i = 0; i < libraries.length; i++) {
+        var lib = libraries[i];
+        switch (lib.type) {
+            case 'Constant': constantLibraries.push(lib.path); break;
+            case 'Action': actionLibraries.push(lib.path); break;
+            case 'Variable': variableLibraries.push(lib.path); break;
+            case 'Parameter': parameterLibraries.push(lib.path); break;
+        }
+    }
+    refreshActionLibraries();
+    refreshConstantLibraries();
+    refreshVariableLibraries();
+    refreshParameterLibraries();
+    refreshFunctionLibraries();
+}
+
+export function loadEditorData(file, extraParams) {
+    var url = window._server + '/common/loadXml';
+    var params = {files: file};
+    if (extraParams) {
+        Object.assign(params, extraParams);
+    }
+    return fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams(params).toString()
+    }).then(function (response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (data) {
+        var editorData = data[0];
+        if (editorData.libraries) {
+            loadLibraries(editorData.libraries);
+        }
+        return editorData;
+    });
+}

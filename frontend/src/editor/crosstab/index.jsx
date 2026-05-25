@@ -43,7 +43,7 @@ import '../common/jquery.utils.js';
 
 import CrossTable from './CrossTable.js';
 import ExcelImportDialog from './ExcelImportDialog.js';
-import {getParameter, ajaxSave, buildProjectNameFromFile} from '../../Utils.js';
+import {getParameter, ajaxSave, buildProjectNameFromFile, loadEditorData} from '../../Utils.js';
 import {createRoot} from 'react-dom/client';
 import ResourceVersionDialogComponent from '../common/ResourceVersionDialogComponent.jsx';
 import ResourceListDialogComponent from '../common/ResourceListDialogComponent.jsx';
@@ -124,22 +124,13 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     // Load the crosstab data from server
-    let loadUrl = window._server + '/common/loadXml';
     const doImport = getParameter('doImport');
+    var extraParams = null;
     if (doImport && doImport.length > 1) {
-        loadUrl += '?doImport=true';
+        extraParams = {doImport: 'true'};
     }
 
-    fetch(loadUrl, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({files: file}).toString()
-    }).then(function(response) {
-        if (!response.ok) throw response;
-        return response.json();
-    }).then(function (response) {
-        const data = response[0];
-
+    loadEditorData(file, extraParams).then(function (data) {
         data.cellsMap = function (tableData) {
             const map = new Map();
             const cells = tableData.cells;
@@ -151,35 +142,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }(data);
 
         crossTable.init(data);
-
-        const libraries = data.libraries;
-        if (libraries) {
-            for (let i = 0; i < libraries.length; i++) {
-                const lib = libraries[i];
-                const type = lib.type;
-                const path = lib.path;
-                switch (type) {
-                    case 'Constant':
-                        constantLibraries.push(path);
-                        break;
-                    case 'Action':
-                        actionLibraries.push(path);
-                        break;
-                    case 'Variable':
-                        variableLibraries.push(path);
-                        break;
-                    case 'Parameter':
-                        parameterLibraries.push(path);
-                        break;
-                }
-            }
-        }
-
-        refreshActionLibraries();
-        refreshConstantLibraries();
-        refreshVariableLibraries();
-        refreshParameterLibraries();
-        refreshFunctionLibraries();
         toolbarApi.clearDirty();
     }).catch(function (error) {
         document.body.innerHTML = '';

@@ -55,7 +55,7 @@ import ReferenceDialog from '../../reference/ReferenceDialog.jsx';
 import * as refEvent from '../../reference/event.js';
 import * as componentEvent from '../../components/componentEvent.js';
 import {createRoot} from 'react-dom/client';
-import {getParameter, ajaxSave, saveNewVersion, buildProjectNameFromFile} from "../../Utils.js";
+import {getParameter, ajaxSave, saveNewVersion, buildProjectNameFromFile, loadEditorData} from "../../Utils.js";
 
 document.addEventListener('DOMContentLoaded', function () {
     const file = getParameter('file');
@@ -165,15 +165,8 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     // Load ruleset data
-    fetch(window._server + '/common/loadXml', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({files: file}).toString()
-    }).then(function(response) {
-        if (!response.ok) throw response;
-        return response.json();
-    }).then(function (data) {
-        factory.loadData(data[0]);
+    loadEditorData(file).then(function (editorData) {
+        factory.loadData(editorData);
         toolbarApi.clearDirty();
     }).catch(function (response) {
         if (response && response.text) {
