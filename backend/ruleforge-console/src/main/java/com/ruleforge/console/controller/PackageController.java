@@ -321,8 +321,8 @@ public class PackageController extends BaseController {
 
     @PostMapping(value = "/loadFlows", produces = "text/json;charset=UTF-8")
     public String loadFlows(HttpServletRequest req) throws Exception {
-        KnowledgeBase knowledgeBase = (KnowledgeBase) httpSessionKnowledgeCache.get(req, KB_KEY);
-        return writeObjectToJson(knowledgeBase.getFlowMap().values());
+        // Flow definitions are now managed by Flowable BPMN engine
+        return "[]";
     }
 
     private KnowledgeBase buildKnowledgeBase(HttpServletRequest req, String files) throws RuleException {
