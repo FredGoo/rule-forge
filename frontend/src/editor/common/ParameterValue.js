@@ -1,24 +1,29 @@
+import {renderReact} from '../../components/react-bridge.js';
+import ParameterValueWidget from '../../components/widgets/ParameterValueWidget.jsx';
+
 ruleforge.ParameterValue = function (arithmetic, data, act) {
     this.arithmetic = arithmetic;
     this.container = document.createElement("span");
-    this.label = generateContainer();
-    this.container.appendChild(this.label);
-    this.label.style.color = "#6b3db0";
-    RuleForge.setDomContent(this.label, "请选择参数");
+    this.widgetRoot = document.createElement("span");
+    this.container.appendChild(this.widgetRoot);
     if (arithmetic) {
         this.container.appendChild(arithmetic.getContainer());
     }
-    if (data) {
-        this.initData(data);
-    }
-    window._ParameterValueArray.push(this);
-    this.act = act;
+    this.widgetRef = null;
+    renderReact(ParameterValueWidget, {
+        initialData: data,
+        libraries: window._ruleforgeEditorParameterLibraries,
+        act: act,
+        onDirty: function () { window._setDirty(); },
+        ref: function (ref) { this.widgetRef = ref; }.bind(this),
+    }, this.widgetRoot);
     this.initMenu();
+    window._ParameterValueArray.push(this);
 };
 
 ruleforge.ParameterValue.prototype.getDisplayContainer = function () {
     var container = document.createElement("span");
-    container.textContent = "参数." + this.parameterLabel;
+    container.textContent = this.widgetRef ? this.widgetRef.getDisplayLabel() : '';
     if (this.arithmetic) {
         var dis = this.arithmetic.getDisplayContainer();
         if (dis) {
@@ -28,66 +33,21 @@ ruleforge.ParameterValue.prototype.getDisplayContainer = function () {
     return container;
 };
 
-ruleforge.ParameterValue.prototype.matchAct = function (act) {
-    if (!this.act) {
-        return true;
-    }
-    if (act.indexOf(this.act) > -1) {
-        return true;
-    }
-    return false;
-};
 ruleforge.ParameterValue.prototype.initMenu = function (parameterLibraries) {
-    var data = window._ruleforgeEditorParameterLibraries;
-    if (parameterLibraries) {
-        data = parameterLibraries;
+    var data = parameterLibraries || window._ruleforgeEditorParameterLibraries;
+    if (this.widgetRef && data) {
+        this.widgetRef.initMenu(data);
     }
-    if (!data) {
-        return;
-    }
-    var self, onClick, config;
-    self = this;
-    onClick = function (menuItem) {
-        self.setValue({
-            variableName: menuItem.name,
-            variableLabel: menuItem.label,
-            datatype: menuItem.datatype
-        });
-
-    };
-    config = {menuItems: []};
-    data.forEach(function(variables) {
-        variables || [].forEach(function(variable) {
-            if (self.matchAct(variable.act)) {
-                var menuItem = {
-                    name: variable.name,
-                    label: variable.label,
-                    datatype: variable.type,
-                    act: variable.act,
-                    onClick: onClick
-                };
-                config.menuItems.push(menuItem);
-            }
-
-        });
-    });
-    if (self.menu) {
-        self.menu.setConfig(config);
-    } else {
-        self.menu = new RuleForge.menu.Menu(config);
-    }
-    this.label.addEventListener("click", function (e) {
-        self.menu.show(e);
-    });
 };
+
 ruleforge.ParameterValue.prototype.setValue = function (data) {
-    this.parameterName = data["variableName"];
-    this.parameterLabel = data["variableLabel"];
-    this.datatype = data["datatype"];
-    RuleForge.setDomContent(this.label, "参数." + this.parameterLabel);
-    window._setDirty();
+    if (this.widgetRef) {
+        this.widgetRef.setValue(data);
+    }
 };
+
 ruleforge.ParameterValue.prototype.initData = function (data) {
+    if (!data) return;
     this.setValue(data);
     if (this.arithmetic) {
         this.arithmetic.initData(data["arithmetic"]);
@@ -95,12 +55,12 @@ ruleforge.ParameterValue.prototype.initData = function (data) {
 };
 
 ruleforge.ParameterValue.prototype.toXml = function () {
-    if (!this.parameterLabel || this.parameterLabel == "") {
-        throw "参数不能为空！";
+    if (this.widgetRef) {
+        return this.widgetRef.toXml();
     }
-    var xml = " var-category=\"参数\" var=\"" + this.parameterName + "\" var-label=\"" + this.parameterLabel + "\" datatype=\"" + this.datatype + "\"";
-    return xml;
+    return '';
 };
+
 ruleforge.ParameterValue.prototype.getContainer = function () {
     return this.container;
 };

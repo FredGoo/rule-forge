@@ -31,9 +31,7 @@ ruleforge.ActionType.prototype.initData=function(data){
 ruleforge.ActionType.prototype.init=function(){
 	this.container=generateContainer();
 	RuleForge.setDomContent(this.container,"请选择动作类型");
-	this.container.css({
-		"color":"green"
-	});
+	this.container.style.color = "green";
 	this.parentContainer.appendChild(this.container);
 	this.action=null;
 };

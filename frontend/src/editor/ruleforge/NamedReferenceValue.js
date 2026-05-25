@@ -10,15 +10,11 @@ ruleforge.NamedReferenceValue=function(arithmetic,data,rule){
 	}
 	this.referenceNamelabel=generateContainer();
     this.container.appendChild(this.referenceNamelabel);
-    this.referenceNamelabel.css({
-		"color":"#9C27B0"
-	});
+	    this.referenceNamelabel.style.color = "#9C27B0";
 	RuleForge.setDomContent(this.referenceNamelabel,"请选择引用变量名");
 
 	this.referencePropertylabel=generateContainer();
-	this.referencePropertylabel.css({
-		"color":"#673AB7"
-	});
+	this.referencePropertylabel.style.color = "#673AB7";
 	this.container.appendChild(this.referencePropertylabel);
 	RuleForge.setDomContent(this.referencePropertylabel,"请选择变量属性");
 

@@ -8,9 +8,7 @@ ruleforge.NamedCondition=function(context,parentContainer,parentJoin){
 
 	this.label=generateContainer();
 	this.container.appendChild(this.label);
-	this.label.css({
-		"color":"#673AB7"
-	});
+	this.label.style.color = "#673AB7";
 	RuleForge.setDomContent(this.label,"请选择属性");
 	this.valueContainer=document.createElement("span");
 	this.container.appendChild(this.valueContainer);

@@ -1,27 +1,36 @@
+import {renderReact} from '../../components/react-bridge.js';
+import VariableValueWidget from '../../components/widgets/VariableValueWidget.jsx';
+
 ruleforge.VariableValue = function (arithmetic, data, act, functionProperty) {
     this.arithmetic = arithmetic;
     this.container = document.createElement("span");
-
-    var self = this;
-    this.label = generateContainer();
+    this.widgetRoot = document.createElement("span");
+    this.container.appendChild(this.widgetRoot);
     this.functionProperty = functionProperty;
-    this.container.appendChild(this.label);
-    this.label.style.color = "darkcyan";
-    RuleForge.setDomContent(this.label, "请选择变量");
     if (arithmetic) {
         this.container.appendChild(arithmetic.getContainer());
     }
-    if (data) {
-        this.initData(data);
-    }
-    window._VariableValueArray.push(this);
-    this.act = act;
+    this.widgetRef = null;
+    var self = this;
+    renderReact(VariableValueWidget, {
+        initialData: data,
+        libraries: window._ruleforgeEditorVariableLibraries,
+        act: act,
+        onDirty: function () { window._setDirty(); },
+        onFunctionPropertyUpdate: function (variables) {
+            if (self.functionProperty && self.functionProperty.initMenu) {
+                self.functionProperty.initMenu(variables);
+            }
+        },
+        ref: function (ref) { self.widgetRef = ref; },
+    }, this.widgetRoot);
     this.initMenu();
+    window._VariableValueArray.push(this);
 };
 
 ruleforge.VariableValue.prototype.getDisplayContainer = function () {
     var container = document.createElement("span");
-    container.textContent = this.category + "." + this.variableLabel;
+    container.textContent = this.widgetRef ? this.widgetRef.getDisplayLabel() : '';
     if (this.arithmetic) {
         var dis = this.arithmetic.getDisplayContainer();
         if (dis) {
@@ -31,96 +40,21 @@ ruleforge.VariableValue.prototype.getDisplayContainer = function () {
     return container;
 };
 
-ruleforge.VariableValue.prototype.matchAct = function (act) {
-    if (!this.act) {
-        return true;
-    }
-    if (act.indexOf(this.act) > -1) {
-        return true;
-    }
-    return false;
-};
 ruleforge.VariableValue.prototype.initMenu = function (variableLibraries) {
-    var data = window._ruleforgeEditorVariableLibraries;
-    if (variableLibraries) {
-        data = variableLibraries;
+    var data = variableLibraries || window._ruleforgeEditorVariableLibraries;
+    if (this.widgetRef && data) {
+        this.widgetRef.initMenu(data);
     }
-    if (!data) {
-        return;
-    }
-    var self, onCategoryClick, onVariableClick, config;
-    self = this;
-    onCategoryClick = function (menuItem) {
-        self.setValue({variableCategory: menuItem.label, variables: menuItem.variables});
-    };
-    onVariableClick = function (menuItem) {
-        self.setValue({
-            variables: menuItem.parent.parent.variables,
-            variableCategory: menuItem.parent.parent.label,
-            variableLabel: menuItem.label,
-            variableName: menuItem.name,
-            datatype: menuItem.datatype
-        });
-    };
-    config = {menuItems: []};
-    data.forEach(function(categories) {
-        categories.forEach(function(category) {
-            var variables = category.variables;
-            if (self.functionProperty && self.category) {
-                if (category.name == self.category) {
-                    self.functionProperty.initMenu(variables);
-                }
-            }
-            var menuItem = {
-                label: category.name,
-                variables: variables,
-                onClick: onCategoryClick
-            }
-            variables || [].forEach(function(variable) {
-                if (!menuItem.subMenu) {
-                    menuItem.subMenu = {menuItems: []};
-                }
-                if (self.matchAct(variable.act)) {
-                    var subMenuItem = {
-                        name: variable.name,
-                        label: variable.label,
-                        datatype: variable.type,
-                        act: variable.act,
-                        variables: variables,
-                        onClick: onVariableClick
-                    };
-                    menuItem.subMenu.menuItems.push(subMenuItem);
-                }
-            });
-            config.menuItems.push(menuItem);
-        });
-    });
-    if (self.menu) {
-        self.menu.setConfig(config);
-    } else {
-        self.menu = new RuleForge.menu.Menu(config);
-    }
-    this.label.addEventListener("click", function (e) {
-        self.menu.show(e);
-    });
 };
+
 ruleforge.VariableValue.prototype.setValue = function (data) {
-    var self = this;
-    this.category = data["variableCategory"];
-    this.variableName = data["variableName"];
-    this.variableLabel = data["variableLabel"];
-    this.datatype = data["datatype"];
-    if (this.functionProperty) {
-        this.functionProperty.initMenu(data["variables"]);
+    if (this.widgetRef) {
+        this.widgetRef.setValue(data);
     }
-    if (this.variableLabel) {
-        RuleForge.setDomContent(this.label, this.category + "." + this.variableLabel);
-    } else {
-        RuleForge.setDomContent(this.label, this.category);
-    }
-    window._setDirty();
 };
+
 ruleforge.VariableValue.prototype.initData = function (data) {
+    if (!data) return;
     this.setValue(data);
     if (this.arithmetic) {
         this.arithmetic.initData(data["arithmetic"]);
@@ -128,22 +62,19 @@ ruleforge.VariableValue.prototype.initData = function (data) {
 };
 
 ruleforge.VariableValue.prototype.toXml = function () {
-    if (!this.category || this.category == "") {
-        throw "变量不能为空！";
+    if (this.widgetRef) {
+        return this.widgetRef.toXml();
     }
-    var xml = "var-category=\"" + this.category + "\"";
-    if (this.variableName) {
-        xml += " var=\"" + this.variableName + "\" var-label=\"" + this.variableLabel + "\" datatype=\"" + this.datatype + "\"";
-    }
-    return xml;
+    return '';
 };
+
 ruleforge.VariableValue.prototype.getType = function () {
-    if (this.variableName) {
-        return "Variable";
-    } else {
-        return "VariableCategory";
+    if (this.widgetRef) {
+        return this.widgetRef.getType();
     }
+    return 'VariableCategory';
 };
+
 ruleforge.VariableValue.prototype.getContainer = function () {
     return this.container;
 };
