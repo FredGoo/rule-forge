@@ -5,7 +5,10 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 module.exports = {
     mode: 'development',
     resolve: {
-        extensions: ['*', '.js', '.jsx', '.json']
+        extensions: ['*', '.js', '.jsx', '.json'],
+        alias: {
+            '@': path.resolve(__dirname, 'src')
+        }
     },
     entry: {
         frame: './src/frame/index.jsx',
@@ -88,14 +91,14 @@ module.exports = {
     devServer: {
         static: path.join(__dirname, 'dist'),
         compress: true,
-        port: 3001,
+        port: 3000,
         host: "0.0.0.0",
         open: true,
         client: { overlay: false },
         proxy: [
             {
                 context: ['/api/'],
-                target: 'http://127.0.0.1:8081/',
+                target: 'http://127.0.0.1:8180/',
                 changeOrigin: true,
                 pathRewrite: {
                     '^/api': '/ruleforgeV2'

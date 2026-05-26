@@ -18,7 +18,7 @@ export default class Menu extends Component {
             top: y || 0
         };
         return (
-            <div id={menuId}>
+            <div id={menuId} style={{position: 'absolute', display: visible ? 'block' : 'none'}}>
                 <ul className="dropdown-menu" style={menuStyle}>{result}</ul>
             </div>
         );

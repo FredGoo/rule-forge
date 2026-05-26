@@ -49,24 +49,6 @@ class LoginPage extends Component {
                         </div>
                         <h1 className="login-brand-title">RuleForge</h1>
                         <p className="login-brand-desc">智能决策管理平台</p>
-                        <div className="login-brand-features">
-                            <div className="login-feature-item">
-                                <span className="login-feature-dot"/>
-                                向导式规则集
-                            </div>
-                            <div className="login-feature-item">
-                                <span className="login-feature-dot"/>
-                                决策表 / 决策树
-                            </div>
-                            <div className="login-feature-item">
-                                <span className="login-feature-dot"/>
-                                评分卡
-                            </div>
-                            <div className="login-feature-item">
-                                <span className="login-feature-dot"/>
-                                决策流
-                            </div>
-                        </div>
                     </div>
                 </div>
                 <div className="login-form-panel">

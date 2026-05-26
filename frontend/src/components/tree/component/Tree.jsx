@@ -7,12 +7,15 @@ import {connect} from 'react-redux';
 class Tree extends Component {
     render() {
         const {data, dispatch, draggable, treeType} = this.props;
-        console.log(treeType)
         if (data) {
+            // Render children directly, skip the root node itself
+            const items = data.children || [];
             return (
-                <ul style={{paddingLeft: '20px'}}>
-                    <TreeItem data={data} dispatch={dispatch} treeType={treeType} expandLevel={this.props.expandLevel}
-                              draggable={draggable}/>
+                <ul style={{paddingLeft: '12px'}}>
+                    {items.map((child, index) => (
+                        <TreeItem key={child.id || index} data={child} dispatch={dispatch} treeType={treeType}
+                                  expandLevel={this.props.expandLevel} draggable={draggable}/>
+                    ))}
                 </ul>
             );
         } else {
