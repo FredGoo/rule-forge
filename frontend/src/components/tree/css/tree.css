@@ -14,7 +14,7 @@
     right:auto
 }
 .tree li::before {
-    border-left:1px solid #999;
+    border-left:1px solid var(--rf-border-split);
     bottom:50px;
     height:100%;
     top:-6px;
@@ -24,7 +24,7 @@
     border:none;
 }
 .tree li::after {
-    border-top:1px solid #999;
+    border-top:1px solid var(--rf-border-split);
     height:20px;
     top:23px;
     width:15px
@@ -37,6 +37,7 @@
 }
 .tree li span {
     border:1px solid transparent;
+    border-radius: var(--rf-radius-sm);
     display:inline-block;
     padding:2px 2px;
     margin:10px 0px 5px -20px;
@@ -52,5 +53,5 @@
     height:30px;
 }
 .tree-active{
-    border:solid 1px #2196F3 !important
+    border:solid 1px var(--rf-primary) !important
 }

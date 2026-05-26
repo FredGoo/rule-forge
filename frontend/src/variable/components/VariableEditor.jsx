@@ -39,7 +39,7 @@ class VariableEditor extends Component {
                 {
                     label: '通过指定类生成该类所有属性',
                     icon: 'glyphicon glyphicon-flash',
-                    style: {fontSize: '16px', color: '#337ab7', padding: '0px 4px', cursor: 'pointer'},
+                    style: {fontSize: 'var(--rf-font-size-lg)', color: 'var(--rf-primary)', padding: '0px 4px', cursor: 'pointer'},
                     click: function (rowIndex, rowData) {
                         let clazz = rowData.clazz;
                         if (!clazz || clazz.length < 1) {
@@ -55,7 +55,7 @@ class VariableEditor extends Component {
                 {
                     label: '导入通过ClassUtils类生成的包含类属性的XML文件',
                     icon: 'glyphicon glyphicon-cloud-upload',
-                    style: {fontSize: '16px', color: '#337ab7', padding: '0px 4px', cursor: 'pointer'},
+                    style: {fontSize: 'var(--rf-font-size-lg)', color: 'var(--rf-primary)', padding: '0px 4px', cursor: 'pointer'},
                     click: function (rowIndex, rowData) {
                         event.eventEmitter.emit(event.OPEN_IMPORT_XML_DIALOG, rowIndex)
                     }
@@ -63,7 +63,7 @@ class VariableEditor extends Component {
                 {
                     label: '删除',
                     icon: 'glyphicon glyphicon-trash',
-                    style: {fontSize: '16px', color: '#d9534f', padding: '0px 4px', cursor: 'pointer'},
+                    style: {fontSize: 'var(--rf-font-size-lg)', color: 'var(--rf-danger)', padding: '0px 4px', cursor: 'pointer'},
                     click: function (rowIndex) {
                         bootbox.confirm('真的要删除当前记录？', function (result) {
                             if (!result) return;
@@ -81,7 +81,7 @@ class VariableEditor extends Component {
                 {
                     label: '删除',
                     icon: 'glyphicon glyphicon-trash',
-                    style: {fontSize: '16px', color: '#d9534f', padding: '0px 10px', cursor: 'pointer'},
+                    style: {fontSize: 'var(--rf-font-size-lg)', color: 'var(--rf-danger)', padding: '0px 10px', cursor: 'pointer'},
                     click: function (rowIndex) {
                         bootbox.confirm('真的要删除当前记录？', function (result) {
                             if (!result) return;

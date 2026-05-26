@@ -66,11 +66,11 @@ export default class Dialog extends Component {
                      tabIndex="-1" role="dialog" aria-hidden={!visible}>
                     <div className="modal-dialog">
                         <div className="modal-content">
-                            <div className="modal-header">
+                            <div className="modal-header" style={{borderBottom: '1px solid var(--rf-border-split)'}}>
                                 <button type="button" className="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                                <h4 className="modal-title">{title}</h4>
+                                <h4 className="modal-title" style={{fontWeight: 'var(--rf-font-weight-semibold)', color: 'var(--rf-text-primary)'}}>{title}</h4>
                             </div>
-                            <div className="modal-body">{body}</div>
+                            <div className="modal-body" style={{padding: 'var(--rf-space-6)', color: 'var(--rf-text-primary)'}}>{body}</div>
                             <div className="modal-footer">{buttonElements}</div>
                         </div>
                     </div>

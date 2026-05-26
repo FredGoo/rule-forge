@@ -50,7 +50,7 @@ class ResourceEditor extends Component {
                 {
                     label: '删除',
                     icon: 'glyphicon glyphicon-trash',
-                    style: {fontSize: '16px', color: '#d9534f', padding: '0px 10px', cursor: 'pointer'},
+                    style: {fontSize: 'var(--rf-font-size-lg)', color: 'var(--rf-danger)', padding: '0px 10px', cursor: 'pointer'},
                     click: function (rowIndex) {
                         bootbox.confirm('真的要删除当前记录？', function (result) {
                             if (!result) return;

@@ -4,37 +4,38 @@
     right: 0;
     width: 260px;
     height: 100%;
-    background: #f8f8f8;
-    border-left: 1px solid #ccc;
+    background: var(--rf-bg-container);
+    border-left: 1px solid var(--rf-border-split);
     overflow-y: auto;
-    padding: 10px;
+    padding: var(--rf-space-3);
     box-sizing: border-box;
-    font-size: 12px;
+    font-size: var(--rf-font-size-sm);
     z-index: 10;
 }
 
 .rf-properties-empty {
-    color: #999;
+    color: var(--rf-text-tertiary);
     text-align: center;
     padding-top: 40px;
 }
 
 .rf-properties-title {
-    font-weight: bold;
-    font-size: 14px;
-    padding-bottom: 8px;
-    margin-bottom: 8px;
-    border-bottom: 1px solid #ddd;
+    font-weight: var(--rf-font-weight-semibold);
+    font-size: var(--rf-font-size-base);
+    padding-bottom: var(--rf-space-2);
+    margin-bottom: var(--rf-space-2);
+    border-bottom: 1px solid var(--rf-border-split);
+    color: var(--rf-text-primary);
 }
 
 .rf-properties-group {
-    margin-bottom: 8px;
+    margin-bottom: var(--rf-space-2);
 }
 
 .rf-properties-group label {
     display: block;
-    margin-bottom: 3px;
-    color: #555;
+    margin-bottom: var(--rf-space-1);
+    color: var(--rf-text-secondary);
     font-size: 11px;
 }
 
@@ -42,11 +43,21 @@
 .rf-properties-group select,
 .rf-properties-group textarea {
     width: 100%;
-    padding: 4px 6px;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-    font-size: 12px;
+    padding: 4px 8px;
+    border: 1px solid var(--rf-border);
+    border-radius: var(--rf-radius-sm);
+    font-size: var(--rf-font-size-sm);
     box-sizing: border-box;
+    background: var(--rf-bg-container);
+    color: var(--rf-text-primary);
+    transition: border-color 0.2s;
+    outline: none;
+}
+.rf-properties-group input:focus,
+.rf-properties-group select:focus,
+.rf-properties-group textarea:focus {
+    border-color: var(--rf-primary);
+    box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
 }
 
 .rf-properties-group textarea {

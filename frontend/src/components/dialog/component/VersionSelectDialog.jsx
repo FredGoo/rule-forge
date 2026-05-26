@@ -43,7 +43,7 @@ export default class VersionSelectDialog extends Component {
                 {
                     label: '选择该版本',
                     icon: 'rf rf-select',
-                    style: {fontSize: '18px', color: '#337ab7', padding: '0px 4px', cursor: 'pointer'},
+                    style: {fontSize: '18px', color: 'var(--rf-primary)', padding: '0px 4px', cursor: 'pointer'},
                     click: function (rowIndex, rowData) {
                         this.callback(this.file, rowData.name);
                         event.eventEmitter.emit(event.HIDE_VERSION_SELECT_DIALOG);

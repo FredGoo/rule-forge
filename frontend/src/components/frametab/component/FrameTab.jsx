@@ -107,7 +107,7 @@ export default class FrameTab extends Component {
             tabs.push(
                 <li id={liId} className={active} key={key} onContextMenu={(e) => this._handleContextMenu(e, menuId)}>
                     <a id={linkId} href={tableContainerLink} data-toggle="tab">
-                        <button className="close closeTab" type="button" style={{marginLeft: '5px'}} onClick={() => {
+                        <button className="close closeTab frame-tab-close" type="button" onClick={() => {
                             const frame = document.getElementById(iframeId);
                             if (frame && frame.contentWindow && frame.contentWindow._dirty) {
                                 const result = confirm('当前页面内容未保存，确实要关闭吗？');
@@ -179,7 +179,7 @@ export default class FrameTab extends Component {
             return (
                 <div>
                     <div>
-                        <ul className="nav nav-tabs" id='fornavframetab_' style={{fontSize: "12px"}}>
+                        <ul className="nav nav-tabs frame-tab-bar" id='fornavframetab_'>
                             {tabs}
                         </ul>
                     </div>

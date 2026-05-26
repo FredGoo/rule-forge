@@ -116,11 +116,11 @@ export default class ConfigLibraryDialog extends Component {
                 <div className="modal fade in" style={{display: 'block'}} tabIndex="-1" role="dialog">
                     <div className="modal-dialog">
                         <div className="modal-content">
-                            <div className="modal-header">
+                            <div className="modal-header" style={{borderBottom: '1px solid var(--rf-border-split)'}}>
                                 <button type="button" className="close" onClick={this.handleClose}>&times;</button>
-                                <h4 className="modal-title">{config.title}</h4>
+                                <h4 className="modal-title" style={{fontWeight: 'var(--rf-font-weight-semibold)', color: 'var(--rf-text-primary)'}}>{config.title}</h4>
                             </div>
-                            <div className="modal-body">
+                            <div className="modal-body" style={{padding: 'var(--rf-space-6)'}}>
                                 <table className="table table-bordered">
                                     <thead>
                                     <tr>

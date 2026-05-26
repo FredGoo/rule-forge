@@ -20,13 +20,13 @@ export default class CommonDialog extends Component {
                         <div className="modal-content">
                             <div className="modal-header">
                                 <button type="button" className="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                                <h3 className="modal-title" style={{wordWrap: 'break-word', display: 'flex', alignItems: 'center'}}>
+                                <h3 className="modal-title" style={{wordWrap: 'break-word', display: 'flex', alignItems: 'center', fontWeight: 'var(--rf-font-weight-semibold)'}}>
                                     {title}
-                                    {info && <div className="text-danger" style={{fontSize: '12pt'}}>{info}</div>}
-                                    {htmlContent && <div style={{display: 'inline-block', marginLeft: '10px'}}>{htmlContent}</div>}
+                                    {info && <div className="text-danger" style={{fontSize: '12pt', color: 'var(--rf-error)'}}>{info}</div>}
+                                    {htmlContent && <div style={{display: 'inline-block', marginLeft: 'var(--rf-space-3)'}}>{htmlContent}</div>}
                                 </h3>
                             </div>
-                            <div className="modal-body" style={{padding: '10px'}}>
+                            <div className="modal-body" style={{padding: 'var(--rf-space-6)'}}>
                                 {body}
                             </div>
                             <div className="modal-footer">

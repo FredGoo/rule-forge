@@ -1,5 +1,5 @@
 .CodeMirror {
-    border: 1px solid #dddddd;
+    border: 1px solid var(--rf-border);
 }
 .cm-s-default .cm-keyword {color: #708;}
 .cm-s-default .cm-atom {color: #219;}

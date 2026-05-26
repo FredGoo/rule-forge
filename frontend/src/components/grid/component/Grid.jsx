@@ -76,12 +76,12 @@ class Grid extends Component {
             )
         }
         const filterRow = (
-            <tr key='filterrow' style={{background: '#eee'}}>
+            <tr key='filterrow' style={{background: 'var(--rf-bg-base)'}}>
                 {headers.map((header, index) => {
                     if (header.filterable) {
                         return (<td key={uniqueID()}>
                             <input type="text" onKeyPress={this.onFilter.bind(this, index)} name={header.id}
-                                   className="form-control" style={{height: '26px'}}
+                                   className="form-control" style={{height: '28px'}}
                                    placeholder='请输入过滤条件，回车查询...'/>
                         </td>);
                     } else if (!header.hideFilterRow) {

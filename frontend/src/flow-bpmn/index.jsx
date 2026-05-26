@@ -44,19 +44,19 @@ document.addEventListener('DOMContentLoaded', function () {
     var toolbarRoot = document.getElementById('toolbarContainer');
     if (toolbarRoot) {
         createRoot(toolbarRoot).render(
-            createElement('div', {style: {padding: '5px 10px'}},
+            createElement('div', {className: 'toolbar'},
                 createElement('button', {
-                    className: 'btn btn-default btn-sm',
+                    className: 'btn btn-ghost btn-sm',
                     onClick: function () { saveFlow(false); }
                 }, createElement('i', {className: 'rf rf-save'}), ' 保存'),
                 ' ',
                 createElement('button', {
-                    className: 'btn btn-default btn-sm',
+                    className: 'btn btn-ghost btn-sm',
                     onClick: function () { saveFlow(true); }
                 }, createElement('i', {className: 'rf rf-savenewversion'}), ' 生成版本'),
                 ' ',
                 createElement('button', {
-                    className: 'btn btn-info btn-sm',
+                    className: 'btn btn-primary btn-sm',
                     onClick: function () {
                         event.eventEmitter.emit(event.OPEN_QUICK_TEST_DIALOG, {
                             project: window._project, file: decodedFile
