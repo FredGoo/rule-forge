@@ -94,11 +94,9 @@ export function createNewProject(newProjectName, parentNodeData) {
         }).then(function(response) {
             if (!response.ok) throw response;
             return response.json();
-        }).then(function (newProjectData) {
-            buildData(newProjectData, 1);
-            dispatch({type: CREATE_NEW_PROJECT, newProjectData, parentNodeData});
+        }).then(function () {
+            dispatch(loadData());
             event.eventEmitter.emit(event.CLOSE_NEW_PROJECT_DIALOG);
-            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
         }).catch(function (response) {
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
             handleResponseError(response, '服务端错误：');
@@ -220,7 +218,7 @@ export function update(index, data) {
 }
 
 export function loadData(classify, projectName, types, searchFileName) {
-    if (classify === null || classify === 'undefined') {
+    if (classify === null || classify === undefined) {
         classify = true;
     }
     return function (dispatch) {
@@ -228,7 +226,7 @@ export function loadData(classify, projectName, types, searchFileName) {
         fetch(url, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({classify, projectName, types, searchFileName, projectDetail: false}).toString()
+            body: new URLSearchParams(Object.fromEntries(Object.entries({classify, projectName, types, searchFileName, projectDetail: false}).filter(([_, v]) => v !== undefined && v !== null))).toString()
         }).then(function(response) {
             if (!response.ok) throw response;
             return response.json();

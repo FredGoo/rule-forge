@@ -23,7 +23,7 @@ class LoginPage extends Component {
         }).then((result) => {
             this.setState({loading: false});
             if (result.status) {
-                const redirect = new URLSearchParams(window.location.search).get('redirect') || 'index.html';
+                const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
                 window.location.href = redirect;
             } else {
                 this.setState({error: '登录失败'});
