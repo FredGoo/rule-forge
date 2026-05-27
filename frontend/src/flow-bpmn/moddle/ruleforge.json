@@ -49,9 +49,15 @@
           "meta": { "allowedIn":["bpmn:ServiceTask"] }
         },
         {
+          "name": "rulesList",
+          "type": "String",
+          "isAttr": false,
+          "meta": { "allowedIn": ["bpmn:ServiceTask"] }
+        },
+        {
           "name": "eventBean",
           "type": "String",
-          "meta": { "allowedIn": ["bpmn:ServiceTask", "bpmn:ExclusiveGateway", "bpmn:ParallelGateway"] }
+          "meta": { "allowedIn": ["bpmn:ServiceTask", "bpmn:ExclusiveGateway", "bpmn:ParallelGateway", "bpmn:StartEvent", "bpmn:EndEvent", "bpmn:ScriptTask"] }
         }
       ]
     },
@@ -85,6 +91,69 @@
           "type": "String",
           "isAttr": false,
           "meta": { "allowedIn": ["bpmn:SequenceFlow"] }
+        }
+      ]
+    },
+    {
+      "name": "RuleForgeStartEvent",
+      "extends": ["bpmn:StartEvent"],
+      "properties": [
+        {
+          "name": "eventBean",
+          "type": "String",
+          "meta": { "allowedIn": ["bpmn:StartEvent"] }
+        }
+      ]
+    },
+    {
+      "name": "RuleForgeEndEvent",
+      "extends": ["bpmn:EndEvent"],
+      "properties": [
+        {
+          "name": "eventBean",
+          "type": "String",
+          "meta": { "allowedIn": ["bpmn:EndEvent"] }
+        }
+      ]
+    },
+    {
+      "name": "RuleForgeScriptTask",
+      "extends": ["bpmn:ScriptTask"],
+      "properties": [
+        {
+          "name": "eventBean",
+          "type": "String",
+          "meta": { "allowedIn": ["bpmn:ScriptTask"] }
+        }
+      ]
+    },
+    {
+      "name": "RuleForgeParallelGateway",
+      "extends": ["bpmn:ParallelGateway"],
+      "properties": [
+        {
+          "name": "eventBean",
+          "type": "String",
+          "meta": { "allowedIn": ["bpmn:ParallelGateway"] }
+        }
+      ]
+    },
+    {
+      "name": "Import",
+      "meta": { "allowedIn": ["bpmn:Process"] },
+      "properties": [
+        { "name": "type", "type": "String" },
+        { "name": "path", "type": "String" }
+      ]
+    },
+    {
+      "name": "RuleForgeProcess",
+      "extends": ["bpmn:Process"],
+      "properties": [
+        {
+          "name": "imports",
+          "type": "Import",
+          "isMany": true
         }
       ]
     }

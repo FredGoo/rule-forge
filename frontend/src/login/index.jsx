@@ -1,7 +1,6 @@
 import '../bootbox.js';
 import React, {Component} from 'react';
 import {createRoot} from 'react-dom/client';
-import '../css/theme.css';
 
 class LoginPage extends Component {
     constructor(props) {

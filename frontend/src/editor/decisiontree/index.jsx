@@ -1,9 +1,9 @@
 import '../../bootbox.js';
-import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../context.standalone.css';
 import '../../css/iconfont.css';
 import './decision-tree.css';
 import '../ruleforge/ruleset.css';
+import '../../css/tailwind-base.css';
 import '../Math.uuid.js';
 import '../../Remark.js';
 import '../common/contextMenu.js';

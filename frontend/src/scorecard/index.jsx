@@ -1,10 +1,10 @@
 import '../bootbox.js';
 import ScoreCardTable from './ScoreCardTable.js';
-import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css';
 import './scorecard.css';
 import '../editor/context.standalone.css';
 import '../editor/ruleforge/ruleset.css';
+import '../css/tailwind-base.css';
 import React from 'react';
 import {createRoot} from 'react-dom/client';
 import '../Remark.js';

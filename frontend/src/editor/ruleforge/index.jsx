@@ -1,8 +1,8 @@
 import '../../bootbox.js';
-import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../context.standalone.css';
 import './ruleset.css';
 import '../../css/iconfont.css';
+import '../../css/tailwind-base.css';
 import '../Math.uuid.js';
 import '../common/contextMenu.js';
 import '../common/URule.js';

@@ -75,7 +75,7 @@ module.exports = {
             },
             {
                 test: /\.css$/,
-                use: [{ loader: 'style-loader' }, { loader: 'css-loader' }]
+                use: ['style-loader', 'css-loader', 'postcss-loader']
             },
             {
                 test: /\.(eot|woff|woff2|ttf|svg|png|jpg)$/,
@@ -93,7 +93,7 @@ module.exports = {
         compress: true,
         port: 3000,
         host: "0.0.0.0",
-        open: true,
+        open: false,
         client: { overlay: false },
         proxy: [
             {
