@@ -1,4 +1,4 @@
-import {Component} from 'react';
+import React, {Component} from 'react';
 import ScriptEditorPopup from './ScriptEditorPopup.jsx';
 import * as componentEvent from '../../components/componentEvent.js';
 import './ruleforge-properties.css';
@@ -76,6 +76,7 @@ export default class RuleForgePropertiesPanel extends Component {
     getExtensionAttr(name) {
         const bo = this.getBusinessObject();
         if (!bo) return '';
+        if (bo[name] !== undefined && bo[name] !== null) return bo[name];
         return bo.$attrs['ruleforge:' + name] || '';
     }
 
@@ -84,13 +85,9 @@ export default class RuleForgePropertiesPanel extends Component {
         if (!bo) return;
         const {modeling} = this.props;
         if (!modeling) return;
-        const attrs = {...bo.$attrs};
-        if (value) {
-            attrs['ruleforge:' + name] = value;
-        } else {
-            delete attrs['ruleforge:' + name];
-        }
-        modeling.updateProperties(this.state.element, attrs);
+        const props = {};
+        props['ruleforge:' + name] = value || undefined;
+        modeling.updateProperties(this.state.element, props);
     }
 
     updateName(e) {
@@ -144,20 +141,17 @@ export default class RuleForgePropertiesPanel extends Component {
 
     getFlowExtensionAttr(flowBo, name) {
         if (!flowBo) return '';
+        if (flowBo[name] !== undefined && flowBo[name] !== null) return flowBo[name];
         return flowBo.$attrs['ruleforge:' + name] || '';
     }
 
     setFlowExtensionAttr(flowElement, name, value) {
         const flowBo = flowElement.businessObject;
-        const attrs = {...flowBo.$attrs};
-        if (value) {
-            attrs['ruleforge:' + name] = value;
-        } else {
-            delete attrs['ruleforge:' + name];
-        }
+        const props = {};
+        props['ruleforge:' + name] = value || undefined;
         const {modeling} = this.props;
         if (modeling) {
-            modeling.updateModdleProperties(flowElement, flowBo, attrs);
+            modeling.updateModdleProperties(flowElement, flowBo, props);
         }
     }
 
@@ -553,8 +547,14 @@ export default class RuleForgePropertiesPanel extends Component {
         try {
             const rootElement = canvas.getRootElement();
             const bo = rootElement.businessObject;
-            const raw = bo.$attrs['ruleforge:imports'] || '';
-            imports = raw ? JSON.parse(raw) : [];
+            const raw = bo.imports || bo.$attrs['ruleforge:imports'] || '';
+            if (typeof raw === 'string') {
+                imports = raw ? JSON.parse(raw) : [];
+            } else if (Array.isArray(raw)) {
+                imports = raw;
+            } else {
+                imports = [];
+            }
         } catch (e) {
             imports = [];
         }

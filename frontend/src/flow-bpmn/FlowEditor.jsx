@@ -12,7 +12,8 @@ import './flow-theme.css';
 
 export default class FlowEditor extends Component {
     containerRef = createRef();
-    modeler = null;
+
+    state = { modelerReady: false };
 
     componentDidMount() {
         this.modeler = new BpmnModeler({
@@ -40,6 +41,7 @@ export default class FlowEditor extends Component {
     async createNewDiagram() {
         try {
             await this.modeler.createDiagram();
+            this.setState({modelerReady: true});
             if (this.props.onReady) this.props.onReady(this);
         } catch (err) {
             console.error('Error creating diagram:', err);
@@ -51,6 +53,7 @@ export default class FlowEditor extends Component {
             await this.modeler.importXML(xml);
             const canvas = this.modeler.get('canvas');
             canvas.zoom('fit-viewport');
+            this.setState({modelerReady: true});
             if (this.props.onReady) this.props.onReady(this);
         } catch (err) {
             console.error('Error importing XML:', err);
@@ -83,13 +86,15 @@ export default class FlowEditor extends Component {
         const bo = rootElement.businessObject;
         const modeling = this.modeler.get('modeling');
 
-        let currentImports = '';
-        try {
-            currentImports = bo.$attrs['ruleforge:imports'] || '';
-        } catch (e) {}
-
         let imports = [];
-        try { imports = JSON.parse(currentImports); } catch (e) {}
+        try {
+            const raw = bo.imports || bo.$attrs['ruleforge:imports'] || '';
+            if (typeof raw === 'string') {
+                imports = raw ? JSON.parse(raw) : [];
+            } else if (Array.isArray(raw)) {
+                imports = raw;
+            }
+        } catch (e) {}
 
         if (!imports.find(function(imp) { return imp.type === type && imp.path === path; })) {
             imports.push({type: type, path: path});
@@ -116,19 +121,20 @@ export default class FlowEditor extends Component {
     }
 
     render() {
-        const services = this.modeler ? {
-            eventBus: this.modeler.get('eventBus'),
-            modeling: this.modeler.get('modeling'),
-            elementRegistry: this.modeler.get('elementRegistry'),
-            commandStack: this.modeler.get('commandStack'),
-            moddle: this.modeler.get('moddle'),
-            canvas: this.modeler.get('canvas')
+        const modeler = this.modeler;
+        const services = (modeler && this.state.modelerReady) ? {
+            eventBus: modeler.get('eventBus'),
+            modeling: modeler.get('modeling'),
+            elementRegistry: modeler.get('elementRegistry'),
+            commandStack: modeler.get('commandStack'),
+            moddle: modeler.get('moddle'),
+            canvas: modeler.get('canvas')
         } : {};
 
         return (
             <div style={{width: '100%', height: '100%', minHeight: 500, position: 'relative'}}>
                 <div ref={this.containerRef} style={{width: '100%', height: '100%'}}/>
-                {this.modeler && (
+                {this.state.modelerReady && modeler && (
                     <RuleForgePropertiesPanel {...services} />
                 )}
             </div>
