@@ -65,7 +65,7 @@ export default class TopBar extends Component {
 
     render() {
         const {projects, selectedProject, tabs, activeTab, projectDropdownOpen, userDropdownOpen} = this.state;
-        const {frameTabRef} = this.props;
+        const frameTabRef = this.frameTabRef || this.props.frameTabRef;
         const username = (window.__currentUser && window.__currentUser.username) || 'admin';
 
         return (

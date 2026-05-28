@@ -1,4 +1,5 @@
 import '../bootbox.js';
+import '../css/tailwind-base.css';
 import React, {Component} from 'react';
 import {createRoot} from 'react-dom/client';
 

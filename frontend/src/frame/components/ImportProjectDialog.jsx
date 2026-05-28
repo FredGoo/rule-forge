@@ -101,6 +101,7 @@ export default class ImportProjectDialog extends Component {
             }
         ];
 
-        return (<CommonDialog visible={this.state.visible} title="导入项目" body={body} buttons={buttons}/>)
+        return (<CommonDialog visible={this.state.visible} title="导入项目" body={body} buttons={buttons}
+                              onClose={() => this.setState({visible: false})}/>)
     }
 }

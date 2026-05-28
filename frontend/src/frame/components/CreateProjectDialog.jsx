@@ -75,7 +75,8 @@ export default class CreateProjectDialog extends Component{
             }
         );
         return (
-            <Dialog visible={this.state.visible} title="创建新项目" body={body} buttons={buttons}></Dialog>
+            <Dialog visible={this.state.visible} title="创建新项目" body={body} buttons={buttons}
+                    onClose={() => this.setState({visible: false})}></Dialog>
         );
     }
 }

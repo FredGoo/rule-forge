@@ -82,7 +82,8 @@ export default class CreateFolderDialog extends Component {
             }
         );
         return (
-            <Dialog visible={this.state.visible} title="创建新目录" body={body} buttons={buttons}></Dialog>
+            <Dialog visible={this.state.visible} title="创建新目录" body={body} buttons={buttons}
+                    onClose={() => this.setState({visible: false})}></Dialog>
         );
     }
 }

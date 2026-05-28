@@ -12,43 +12,34 @@ export const CREATE_NEW_PROJECT = 'create_new_project';
 export const CREATE_NEW_FILE = 'create_new_file';
 export const LOAD_CHILDREN_END = 'load_children_end'; // 子菜单加载完成的action类型
 
+const FILE_TYPE_MAP = {
+    'vl.xml': 'VariableLibrary', 'cl.xml': 'ConstantLibrary',
+    'pl.xml': 'ParameterLibrary', 'al.xml': 'ActionLibrary',
+    'rs.xml': 'Ruleset', 'rsl.xml': 'RulesetLib', 'ul': 'UL',
+    'dt.xml': 'DecisionTable', 'ct.xml': 'Crosstab', 'dts.xml': 'ScriptDecisionTable',
+    'dtree.xml': 'DecisionTree', 'sc': 'Scorecard', 'scc': 'ComplexScorecard',
+    'rl.xml': 'RuleFlow'
+};
+
 export function createNewFile(newFileName, fileType, parentNodeData) {
     return function (dispatch) {
         const url = window._server + '/frame/createFile';
         const fileName = newFileName + "." + fileType;
         const path = parentNodeData.fullPath + "/" + fileName;
+        const serverType = FILE_TYPE_MAP[fileType] || fileType;
 
         fetch(url, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({path: encodeURI(parentNodeData.fullPath + "/" + fileName), type: fileType}).toString()
+            body: new URLSearchParams({path: encodeURI(parentNodeData.fullPath + "/" + fileName), type: serverType}).toString()
         }).then(function(response) {
             if (!response.ok) throw response;
             return response.json();
         }).then(function (newFileInfo) {
-            const newFileData = {
-                id: newFileInfo.id,
-                name: fileName,
-                type: newFileInfo.type,
-                fullPath: path,
-                contextMenu: buildFileContextMenu()
-            };
-            buildData(newFileData, 1);
-            dispatch({
-                parentNodeData,
-                newFileData,
-                type: CREATE_NEW_FILE
-            });
-            const targetURL = '.' + newFileData.editorPath + "?file=" + newFileData.fullPath;
-            componentEvent.eventEmitter.emit(componentEvent.TREE_NODE_CLICK, {
-                id: newFileData.id,
-                name: newFileData.name,
-                path: targetURL,
-                fullPath: path,
-                active: true
-            });
-            event.eventEmitter.emit(event.EXPAND_TREE_NODE, parentNodeData);
             event.eventEmitter.emit(event.CLOSE_CREATE_FILE_DIALOG);
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+            // Reload tree to show the new file
+            dispatch(loadData(true, window._projectName, null));
         }).catch(function (response) {
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
             handleResponseError(response, '服务端错误：');
@@ -121,22 +112,9 @@ export function createNewFolder(newFolderName, parentNodeData) {
             if (!response.ok) throw response;
             return response.json();
         }).then(function (data) {
-            const newFolderData = {
-                id: data.id || Date.now(), // 使用服务器返回的ID或生成临时ID
-                name: newFolderName,
-                type: 'folder',
-                fullPath: fullFolderName,
-                children: [],
-                contextMenu: buildFullContextMenu(true, 'folder')
-            };
-            buildData(newFolderData, 1);
-            dispatch({
-                parentNodeData,
-                newFileData: newFolderData,
-                type: CREATE_NEW_FILE // 复用 CREATE_NEW_FILE action
-            });
             event.eventEmitter.emit(event.CLOSE_CREATE_FOLDER_DIALOG);
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+            dispatch(loadData(true, window._projectName, null));
         }).catch(function (response) {
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
             handleResponseError(response, '服务端错误：');
@@ -743,6 +721,14 @@ function buildData() {
             data.contextMenu = buildFileContextMenu();
             data.editorPath = "/html/crosstab-editor.html";
             break;
+    }
+    // Ensure container types have a children array so they render as folders
+    if (data.children === null || data.children === undefined) {
+        var t = data.type;
+        if (t === 'lib' || t === 'ruleLib' || t === 'decisionTableLib' || t === 'decisionTreeLib'
+            || t === 'scorecardLib' || t === 'flowLib' || t === 'resource' || t === 'folder') {
+            data.children = [];
+        }
     }
     var children = data.children;
     if (children) {

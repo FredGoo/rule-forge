@@ -20,7 +20,6 @@ export default class CreateFileDialog extends Component {
             let title = "创建一个";
             title += type + '文件';
             this.setState({title, type, fileType, nodeData: data.nodeData, newFileName: '', errors: {}});
-            event.eventEmitter.emit(event.DIALOG_CONTNET_CHANGE, {title});
             this.setState({visible: true});
         });
         event.eventEmitter.on(event.CLOSE_CREATE_FILE_DIALOG, () => {
@@ -86,7 +85,8 @@ export default class CreateFileDialog extends Component {
             }
         ];
         return (
-            <Dialog visible={this.state.visible} title='' body={body} buttons={buttons}/>
+            <Dialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons}
+                    onClose={() => this.setState({visible: false})}/>
         );
     }
 };

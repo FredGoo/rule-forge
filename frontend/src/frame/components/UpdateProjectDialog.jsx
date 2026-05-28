@@ -66,7 +66,8 @@ export default class UpdateProjectDialog extends Component{
             }
         );
         return (
-            <Dialog visible={this.state.visible} title="项目名称修改" body={body} buttons={buttons}></Dialog>
+            <Dialog visible={this.state.visible} title="项目名称修改" body={body} buttons={buttons}
+                    onClose={() => this.setState({visible: false})}></Dialog>
         );
     }
 }
