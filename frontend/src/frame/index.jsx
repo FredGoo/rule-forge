@@ -1,23 +1,23 @@
-import '../bootbox.js';
-import '../css/iconfont.css';
-import '../css/theme.css';
-import '../../node_modules/bootstrap/dist/css/bootstrap.css';
-import '../../node_modules/codemirror/lib/codemirror.css';
-import '../../node_modules/bootstrapvalidator/dist/css/bootstrapValidator.css';
+import '@/bootbox.js';
+import '@/css/iconfont.css';
+import 'codemirror/lib/codemirror.css';
+import 'bootstrapvalidator/dist/css/bootstrapValidator.css';
+import '../css/tailwind-base.css';
 import React from 'react';
 import {createRoot} from 'react-dom/client';
 import {applyMiddleware, createStore} from 'redux';
 import {Provider} from 'react-redux';
-import * as ACTIONS from './action.js';
-import reducer from './reducer.js';
+import * as ACTIONS from '@/frame/action.js';
+import reducer from '@/frame/reducer.js';
 import thunk from 'redux-thunk';
-import Splitter from '../components/splitter/component/Splitter.jsx';
-import FrameTab from '../components/frametab/component/FrameTab.jsx';
-import ComponentContainer from './components/ComponentContainer.jsx';
-import SidebarToolbar from './components/SidebarToolbar.jsx';
-import Loading from '../components/loading/component/Loading.jsx';
-import * as event from './event.js';
-import * as componentEvent from '../components/componentEvent.js';
+import Splitter from '@/components/splitter/component/Splitter.jsx';
+import FrameTab from '@/components/frametab/component/FrameTab.jsx';
+import ComponentContainer from '@/frame/components/ComponentContainer.jsx';
+import TopBar from '@/frame/components/TopBar.jsx';
+import FileTreePanel from '@/frame/components/FileTreePanel.jsx';
+import Loading from '@/components/loading/component/Loading.jsx';
+import * as event from '@/frame/event.js';
+import * as componentEvent from '@/components/componentEvent.js';
 
 document.addEventListener('DOMContentLoaded', function () {
     window._types = null;
@@ -26,17 +26,32 @@ document.addEventListener('DOMContentLoaded', function () {
     const store = createStore(reducer, applyMiddleware(thunk));
     store.dispatch(ACTIONS.loadData());
 
+    var topBarRef = null;
+    var frameTabRef = null;
+
     createRoot(document.getElementById("container")).render(
-        <div>
+        <div className="app-layout">
             <Loading show={true}/>
             <Provider store={store}>
-                <Splitter orientation='vertical' position='20%'>
-                    <SidebarToolbar store={store} eventObj={event}/>
-                    <div>
-                        <ComponentContainer/>
-                        <FrameTab welcomePage={window._welcomePage}/>
-                    </div>
-                </Splitter>
+                <TopBar ref={ref => { topBarRef = ref; }}
+                        store={store} eventObj={event}
+                        frameTabRef={frameTabRef}/>
+                <div className="app-body">
+                    <Splitter orientation='vertical' position='260px'>
+                        <FileTreePanel store={store}/>
+                        <div className="app-content">
+                            <ComponentContainer/>
+                            <FrameTab ref={ref => {
+                                frameTabRef = ref;
+                                if (topBarRef) topBarRef.frameTabRef = ref;
+                            }}
+                                      welcomePage={window._welcomePage}
+                                      onTabsChange={(tabs, activeTab) => {
+                                          if (topBarRef) topBarRef.setTabData(tabs, activeTab);
+                                      }}/>
+                        </div>
+                    </Splitter>
+                </div>
             </Provider>
         </div>,
     );

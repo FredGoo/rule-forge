@@ -1,5 +1,5 @@
 server:
-  port: ${CONSOLE_PORT:8081}
+  port: ${CONSOLE_PORT:8180}
 
 spring:
   main:
@@ -48,7 +48,7 @@ ruleforge:
   repository:
     dir: ${RF_REPO_DIR:./data/riskruleforge}
   exec:
-    url: ${EXECUTOR_URL:http://localhost:8082}
+    url: ${EXECUTOR_URL:http://localhost:8280}
 
 flowable:
   datasource: ruleforge

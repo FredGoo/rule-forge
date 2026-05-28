@@ -48,6 +48,7 @@ export default class SourceDialog extends Component{
                 action.saveFileSource(fullPath,newContent);
             }.bind(this)
         }];
-        return (<CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons} large={true}/>);
+        return (<CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons} large={true}
+                              onClose={() => this.setState({visible: false})}/>);
     }
 }

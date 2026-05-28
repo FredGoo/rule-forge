@@ -87,6 +87,10 @@ RuleForgePalette.prototype.getPaletteEntries = function() {
       'bpmn:ServiceTask', 'ruleforge', 'rf-icon-package', '知识包节点',
       {'ruleforge:taskType': 'package'}
     ),
+    'create.rules-package-task': createAction(
+      'bpmn:ServiceTask', 'ruleforge', 'rf-icon-rules-package', '规则包节点',
+      {'ruleforge:taskType': 'rulesPackage'}
+    ),
   });
 
   return actions;

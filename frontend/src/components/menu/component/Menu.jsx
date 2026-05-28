@@ -11,14 +11,14 @@ export default class Menu extends Component {
             );
         });
         const menuStyle = {
-            color: 'rgb(11, 54, 106)',
+            color: 'var(--rf-text-primary)',
             display: visible ? 'block' : 'none',
             position: 'fixed',
             left: x || 0,
             top: y || 0
         };
         return (
-            <div id={menuId}>
+            <div id={menuId} style={{position: 'absolute', display: visible ? 'block' : 'none'}}>
                 <ul className="dropdown-menu" style={menuStyle}>{result}</ul>
             </div>
         );

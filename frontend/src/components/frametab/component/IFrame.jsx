@@ -10,10 +10,11 @@ export default class IFrame extends Component{
 
     componentDidMount(){
         const iframe = this.iframeRef.current;
-        event.eventEmitter.emit(event.SHOW_LOADING);
 
         iframe.addEventListener('load', function(){
-            event.eventEmitter.emit(event.HIDE_LOADING);
+            try {
+                iframe.style.opacity = '1';
+            } catch(e) {}
         });
 
         const docHeight = document.documentElement.scrollHeight;
@@ -37,7 +38,9 @@ export default class IFrame extends Component{
         const path=encodeURI(encodeURI(this.props.path));
         const iframeId=this.props.id;
         return (
-            <iframe ref={this.iframeRef} src={path} id={iframeId} style={{width:'100%',border:0}} frameBorder="none"></iframe>
+            <iframe ref={this.iframeRef} src={path} id={iframeId}
+                    style={{width:'100%', border:0, opacity: 0, transition: 'opacity 0.2s'}}
+                    frameBorder="none"></iframe>
         );
     }
 }

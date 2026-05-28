@@ -163,8 +163,8 @@ export default class VersionListDialog extends Component {
                 </nav>
             </div>
         );
-        return (<CommonDialog visible={this.state.visible} body={body} title={this.state.title} buttons={[]} large={true} dialogStyle={{  // 直接设置样式对象
+        return (<CommonDialog visible={this.state.visible} body={body} title={this.state.title} buttons={[]} large={true} dialogStyle={{
             minWidth: '700px'
-        }}/>);
+        }} onClose={() => this.setState({visible: false})}/>);
     }
 }

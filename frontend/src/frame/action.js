@@ -12,43 +12,34 @@ export const CREATE_NEW_PROJECT = 'create_new_project';
 export const CREATE_NEW_FILE = 'create_new_file';
 export const LOAD_CHILDREN_END = 'load_children_end'; // 子菜单加载完成的action类型
 
+const FILE_TYPE_MAP = {
+    'vl.xml': 'VariableLibrary', 'cl.xml': 'ConstantLibrary',
+    'pl.xml': 'ParameterLibrary', 'al.xml': 'ActionLibrary',
+    'rs.xml': 'Ruleset', 'rsl.xml': 'RulesetLib', 'ul': 'UL',
+    'dt.xml': 'DecisionTable', 'ct.xml': 'Crosstab', 'dts.xml': 'ScriptDecisionTable',
+    'dtree.xml': 'DecisionTree', 'sc': 'Scorecard', 'scc': 'ComplexScorecard',
+    'rl.xml': 'RuleFlow'
+};
+
 export function createNewFile(newFileName, fileType, parentNodeData) {
     return function (dispatch) {
         const url = window._server + '/frame/createFile';
         const fileName = newFileName + "." + fileType;
         const path = parentNodeData.fullPath + "/" + fileName;
+        const serverType = FILE_TYPE_MAP[fileType] || fileType;
 
         fetch(url, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({path: encodeURI(parentNodeData.fullPath + "/" + fileName), type: fileType}).toString()
+            body: new URLSearchParams({path: encodeURI(parentNodeData.fullPath + "/" + fileName), type: serverType}).toString()
         }).then(function(response) {
             if (!response.ok) throw response;
             return response.json();
         }).then(function (newFileInfo) {
-            const newFileData = {
-                id: newFileInfo.id,
-                name: fileName,
-                type: newFileInfo.type,
-                fullPath: path,
-                contextMenu: buildFileContextMenu()
-            };
-            buildData(newFileData, 1);
-            dispatch({
-                parentNodeData,
-                newFileData,
-                type: CREATE_NEW_FILE
-            });
-            const targetURL = '.' + newFileData.editorPath + "?file=" + newFileData.fullPath;
-            componentEvent.eventEmitter.emit(componentEvent.TREE_NODE_CLICK, {
-                id: newFileData.id,
-                name: newFileData.name,
-                path: targetURL,
-                fullPath: path,
-                active: true
-            });
-            event.eventEmitter.emit(event.EXPAND_TREE_NODE, parentNodeData);
             event.eventEmitter.emit(event.CLOSE_CREATE_FILE_DIALOG);
+            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+            // Reload tree to show the new file
+            dispatch(loadData(true, window._projectName, null));
         }).catch(function (response) {
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
             handleResponseError(response, '服务端错误：');
@@ -94,11 +85,9 @@ export function createNewProject(newProjectName, parentNodeData) {
         }).then(function(response) {
             if (!response.ok) throw response;
             return response.json();
-        }).then(function (newProjectData) {
-            buildData(newProjectData, 1);
-            dispatch({type: CREATE_NEW_PROJECT, newProjectData, parentNodeData});
+        }).then(function () {
+            dispatch(loadData());
             event.eventEmitter.emit(event.CLOSE_NEW_PROJECT_DIALOG);
-            componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
         }).catch(function (response) {
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
             handleResponseError(response, '服务端错误：');
@@ -123,22 +112,9 @@ export function createNewFolder(newFolderName, parentNodeData) {
             if (!response.ok) throw response;
             return response.json();
         }).then(function (data) {
-            const newFolderData = {
-                id: data.id || Date.now(), // 使用服务器返回的ID或生成临时ID
-                name: newFolderName,
-                type: 'folder',
-                fullPath: fullFolderName,
-                children: [],
-                contextMenu: buildFullContextMenu(true, 'folder')
-            };
-            buildData(newFolderData, 1);
-            dispatch({
-                parentNodeData,
-                newFileData: newFolderData,
-                type: CREATE_NEW_FILE // 复用 CREATE_NEW_FILE action
-            });
             event.eventEmitter.emit(event.CLOSE_CREATE_FOLDER_DIALOG);
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
+            dispatch(loadData(true, window._projectName, null));
         }).catch(function (response) {
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
             handleResponseError(response, '服务端错误：');
@@ -219,42 +195,62 @@ export function update(index, data) {
     return {index, data, type: UPDATE};
 }
 
+let _loadDataRequestId = 0;
+
 export function loadData(classify, projectName, types, searchFileName) {
-    if (classify === null || classify === 'undefined') {
+    if (classify === null || classify === undefined) {
         classify = true;
     }
+    const requestId = ++_loadDataRequestId;
     return function (dispatch) {
         const url = window._server + '/frame/loadProjects';
         fetch(url, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({classify, projectName, types, searchFileName, projectDetail: false}).toString()
+            body: new URLSearchParams(Object.fromEntries(Object.entries({classify, projectName, types, searchFileName, projectDetail: true}).filter(([_, v]) => v !== undefined && v !== null))).toString()
         }).then(function(response) {
             if (!response.ok) throw response;
             return response.json();
         }).then(function (data) {
+            // Skip if a newer request has been made
+            if (requestId !== _loadDataRequestId) return;
+
             const {classify, repo, user} = data;
             const {rootFile, publicResource, projectNames} = repo;
             event.eventEmitter.emit(event.CHANGE_CLASSIFY, classify);
-            if (projectNames && projectNames.length > 0) {
+            // Only update project list on full load (no specific project selected)
+            if (!projectName && projectNames && projectNames.length > 0) {
                 event.eventEmitter.emit(event.PROJECT_LIST_CHANGE, projectNames);
             }
 
-            // 只对项目列表进行懒加载，公共资源库保持原有逻辑
-            if (rootFile && Array.isArray(rootFile.children)) {
-                rootFile.children.forEach(child => {
-                    if (Array.isArray(child.children)) {
-                        child.children = [];
-                    }
-                    // 标记为需要懒加载的节点
-                    child._needLazyLoad = true;
-                    child._childrenLoaded = false;
-                });
+            // Determine which project to show in the tree
+            const targetProject = projectName || (projectNames && projectNames[0]) || null;
+
+            // Extract the target project's children to show directly (skip root + project layers)
+            let treeData;
+            if (targetProject && rootFile && Array.isArray(rootFile.children)) {
+                const projectNode = rootFile.children.find(
+                    child => child.name === targetProject || child.fullPath === '/' + targetProject
+                );
+                if (projectNode && projectNode.children) {
+                    // Build a virtual root that contains the project's children directly
+                    treeData = {
+                        id: rootFile.id,
+                        name: rootFile.name,
+                        type: 'root',
+                        fullPath: rootFile.fullPath,
+                        children: projectNode.children
+                    };
+                }
+            }
+            if (!treeData) {
+                treeData = rootFile;
             }
 
-            buildData(rootFile, 1, user);
-            buildData(publicResource, 1, user)
-            dispatch({data: rootFile, publicResource: publicResource, type: LOAD_END});
+            buildData(treeData, 1, user);
+            buildData(publicResource, 1, user);
+
+            dispatch({data: treeData, publicResource: publicResource, type: LOAD_END});
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
 
             // 控制所有节点显示
@@ -725,6 +721,14 @@ function buildData() {
             data.contextMenu = buildFileContextMenu();
             data.editorPath = "/html/crosstab-editor.html";
             break;
+    }
+    // Ensure container types have a children array so they render as folders
+    if (data.children === null || data.children === undefined) {
+        var t = data.type;
+        if (t === 'lib' || t === 'ruleLib' || t === 'decisionTableLib' || t === 'decisionTreeLib'
+            || t === 'scorecardLib' || t === 'flowLib' || t === 'resource' || t === 'folder') {
+            data.children = [];
+        }
     }
     var children = data.children;
     if (children) {

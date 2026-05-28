@@ -79,6 +79,7 @@ export default class RenameDialog extends Component {
                 {this.state.errors.fileName && <div className="text-danger" style={{fontSize: '12px'}}>{this.state.errors.fileName}</div>}
             </div>
         );
-        return (<CommonDialog visible={this.state.visible} body={body} buttons={buttons} title='重命名'/>);
+        return (<CommonDialog visible={this.state.visible} body={body} buttons={buttons} title='重命名'
+                              onClose={() => this.setState({visible: false})}/>);
     }
 };

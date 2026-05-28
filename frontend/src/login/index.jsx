@@ -1,7 +1,7 @@
 import '../bootbox.js';
+import '../css/tailwind-base.css';
 import React, {Component} from 'react';
 import {createRoot} from 'react-dom/client';
-import '../css/theme.css';
 
 class LoginPage extends Component {
     constructor(props) {
@@ -23,7 +23,7 @@ class LoginPage extends Component {
         }).then((result) => {
             this.setState({loading: false});
             if (result.status) {
-                const redirect = new URLSearchParams(window.location.search).get('redirect') || 'index.html';
+                const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
                 window.location.href = redirect;
             } else {
                 this.setState({error: '登录失败'});
@@ -36,31 +36,51 @@ class LoginPage extends Component {
     render() {
         const {username, password, error, loading} = this.state;
         return (
-            <div style={{
-                display: 'flex', justifyContent: 'center', alignItems: 'center',
-                minHeight: '100vh', background: '#f5f5f5'
-            }}>
-                <div style={{
-                    background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    padding: 40, width: 360
-                }}>
-                    <h2 style={{textAlign: 'center', marginBottom: 30, color: '#333'}}>RuleForge</h2>
-                    <form onSubmit={this.handleSubmit}>
-                        <div className="form-group">
-                            <input type="text" className="form-control" placeholder="用户名"
-                                   value={username}
-                                   onChange={(e) => this.setState({username: e.target.value})}/>
+            <div className="login-container">
+                <div className="login-brand-panel">
+                    <div className="login-brand-grid"/>
+                    <div className="login-brand-content">
+                        <div className="login-logo-icon">
+                            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                                <rect x="4" y="4" width="40" height="40" rx="8" fill="rgba(255,255,255,0.2)"/>
+                                <path d="M16 18L24 14L32 18V30L24 34L16 30V18Z" stroke="white" strokeWidth="2" fill="rgba(255,255,255,0.15)"/>
+                                <circle cx="24" cy="24" r="4" fill="white"/>
+                            </svg>
                         </div>
-                        <div className="form-group">
-                            <input type="password" className="form-control" placeholder="密码"
-                                   value={password}
-                                   onChange={(e) => this.setState({password: e.target.value})}/>
-                        </div>
-                        {error && <div className="alert alert-danger" style={{padding: '6px 12px'}}>{error}</div>}
-                        <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-                            {loading ? '登录中...' : '登 录'}
-                        </button>
-                    </form>
+                        <h1 className="login-brand-title">RuleForge</h1>
+                        <p className="login-brand-desc">智能决策管理平台</p>
+                    </div>
+                </div>
+                <div className="login-form-panel">
+                    <div className="login-card">
+                        <h2 className="login-card-title">欢迎登录</h2>
+                        <p className="login-card-subtitle">请输入您的账号信息</p>
+                        <form onSubmit={this.handleSubmit}>
+                            <div className="login-field">
+                                <label className="login-label">用户名</label>
+                                <input type="text" className="login-input"
+                                       placeholder="请输入用户名"
+                                       value={username}
+                                       onChange={(e) => this.setState({username: e.target.value})}/>
+                            </div>
+                            <div className="login-field">
+                                <label className="login-label">密码</label>
+                                <input type="password" className="login-input"
+                                       placeholder="请输入密码"
+                                       value={password}
+                                       onChange={(e) => this.setState({password: e.target.value})}/>
+                            </div>
+                            {error && <div className="login-error">{error}</div>}
+                            <button type="submit" className="login-submit-btn" disabled={loading}>
+                                {loading ? (
+                                    <span className="login-btn-loading">
+                                        <span className="login-btn-spinner"/>
+                                        登录中...
+                                    </span>
+                                ) : '登 录'}
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         );

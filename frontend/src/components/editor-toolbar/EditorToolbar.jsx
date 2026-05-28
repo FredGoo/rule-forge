@@ -53,11 +53,11 @@ export default class EditorToolbar extends Component {
 
         return (
             <div className="btn-toolbar" style={{
-                border: 'solid 1px #d0d0d0',
-                padding: '5px',
-                margin: '3px',
-                borderRadius: '5px',
-                background: '#fdfdfd'
+                borderBottom: '1px solid var(--rf-border-split)',
+                padding: 'var(--rf-space-2) var(--rf-space-3)',
+                margin: '0',
+                borderRadius: '0',
+                background: 'var(--rf-bg-container)'
             }}>
                 <div className="btn-group btn-group-sm">
                     <button type="button" className={'btn btn-default' + (dirty ? '' : ' disabled')}

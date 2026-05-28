@@ -4,13 +4,15 @@ export default class Splitter extends Component {
     constructor(props) {
         super(props);
         var position = this._parsePosition(props.position || '50%');
-        this.state = {position: position};
+        this.state = {position: position, hovering: false};
         this.containerRef = React.createRef();
         this._dragging = false;
         this._onMouseDown = this._onMouseDown.bind(this);
         this._onMouseMove = this._onMouseMove.bind(this);
         this._onMouseUp = this._onMouseUp.bind(this);
         this._onResize = this._onResize.bind(this);
+        this._onMouseEnter = this._onMouseEnter.bind(this);
+        this._onMouseLeave = this._onMouseLeave.bind(this);
     }
 
     _parsePosition(position) {
@@ -22,7 +24,6 @@ export default class Splitter extends Component {
                 if (match[2] === 'px') {
                     return parseFloat(match[1]);
                 } else {
-                    // Percentage will be resolved later in componentDidMount
                     return position;
                 }
             }
@@ -127,13 +128,21 @@ export default class Splitter extends Component {
         document.body.style.userSelect = '';
     }
 
+    _onMouseEnter() {
+        this.setState({hovering: true});
+    }
+
+    _onMouseLeave() {
+        this.setState({hovering: false});
+    }
+
     render() {
         var children = React.Children.toArray(this.props.children);
         var first = children[0];
         var second = children[1];
         var isVertical = this._isVertical();
         var position = this.state.position;
-        var dividerSize = 7;
+        var dividerSize = 1;
 
         var firstStyle, secondStyle, dividerStyle;
         if (isVertical) {
@@ -142,7 +151,7 @@ export default class Splitter extends Component {
                 top: 0,
                 left: 0,
                 height: '100%',
-                width: (typeof position === 'number' ? (position - dividerSize / 2) : position),
+                width: (typeof position === 'number' ? position : position),
                 overflow: 'auto'
             };
             secondStyle = {
@@ -150,20 +159,19 @@ export default class Splitter extends Component {
                 top: 0,
                 right: 0,
                 height: '100%',
-                width: (typeof position === 'number' ? ('calc(100% - ' + (position + dividerSize / 2) + 'px)') : '50%'),
+                width: (typeof position === 'number' ? ('calc(100% - ' + position + 'px)') : '50%'),
                 overflow: 'auto'
             };
             dividerStyle = {
                 position: 'absolute',
                 top: 0,
                 height: '100%',
-                width: dividerSize + 'px',
-                left: (typeof position === 'number' ? (position - dividerSize / 2) + 'px' : '50%'),
-                borderLeft: 'solid 1px #999',
-                borderRight: 'solid 1px #999',
-                backgroundColor: '#f5f5f5',
+                width: (this.state.hovering || this._dragging) ? '3px' : '1px',
+                left: (typeof position === 'number' ? position + 'px' : '50%'),
+                background: (this.state.hovering || this._dragging) ? 'var(--rf-primary)' : 'var(--rf-border-split)',
                 cursor: 'col-resize',
-                zIndex: 900
+                zIndex: 900,
+                transition: this._dragging ? 'none' : 'all 0.15s ease'
             };
         } else {
             firstStyle = {
@@ -171,7 +179,7 @@ export default class Splitter extends Component {
                 top: 0,
                 left: 0,
                 width: '100%',
-                height: (typeof position === 'number' ? (position - dividerSize / 2) : position),
+                height: (typeof position === 'number' ? position : position),
                 overflow: 'auto'
             };
             secondStyle = {
@@ -179,25 +187,27 @@ export default class Splitter extends Component {
                 left: 0,
                 bottom: 0,
                 width: '100%',
-                height: (typeof position === 'number' ? ('calc(100% - ' + (position + dividerSize / 2) + 'px)') : '50%'),
+                height: (typeof position === 'number' ? ('calc(100% - ' + position + 'px)') : '50%'),
                 overflow: 'auto'
             };
             dividerStyle = {
                 position: 'absolute',
                 left: 0,
                 width: '100%',
-                height: dividerSize + 'px',
-                top: (typeof position === 'number' ? (position - dividerSize / 2) + 'px' : '50%'),
-                backgroundColor: '#5F5F5F',
+                height: (this.state.hovering || this._dragging) ? '3px' : '1px',
+                top: (typeof position === 'number' ? position + 'px' : '50%'),
+                background: (this.state.hovering || this._dragging) ? 'var(--rf-primary)' : 'var(--rf-border-split)',
                 cursor: 'row-resize',
-                zIndex: 800
+                zIndex: 800,
+                transition: this._dragging ? 'none' : 'all 0.15s ease'
             };
         }
 
         return (
             <div ref={this.containerRef} style={{position: 'relative'}}>
                 <div style={firstStyle}>{first}</div>
-                <div style={dividerStyle} onMouseDown={this._onMouseDown}></div>
+                <div style={dividerStyle} onMouseDown={this._onMouseDown}
+                     onMouseEnter={this._onMouseEnter} onMouseLeave={this._onMouseLeave}></div>
                 <div style={secondStyle}>{second}</div>
             </div>
         );

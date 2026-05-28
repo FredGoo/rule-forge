@@ -16,8 +16,8 @@ export default class SidebarToolbar extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            classifyText: '✔ 分类展示',
-            noClassifyText: '    集中展示',
+            classifyText: '✔ 分类展示',
+            noClassifyText: '    集中展示',
             activeFilter: 'all',
             projects: [],
             selectedProject: null
@@ -31,13 +31,13 @@ export default class SidebarToolbar extends Component {
             window._classify = classify;
             if (classify) {
                 this.setState({
-                    classifyText: '    分类展示',
-                    noClassifyText: '✔ 集中展示'
+                    classifyText: '    分类展示',
+                    noClassifyText: '✔ 集中展示'
                 });
             } else {
                 this.setState({
-                    classifyText: '✔ 分类展示',
-                    noClassifyText: '    集中展示'
+                    classifyText: '✔ 分类展示',
+                    noClassifyText: '    集中展示'
                 });
             }
         });
@@ -125,88 +125,96 @@ export default class SidebarToolbar extends Component {
         const {classifyText, noClassifyText, activeFilter, projects, selectedProject} = this.state;
 
         return (
-            <div>
-                <div style={{
-                    border: 'solid 1px #ddd',
-                    height: '35px',
-                    background: '#f5f5f5',
-                    padding: '5px 10px'
-                }}>
-                    <span className="dropdown" style={{margin: '5px'}}>
-                        <a href="#" className="dropdown-toggle" data-toggle="dropdown" title="知识库内容展示方式">
-                            <i className="rf rf-display" style={{fontSize: '12pt'}}/> <b className="caret"/>
-                        </a>
-                        <ul className="dropdown-menu">
-                            <li><a href="#" onClick={(e) => { e.preventDefault(); this.handleClassifyToggle(true); }}>{classifyText}</a></li>
-                            <li><a href="#" onClick={(e) => { e.preventDefault(); this.handleClassifyToggle(false); }}>{noClassifyText}</a></li>
-                        </ul>
-                    </span>
-
-                    <span className="dropdown" style={{margin: '5px'}}>
-                        <a href="#" className="dropdown-toggle" data-toggle="dropdown" title="项目过滤">
-                            <i className="rf rf-list" style={{fontSize: '12pt'}}/> <b className="caret"/>
-                        </a>
-                        <ul className="dropdown-menu">
-                            <li>
-                                <a href="#" onClick={this.handleShowAllProjects} style={{marginLeft: selectedProject ? '22px' : '0px'}}>
-                                    <i className={!selectedProject ? 'rf rf-check' : ''}/> 显示所有项目
-                                </a>
-                            </li>
-                            {projects.map(name => (
-                                <li key={name}>
-                                    <a href="#" onClick={(e) => { e.preventDefault(); this.handleSelectProject(name); }}
-                                       style={{marginLeft: selectedProject === name ? '0px' : '22px'}}>
-                                        <i className={selectedProject === name ? 'rf rf-check' : ''}/> {name}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </span>
-
-                    <span className="dropdown" style={{margin: '5px'}}>
-                        <a href="#" className="dropdown-toggle" data-toggle="dropdown" title="文件类型过滤">
-                            <i className="rf rf-type" style={{fontSize: '12pt'}}/> <b className="caret"/>
-                        </a>
-                        <ul className="dropdown-menu">
-                            {FILE_TYPE_FILTERS.map(ft => (
-                                <li key={ft.type}>
-                                    <a href="#" onClick={(e) => this.handleTypeFilter(ft.type, e)}>
-                                        <i className={activeFilter === ft.type ? 'rf rf-check' : ''}/>
-                                        {' '}<i className={ft.icon}/> {ft.label}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </span>
-
-                    <span className="dropdown" style={{margin: '5px'}}>
-                        <a href="#" className="dropdown-toggle" data-toggle="dropdown" title="权限配置">
-                            <i className="rf rf-authority" style={{fontSize: '12pt'}}/> <b className="caret"/>
-                        </a>
-                        <ul className="dropdown-menu">
-                            <li><a href="#" onClick={this.handleAuthorityConfig}>资源权限配置</a></li>
-                        </ul>
-                    </span>
-
-                    <span style={{float: 'right', margin: '5px 10px'}}>
-                        <span style={{color: '#666', marginRight: 10}}>
-                            <i className="glyphicon glyphicon-user"/> {window.__currentUser ? window.__currentUser.username : ''}
+            <div className="sidebar-container">
+                {/* Sidebar top toolbar */}
+                <div className="sidebar-toolbar">
+                    <div className="sidebar-toolbar-actions">
+                        <span className="dropdown">
+                            <a href="#" className="sidebar-tool-btn dropdown-toggle" data-toggle="dropdown" title="知识库内容展示方式">
+                                <i className="rf rf-display"/> <b className="caret"/>
+                            </a>
+                            <ul className="dropdown-menu">
+                                <li><a href="#" onClick={(e) => { e.preventDefault(); this.handleClassifyToggle(true); }}>{classifyText}</a></li>
+                                <li><a href="#" onClick={(e) => { e.preventDefault(); this.handleClassifyToggle(false); }}>{noClassifyText}</a></li>
+                            </ul>
                         </span>
-                        <a href="#" title="退出登录" onClick={this.handleLogout}>
-                            <i className="glyphicon glyphicon-log-out" style={{fontSize: '12pt'}}/>
-                        </a>
-                    </span>
-                </div>
-                <div className='tree' style={{marginLeft: '10px'}}>
-                    <div style={{margin: '10px 0px 5px 2px'}}>
-                        <input type="text" className="form-control fileSearchText" placeholder="输入要查询的文件名..."
-                               style={{display: 'inline-block', width: '170px'}}/>
-                        <a href="#" onClick={this.handleSearch} style={{margin: '6px', fontSize: '16px'}}>
-                            <i className="glyphicon glyphicon-search"/>
-                        </a>
+
+                        <span className="dropdown">
+                            <a href="#" className="sidebar-tool-btn dropdown-toggle" data-toggle="dropdown" title="项目过滤">
+                                <i className="rf rf-list"/> <b className="caret"/>
+                            </a>
+                            <ul className="dropdown-menu">
+                                <li>
+                                    <a href="#" onClick={this.handleShowAllProjects} style={{marginLeft: selectedProject ? '22px' : '0px'}}>
+                                        <i className={!selectedProject ? 'rf rf-check' : ''}/> 显示所有项目
+                                    </a>
+                                </li>
+                                {projects.map(name => (
+                                    <li key={name}>
+                                        <a href="#" onClick={(e) => { e.preventDefault(); this.handleSelectProject(name); }}
+                                           style={{marginLeft: selectedProject === name ? '0px' : '22px'}}>
+                                            <i className={selectedProject === name ? 'rf rf-check' : ''}/> {name}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </span>
+
+                        <span className="dropdown">
+                            <a href="#" className="sidebar-tool-btn dropdown-toggle" data-toggle="dropdown" title="文件类型过滤">
+                                <i className="rf rf-type"/> <b className="caret"/>
+                            </a>
+                            <ul className="dropdown-menu">
+                                {FILE_TYPE_FILTERS.map(ft => (
+                                    <li key={ft.type}>
+                                        <a href="#" onClick={(e) => this.handleTypeFilter(ft.type, e)}>
+                                            <i className={activeFilter === ft.type ? 'rf rf-check' : ''}/>
+                                            {' '}<i className={ft.icon}/> {ft.label}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </span>
+
+                        <span className="dropdown">
+                            <a href="#" className="sidebar-tool-btn dropdown-toggle" data-toggle="dropdown" title="权限配置">
+                                <i className="rf rf-authority"/>
+                            </a>
+                            <ul className="dropdown-menu">
+                                <li><a href="#" onClick={this.handleAuthorityConfig}>资源权限配置</a></li>
+                            </ul>
+                        </span>
                     </div>
+                </div>
+
+                {/* Search */}
+                <div className="sidebar-search">
+                    <div className="sidebar-search-wrapper">
+                        <i className="glyphicon glyphicon-search sidebar-search-icon"/>
+                        <input type="text" className="form-control fileSearchText sidebar-search-input"
+                               placeholder="搜索文件..."
+                               onKeyDown={(e) => { if (e.key === 'Enter') this.handleSearch(e); }}/>
+                    </div>
+                </div>
+
+                {/* File tree */}
+                <div className="sidebar-tree">
                     <Tree draggable={true} treeType={'public'}/>
                     <Tree draggable={true}/>
+                </div>
+
+                {/* User area */}
+                <div className="sidebar-user">
+                    <div className="sidebar-user-avatar">
+                        {(window.__currentUser && window.__currentUser.username)
+                            ? window.__currentUser.username.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                    <span className="sidebar-user-name">
+                        {window.__currentUser ? window.__currentUser.username : ''}
+                    </span>
+                    <a href="#" className="sidebar-user-logout" title="退出登录" onClick={this.handleLogout}>
+                        <i className="glyphicon glyphicon-log-out"/>
+                    </a>
                 </div>
             </div>
         );

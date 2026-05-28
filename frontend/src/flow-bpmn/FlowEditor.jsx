@@ -1,12 +1,14 @@
 import React, {Component, createRef} from 'react';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
 import RuleForgePaletteModule from './palette';
+import RuleForgeRendererModule from './render';
 import RuleForgePropertiesPanel from './properties/RuleForgePropertiesPanel';
 import ruleforgeModdle from './moddle/ruleforge.json';
 import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 import 'bpmn-js/dist/assets/bpmn-js.css';
 import './palette/ruleforge-palette.css';
+import './flow-theme.css';
 
 export default class FlowEditor extends Component {
     containerRef = createRef();
@@ -16,7 +18,7 @@ export default class FlowEditor extends Component {
         this.modeler = new BpmnModeler({
             container: this.containerRef.current,
             keyboard: {bindTo: document},
-            additionalModules: [RuleForgePaletteModule],
+            additionalModules: [RuleForgePaletteModule, RuleForgeRendererModule],
             moddleExtensions: {
                 ruleforge: ruleforgeModdle
             }
@@ -75,6 +77,38 @@ export default class FlowEditor extends Component {
         }
     }
 
+    addImport(type, path) {
+        const canvas = this.modeler.get('canvas');
+        const rootElement = canvas.getRootElement();
+        const bo = rootElement.businessObject;
+        const modeling = this.modeler.get('modeling');
+
+        let currentImports = '';
+        try {
+            currentImports = bo.$attrs['ruleforge:imports'] || '';
+        } catch (e) {}
+
+        let imports = [];
+        try { imports = JSON.parse(currentImports); } catch (e) {}
+
+        if (!imports.find(function(imp) { return imp.type === type && imp.path === path; })) {
+            imports.push({type: type, path: path});
+            modeling.updateProperties(rootElement, {'ruleforge:imports': JSON.stringify(imports)});
+        }
+    }
+
+    getImports() {
+        try {
+            const canvas = this.modeler.get('canvas');
+            const rootElement = canvas.getRootElement();
+            const bo = rootElement.businessObject;
+            const raw = bo.$attrs['ruleforge:imports'] || '';
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
     componentWillUnmount() {
         if (this.modeler) {
             this.modeler.destroy();
@@ -82,14 +116,20 @@ export default class FlowEditor extends Component {
     }
 
     render() {
+        const services = this.modeler ? {
+            eventBus: this.modeler.get('eventBus'),
+            modeling: this.modeler.get('modeling'),
+            elementRegistry: this.modeler.get('elementRegistry'),
+            commandStack: this.modeler.get('commandStack'),
+            moddle: this.modeler.get('moddle'),
+            canvas: this.modeler.get('canvas')
+        } : {};
+
         return (
             <div style={{width: '100%', height: '100%', minHeight: 500, position: 'relative'}}>
                 <div ref={this.containerRef} style={{width: '100%', height: '100%'}}/>
                 {this.modeler && (
-                    <RuleForgePropertiesPanel
-                        eventBus={this.modeler.get('eventBus')}
-                        modeling={this.modeler.get('modeling')}
-                    />
+                    <RuleForgePropertiesPanel {...services} />
                 )}
             </div>
         );

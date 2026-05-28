@@ -78,7 +78,7 @@ export default class QuickTestDialog extends Component {
             <div>
                 <div style={{display: 'flex', justifyContent: 'space-between'}}>
                     <div className="form-group" style={{display: 'flex', alignItems: 'center'}}>
-                        <label style={{fontSize: '15px', width: '120px'}}>输入数据</label>
+                        <label style={{fontSize: '15px', width: '120px', color: 'var(--rf-text-primary)'}}>输入数据</label>
                         <select value={this.state.type} className="form-control" onChange={(e)=>{
                             this.setState({ type: e.target.value });
                         }}>
@@ -93,7 +93,7 @@ export default class QuickTestDialog extends Component {
                             style={{display: this.state.type === 'form' ? 'block' : 'none'}}
                             value={this.state.orderNo} placeholder='订单号'
                             onChange={(e) => this.setState({ orderNo: e.target.value })}/>
-                        <button id="search" type="button" className="btn navbar-btn" style={{marginLeft: '10px', display: this.state.type === 'form' ? 'block' : 'none'}} onClick={e=>{
+                        <button id="search" type="button" className="btn navbar-btn" style={{marginLeft: 'var(--rf-space-3)', display: this.state.type === 'form' ? 'block' : 'none'}} onClick={e=>{
                             console.log('订单号', this.state)
                             if(this.state.type === 'json') {
                                 return
@@ -122,11 +122,11 @@ export default class QuickTestDialog extends Component {
                 {this.state.type === 'form' && (this.state.variableData || []).map((item, key) => (
                     <div>
                         <label>{item.name}</label>
-                        <div style={{display: 'flex', flexWrap: 'wrap', paddingLeft: '10px'}}>
+                        <div style={{display: 'flex', flexWrap: 'wrap', paddingLeft: 'var(--rf-space-3)'}}>
                             {((item.variables || []).map((ele, i)=>(
-                                <div className="form-group" style={{marginLeft: '10px', display: 'flex', alignItems: 'center'}}>
-                                    <label style={{minWidth: '80px',textAlign: 'right'}}>{ele.label}</label>
-                                    <input type="text" className="form-control" style={{marginLeft: '10px'}} value={ele.defaultValue||''} onChange={e=>this.setState({
+                                <div className="form-group" style={{marginLeft: 'var(--rf-space-3)', display: 'flex', alignItems: 'center'}}>
+                                    <label style={{minWidth: '80px',textAlign: 'right', color: 'var(--rf-text-secondary)'}}>{ele.label}</label>
+                                    <input type="text" className="form-control" style={{marginLeft: 'var(--rf-space-3)'}} value={ele.defaultValue||''} onChange={e=>this.setState({
                                         variableData: this.state.variableData.map((item, key2) => {
                                             if(key === key2) {
                                                 item.variables[i].defaultValue = e.target.value
@@ -139,17 +139,17 @@ export default class QuickTestDialog extends Component {
                         </div>
                     </div>
                 ))}
-                <div className="form-group" style={{height: '300px', marginTop: '10px', display: this.state.type === 'json' ? 'block' : 'none'}}>
+                <div className="form-group" style={{height: '300px', marginTop: 'var(--rf-space-3)', display: this.state.type === 'json' ? 'block' : 'none'}}>
                     <textarea id='json-editor'></textarea>
                 </div>
                 <div style={{display: 'flex', alignItems: 'center'}}>
-                    <label style={{fontSize: '15px'}}>输出数据</label>
+                    <label style={{fontSize: '15px', color: 'var(--rf-text-primary)'}}>输出数据</label>
                     <button style={{
-                        color: '#5bc0de',
-                        marginLeft: '10px',
+                        color: 'var(--rf-primary)',
+                        marginLeft: 'var(--rf-space-3)',
                         cursor: 'pointer',
                         border: 0,
-                        background: '#fff',
+                        background: 'var(--rf-bg-container)',
                         display: this.state.showLog ? 'block' : 'none'
                     }} onClick={e=>{
                         const logContent = this.state.logData.map(item => `<p>》》》规则（RuleSet：${decodeURIComponent(item.fileName)}，${item.version}），已被添加到执行队列；</p>`);
@@ -162,9 +162,9 @@ export default class QuickTestDialog extends Component {
                         <label>{item.name}</label>
                         <div style={{display: 'flex', flexWrap: 'wrap',}}>
                             {(item.variables||[]).map((ele) => (
-                             <div key={key} className="form-group" style={{marginLeft: '10px', display: 'flex', alignItems: 'center'}}>
-                                <label style={{minWidth: '80px',textAlign: 'right'}}>{ele.label}</label>
-                                <input type="text" className="form-control" style={{marginLeft: '10px'}} readOnly value={ele.defaultValue||''} />
+                             <div key={key} className="form-group" style={{marginLeft: 'var(--rf-space-3)', display: 'flex', alignItems: 'center'}}>
+                                <label style={{minWidth: '80px',textAlign: 'right', color: 'var(--rf-text-secondary)'}}>{ele.label}</label>
+                                <input type="text" className="form-control" style={{marginLeft: 'var(--rf-space-3)'}} readOnly value={ele.defaultValue||''} />
                             </div>
                             ))}
                         </div>
@@ -203,7 +203,7 @@ export default class QuickTestDialog extends Component {
                         ))}
                     </select>
                 </div>
-                <div className="" style={{marginLeft: '10px'}}>
+                <div className="" style={{marginLeft: 'var(--rf-space-3)'}}>
                     <button id="testButton" type="button" className="btn btn-success navbar-btn" onClick={e=>{
                         if(!this.state.selectedVersion) {
                             alert('请选择版本号')

@@ -4,8 +4,10 @@ export default class MenuItem extends Component{
     render(){
         const {item,data,dispatch}=this.props;
         return (
-            <li onClick={item.click ? () => item.click(data,dispatch) : undefined}>
-                <a href='###'><i className={item.icon} style={{color:'#00A0E8'}}></i> {item.name}</a>
+            <li>
+                <a href='###' onClick={(e) => { e.preventDefault(); item.click && item.click(data, dispatch); }}>
+                    <i className={item.icon} style={{color:'var(--rf-primary)'}}></i> {item.name}
+                </a>
             </li>
         );
     }

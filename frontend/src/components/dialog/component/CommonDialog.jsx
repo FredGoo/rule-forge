@@ -1,6 +1,12 @@
 import React, {Component} from 'react';
 
 export default class CommonDialog extends Component {
+    _close() {
+        if (this.props.onClose) {
+            this.props.onClose();
+        }
+    }
+
     render() {
         const {visible, title, body, buttons, large, dialogStyle, dispatch, info, htmlContent} = this.props;
         const largeClass = large ? ' modal-lg' : '';
@@ -12,21 +18,21 @@ export default class CommonDialog extends Component {
         ));
         return (
             <div ref={this.props.forwardedRef}>
-                {visible && <div className="modal-backdrop fade in"></div>}
+                {visible && <div className="modal-backdrop fade in" onClick={() => this._close()}></div>}
                 <div className={`modal fade ${visible ? 'in' : ''}`}
                      style={{display: visible ? 'block' : 'none', overflow: 'auto'}}
                      tabIndex="-1" role="dialog" aria-hidden={!visible}>
                     <div className={`modal-dialog${largeClass}`} style={dialogStyleObj}>
                         <div className="modal-content">
                             <div className="modal-header">
-                                <button type="button" className="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                                <h3 className="modal-title" style={{wordWrap: 'break-word', display: 'flex', alignItems: 'center'}}>
+                                <button type="button" className="close" aria-hidden="true" onClick={() => this._close()}>&times;</button>
+                                <h3 className="modal-title" style={{wordWrap: 'break-word', display: 'flex', alignItems: 'center', fontWeight: 'var(--rf-font-weight-semibold)'}}>
                                     {title}
-                                    {info && <div className="text-danger" style={{fontSize: '12pt'}}>{info}</div>}
-                                    {htmlContent && <div style={{display: 'inline-block', marginLeft: '10px'}}>{htmlContent}</div>}
+                                    {info && <div className="text-danger" style={{fontSize: '12pt', color: 'var(--rf-error)'}}>{info}</div>}
+                                    {htmlContent && <div style={{display: 'inline-block', marginLeft: 'var(--rf-space-3)'}}>{htmlContent}</div>}
                                 </h3>
                             </div>
-                            <div className="modal-body" style={{padding: '10px'}}>
+                            <div className="modal-body" style={{padding: 'var(--rf-space-6)'}}>
                                 {body}
                             </div>
                             <div className="modal-footer">

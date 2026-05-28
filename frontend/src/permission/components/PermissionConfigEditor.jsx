@@ -95,7 +95,7 @@ class ResourceSecurityConfigEditor extends Component {
                             <div className="col-sm-8 detailPart"
                                  style={{marginTop: '40px', display: 'none', paddingLeft: 0}}>
                                 <div className="panel panel-default"
-                                     style={{padding: '5px', margin: '5px', width: '350px', lineHeight: '30px'}}>
+                                     style={{padding: 'var(--rf-space-2)', margin: 'var(--rf-space-2)', width: '350px', lineHeight: '30px'}}>
                                     <div className="row">
                                         <div className="col-sm-7" style={{textAlign: 'right'}}>是否允许查看当前项目</div>
                                         <div className="col-sm-5">
@@ -113,7 +113,7 @@ class ResourceSecurityConfigEditor extends Component {
                                     </div>
                                 </div>
                                 <div className="panel panel-default filePermissionConfig"
-                                     style={{padding: '5px', margin: '5px', width: '350px', lineHeight: '30px'}}>
+                                     style={{padding: 'var(--rf-space-2)', margin: 'var(--rf-space-2)', width: '350px', lineHeight: '30px'}}>
                                     <div className="row">
                                         <div className="col-sm-7" style={{textAlign: 'right'}}>是否允许查看知识包</div>
                                         <div className="col-sm-5">
@@ -147,7 +147,7 @@ class ResourceSecurityConfigEditor extends Component {
                                     </div>
                                 </div>
                                 <div className="panel panel-default filePermissionConfig"
-                                     style={{padding: '5px', margin: '5px', width: '350px', lineHeight: '30px'}}>
+                                     style={{padding: 'var(--rf-space-2)', margin: 'var(--rf-space-2)', width: '350px', lineHeight: '30px'}}>
                                     <div className="row">
                                         <div className="col-sm-7" style={{textAlign: 'right'}}>是否允许查看变量库文件</div>
                                         <div className="col-sm-5">
@@ -181,7 +181,7 @@ class ResourceSecurityConfigEditor extends Component {
                                     </div>
                                 </div>
                                 <div className="panel panel-default filePermissionConfig"
-                                     style={{padding: '5px', margin: '5px', width: '350px', lineHeight: '30px'}}>
+                                     style={{padding: 'var(--rf-space-2)', margin: 'var(--rf-space-2)', width: '350px', lineHeight: '30px'}}>
                                     <div className="row">
                                         <div className="col-sm-7" style={{textAlign: 'right'}}>是否允许查看参数库文件</div>
                                         <div className="col-sm-5">
@@ -215,7 +215,7 @@ class ResourceSecurityConfigEditor extends Component {
                                     </div>
                                 </div>
                                 <div className="panel panel-default filePermissionConfig"
-                                     style={{padding: '5px', margin: '5px', width: '350px', lineHeight: '30px'}}>
+                                     style={{padding: 'var(--rf-space-2)', margin: 'var(--rf-space-2)', width: '350px', lineHeight: '30px'}}>
                                     <div className="row">
                                         <div className="col-sm-7" style={{textAlign: 'right'}}>是否允许查看常量库文件</div>
                                         <div className="col-sm-5">
@@ -249,7 +249,7 @@ class ResourceSecurityConfigEditor extends Component {
                                     </div>
                                 </div>
                                 <div className="panel panel-default filePermissionConfig"
-                                     style={{padding: '5px', margin: '5px', width: '350px', lineHeight: '30px'}}>
+                                     style={{padding: 'var(--rf-space-2)', margin: 'var(--rf-space-2)', width: '350px', lineHeight: '30px'}}>
                                     <div className="row">
                                         <div className="col-sm-7" style={{textAlign: 'right'}}>是否允许查看动作库文件</div>
                                         <div className="col-sm-5">
@@ -283,7 +283,7 @@ class ResourceSecurityConfigEditor extends Component {
                                     </div>
                                 </div>
                                 <div className="panel panel-default filePermissionConfig"
-                                     style={{padding: '5px', margin: '5px', width: '350px', lineHeight: '30px'}}>
+                                     style={{padding: 'var(--rf-space-2)', margin: 'var(--rf-space-2)', width: '350px', lineHeight: '30px'}}>
                                     <div className="row">
                                         <div className="col-sm-7" style={{textAlign: 'right'}}>是否允许查看规则集文件</div>
                                         <div className="col-sm-5">
@@ -317,7 +317,7 @@ class ResourceSecurityConfigEditor extends Component {
                                     </div>
                                 </div>
                                 <div className="panel panel-default filePermissionConfig"
-                                     style={{padding: '5px', margin: '5px', width: '350px', lineHeight: '30px'}}>
+                                     style={{padding: 'var(--rf-space-2)', margin: 'var(--rf-space-2)', width: '350px', lineHeight: '30px'}}>
                                     <div className="row">
                                         <div className="col-sm-7" style={{textAlign: 'right'}}>是否允许查看决策表文件</div>
                                         <div className="col-sm-5">
@@ -351,7 +351,7 @@ class ResourceSecurityConfigEditor extends Component {
                                     </div>
                                 </div>
                                 <div className="panel panel-default filePermissionConfig"
-                                     style={{padding: '5px', margin: '5px', width: '350px', lineHeight: '30px'}}>
+                                     style={{padding: 'var(--rf-space-2)', margin: 'var(--rf-space-2)', width: '350px', lineHeight: '30px'}}>
                                     <div className="row">
                                         <div className="col-sm-7" style={{textAlign: 'right'}}>是否允许查看决策树文件</div>
                                         <div className="col-sm-5">
@@ -385,7 +385,7 @@ class ResourceSecurityConfigEditor extends Component {
                                     </div>
                                 </div>
                                 <div className="panel panel-default filePermissionConfig"
-                                     style={{padding: '5px', margin: '5px', width: '350px', lineHeight: '30px'}}>
+                                     style={{padding: 'var(--rf-space-2)', margin: 'var(--rf-space-2)', width: '350px', lineHeight: '30px'}}>
                                     <div className="row">
                                         <div className="col-sm-7" style={{textAlign: 'right'}}>是否允许查看评分卡文件</div>
                                         <div className="col-sm-5">
@@ -419,7 +419,7 @@ class ResourceSecurityConfigEditor extends Component {
                                     </div>
                                 </div>
                                 <div className="panel panel-default filePermissionConfig"
-                                     style={{padding: '5px', margin: '5px', width: '350px', lineHeight: '30px'}}>
+                                     style={{padding: 'var(--rf-space-2)', margin: 'var(--rf-space-2)', width: '350px', lineHeight: '30px'}}>
                                     <div className="row">
                                         <div className="col-sm-7" style={{textAlign: 'right'}}>是否允许查看决策流文件</div>
                                         <div className="col-sm-5">

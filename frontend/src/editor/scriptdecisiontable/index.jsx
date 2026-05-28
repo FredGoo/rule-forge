@@ -2,12 +2,12 @@ import '../../bootbox.js';
 import '../../../node_modules/codemirror/lib/codemirror.css';
 import '../../../node_modules/codemirror/addon/hint/show-hint.css';
 import '../../../node_modules/codemirror/addon/lint/lint.css';
-import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
 import './cell.css';
 import 'handsontable/styles/handsontable.css';
 import '../context.standalone.css';
 import '../../css/iconfont.css';
 import '../ruleforge/ruleset.css';
+import '../../css/tailwind-base.css';
 
 import '../common/URule.js';
 import '../common/contextMenu.js';

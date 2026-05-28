@@ -1,5 +1,5 @@
 .rule-delete{
-    color: #F44336;
+    color: var(--rf-danger);
     vertical-align: text-top;
     cursor: pointer;
 }
@@ -16,7 +16,8 @@
     padding-left: 10px;
     line-height: 28px;
     display: inline-block;
-    border: solid gray 1px;
+    border: solid var(--rf-border) 1px;
+    border-radius: var(--rf-radius-sm);
     margin-left: 5px;
 }
 
@@ -24,17 +25,17 @@
     cursor:pointer;
     padding-left:10px;
     line-height:30px;
-    color:blue;
+    color:var(--rf-primary);
 }
 
 .rule-property-del {
     padding: 5px;
     cursor: pointer;
-    color: #ff0600;
+    color: var(--rf-danger);
 }
 
 .rule-add-action {
-    color:blue;
+    color:var(--rf-primary);
     cursor:pointer;
     padding-left:5px;
     padding-bottom:5px;
@@ -48,17 +49,17 @@
 .rule-delete-action{
     font-size: 10pt;
     cursor: pointer;
-    color: #FF9800
+    color: var(--rf-warning)
 }
 
 .rule-join-node{
-    color: #795548;
+    color: var(--rf-text-tertiary);
     font-size: 10pt;
     vertical-align: text-top;
     margin-left: 2px
 }
 .rule-join-container{
-    border:solid #999 1px;
+    border:solid var(--rf-border) 1px;
     padding:1px;
-    background:#fff;
+    background:var(--rf-bg-container);
 }

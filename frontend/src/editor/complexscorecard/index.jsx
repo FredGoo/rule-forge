@@ -6,10 +6,10 @@ import '../../bootbox.js';
  * Initializes the ComplexScoreCard, React EditorToolbar, save/load logic, and dialogs.
  */
 
-import '../../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../context.standalone.css';
 import '../../css/iconfont.css';
 import '../ruleforge/ruleset.css';
+import '../../css/tailwind-base.css';
 import '../Math.uuid.js';
 import '../../Remark.js';
 import '../common/contextMenu.js';

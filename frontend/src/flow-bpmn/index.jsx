@@ -1,6 +1,6 @@
 import '../bootbox.js';
-import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../css/iconfont.css';
+import '../css/tailwind-base.css';
 import React, {createElement} from 'react';
 import {createRoot} from 'react-dom/client';
 import FlowEditor from './FlowEditor.jsx';
@@ -8,6 +8,7 @@ import KnowledgeTreeDialog from '../components/dialog/component/KnowledgeTreeDia
 import QuickTestDialog from '../components/dialog/component/QuickTestDialog.jsx';
 import {buildProjectNameFromFile, getParameter, ajaxSave, saveNewVersion, handleResponseError} from '../Utils.js';
 import * as event from '../components/componentEvent.js';
+import * as componentEvent from '../components/componentEvent.js';
 
 document.addEventListener('DOMContentLoaded', function () {
     const file = getParameter('file');
@@ -18,6 +19,21 @@ document.addEventListener('DOMContentLoaded', function () {
     window._project = buildProjectNameFromFile(file);
     var editorRef = null;
     var decodedFile = decodeURIComponent(file);
+
+    function openImportDialog(fileType) {
+        componentEvent.eventEmitter.emit(componentEvent.OPEN_KNOWLEDGE_TREE_DIALOG, {
+            project: window._project,
+            fileType: fileType,
+            callback: function (f, version) {
+                var path = 'jcr:' + f;
+                if (version !== 'LATEST') {
+                    path += ':' + version;
+                }
+                if (!editorRef) return;
+                editorRef.addImport(fileType, path);
+            }
+        });
+    }
 
     function saveFlow(newVersion) {
         if (!editorRef) return;
@@ -44,25 +60,64 @@ document.addEventListener('DOMContentLoaded', function () {
     var toolbarRoot = document.getElementById('toolbarContainer');
     if (toolbarRoot) {
         createRoot(toolbarRoot).render(
-            createElement('div', {style: {padding: '5px 10px'}},
+            createElement('div', {className: 'toolbar'},
                 createElement('button', {
-                    className: 'btn btn-default btn-sm',
+                    className: 'btn btn-ghost btn-sm',
                     onClick: function () { saveFlow(false); }
                 }, createElement('i', {className: 'rf rf-save'}), ' 保存'),
                 ' ',
                 createElement('button', {
-                    className: 'btn btn-default btn-sm',
+                    className: 'btn btn-ghost btn-sm',
                     onClick: function () { saveFlow(true); }
                 }, createElement('i', {className: 'rf rf-savenewversion'}), ' 生成版本'),
                 ' ',
                 createElement('button', {
-                    className: 'btn btn-info btn-sm',
+                    className: 'btn btn-primary btn-sm',
                     onClick: function () {
                         event.eventEmitter.emit(event.OPEN_QUICK_TEST_DIALOG, {
                             project: window._project, file: decodedFile
                         });
                     }
-                }, createElement('i', {className: 'glyphicon glyphicon-flash'}), ' 快速测试')
+                }, createElement('i', {className: 'glyphicon glyphicon-flash'}), ' 快速测试'),
+                ' | ',
+                createElement('button', {
+                    className: 'btn btn-ghost btn-sm',
+                    onClick: function () { openImportDialog('VariableLibrary'); }
+                }, createElement('i', {className: 'rf rf-variable'}), ' 变量库'),
+                createElement('button', {
+                    className: 'btn btn-ghost btn-sm',
+                    onClick: function () { openImportDialog('ConstantLibrary'); }
+                }, createElement('i', {className: 'rf rf-constant'}), ' 常量库'),
+                createElement('button', {
+                    className: 'btn btn-ghost btn-sm',
+                    onClick: function () { openImportDialog('ActionLibrary'); }
+                }, createElement('i', {className: 'rf rf-action'}), ' 动作库'),
+                createElement('button', {
+                    className: 'btn btn-ghost btn-sm',
+                    onClick: function () { openImportDialog('ParameterLibrary'); }
+                }, createElement('i', {className: 'rf rf-parameter'}), ' 参数库'),
+                ' | ',
+                createElement('button', {
+                    className: 'btn btn-success btn-sm',
+                    onClick: function () {
+                        if (!editorRef) return;
+                        editorRef.saveXML().then(function (xml) {
+                            if (!xml) return;
+                            fetch(window._server + '/flow/deploy', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                body: new URLSearchParams({file: file}).toString()
+                            }).then(function (response) {
+                                if (!response.ok) throw response;
+                                return response.json();
+                            }).then(function (data) {
+                                window.bootbox.alert('部署成功! Deployment ID: ' + (data.deploymentId || ''));
+                            }).catch(function (response) {
+                                handleResponseError(response, '部署失败：');
+                            });
+                        });
+                    }
+                }, createElement('i', {className: 'glyphicon glyphicon-upload'}), ' 部署')
             )
         );
     }
@@ -83,11 +138,7 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     // Load BPMN XML
-    fetch(window._server + '/flow/load', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({file: file}).toString()
-    }).then(function (response) {
+    fetch(window._server + '/flow/load?file=' + encodeURIComponent(file)).then(function (response) {
         if (!response.ok) throw response;
         return response.text();
     }).then(function (xml) {
