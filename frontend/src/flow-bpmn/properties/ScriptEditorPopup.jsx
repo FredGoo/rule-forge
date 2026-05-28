@@ -1,6 +1,6 @@
-import React, {Component, createRef} from 'react';
+import {Component, createRef} from 'react';
 import {EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter} from '@codemirror/view';
-import {EditorState, Compartment} from '@codemirror/state';
+import {EditorState} from '@codemirror/state';
 import {javascript} from '@codemirror/lang-javascript';
 import {linter, lintGutter} from '@codemirror/lint';
 import {autocompletion} from '@codemirror/autocomplete';

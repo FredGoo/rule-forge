@@ -38,6 +38,15 @@ data/
 .DS_Store
 Thumbs.db
 
+# Playwright MCP screenshots
+.playwright-mcp/
+
+# Test results
+test-results/
+
+# Temp screenshots
+*.png
+
 # Env
 .env
 env/

@@ -1,6 +1,7 @@
-import React, {Component, createRef} from 'react';
+import {Component, createRef} from 'react';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
 import RuleForgePaletteModule from './palette';
+import RuleForgeRendererModule from './render';
 import RuleForgePropertiesPanel from './properties/RuleForgePropertiesPanel';
 import ruleforgeModdle from './moddle/ruleforge.json';
 import 'bpmn-js/dist/assets/diagram-js.css';
@@ -17,7 +18,7 @@ export default class FlowEditor extends Component {
         this.modeler = new BpmnModeler({
             container: this.containerRef.current,
             keyboard: {bindTo: document},
-            additionalModules: [RuleForgePaletteModule],
+            additionalModules: [RuleForgePaletteModule, RuleForgeRendererModule],
             moddleExtensions: {
                 ruleforge: ruleforgeModdle
             }
@@ -120,7 +121,8 @@ export default class FlowEditor extends Component {
             modeling: this.modeler.get('modeling'),
             elementRegistry: this.modeler.get('elementRegistry'),
             commandStack: this.modeler.get('commandStack'),
-            moddle: this.modeler.get('moddle')
+            moddle: this.modeler.get('moddle'),
+            canvas: this.modeler.get('canvas')
         } : {};
 
         return (

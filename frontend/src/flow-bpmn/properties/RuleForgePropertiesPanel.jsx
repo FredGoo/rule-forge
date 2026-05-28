@@ -1,4 +1,4 @@
-import React, {Component} from 'react';
+import {Component} from 'react';
 import ScriptEditorPopup from './ScriptEditorPopup.jsx';
 import * as componentEvent from '../../components/componentEvent.js';
 import './ruleforge-properties.css';
@@ -122,7 +122,6 @@ export default class RuleForgePropertiesPanel extends Component {
         const el = this.state.element;
         if (!el) return 'fork';
         const incoming = (el.incoming || []).length;
-        const outgoing = (el.outgoing || []).length;
         return incoming > 1 ? 'join' : 'fork';
     }
 
@@ -538,25 +537,90 @@ export default class RuleForgePropertiesPanel extends Component {
         };
     }
 
+    removeImport(imports, idx) {
+        const {canvas, modeling} = this.props;
+        if (!canvas || !modeling) return;
+        const rootElement = canvas.getRootElement();
+        const newList = imports.filter(function(_, i) { return i !== idx; });
+        modeling.updateProperties(rootElement, {'ruleforge:imports': JSON.stringify(newList)});
+        this.forceUpdate();
+    }
+
+    renderImportsPanel() {
+        const {canvas} = this.props;
+        if (!canvas) return null;
+        let imports = [];
+        try {
+            const rootElement = canvas.getRootElement();
+            const bo = rootElement.businessObject;
+            const raw = bo.$attrs['ruleforge:imports'] || '';
+            imports = raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            imports = [];
+        }
+
+        const typeLabels = {
+            VariableLibrary: '变量库',
+            ConstantLibrary: '常量库',
+            ActionLibrary: '动作库',
+            ParameterLibrary: '参数库'
+        };
+
+        return (
+            <div className="rf-properties-panel">
+                <div className="rf-properties-title">流程属性</div>
+                <div className="rf-prop-group">
+                    <label>已导入的库</label>
+                    {imports.length > 0 ? (
+                        <table className="rf-branch-table">
+                            <thead>
+                                <tr>
+                                    <th>类型</th>
+                                    <th>路径</th>
+                                    <th style={{width: 40}}></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {imports.map(function(imp, idx) {
+                                    return (
+                                        <tr key={idx}>
+                                            <td>{typeLabels[imp.type] || imp.type}</td>
+                                            <td style={{fontSize: 10, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                                {imp.path}
+                                            </td>
+                                            <td>
+                                                <button className="btn btn-xs btn-default" title="移除"
+                                                        onClick={() => this.removeImport(imports, idx)}>
+                                                    <i className="glyphicon glyphicon-remove"/>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                }.bind(this))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div className="rf-prop-hint">暂无导入的库，使用工具栏按钮添加</div>
+                    )}
+                </div>
+                <ScriptEditorPopup
+                    visible={this.state.showScriptEditor}
+                    value={this.state.scriptEditorValue}
+                    title={this.state.scriptEditorTitle}
+                    lintType={this.state.scriptEditorLintType}
+                    onConfirm={this.handleScriptConfirm}
+                    onCancel={this.handleScriptCancel}
+                />
+            </div>
+        );
+    }
+
     render() {
         const el = this.state.element;
         if (!el || !el.businessObject) {
-            return (
-                <div className="rf-properties-panel">
-                    <div className="rf-properties-empty">选择一个元素查看属性</div>
-                    <ScriptEditorPopup
-                        visible={this.state.showScriptEditor}
-                        value={this.state.scriptEditorValue}
-                        title={this.state.scriptEditorTitle}
-                        lintType={this.state.scriptEditorLintType}
-                        onConfirm={this.handleScriptConfirm}
-                        onCancel={this.handleScriptCancel}
-                    />
-                </div>
-            );
+            return this.renderImportsPanel();
         }
 
-        const bo = this.getBusinessObject();
         const taskType = this.getTaskType();
 
         return (
