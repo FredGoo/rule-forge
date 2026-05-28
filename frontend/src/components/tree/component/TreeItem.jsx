@@ -58,16 +58,9 @@ class TreeItem extends Component {
         const isExpanded = this.state.expanded;
 
         if (isExpanded) {
-            if (data._needLazyLoad && !data._childrenLoaded) {
-                dispatch(ACTIONS.loadChildren(
-                    data,
-                    window._classify,
-                    data.name,
-                    window._types
-                ));
-            }
             this.setState({expanded: false});
         } else {
+            this.setState({expanded: true});
             if (data._needLazyLoad && !data._childrenLoaded) {
                 dispatch(ACTIONS.loadChildren(
                     data,
@@ -75,8 +68,6 @@ class TreeItem extends Component {
                     data.name,
                     window._types
                 ));
-            } else if (data.children && data.children.length > 0) {
-                this.setState({expanded: true});
             }
         }
         e.stopPropagation();
@@ -102,7 +93,10 @@ class TreeItem extends Component {
             menu.push(<Menu items={data.contextMenu} key={data.id} data={data} dispatch={dispatch} menuId={menuId}
                             visible={contextMenuVisible} x={contextMenuX} y={contextMenuY}/>);
         }
-        if (children && children.length > 0) {
+        // Container types: has children (even empty array) or lazy-loadable
+        const isContainer = (children && children.length > 0) || Array.isArray(children)
+            || (data._needLazyLoad && !data._childrenLoaded);
+        if (isContainer) {
             let expandIcon = this.state.expanded ? 'rf rf-minus' : 'rf rf-plus';
             if (data._needLazyLoad && !data._childrenLoaded) {
                 expandIcon = 'rf rf-plus';
@@ -110,28 +104,15 @@ class TreeItem extends Component {
             return (
                 <li className='parent_li' ref={this.liRef}>
                     <span id={spanId} onClick={this._handleSpanClick} onContextMenu={this._handleContextMenu}>
-                        <i className={expandIcon} style={{marginRight: "2px"}}/>
+                        <i className={expandIcon} style={{fontSize: 10, opacity: 0.5}}/>
                         <i className={data._icon} style={data._style}/>
-                        <a href='#'style={data._style}> {data.name}</a>
+                        <a href='#' style={data._style}> {data.name}</a>
                         <sup><i title={data.lock ? data.lockInfo : ''} className={data.lock ? 'rf rf-lock' : ''}/></sup>
                     </span>
                     {menu}
                     <ul style={{display: this.state.expanded ? '' : 'none'}}>
-                        <TreeParentItem dispatch={dispatch} children={children} expandLevel={this.props.expandLevel} treeType={this.props.treeType}/>
+                        {children && children.length > 0 && <TreeParentItem dispatch={dispatch} children={children} expandLevel={this.props.expandLevel} treeType={this.props.treeType}/>}
                     </ul>
-                </li>
-            );
-        } else if (data._needLazyLoad && !data._childrenLoaded) {
-            return (
-                <li className='parent_li' ref={this.liRef}>
-                    <span id={spanId} onClick={this._handleSpanClick} onContextMenu={this._handleContextMenu}>
-                        <i className='rf rf-plus' style={{marginRight: "2px"}}/>
-                        <i className={data._icon} style={data._style}/>
-                        <a href='#' style={data._style}> {data.name}</a>
-                        <sup><i title={data.lock ? data.lockInfo : ''}
-                                className={data.lock ? 'rf rf-lock' : ''}/></sup>
-                    </span>
-                    {menu}
                 </li>
             );
         } else {

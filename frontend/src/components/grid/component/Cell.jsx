@@ -2,6 +2,7 @@ import React, {Component} from 'react';
 import * as componentEvent from '../componentEvent.js';
 import {formatDate} from '../../../Utils.js';
 /* bootbox is a global */
+/* bootbox is a global */
 
 export default class Cell extends Component {
     constructor(props) {
@@ -20,14 +21,7 @@ export default class Cell extends Component {
         const {rowData, header} = this.props;
         if (!header.editable) return;
 
-        if (rowData._editorType) {
-            this.setState({editing: true, editorValue: rowData[header.name] || ''});
-        } else {
-            componentEvent.eventEmitter.emit(componentEvent.SHOW_CELL_EDITOR, {
-                rowData,
-                colId: header.id
-            });
-        }
+        this.setState({editing: true, editorValue: rowData[header.name] || ''});
     };
 
     _handleBlur = (e) => {
@@ -108,11 +102,23 @@ export default class Cell extends Component {
     };
 
     _renderEditor() {
-        const {rowData} = this.props;
+        const {rowData, header} = this.props;
         const {editorValue} = this.state;
         const inputStyle = {height: '31px'};
+        const editorType = rowData._editorType || header.editorType;
 
-        switch (rowData._editorType) {
+        switch (editorType) {
+            case 'select': {
+                const selectData = header.selectData || [];
+                return (
+                    <select ref={this.inputRef} className="form-control" style={inputStyle}
+                            value={editorValue} onChange={this._handleChange} onBlur={this._handleBlur}>
+                        {selectData.map((option, index) => (
+                            <option key={index}>{option}</option>
+                        ))}
+                    </select>
+                );
+            }
             case 'number':
                 return (
                     <input ref={this.inputRef} type="number" className="form-control" style={inputStyle}

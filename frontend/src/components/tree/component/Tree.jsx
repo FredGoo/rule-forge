@@ -11,15 +11,17 @@ class Tree extends Component {
             // Render children directly, skip the root node itself
             const items = data.children || [];
             return (
-                <ul style={{paddingLeft: '12px'}}>
-                    {items.map((child, index) => (
-                        <TreeItem key={child.id || index} data={child} dispatch={dispatch} treeType={treeType}
-                                  expandLevel={this.props.expandLevel} draggable={draggable}/>
-                    ))}
-                </ul>
+                <div className="tree">
+                    <ul>
+                        {items.map((child, index) => (
+                            <TreeItem key={child.id || index} data={child} dispatch={dispatch} treeType={treeType}
+                                      expandLevel={this.props.expandLevel} draggable={draggable}/>
+                        ))}
+                    </ul>
+                </div>
             );
         } else {
-            return (<ul/>);
+            return (<div className="tree"><ul/></div>);
         }
     }
 }
