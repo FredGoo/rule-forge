@@ -58,7 +58,7 @@ export default class ImportExcelErrorDialog extends Component {
                 }
             }
         ];
-        return (<CommonDialog visible={this.state.visible} title="导入Excel失败" body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} title="导入Excel失败" body={body} buttons={buttons} onClose={() => this.setState({visible: false})}/>);
 
     }
 }

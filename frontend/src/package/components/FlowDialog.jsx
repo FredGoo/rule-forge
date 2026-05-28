@@ -120,7 +120,7 @@ export default class FlowDialog extends Component {
         ];
 
         return (
-            <CommonDialog visible={this.state.visible} title='测试决策流' body={body} buttons={buttons}/>
+            <CommonDialog visible={this.state.visible} title='测试决策流' body={body} buttons={buttons} onClose={() => this.setState({visible: false})}/>
         );
     }
 }

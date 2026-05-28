@@ -134,6 +134,6 @@ export default class VersionsDialog extends Component{
                 <span style={{fontSize:'14px'}}>项目名称：<span style={{color: 'red'}}>{project || ''}</span></span>
             </div>
         )
-        return (<CommonDialog visible={this.state.visible} title={this.state.title} htmlContent={htmlContent} body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} title={this.state.title} htmlContent={htmlContent} body={body} buttons={buttons} onClose={() => this.setState({visible: false})}/>);
     };
 }

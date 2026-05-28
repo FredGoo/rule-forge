@@ -58,7 +58,7 @@ export default class ChildListDialog extends Component{
             </div>
         );
         return (
-            <CommonDialog visible={this.state.visible} title="定义子对象" body={body} buttons={buttons} large={true} holdState={true}/>
+            <CommonDialog visible={this.state.visible} title="定义子对象" body={body} buttons={buttons} large={true} holdState={true} onClose={() => this.setState({visible: false})}/>
         );
     }
 }

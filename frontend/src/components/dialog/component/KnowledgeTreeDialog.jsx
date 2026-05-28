@@ -101,7 +101,7 @@ export default class KnowledgeTreeDialog extends Component {
         return (
             <div>
                 <VersionSelectDialog/>
-                <CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons}/>
+                <CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons} onClose={() => this.setState({visible: false})}/>
             </div>
         );
     }

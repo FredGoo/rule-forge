@@ -90,7 +90,7 @@ export default class ResourceVersionDialogComponent extends Component {
             }
         ];
         return (
-            <CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons} dialogStyle={{width: '700px'}}/>
+            <CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons} dialogStyle={{width: '700px'}} onClose={() => this.setState({visible: false})}/>
         );
     }
 }
