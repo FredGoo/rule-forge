@@ -1258,7 +1258,13 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
                 log.info("{}: buildProjectFile file is null", projectNode.getName());
                 continue;
             }
-            Type type = Type.values()[file.getFileType()];
+            Type type;
+            try {
+                type = Type.values()[file.getFileType()];
+            } catch (ArrayIndexOutOfBoundsException e) {
+                log.warn("{}: skipping file {} with invalid fileType {}", projectNode.getName(), file.getName(), file.getFileType());
+                continue;
+            }
             switch (type) {
                 case all:
                     RepositoryFile resDir = new RepositoryFile();
@@ -1382,7 +1388,16 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         List<FileEntity> fileEntityList = this.fileMapper.selectListByAncestor(fileLQW);
         fileEntityList.forEach(fileNode -> {
             if (fileNode.getFileType() < 0) {
-                return;
+                FileType detected = FileTypeUtils.getFileTypeByFileName(fileNode.getName());
+                if (detected != null) {
+                    Type mappedType = FileTypeUtils.mapFileNameToType(fileNode.getName());
+                    if (mappedType != null) {
+                        fileNode.setFileType(mappedType.ordinal());
+                        this.fileMapper.updateById(fileNode);
+                    }
+                } else {
+                    return;
+                }
             }
 
             Type type = Type.values()[fileNode.getFileType()];
@@ -1406,13 +1421,14 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
                 if (!this.permissionService.fileHasReadPermission(fileNode.getFilePath())) {
                     return;
                 }
-                FileType fileType = null;
+                FileType fileType = com.ruleforge.console.util.FileTypeUtils.getFileTypeByFileName(name);
                 boolean add = false;
-                for (FileType typeItem : types) {
-                    if (name.toLowerCase().endsWith(typeItem.toString())) {
-                        fileType = typeItem;
-                        add = true;
-                        break;
+                if (fileType != null) {
+                    for (FileType typeItem : types) {
+                        if (fileType == typeItem) {
+                            add = true;
+                            break;
+                        }
                     }
                 }
                 if (!add) {
