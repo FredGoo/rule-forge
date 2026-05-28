@@ -244,7 +244,7 @@ export default class QuickTestDialog extends Component {
         const buttons = [];
 
         return (
-            <CommonDialog visible={this.state.visible} title={this.state.title} body={body} htmlContent={htmlContent} buttons={buttons} large={true}/>
+            <CommonDialog visible={this.state.visible} title={this.state.title} body={body} htmlContent={htmlContent} buttons={buttons} large={true} onClose={() => this.setState({visible: false})}/>
         );
     }
 }
