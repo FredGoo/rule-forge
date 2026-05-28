@@ -25,6 +25,9 @@ export default class TopBar extends Component {
                 this._selectProject(projectNames[0]);
             }
         });
+        eventObj.eventEmitter.on(eventObj.PROJECT_SELECT, projectName => {
+            this.setState({selectedProject: projectName, projectDropdownOpen: false});
+        });
         document.addEventListener('click', this._handleClickOutside);
     }
 

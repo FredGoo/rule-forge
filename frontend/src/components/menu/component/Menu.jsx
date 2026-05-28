@@ -7,7 +7,7 @@ export default class Menu extends Component {
         let result = [];
         items.forEach((item, index) => {
             result.push(
-                <MenuItem item={item} key={index} data={data} dispatch={dispatch}/>
+                <MenuItem item={item} key={item.name || index} data={data} dispatch={dispatch}/>
             );
         });
         const menuStyle = {

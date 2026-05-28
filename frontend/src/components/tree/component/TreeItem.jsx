@@ -8,7 +8,8 @@ class TreeItem extends Component {
     constructor(props) {
         super(props);
         const expandLevel = props.expandLevel;
-        const initiallyExpanded = !(props.data._level >= expandLevel);
+        const data = props.data;
+        const initiallyExpanded = data._forceExpand || !(data._level >= expandLevel);
         this.state = {
             expanded: initiallyExpanded,
             contextMenuVisible: false,
@@ -19,6 +20,12 @@ class TreeItem extends Component {
         this._handleSpanClick = this._handleSpanClick.bind(this);
         this._handleContextMenu = this._handleContextMenu.bind(this);
         this._handleClickOutside = this._handleClickOutside.bind(this);
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.data._forceExpand && !prevProps.data._forceExpand) {
+            this.setState({expanded: true});
+        }
     }
 
     componentDidMount() {
@@ -88,10 +95,10 @@ class TreeItem extends Component {
         const children = data.children;
         const spanId = "node-" + data.id, menuId = 'treenodemenu' + data.id;
         const {contextMenuVisible, contextMenuX, contextMenuY} = this.state;
-        let menu = [];
+        let menu = null;
         if (data.contextMenu) {
-            menu.push(<Menu items={data.contextMenu} key={data.id} data={data} dispatch={dispatch} menuId={menuId}
-                            visible={contextMenuVisible} x={contextMenuX} y={contextMenuY}/>);
+            menu = <Menu items={data.contextMenu} data={data} dispatch={dispatch} menuId={menuId}
+                            visible={contextMenuVisible} x={contextMenuX} y={contextMenuY}/>;
         }
         // Container types: has children (even empty array) or lazy-loadable
         const isContainer = (children && children.length > 0) || Array.isArray(children)
