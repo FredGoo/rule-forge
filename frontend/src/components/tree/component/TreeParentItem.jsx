@@ -7,7 +7,7 @@ export default class TreeParentItem extends Component{
         let result=[];
         children.forEach((item,index)=>{
             result.push(
-                <TreeItem data={item} key={item.fullPath || item.id || ('tree_item_' + index)} dispatch={dispatch} selectDir={selectDir} expandLevel={this.props.expandLevel} treeType={this.props.treeType}/>
+                <TreeItem data={item} key={(item.fullPath ? item.fullPath + '_' + (item.type || '') : item.id) || ('tree_item_' + index)} dispatch={dispatch} selectDir={selectDir} expandLevel={this.props.expandLevel} treeType={this.props.treeType}/>
             );
         });
         return (
