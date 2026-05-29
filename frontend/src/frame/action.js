@@ -99,6 +99,7 @@ export function createNewProject(newProjectName, parentNodeData) {
             window._projectName = newProjectName;
             dispatch(loadData(true, newProjectName));
             event.eventEmitter.emit(event.PROJECT_SELECT, newProjectName);
+            event.eventEmitter.emit(event.PROJECT_FILTER_CHANGE, newProjectName);
             event.eventEmitter.emit(event.CLOSE_NEW_PROJECT_DIALOG);
         }).catch(function (response) {
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
@@ -235,9 +236,8 @@ export function loadData(classify, projectName, types, searchFileName, pathsToEx
             const {classify, repo, user} = data;
             const {rootFile, publicResource, projectNames} = repo;
             event.eventEmitter.emit(event.CHANGE_CLASSIFY, classify);
-            // Only update project list on full load (no specific project selected)
-            // Backend returns all project names only when projectName is not specified
-            if (!projectName && projectNames && projectNames.length > 0) {
+            // Update project list whenever available (needed for project creation auto-select)
+            if (projectNames && projectNames.length > 0) {
                 event.eventEmitter.emit(event.PROJECT_LIST_CHANGE, projectNames);
             }
 
