@@ -12,6 +12,7 @@ import org.apache.commons.lang.StringUtils;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.ByteArrayInputStream;
@@ -29,7 +30,7 @@ public class BpmnFlowController {
     private final FlowXmlConverter flowXmlConverter;
 
     @GetMapping(value = "/load", produces = "text/xml;charset=UTF-8")
-    public String loadBpmn(@RequestParam String file,
+    public ResponseEntity<String> loadBpmn(@RequestParam String file,
                            @RequestParam(required = false) String version) {
         try {
             InputStream inputStream;
@@ -38,7 +39,10 @@ public class BpmnFlowController {
             } else {
                 inputStream = repositoryService.readFile(file, version);
             }
-            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            if (inputStream == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(new String(inputStream.readAllBytes(), StandardCharsets.UTF_8));
         } catch (Exception ex) {
             throw new RuleException(ex);
         }

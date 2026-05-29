@@ -159,9 +159,9 @@ export default class SimulatorPage extends Component {
                     </div>
                 </div>
             );
-            return (<CommonDialog visible={this.state.visible} title={this.state.title} body={body} large={true} buttons={[]}/>);
+            return (<CommonDialog visible={this.state.visible} title={this.state.title} body={body} large={true} buttons={[]} onClose={() => this.setState({visible: false})}/>);
         } else {
-            return (<CommonDialog visible={this.state.visible} title={this.state.title} body={[]} large={true} buttons={[]}/>);
+            return (<CommonDialog visible={this.state.visible} title={this.state.title} body={[]} large={true} buttons={[]} onClose={() => this.setState({visible: false})}/>);
         }
     }
 }

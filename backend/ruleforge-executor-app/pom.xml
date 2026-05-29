@@ -29,7 +29,7 @@
         <dependency>
             <groupId>com.ruleforge</groupId>
             <artifactId>ruleforge-executor</artifactId>
-            <version>3.5.3-SNAPSHOT</version>
+            <version>5.0.0</version>
         </dependency>
 
         <dependency>

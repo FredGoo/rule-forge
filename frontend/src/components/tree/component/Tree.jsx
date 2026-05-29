@@ -14,7 +14,7 @@ class Tree extends Component {
                 <div className="tree">
                     <ul>
                         {items.map((child, index) => (
-                            <TreeItem key={child.id || index} data={child} dispatch={dispatch} treeType={treeType}
+                            <TreeItem key={child.id || (child.fullPath + '_' + index)} data={child} dispatch={dispatch} treeType={treeType}
                                       expandLevel={this.props.expandLevel} draggable={draggable}/>
                         ))}
                     </ul>

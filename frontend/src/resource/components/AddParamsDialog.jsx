@@ -141,6 +141,6 @@ export default class AddParamsDialog extends Component{
                 }.bind(this)
             }
         ];
-        return (<CommonDialog title={this.state.title} body={body} buttons={buttons} visible={this.state.visible}/>);
+        return (<CommonDialog title={this.state.title} body={body} buttons={buttons} visible={this.state.visible} onClose={() => this.setState({visible: false})}/>);
     };
 }

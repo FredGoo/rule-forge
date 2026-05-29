@@ -83,6 +83,6 @@ export default class PackageDialog extends Component{
                 }.bind(this)
             }
         ];
-        return (<CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} title={this.state.title} body={body} buttons={buttons} onClose={() => this.setState({visible: false})}/>);
     };
 }

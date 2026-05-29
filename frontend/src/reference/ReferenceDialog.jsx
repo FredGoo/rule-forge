@@ -307,6 +307,6 @@ export default class ReferenceDialog extends Component{
                 </table>
             </div>
         );
-        return (<CommonDialog buttons={[]} body={body} title={this.state.title} visible={this.state.visible}/>);
+        return (<CommonDialog buttons={[]} body={body} title={this.state.title} visible={this.state.visible} onClose={() => this.setState({visible: false})}/>);
     }
 }

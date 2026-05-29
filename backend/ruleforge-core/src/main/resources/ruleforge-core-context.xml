@@ -139,7 +139,7 @@
         <property name="builtInActionLibraryBuilder" ref="ruleforge.builtInActionLibraryBuilder"/>
     </bean>
 
-    <bean id="ruleforge.knowledgeService" class="com.ruleforge.runtime.service.KnowledgeServiceImpl"/>
+    <bean id="ruleforge.knowledgeService" class="com.ruleforge.runtime.service.KnowledgeServiceImpl" autowire="constructor"/>
 
     <bean id="ruleforge.dateAction" class="com.ruleforge.runtime.builtinaction.DateAction"/>
     <bean id="ruleforge.stringAction" class="com.ruleforge.runtime.builtinaction.StringAction"/>

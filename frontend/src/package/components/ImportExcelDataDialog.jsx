@@ -60,6 +60,6 @@ export default class ImportExcelDataDialog extends Component {
                 }
             }
         ];
-        return (<CommonDialog visible={this.state.visible} title="导入Excel" body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} title="导入Excel" body={body} buttons={buttons} onClose={() => this.setState({visible: false})}/>);
     }
 }

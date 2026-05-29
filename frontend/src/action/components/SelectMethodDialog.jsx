@@ -57,7 +57,7 @@ class SelectMethodDialog extends Component{
             }
         ];
         return (
-            <CommonDialog visible={this.state.visible} title="选择方法" body={body} buttons={buttons}/>
+            <CommonDialog visible={this.state.visible} title="选择方法" body={body} buttons={buttons} onClose={() => this.setState({visible: false})}/>
         );
     }
 }

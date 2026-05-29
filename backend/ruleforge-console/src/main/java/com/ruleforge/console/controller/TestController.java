@@ -111,18 +111,28 @@ public class TestController {
         if (StringUtils.isNotEmpty(flowId)) {
             // Flow execution via Flowable
             Map<String, Object> flowVariables = new HashMap<>();
-            for (Object obj : facts.values()) {
+            for (Map.Entry<VariableCategory, Object> entry : facts.entrySet()) {
+                Object obj = entry.getValue();
                 if (obj instanceof GeneralEntity) {
-                    flowVariables.put(((GeneralEntity) obj).getTargetClass(), obj);
+                    String varName = entry.getKey().getName();
+                    flowVariables.put(varName, obj);
                 } else if (obj instanceof Map) {
                     flowVariables.putAll((Map<String, Object>) obj);
                 }
             }
             ProcessInstance processInstance = flowableRuntimeService.startProcessInstanceByKey(flowId, flowVariables);
-            Map<String, Object> resultVars = flowableRuntimeService.getVariables(processInstance.getId());
-            // Use session parameters to capture results
-            session.getParameters().putAll(resultVars);
-            response = session.fireRules(); // No-op just for response wrapper
+            // Update facts from modified flow variables (entities are modified in-place by delegates)
+            for (Map.Entry<VariableCategory, Object> entry : facts.entrySet()) {
+                Object obj = entry.getValue();
+                if (obj instanceof GeneralEntity) {
+                    String varName = entry.getKey().getName();
+                    Object updated = flowVariables.get(varName);
+                    if (updated != null) {
+                        entry.setValue(updated);
+                    }
+                }
+            }
+            response = new ExecutionResponseImpl();
         } else {
             if (parameters == null) {
                 response = session.fireRules();

@@ -48,10 +48,16 @@ export function loadFileVersions(file, callback) {
 
 export function loadResourceTreeData(data, callback) {
     var url = window._server + '/common/loadResourceTreeData';
+    var filtered = {};
+    Object.keys(data).forEach(function(key) {
+        if (data[key] !== undefined && data[key] !== null) {
+            filtered[key] = data[key];
+        }
+    });
     fetch(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams(data).toString()
+        body: new URLSearchParams(filtered).toString()
     }).then(function(response) {
         if (!response.ok) throw response;
         return response.json();

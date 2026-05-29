@@ -38,8 +38,8 @@ export function createNewFile(newFileName, fileType, parentNodeData) {
         }).then(function (newFileInfo) {
             event.eventEmitter.emit(event.CLOSE_CREATE_FILE_DIALOG);
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
-            // Reload tree to show the new file
-            dispatch(loadData(true, window._projectName, null));
+            // Reload tree to show the new file, expanding the parent folder
+            dispatch(loadData(true, window._projectName, null, null, [parentNodeData.fullPath]));
         }).catch(function (response) {
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
             handleResponseError(response, '服务端错误：');
@@ -86,7 +86,9 @@ export function createNewProject(newProjectName, parentNodeData) {
             if (!response.ok) throw response;
             return response.json();
         }).then(function () {
-            dispatch(loadData());
+            window._projectName = newProjectName;
+            dispatch(loadData(true, newProjectName));
+            event.eventEmitter.emit(event.PROJECT_SELECT, newProjectName);
             event.eventEmitter.emit(event.CLOSE_NEW_PROJECT_DIALOG);
         }).catch(function (response) {
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
@@ -197,9 +199,14 @@ export function update(index, data) {
 
 let _loadDataRequestId = 0;
 
-export function loadData(classify, projectName, types, searchFileName) {
+let _pathsToExpand = [];
+
+export function loadData(classify, projectName, types, searchFileName, pathsToExpand) {
     if (classify === null || classify === undefined) {
         classify = true;
+    }
+    if (pathsToExpand) {
+        _pathsToExpand = pathsToExpand;
     }
     const requestId = ++_loadDataRequestId;
     return function (dispatch) {
@@ -249,6 +256,20 @@ export function loadData(classify, projectName, types, searchFileName) {
 
             buildData(treeData, 1, user);
             buildData(publicResource, 1, user);
+
+            // Mark nodes that should be force-expanded
+            if (_pathsToExpand.length > 0) {
+                function markForceExpand(node) {
+                    if (node && _pathsToExpand.includes(node.fullPath)) {
+                        node._forceExpand = true;
+                    }
+                    if (node && node.children) {
+                        node.children.forEach(markForceExpand);
+                    }
+                }
+                markForceExpand(treeData);
+                _pathsToExpand = [];
+            }
 
             dispatch({data: treeData, publicResource: publicResource, type: LOAD_END});
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);

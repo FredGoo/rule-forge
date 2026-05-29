@@ -104,7 +104,7 @@ export default class ResourceListDialogComponent extends Component {
             }
         ];
         return (
-            <CommonDialog visible={this.state.visible} title="库列表" body={body} buttons={buttons}/>
+            <CommonDialog visible={this.state.visible} title="库列表" body={body} buttons={buttons} onClose={() => this.setState({visible: false})}/>
         );
     }
 }

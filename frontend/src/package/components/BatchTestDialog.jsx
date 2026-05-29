@@ -44,6 +44,6 @@ export default class BatchTestDialog extends Component {
                 }
             }
         ];
-        return (<CommonDialog visible={this.state.visible} large={true} title='对导入的Excel数据进行批量测试' body={body} buttons={buttons}/>);
+        return (<CommonDialog visible={this.state.visible} large={true} title='对导入的Excel数据进行批量测试' body={body} buttons={buttons} onClose={() => this.setState({visible: false})}/>);
     }
 };

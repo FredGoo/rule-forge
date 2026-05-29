@@ -17,6 +17,7 @@ export const HIDE_RENAME_DIALOG = 'HIDE_RENAME_DIALOG';
 
 export const PROJECT_LIST_CHANGE = 'project_list_change';
 export const PROJECT_FILTER_CHANGE = 'project_filter_change';
+export const PROJECT_SELECT = 'project_select';
 
 export const OPEN_IMPORT_PROJECT_DIALOG = 'open_import_project_dialog';
 export const CLOSE_IMPORT_PROJECT_DIALOG = 'close_import_project_dialog';

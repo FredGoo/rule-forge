@@ -38,7 +38,7 @@ export default class ReteDiagramDialog extends Component{
             }
         ];
         return (
-            <CommonDialog visible={this.state.visible} large={true} title="RETE树展示" body={body} buttons={buttons}/>
+            <CommonDialog visible={this.state.visible} large={true} title="RETE树展示" body={body} buttons={buttons} onClose={() => this.setState({visible: false})}/>
         );
     }
 };
