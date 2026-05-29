@@ -46,14 +46,12 @@ core ← executor ← executor-app
 
 ## 🚀 快速开始
 
-### 📋 环境要求
+### Prerequisites
 
-| 依赖 | 版本 |
-|------|------|
-| ☕ JDK | 17+ |
-| 📦 Maven | 3.8+ |
-| 🐬 MySQL | 8.0+ |
-| 💚 Node.js | 18+ |
+[![Java 17+](https://img.shields.io/badge/Java-17+-37699B?logo=openjdk&logoColor=white)](https://openjdk.org/)
+[![Maven 3.8+](https://img.shields.io/badge/Maven-3.8+-C71A36?logo=apachemaven&logoColor=white)](https://maven.apache.org/)
+[![MySQL 8.0+](https://img.shields.io/badge/MySQL-8.0+-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![Node.js 18+](https://img.shields.io/badge/Node.js-18+-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 
 ### 1️⃣ 配置
 
@@ -82,11 +80,9 @@ mvn compile
 ./scripts/start-all.sh        # 全部服务 🚀
 ```
 
-| 服务 | 地址 |
-|------|------|
-| 🖥️ 编辑器 API | http://localhost:8081 |
-| ⚡ 执行器 API | http://localhost:8082 |
-| 🎨 前端设计器 | http://localhost:3000 |
+- **Editor API** — http://localhost:8081
+- **Executor API** — http://localhost:8082
+- **Frontend** — http://localhost:3000
 
 ## 📑 规则类型
 
@@ -123,6 +119,19 @@ npm test
 # 前端 E2E 测试（需要启动后端服务）
 npx playwright test
 ```
+
+## 📚 文档
+
+| 文档 | 说明 |
+|------|------|
+| 🏗️ [架构概览](docs/architecture/overview.md) | 模块结构、依赖链、执行流程 |
+| ⚙️ [RETE 引擎](docs/architecture/rete-engine.md) | RETE 算法实现、会话生命周期 |
+| 🌐 [Console API](docs/api/console-api.md) | 编辑器 REST API 参考 |
+| ⚡ [Executor API](docs/api/executor-api.md) | 执行器 REST API 参考 |
+| 🔧 [开发环境搭建](docs/development/setup.md) | 环境要求、编译、启动 |
+| 🤝 [贡献指南](docs/development/contributing.md) | 编码规范、分支策略、开发流程 |
+| 📑 [规则类型](docs/user-guide/rule-types.md) | 7 种规则类型说明 |
+| 🧪 [规则测试](docs/user-guide/testing.md) | 单条/批量/快速测试 |
 
 ## 📄 License
 
