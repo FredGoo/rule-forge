@@ -125,6 +125,7 @@ npx playwright test
 | 🤝 [贡献指南](docs/development/contributing.md) | 编码规范、分支策略、开发流程 |
 | 📑 [规则类型](docs/user-guide/rule-types.md) | 7 种规则类型说明 |
 | 🧪 [规则测试](docs/user-guide/testing.md) | 单条/批量/快速测试 |
+| 🗺️ [项目路线图](docs/roadmap.md) | 上游数据源、Agent 分析、版本管理、监控告警 |
 
 ## 📄 License
 
