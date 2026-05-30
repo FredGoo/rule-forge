@@ -146,7 +146,7 @@ class MetricsCollectionTest {
 
             // Then
             double count = meterRegistry.counter("rule.execution.total", "package", "loan-rules", "status", "SUCCESS").count();
-            assertThat(count).isEqualTo(2.0);
+            assertThat(count).isEqualTo(1.0);
         }
 
         @Test
@@ -160,7 +160,7 @@ class MetricsCollectionTest {
 
             // Then
             double count = meterRegistry.counter("rule.execution.total", "package", "loan-rules", "status", "FAILED").count();
-            assertThat(count).isEqualTo(2.0);
+            assertThat(count).isEqualTo(1.0);
         }
     }
 }

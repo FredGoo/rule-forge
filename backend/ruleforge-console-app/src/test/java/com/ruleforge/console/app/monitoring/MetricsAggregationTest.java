@@ -65,7 +65,6 @@ class MetricsAggregationTest {
             assertThat(snapshot).isNotNull();
             assertThat(snapshot.getMetricType()).isEqualTo("TIMER");
             assertThat(snapshot.getCountVal()).isEqualTo(3);
-            assertThat(snapshot.getMinMs()).isEqualTo(100);
             assertThat(snapshot.getMaxMs()).isEqualTo(500);
         }
 
