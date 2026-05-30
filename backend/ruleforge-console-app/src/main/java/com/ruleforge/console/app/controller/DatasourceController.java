@@ -1,5 +1,7 @@
 package com.ruleforge.console.app.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruleforge.console.app.entity.Datasource;
 import com.ruleforge.console.app.entity.DatasourceEntityMapping;
 import com.ruleforge.console.app.entity.DatasourceFieldMapping;
@@ -22,6 +24,7 @@ import java.util.Map;
 public class DatasourceController {
 
     private final IDatasourceService datasourceService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ===== 数据源 CRUD =====
 
@@ -106,11 +109,11 @@ public class DatasourceController {
     public ResponseEntity<?> saveFieldMappings(@PathVariable Long id,
                                                @RequestBody Map<String, Object> body) {
         String clazz = (String) body.get("clazz");
-        @SuppressWarnings("unchecked")
-        List<DatasourceFieldMapping> mappings = (List<DatasourceFieldMapping>) body.get("mappings");
         if (clazz == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "clazz 参数必填"));
         }
+        List<DatasourceFieldMapping> mappings = objectMapper.convertValue(
+                body.get("mappings"), new TypeReference<List<DatasourceFieldMapping>>() {});
         datasourceService.saveFieldMappings(id, clazz, mappings != null ? mappings : List.of());
         return ResponseEntity.ok().build();
     }

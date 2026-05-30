@@ -1,7 +1,6 @@
 package com.ruleforge.console.app.connector;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruleforge.console.app.entity.Datasource;
 import com.ruleforge.console.app.entity.DatasourceLog;
 import com.ruleforge.console.app.mapper.DatasourceLogMapper;
@@ -37,12 +36,10 @@ class AdvanceAiConnectorTest {
     @Mock private RestTemplate restTemplate;
 
     private AdvanceAiConnector connector;
-    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
-        connector = new AdvanceAiConnector(tokenManager, datasourceLogMapper, restTemplate, objectMapper);
+        connector = new AdvanceAiConnector(tokenManager, datasourceLogMapper, restTemplate);
     }
 
     private Datasource buildDatasource() {

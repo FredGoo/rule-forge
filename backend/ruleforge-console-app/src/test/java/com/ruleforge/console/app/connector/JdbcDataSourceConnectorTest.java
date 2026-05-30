@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.*;
 @DisplayName("JdbcDataSourceConnector - JDBC 数据源连接器")
 class JdbcDataSourceConnectorTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private JdbcDataSourceConnector connector;
 
     @AfterEach
@@ -40,7 +39,7 @@ class JdbcDataSourceConnectorTest {
         @Test
         @DisplayName("返回 JDBC 类型")
         void shouldReturnJdbcType() {
-            connector = new JdbcDataSourceConnector(objectMapper);
+            connector = new JdbcDataSourceConnector();
             assertThat(connector.getConnectorType()).isEqualTo("JDBC");
         }
     }
@@ -52,7 +51,7 @@ class JdbcDataSourceConnectorTest {
         @Test
         @DisplayName("无效 URL 时 fetchFieldValue 返回 null")
         void shouldReturnNullOnInvalidUrl() {
-            connector = new JdbcDataSourceConnector(objectMapper);
+            connector = new JdbcDataSourceConnector();
             Datasource ds = new Datasource();
             ds.setId(99L);
             ds.setConfigJson("{\"url\":\"jdbc:invalid://nonexistent\",\"username\":\"u\",\"password\":\"p\"," +
@@ -68,7 +67,7 @@ class JdbcDataSourceConnectorTest {
         @Test
         @DisplayName("无效 URL 时 testConnection 返回 false")
         void shouldReturnFalseOnInvalidUrl() {
-            connector = new JdbcDataSourceConnector(objectMapper);
+            connector = new JdbcDataSourceConnector();
             Datasource ds = new Datasource();
             ds.setId(99L);
             ds.setConfigJson("{\"url\":\"jdbc:invalid://nonexistent\",\"username\":\"u\",\"password\":\"p\"," +
@@ -89,14 +88,14 @@ class JdbcDataSourceConnectorTest {
         @Test
         @DisplayName("cleanup 不抛异常")
         void shouldCleanupWithoutError() {
-            connector = new JdbcDataSourceConnector(objectMapper);
+            connector = new JdbcDataSourceConnector();
             assertThatCode(() -> connector.cleanup()).doesNotThrowAnyException();
         }
 
         @Test
         @DisplayName("evictPool 不存在的 datasourceId 不抛异常")
         void shouldEvictNonExistentPool() {
-            connector = new JdbcDataSourceConnector(objectMapper);
+            connector = new JdbcDataSourceConnector();
             assertThatCode(() -> connector.evictPool(99999L)).doesNotThrowAnyException();
         }
     }

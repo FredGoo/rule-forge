@@ -34,7 +34,7 @@ public class AdvanceAiConnector implements DataSourceConnector {
     private final AdvanceAiTokenManager tokenManager;
     private final DatasourceLogMapper datasourceLogMapper;
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ===== API 端点常量 =====
     private static final String MULTI_PLATFORM = "/mex/openapi/verification/v3/multi-platform";

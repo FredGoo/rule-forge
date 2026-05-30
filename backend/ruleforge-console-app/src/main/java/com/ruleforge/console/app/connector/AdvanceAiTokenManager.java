@@ -23,7 +23,7 @@ import java.util.Map;
 public class AdvanceAiTokenManager {
 
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private volatile String cachedToken;
     private volatile long tokenExpireTime = 0L;
@@ -32,9 +32,8 @@ public class AdvanceAiTokenManager {
 
     private static final String TOKEN_API_URL = "/openapi/auth/ticket/v1/generate-token";
 
-    public AdvanceAiTokenManager(RestTemplate restTemplate, ObjectMapper objectMapper) {
+    public AdvanceAiTokenManager(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
     }
 
     /**

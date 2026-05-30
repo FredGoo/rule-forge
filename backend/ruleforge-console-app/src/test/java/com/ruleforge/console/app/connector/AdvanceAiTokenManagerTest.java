@@ -1,6 +1,5 @@
 package com.ruleforge.console.app.connector;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruleforge.console.app.entity.Datasource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,12 +26,10 @@ class AdvanceAiTokenManagerTest {
     @Mock private RestTemplate restTemplate;
 
     private AdvanceAiTokenManager tokenManager;
-    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
-        tokenManager = new AdvanceAiTokenManager(restTemplate, objectMapper);
+        tokenManager = new AdvanceAiTokenManager(restTemplate);
     }
 
     private Datasource buildDatasource(String baseUrl, String accessKey, String secretKey) {

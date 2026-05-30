@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class JdbcDataSourceConnector implements DataSourceConnector {
 
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final ConcurrentHashMap<Long, HikariDataSource> poolCache = new ConcurrentHashMap<>();
 

@@ -21,7 +21,7 @@ import java.util.Map;
 public class RestDataSourceConnector implements DataSourceConnector {
 
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public String getConnectorType() {
