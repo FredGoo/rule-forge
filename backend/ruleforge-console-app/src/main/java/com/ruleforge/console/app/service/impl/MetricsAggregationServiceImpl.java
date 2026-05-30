@@ -67,7 +67,16 @@ public class MetricsAggregationServiceImpl implements IMetricsAggregationService
             return;
         }
 
-        meterRegistry.clear();
+        // Reset counters/timers after snapshot so next aggregation window starts fresh.
+        // Don't use meterRegistry.clear() as it destroys histogram percentile state.
+        for (Meter meter : meterRegistry.getMeters()) {
+            if (meter instanceof Counter counter) {
+                meterRegistry.remove(counter);
+            }
+            if (meter instanceof Timer timer) {
+                meterRegistry.remove(timer);
+            }
+        }
 
         try {
             alertService.evaluateAlerts();
@@ -95,11 +104,21 @@ public class MetricsAggregationServiceImpl implements IMetricsAggregationService
         snapshot.setMeanMs(hist.mean(TimeUnit.MILLISECONDS));
         snapshot.setMaxMs((long) hist.max(TimeUnit.MILLISECONDS));
 
+        // Extract percentiles from configured percentile values
         for (io.micrometer.core.instrument.distribution.ValueAtPercentile vap : percentiles) {
             double valueMs = vap.value(TimeUnit.MILLISECONDS);
             if (Math.abs(vap.percentile() - 0.5) < 0.001) snapshot.setP50Ms((long) valueMs);
             else if (Math.abs(vap.percentile() - 0.95) < 0.001) snapshot.setP95Ms((long) valueMs);
             else if (Math.abs(vap.percentile() - 0.99) < 0.001) snapshot.setP99Ms((long) valueMs);
+        }
+
+        // Fallback: if no percentiles configured, estimate from mean/max
+        if (snapshot.getP50Ms() == null && count > 0) {
+            long mean = (long) hist.mean(TimeUnit.MILLISECONDS);
+            long max = (long) hist.max(TimeUnit.MILLISECONDS);
+            snapshot.setP50Ms(mean);
+            snapshot.setP95Ms((long) (mean + (max - mean) * 0.5));
+            snapshot.setP99Ms(max);
         }
         return snapshot;
     }

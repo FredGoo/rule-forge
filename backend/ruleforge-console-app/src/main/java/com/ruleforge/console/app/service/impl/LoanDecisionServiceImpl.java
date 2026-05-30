@@ -421,6 +421,8 @@ public class LoanDecisionServiceImpl implements ILoanDecisionService {
                     .tag("package", packageName != null ? packageName : "unknown")
                     .tag("flow", flowId != null ? flowId : "unknown")
                     .tag("status", status)
+                    .publishPercentiles(0.5, 0.95, 0.99)
+                    .publishPercentileHistogram()
                     .register(meterRegistry)
                     .record(ctx.totalExecutionTime, TimeUnit.MILLISECONDS);
 
@@ -428,6 +430,7 @@ public class LoanDecisionServiceImpl implements ILoanDecisionService {
                 Timer.builder("rule.execution.phase")
                         .tag("phase", "loadKnowledge")
                         .tag("package", packageName != null ? packageName : "unknown")
+                        .publishPercentiles(0.5, 0.95, 0.99)
                         .register(meterRegistry)
                         .record(ctx.loadKnowledgeTime, TimeUnit.MILLISECONDS);
             }
@@ -435,6 +438,7 @@ public class LoanDecisionServiceImpl implements ILoanDecisionService {
                 Timer.builder("rule.execution.phase")
                         .tag("phase", "flowExecution")
                         .tag("package", packageName != null ? packageName : "unknown")
+                        .publishPercentiles(0.5, 0.95, 0.99)
                         .register(meterRegistry)
                         .record(ctx.flowExecutionTime, TimeUnit.MILLISECONDS);
             }
@@ -442,6 +446,7 @@ public class LoanDecisionServiceImpl implements ILoanDecisionService {
                 Timer.builder("rule.execution.phase")
                         .tag("phase", "createSession")
                         .tag("package", packageName != null ? packageName : "unknown")
+                        .publishPercentiles(0.5, 0.95, 0.99)
                         .register(meterRegistry)
                         .record(ctx.createSessionTime, TimeUnit.MILLISECONDS);
             }
@@ -449,6 +454,7 @@ public class LoanDecisionServiceImpl implements ILoanDecisionService {
                 Timer.builder("rule.execution.phase")
                         .tag("phase", "insertEntity")
                         .tag("package", packageName != null ? packageName : "unknown")
+                        .publishPercentiles(0.5, 0.95, 0.99)
                         .register(meterRegistry)
                         .record(ctx.insertEntityTime, TimeUnit.MILLISECONDS);
             }
