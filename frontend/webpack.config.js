@@ -30,7 +30,8 @@ module.exports = {
         crosstabEditor: './src/editor/crosstab/index.jsx',
         complexScoreCardEditor: './src/editor/complexscorecard/index.jsx',
         login: './src/login/index.jsx',
-        monitoringDashboard: './src/monitoring/index.jsx'
+        monitoringDashboard: './src/monitoring/index.jsx',
+        analysisDashboard: './src/analysis/index.jsx'
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
@@ -64,6 +65,7 @@ module.exports = {
         new HtmlWebpackPlugin({ filename: 'html/complexscorecard-editor.html', template: 'html/complexscorecard-editor.html', chunks: ["complexScoreCardEditor"] }),
         new HtmlWebpackPlugin({ filename: 'html/login.html', template: 'html/login.html', chunks: ["login"] }),
         new HtmlWebpackPlugin({ filename: 'html/monitoring-dashboard.html', template: 'html/monitoring-dashboard.html', chunks: ["monitoringDashboard"] }),
+        new HtmlWebpackPlugin({ filename: 'html/analysis-dashboard.html', template: 'html/analysis-dashboard.html', chunks: ["analysisDashboard"] }),
     ],
     module: {
         rules: [
