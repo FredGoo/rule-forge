@@ -14,13 +14,8 @@ RuleForge 当前已具备的能力：
 ## 实施顺序
 
 ```
-监控与告警 ✅ → 上游数据源管理 ✅ → 规则版本与发布管理 ✅ → 下游 Agent 分析
+监控与告警 ✅ → 上游数据源管理 ✅ → 规则版本与发布管理 ✅ → 下游 Agent 分析 ✅
 ```
-
-1. ~~**监控与告警** — 投入产出比最高，基于现有 decision_log 即可上手，纯新增模块零侵入，为后续方向提供数据基础~~ **已完成**
-2. ~~**上游数据源管理** — 需要改 LazyGeneralEntity 核心逻辑，有了监控才能安全地改动~~ **已完成**
-3. ~~**规则版本与发布管理** — 需要环境隔离基础设施，且涉及团队流程变更~~ **已完成**
-4. **下游 Agent 分析** — 依赖前三个方向的数据积累（日志聚合、版本对比、监控指标） **← 当前阶段**
 
 ## 路线图总览
 
@@ -29,7 +24,7 @@ RuleForge 当前已具备的能力：
 | 监控与告警 | 决策执行全链路可观测 | P1 | ✅ 已完成 |
 | 上游数据源管理 | 统一管理外部数据接入 | P0 | ✅ 已完成 |
 | 规则版本与发布管理 | 变更审批、灰度发布、回滚、陪跑 | P0 | ✅ 已完成 |
-| 下游 Agent 分析 | AI 分析决策结果，优化规则 | P2 | 🚧 当前阶段 |
+| 下游 Agent 分析 | AI 分析决策结果，优化规则 | P2 | ✅ 已完成 |
 
 ---
 
@@ -70,33 +65,43 @@ RuleForge 当前已具备的能力：
 
 ---
 
-## 方向三：下游 Agent 分析 🚧 当前阶段
+## 方向三：下游 Agent 分析 ✅ 已完成
 
-### 现状
+### 设计理念
 
-决策日志（`decision_log` 表）记录了完整的输入输出和执行明细，但没有自动化分析能力。规则优化完全依赖人工审查。
-
-### 目标
-
-引入 AI Agent 自动分析决策日志，发现异常模式，提出规则优化建议。
+RuleForge 不内置 LLM，而是提供分析 API + CLI + Skills，让外部 Agent（Claude Code、Cursor 等）调用。CLI 是最通用的 Agent 接口，不会过时。
 
 ### 关键特性
 
-- **决策日志聚合分析** — 按时间窗口统计各决策结果的分布趋势
-- **偏差检测** — 识别偏离历史模式的异常决策（如某天拒绝率突然升高）
-- **规则覆盖率分析** — 检测哪些规则从未触发、哪些条件分支从未命中
-- **优化建议生成** — 基于分析结果，生成规则调优建议（如调整阈值、合并冗余规则）
-- **决策归因** — 对单条决策结果进行归因分析，展示哪些规则节点主导了最终结果
+- **决策日志聚合分析** — 按时间窗口统计调用量、成功率、拒绝率、延迟趋势 ✅
+- **偏差检测** — 7 天日均值基线 + sigma 阈值异常检测 ✅
+- **规则覆盖率分析** — 热/冷/死规则分类、触发频率分布 ✅
+- **优化建议生成** — 基于 LLM（推迟）
+- **决策归因** — 单条决策归因（推迟）
 
-### 可能的实现方向
+### 已实现
+
+- **DecisionAnalysisMapper** — @Select 聚合 SQL：时间序列、包汇总、拒绝码分布、偏差基线/当前窗口
+- **RuleCoverageMapper** — 规则触发频率排名、全量曾触发规则名
+- **AnalysisServiceImpl** — ECharts 格式转换、热/冷/死规则分类、sigma 阈值偏差检测
+- **AnalysisController** — REST API 7 个端点（/analysis/*）
+- **ExportController** — 规则内容导出 4 个端点（/export/*），输出原始 XML/JSON 供 Agent 理解
+- **前端分析仪表盘** — 三 Tab（决策趋势、规则覆盖、偏差检测）+ ECharts 图表
+- **ruleforge CLI** — Node.js 命令行工具，analysis + export 两大命令组
+- **Claude Code Skills** — 6 个 skill（analyze-package, analyze-decision, check-coverage, detect-anomaly, review-rules, simulate-impact）
+
+### 模块结构
 
 ```
 Agent 分析模块
-├── log-aggregator         决策日志聚合与统计
-├── anomaly-detector       异常模式检测
-├── coverage-analyzer      规则覆盖率分析
-├── optimization-advisor   优化建议生成（调用 LLM）
-└── decision-attributor    单条决策归因分析
+├── DecisionAnalysisMapper   聚合 SQL（时间序列、包汇总、拒绝码、偏差基线）
+├── RuleCoverageMapper       规则触发频率、覆盖率
+├── AnalysisServiceImpl      分析逻辑（ECharts 转换、规则分类、偏差检测）
+├── AnalysisController       REST API（/analysis/*）
+├── ExportController         规则内容导出（/export/*）
+├── Analysis Dashboard       前端分析仪表盘（React + ECharts）
+├── ruleforge CLI            命令行工具（Agent 接口）
+└── .claude/skills/          Claude Code Skills（6 个）
 ```
 
 ---
