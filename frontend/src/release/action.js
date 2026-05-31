@@ -4,6 +4,8 @@ const LOAD_APPROVALS = 'release_load_approvals';
 const LOAD_APPROVALS_COMPLETED = 'release_load_approvals_completed';
 const LOAD_DEPLOYMENT_HISTORY = 'release_load_deployment_history';
 const LOAD_DEPLOYMENT_HISTORY_COMPLETED = 'release_load_deployment_history_completed';
+const LOAD_NODES = 'LOAD_NODES';
+const LOAD_NODES_COMPLETED = 'LOAD_NODES_COMPLETED';
 const SET_TAB = 'release_set_tab';
 
 export function loadEnvironments(projectName) {
@@ -138,6 +140,63 @@ export function rollbackVersion(projectName, packageId, targetVersion, execEnv) 
     };
 }
 
+export function loadNodes(execEnv) {
+    return function (dispatch) {
+        dispatch({type: LOAD_NODES});
+        const params = new URLSearchParams();
+        if (execEnv) params.append('execEnv', execEnv);
+        fetch(window._server + '/deployment/listNodes', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: params.toString()
+        })
+        .then(resp => { if (!resp.ok) throw resp; return resp.json(); })
+        .then(data => dispatch({type: LOAD_NODES_COMPLETED, data}))
+        .catch(err => {
+            console.error('加载节点列表失败', err);
+            dispatch({type: LOAD_NODES_COMPLETED, data: []});
+        });
+    };
+}
+
+export function updateNodeGroup(nodeId, nodeGroup) {
+    return function (dispatch) {
+        fetch(window._server + '/deployment/updateNodeGroup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({nodeId, nodeGroup}).toString()
+        })
+        .then(resp => { if (!resp.ok) throw resp; return resp.json(); })
+        .then(() => {
+            dispatch(loadNodes());
+        })
+        .catch(err => console.error('更新节点分组失败', err));
+    };
+}
+
+export function deployToGroup(projectName, packageId, version, execEnv, nodeGroup) {
+    return function (dispatch) {
+        fetch(window._server + '/deployment/deployToGroup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({projectName, packageId, version, execEnv: execEnv || 'prod', nodeGroup}).toString()
+        })
+        .then(resp => { if (!resp.ok) throw resp; return resp.json(); })
+        .then(result => {
+            if (result.status) {
+                window.bootbox.alert('灰度部署成功');
+                dispatch(loadNodes());
+            } else {
+                window.bootbox.alert(result.message || '灰度部署失败');
+            }
+        })
+        .catch(err => {
+            console.error('灰度部署失败', err);
+            window.bootbox.alert('灰度部署失败');
+        });
+    };
+}
+
 export function setTab(tab) {
     return {type: SET_TAB, tab};
 }
@@ -146,5 +205,6 @@ export {
     LOAD_ENVIRONMENTS, LOAD_ENVIRONMENTS_COMPLETED,
     LOAD_APPROVALS, LOAD_APPROVALS_COMPLETED,
     LOAD_DEPLOYMENT_HISTORY, LOAD_DEPLOYMENT_HISTORY_COMPLETED,
+    LOAD_NODES, LOAD_NODES_COMPLETED,
     SET_TAB
 };

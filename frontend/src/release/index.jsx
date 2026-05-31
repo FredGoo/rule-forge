@@ -45,6 +45,8 @@ class ReleasePanel extends Component {
                 this.props.dispatch(action.loadDeploymentHistory(projectName));
             } else if (tab === 'environments') {
                 this.props.dispatch(action.loadEnvironments(projectName));
+            } else if (tab === 'nodes') {
+                this.props.dispatch(action.loadNodes());
             }
         }
     }
@@ -57,6 +59,7 @@ class ReleasePanel extends Component {
             {id: 'environments', label: '环境管理', icon: 'glyphicon glyphicon-globe'},
             {id: 'approvals', label: '审批流程', icon: 'glyphicon glyphicon-check'},
             {id: 'history', label: '部署历史', icon: 'glyphicon glyphicon-time'},
+            {id: 'nodes', label: '节点管理', icon: 'glyphicon glyphicon-hdd'},
         ];
 
         return (
@@ -96,6 +99,8 @@ class ReleasePanel extends Component {
                         this.renderEnvironments(environments, environmentsLoading)
                     ) : activeTab === 'approvals' ? (
                         this.renderApprovals(approvals)
+                    ) : activeTab === 'nodes' ? (
+                        this.renderNodes(this.props.nodes)
                     ) : (
                         this.renderHistory(deploymentHistory)
                     )}
@@ -257,6 +262,104 @@ class ReleasePanel extends Component {
                     ))}
                 </tbody>
             </table>
+        );
+    }
+
+    renderNodes(nodes) {
+        if (this.props.nodesLoading) return <div style={{textAlign: 'center', padding: 20}}>加载中...</div>;
+        if (!nodes || nodes.length === 0) {
+            return (
+                <div style={{textAlign: 'center', padding: 40, color: '#999'}}>
+                    <p>暂无注册的执行器节点</p>
+                    <p style={{fontSize: 12}}>执行器启动后会自动注册</p>
+                </div>
+            );
+        }
+
+
+        return (
+            <div>
+                {/* Node list */}
+                <table className="table table-condensed" style={{fontSize: 13}}>
+                    <thead>
+                        <tr>
+                            <th>节点名称</th>
+                            <th>URL</th>
+                            <th>环境</th>
+                            <th>分组</th>
+                            <th>状态</th>
+                            <th>心跳</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {nodes.map((node, idx) => (
+                            <tr key={node.id || idx}>
+                                <td>{node.nodeName}</td>
+                                <td style={{fontSize: 11, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis'}}>{node.nodeUrl}</td>
+                                <td>{node.execEnv || '-'}</td>
+                                <td>
+                                    <select value={node.nodeGroup || 'default'}
+                                            style={{fontSize: 12, padding: '2px 4px'}}
+                                            onChange={(e) => {
+                                                this.props.dispatch(action.updateNodeGroup(node.id, e.target.value));
+                                            }}>
+                                        <option value="default">默认</option>
+                                        <option value="canary">灰度</option>
+                                        <option value="vip">VIP</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <span style={{
+                                        display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 11,
+                                        background: node.status === 'active' ? '#e8f5e9' : '#ffebee',
+                                        color: node.status === 'active' ? '#2e7d32' : '#c62828'
+                                    }}>
+                                        {node.status === 'active' ? '在线' : '离线'}
+                                    </span>
+                                </td>
+                                <td style={{fontSize: 11}}>{node.lastHeartbeat || '-'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+                {/* Canary deploy section */}
+                <div style={{marginTop: 20, padding: 15, border: '1px solid #e0e0e0', borderRadius: 4, background: '#fafafa'}}>
+                    <h6 style={{margin: '0 0 10px 0', fontWeight: 600}}>灰度部署</h6>
+                    <div style={{display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap'}}>
+                        <input id="canary-package" placeholder="包ID" style={{padding: '4px 8px', fontSize: 13, border: '1px solid #ddd', borderRadius: 3, width: 120}}/>
+                        <input id="canary-version" placeholder="版本号" style={{padding: '4px 8px', fontSize: 13, border: '1px solid #ddd', borderRadius: 3, width: 100}}/>
+                        <select id="canary-env" style={{padding: '4px 8px', fontSize: 13, border: '1px solid #ddd', borderRadius: 3}}>
+                            <option value="prod">生产环境</option>
+                            <option value="test">测试环境</option>
+                        </select>
+                        <select id="canary-group" style={{padding: '4px 8px', fontSize: 13, border: '1px solid #ddd', borderRadius: 3}}>
+                            <option value="canary">灰度节点</option>
+                            <option value="vip">VIP节点</option>
+                            <option value="default">默认节点</option>
+                        </select>
+                        <button className="btn btn-warning btn-sm" onClick={() => {
+                            const packageId = document.getElementById('canary-package').value;
+                            const version = document.getElementById('canary-version').value;
+                            const execEnv = document.getElementById('canary-env').value;
+                            const nodeGroup = document.getElementById('canary-group').value;
+                            if (!packageId || !version) {
+                                window.bootbox.alert('请填写包ID和版本号');
+                                return;
+                            }
+                            window.bootbox.confirm(`确认将版本 ${version} 部署到 ${nodeGroup} 节点组？`, (ok) => {
+                                if (ok) {
+                                    this.props.dispatch(action.deployToGroup(
+                                        this.state.projectName, packageId, version, execEnv, nodeGroup));
+                                }
+                            });
+                        }}>
+                            <span className="glyphicon glyphicon-upload" style={{marginRight: 4}}/>
+                            灰度部署
+                        </button>
+                    </div>
+                </div>
+            </div>
         );
     }
 }

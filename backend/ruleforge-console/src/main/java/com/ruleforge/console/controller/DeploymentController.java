@@ -123,6 +123,43 @@ public class DeploymentController {
         return deploymentService.registerNode(nodeName, nodeUrl, execEnv);
     }
 
+    @PostMapping("/listNodes")
+    public List<ExecutorNodeEntity> listNodes(@RequestParam(required = false) String execEnv) {
+        return deploymentService.listNodes(execEnv);
+    }
+
+    @PostMapping("/updateNodeGroup")
+    public Map<String, Object> updateNodeGroup(@RequestParam Long nodeId,
+                                                @RequestParam String nodeGroup) {
+        runtimeRepository.updateNodeGroup(nodeId, nodeGroup);
+        Map<String, Object> result = new HashMap<>();
+        result.put("status", true);
+        return result;
+    }
+
+    @PostMapping("/deployToGroup")
+    public Map<String, Object> deployToGroup(@RequestParam String projectName,
+                                              @RequestParam String packageId,
+                                              @RequestParam String version,
+                                              @RequestParam(defaultValue = "prod") String execEnv,
+                                              @RequestParam String nodeGroup,
+                                              @RequestParam(required = false) String deployUser) {
+        Map<String, Object> result = new HashMap<>();
+        Long projectId = resolveProjectId(projectName);
+        String user = resolveDeployUser(deployUser);
+        String gitTag = "pkg/" + packageId + "/" + version;
+
+        List<DeploymentConfigEntity> deployments = deploymentService.deployToGroup(
+                projectId, packageId, gitTag, version, execEnv, nodeGroup, user);
+
+        // Notify executors to pick up the new deployment config
+        externalProcessService.syncExec(projectName + "/" + packageId, execEnv, user, null, null, null);
+
+        result.put("status", true);
+        result.put("deployedCount", deployments.size());
+        return result;
+    }
+
     @PostMapping("/heartbeat")
     public Map<String, Object> heartbeat(@RequestParam Long nodeId) {
         deploymentService.updateHeartbeat(nodeId);

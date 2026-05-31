@@ -2,6 +2,7 @@ import {
     LOAD_ENVIRONMENTS, LOAD_ENVIRONMENTS_COMPLETED,
     LOAD_APPROVALS, LOAD_APPROVALS_COMPLETED,
     LOAD_DEPLOYMENT_HISTORY, LOAD_DEPLOYMENT_HISTORY_COMPLETED,
+    LOAD_NODES, LOAD_NODES_COMPLETED,
     SET_TAB
 } from './action';
 
@@ -13,6 +14,8 @@ const initialState = {
     approvalsLoading: false,
     deploymentHistory: [],
     historyLoading: false,
+    nodes: [],
+    nodesLoading: false,
 };
 
 export default function (state = initialState, action) {
@@ -31,6 +34,10 @@ export default function (state = initialState, action) {
             return {...state, historyLoading: true};
         case LOAD_DEPLOYMENT_HISTORY_COMPLETED:
             return {...state, historyLoading: false, deploymentHistory: action.data || []};
+        case LOAD_NODES:
+            return {...state, nodesLoading: true};
+        case LOAD_NODES_COMPLETED:
+            return {...state, nodesLoading: false, nodes: action.data || []};
         default:
             return state;
     }

@@ -58,4 +58,20 @@ public interface DeploymentService {
     DeploymentConfigEntity rollback(Long projectId, String packageId,
                                      String targetGitTag, String targetVersion,
                                      String execEnv, String deployUser);
+
+    /**
+     * Deploy a package version to all executor nodes in a specific node group.
+     *
+     * @param projectId  project ID
+     * @param packageId  package identifier
+     * @param gitTag     Git tag for the version
+     * @param version    human-readable version number
+     * @param execEnv    target environment
+     * @param nodeGroup  target node group (e.g., "canary")
+     * @param deployUser user who triggered the deployment
+     * @return list of created deployment config entities
+     */
+    List<DeploymentConfigEntity> deployToGroup(Long projectId, String packageId, String gitTag,
+                                                String version, String execEnv,
+                                                String nodeGroup, String deployUser);
 }

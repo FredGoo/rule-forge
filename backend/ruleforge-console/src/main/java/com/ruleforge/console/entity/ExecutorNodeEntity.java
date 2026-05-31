@@ -15,6 +15,7 @@ public class ExecutorNodeEntity {
     private String nodeName;
     private String nodeUrl;
     private String execEnv;
+    private String nodeGroup;
     private String status;
     private Date lastHeartbeat;
     private Date createTime;

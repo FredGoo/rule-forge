@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -94,6 +95,27 @@ public class DeploymentServiceImpl implements DeploymentService {
                                             String execEnv, String deployUser) {
         return deploy(projectId, packageId, targetGitTag, targetVersion,
                 envOrDefault(execEnv), null, deployUser);
+    }
+
+    @Override
+    public List<DeploymentConfigEntity> deployToGroup(Long projectId, String packageId, String gitTag,
+                                                       String version, String execEnv,
+                                                       String nodeGroup, String deployUser) {
+        List<ExecutorNodeEntity> nodes = runtimeRepository.findActiveNodesByGroup(execEnv, nodeGroup);
+        if (nodes.isEmpty()) {
+            throw new IllegalStateException("No active nodes found in group [" + nodeGroup + "] for env [" + execEnv + "]");
+        }
+
+        String env = envOrDefault(execEnv);
+        List<DeploymentConfigEntity> results = new ArrayList<>();
+        for (ExecutorNodeEntity node : nodes) {
+            DeploymentConfigEntity config = deploy(projectId, packageId, gitTag, version,
+                    env, node.getId(), deployUser);
+            results.add(config);
+        }
+        log.info("Deployed package [{}/{}] version [{}] to group [{}] in env [{}] ({} nodes)",
+                projectId, packageId, version, nodeGroup, env, nodes.size());
+        return results;
     }
 
     private String envOrDefault(String execEnv) {
