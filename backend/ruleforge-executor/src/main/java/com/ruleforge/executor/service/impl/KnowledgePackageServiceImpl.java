@@ -42,11 +42,18 @@ public class KnowledgePackageServiceImpl implements KnowledgePackageService {
         String packageId = info[1];
         String projectVersion = "";
 
+        // 检查灰度版本覆盖
+        String grayVersionOverride = GrayVersionContext.get();
+
         List<Map<String, Object>> packageList = sendRequest(project);
         ResourceBase resourceBase = this.knowledgeBuilder.newResourceBase();
         for (Map<String, Object> item : packageList) {
             if (packageId.equals(item.get("id"))) {
-                if (item.get("testVersion") != null) {
+                if (grayVersionOverride != null) {
+                    // 灰度路由: 使用灰度策略指定的版本
+                    projectVersion = grayVersionOverride;
+                    log.info("灰度版本覆盖: packageId={}, grayVersion={}", packageId, grayVersionOverride);
+                } else if (item.get("testVersion") != null) {
                     projectVersion = item.get("testVersion").toString();
                 } else {
                     projectVersion = "LATEST";

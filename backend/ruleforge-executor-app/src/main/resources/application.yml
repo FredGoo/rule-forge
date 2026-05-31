@@ -6,9 +6,43 @@ spring:
     allow-circular-references: true
   application:
     name: ruleforge-executor
+  datasource:
+    ruleforge:
+      jdbcUrl: ${RF_DB_URL:jdbc:mysql://192.168.3.36:3306/ruleforge_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true}
+      username: ${RF_DB_USERNAME:root}
+      password: ${RF_DB_PASSWORD:}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 10
+        minimum-idle: 2
+        connection-timeout: 60000
+        idle-timeout: 300000
+        max-lifetime: 1200000
+        leak-detection-threshold: 30000
+        validation-timeout: 3000
+        connection-test-query: SELECT 1
+        pool-name: ExecutorCloudSqlCP
 
 ruleforge:
   knowledgeUpdateCycleV2: 300
   isKnowledgeUpdateRemoteV2: true
   console:
     url: ${CONSOLE_URL:http://localhost:8180}
+
+flowable:
+  datasource: ruleforge
+  database-schema-update: true
+  async-executor-activate: false
+
+# 延迟加载配置
+lazy-load:
+  enabled: true
+  base-url: ${LAZY_LOAD_BASE_URL:}
+  timeout: 5000
+
+logging:
+  file:
+    name: ${LOG_FILE:/tmp/ruleforge-executor.log}
+  level:
+    root: INFO
+    com.ruleforge: DEBUG

@@ -47,12 +47,14 @@ class ReleasePanel extends Component {
                 this.props.dispatch(action.loadEnvironments(projectName));
             } else if (tab === 'nodes') {
                 this.props.dispatch(action.loadNodes());
+            } else if (tab === 'gray') {
+                this.props.dispatch(action.loadGrayStrategies());
             }
         }
     }
 
     render() {
-        const {activeTab, environments, approvals, deploymentHistory, environmentsLoading} = this.props;
+        const {activeTab, environments, approvals, deploymentHistory, environmentsLoading, grayStrategies, grayStrategiesLoading} = this.props;
         const {projectName} = this.state;
 
         const tabs = [
@@ -60,6 +62,7 @@ class ReleasePanel extends Component {
             {id: 'approvals', label: '审批流程', icon: 'glyphicon glyphicon-check'},
             {id: 'history', label: '部署历史', icon: 'glyphicon glyphicon-time'},
             {id: 'nodes', label: '节点管理', icon: 'glyphicon glyphicon-hdd'},
+            {id: 'gray', label: '灰度策略', icon: 'glyphicon glyphicon-random'},
         ];
 
         return (
@@ -101,6 +104,8 @@ class ReleasePanel extends Component {
                         this.renderApprovals(approvals)
                     ) : activeTab === 'nodes' ? (
                         this.renderNodes(this.props.nodes)
+                    ) : activeTab === 'gray' ? (
+                        this.renderGrayStrategies(grayStrategies, grayStrategiesLoading)
                     ) : (
                         this.renderHistory(deploymentHistory)
                     )}
@@ -356,6 +361,131 @@ class ReleasePanel extends Component {
                         }}>
                             <span className="glyphicon glyphicon-upload" style={{marginRight: 4}}/>
                             灰度部署
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    renderGrayStrategies(strategies, loading) {
+        if (loading) return <div style={{textAlign: 'center', padding: 20}}>加载中...</div>;
+
+        const typeLabels = {PERCENT_USER: '用户比例', PERCENT_RANDOM: '随机比例', WHITELIST: '白名单'};
+
+        return (
+            <div>
+                {/* Strategy list */}
+                {(!strategies || strategies.length === 0) ? (
+                    <div style={{textAlign: 'center', padding: 40, color: '#999'}}>
+                        <p>暂无灰度策略</p>
+                        <p style={{fontSize: 12}}>点击下方按钮创建灰度策略</p>
+                    </div>
+                ) : (
+                    <table className="table table-condensed" style={{fontSize: 13}}>
+                        <thead>
+                            <tr>
+                                <th>策略名称</th>
+                                <th>类型</th>
+                                <th>包ID</th>
+                                <th>灰度版本</th>
+                                <th>基准版本</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {strategies.map((s, idx) => (
+                                <tr key={s.id || idx}>
+                                    <td>{s.strategyName}</td>
+                                    <td>
+                                        <span style={{
+                                            display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 11,
+                                            background: '#e3f2fd', color: '#1565c0'
+                                        }}>
+                                            {typeLabels[s.strategyType] || s.strategyType}
+                                        </span>
+                                    </td>
+                                    <td style={{fontSize: 11}}>{s.packageId}</td>
+                                    <td style={{fontSize: 11, color: '#e65100'}}>{s.targetGitTag}</td>
+                                    <td style={{fontSize: 11}}>{s.baselineGitTag}</td>
+                                    <td>
+                                        <span style={{
+                                            display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 11,
+                                            background: s.enabled ? '#e8f5e9' : '#ffebee',
+                                            color: s.enabled ? '#2e7d32' : '#c62828'
+                                        }}>
+                                            {s.enabled ? '启用' : '停用'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button className="btn btn-xs" style={{marginRight: 4, fontSize: 11}}
+                                                onClick={() => this.props.dispatch(action.toggleGrayStrategy(
+                                                    s.id, !s.enabled, s.projectId, s.packageId))}>
+                                            {s.enabled ? '停用' : '启用'}
+                                        </button>
+                                        <button className="btn btn-danger btn-xs" style={{fontSize: 11}}
+                                                onClick={() => this.props.dispatch(action.deleteGrayStrategy(
+                                                    s.id, s.projectId, s.packageId))}>
+                                            删除
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+
+                {/* Create form */}
+                <div style={{marginTop: 15, padding: 15, border: '1px solid #e0e0e0', borderRadius: 4, background: '#fafafa'}}>
+                    <h6 style={{margin: '0 0 10px 0', fontWeight: 600}}>新建灰度策略</h6>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+                        <div style={{display: 'flex', gap: 8}}>
+                            <input id="gray-name" placeholder="策略名称" style={{flex: 1, padding: '4px 8px', fontSize: 13, border: '1px solid #ddd', borderRadius: 3}}/>
+                            <select id="gray-type" style={{padding: '4px 8px', fontSize: 13, border: '1px solid #ddd', borderRadius: 3}}>
+                                <option value="PERCENT_USER">用户比例</option>
+                                <option value="PERCENT_RANDOM">随机比例</option>
+                                <option value="WHITELIST">白名单</option>
+                            </select>
+                        </div>
+                        <div style={{display: 'flex', gap: 8}}>
+                            <input id="gray-package" placeholder="包ID" style={{flex: 1, padding: '4px 8px', fontSize: 13, border: '1px solid #ddd', borderRadius: 3}}/>
+                            <input id="gray-percent" placeholder="灰度百分比 (0-100)" type="number" min="0" max="100"
+                                   style={{width: 160, padding: '4px 8px', fontSize: 13, border: '1px solid #ddd', borderRadius: 3}}/>
+                        </div>
+                        <div>
+                            <input id="gray-whitelist" placeholder="白名单用户ID (逗号分隔, 仅白名单类型)" style={{width: '100%', padding: '4px 8px', fontSize: 13, border: '1px solid #ddd', borderRadius: 3}}/>
+                        </div>
+                        <div style={{display: 'flex', gap: 8}}>
+                            <input id="gray-target" placeholder="目标版本 git tag" style={{flex: 1, padding: '4px 8px', fontSize: 13, border: '1px solid #ddd', borderRadius: 3}}/>
+                            <input id="gray-baseline" placeholder="基准版本 git tag" style={{flex: 1, padding: '4px 8px', fontSize: 13, border: '1px solid #ddd', borderRadius: 3}}/>
+                        </div>
+                        <button className="btn btn-primary btn-sm" onClick={() => {
+                            const name = document.getElementById('gray-name').value;
+                            const type = document.getElementById('gray-type').value;
+                            const packageId = document.getElementById('gray-package').value;
+                            const percent = document.getElementById('gray-percent').value;
+                            const whitelist = document.getElementById('gray-whitelist').value;
+                            const target = document.getElementById('gray-target').value;
+                            const baseline = document.getElementById('gray-baseline').value;
+                            if (!name || !packageId || !target || !baseline) {
+                                window.bootbox.alert('请填写策略名称、包ID、目标版本和基准版本');
+                                return;
+                            }
+                            this.props.dispatch(action.createGrayStrategy({
+                                strategyName: name,
+                                strategyType: type,
+                                packageId,
+                                projectId: 1,
+                                grayPercent: percent ? parseInt(percent) : 0,
+                                whitelist: whitelist || null,
+                                targetGitTag: target,
+                                baselineGitTag: baseline,
+                                enabled: true
+                            }));
+                        }}>
+                            <span className="glyphicon glyphicon-plus" style={{marginRight: 4}}/>
+                            创建策略
                         </button>
                     </div>
                 </div>

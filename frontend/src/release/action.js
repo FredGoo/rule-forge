@@ -6,6 +6,8 @@ const LOAD_DEPLOYMENT_HISTORY = 'release_load_deployment_history';
 const LOAD_DEPLOYMENT_HISTORY_COMPLETED = 'release_load_deployment_history_completed';
 const LOAD_NODES = 'LOAD_NODES';
 const LOAD_NODES_COMPLETED = 'LOAD_NODES_COMPLETED';
+const LOAD_GRAY_STRATEGIES = 'LOAD_GRAY_STRATEGIES';
+const LOAD_GRAY_STRATEGIES_COMPLETED = 'LOAD_GRAY_STRATEGIES_COMPLETED';
 const SET_TAB = 'release_set_tab';
 
 export function loadEnvironments(projectName) {
@@ -201,10 +203,72 @@ export function setTab(tab) {
     return {type: SET_TAB, tab};
 }
 
+export function loadGrayStrategies(projectId, packageId) {
+    return function (dispatch) {
+        dispatch({type: LOAD_GRAY_STRATEGIES});
+        const params = new URLSearchParams();
+        if (projectId) params.append('projectId', projectId);
+        if (packageId) params.append('packageId', packageId);
+        fetch(window._server + '/gray/strategies?' + params.toString())
+        .then(resp => { if (!resp.ok) throw resp; return resp.json(); })
+        .then(data => dispatch({type: LOAD_GRAY_STRATEGIES_COMPLETED, data}))
+        .catch(err => {
+            console.error('加载灰度策略失败', err);
+            dispatch({type: LOAD_GRAY_STRATEGIES_COMPLETED, data: []});
+        });
+    };
+}
+
+export function createGrayStrategy(strategy) {
+    return function (dispatch, getState) {
+        fetch(window._server + '/gray/strategies', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(strategy)
+        })
+        .then(resp => { if (!resp.ok) throw resp; return resp.json(); })
+        .then(() => {
+            window.bootbox.alert('策略创建成功');
+            const state = getState();
+            dispatch(loadGrayStrategies(strategy.projectId, strategy.packageId));
+        })
+        .catch(err => {
+            console.error('创建灰度策略失败', err);
+            window.bootbox.alert('创建失败');
+        });
+    };
+}
+
+export function deleteGrayStrategy(id, projectId, packageId) {
+    return function (dispatch) {
+        window.bootbox.confirm('确认删除该灰度策略？', (ok) => {
+            if (!ok) return;
+            fetch(window._server + '/gray/strategies/' + id, {method: 'DELETE'})
+            .then(resp => { if (!resp.ok) throw resp; return resp.json(); })
+            .then(() => dispatch(loadGrayStrategies(projectId, packageId)))
+            .catch(err => console.error('删除灰度策略失败', err));
+        });
+    };
+}
+
+export function toggleGrayStrategy(id, enabled, projectId, packageId) {
+    return function (dispatch) {
+        fetch(window._server + '/gray/strategies/' + id + '/toggle', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({enabled})
+        })
+        .then(resp => { if (!resp.ok) throw resp; return resp.json(); })
+        .then(() => dispatch(loadGrayStrategies(projectId, packageId)))
+        .catch(err => console.error('切换灰度策略状态失败', err));
+    };
+}
+
 export {
     LOAD_ENVIRONMENTS, LOAD_ENVIRONMENTS_COMPLETED,
     LOAD_APPROVALS, LOAD_APPROVALS_COMPLETED,
     LOAD_DEPLOYMENT_HISTORY, LOAD_DEPLOYMENT_HISTORY_COMPLETED,
     LOAD_NODES, LOAD_NODES_COMPLETED,
+    LOAD_GRAY_STRATEGIES, LOAD_GRAY_STRATEGIES_COMPLETED,
     SET_TAB
 };

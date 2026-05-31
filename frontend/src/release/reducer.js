@@ -3,6 +3,7 @@ import {
     LOAD_APPROVALS, LOAD_APPROVALS_COMPLETED,
     LOAD_DEPLOYMENT_HISTORY, LOAD_DEPLOYMENT_HISTORY_COMPLETED,
     LOAD_NODES, LOAD_NODES_COMPLETED,
+    LOAD_GRAY_STRATEGIES, LOAD_GRAY_STRATEGIES_COMPLETED,
     SET_TAB
 } from './action';
 
@@ -16,6 +17,8 @@ const initialState = {
     historyLoading: false,
     nodes: [],
     nodesLoading: false,
+    grayStrategies: [],
+    grayStrategiesLoading: false,
 };
 
 export default function (state = initialState, action) {
@@ -38,6 +41,10 @@ export default function (state = initialState, action) {
             return {...state, nodesLoading: true};
         case LOAD_NODES_COMPLETED:
             return {...state, nodesLoading: false, nodes: action.data || []};
+        case LOAD_GRAY_STRATEGIES:
+            return {...state, grayStrategiesLoading: true};
+        case LOAD_GRAY_STRATEGIES_COMPLETED:
+            return {...state, grayStrategiesLoading: false, grayStrategies: action.data || []};
         default:
             return state;
     }

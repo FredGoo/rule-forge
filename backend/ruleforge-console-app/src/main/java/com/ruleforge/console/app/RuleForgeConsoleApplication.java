@@ -6,7 +6,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 
 @SpringBootApplication
-@ComponentScan(basePackages = "com.ruleforge.console")
+@ComponentScan(basePackages = {"com.ruleforge.console", "com.ruleforge.decision"})
 public class RuleForgeConsoleApplication {
 
     public static void main(String[] args) {
