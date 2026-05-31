@@ -45,7 +45,7 @@ export function createNewFile(newFileName, fileType, parentNodeData) {
         }).then(function(response) {
             if (!response.ok) throw response;
             return response.json();
-        }).then(function (newFileInfo) {
+        }).then(function () {
             event.eventEmitter.emit(event.CLOSE_CREATE_FILE_DIALOG);
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
             // Reload tree to show the new file, expanding the parent folder
@@ -85,7 +85,7 @@ export function rename(path, newPath) {
     }
 }
 
-export function createNewProject(newProjectName, parentNodeData) {
+export function createNewProject(newProjectName) {
     return function (dispatch) {
         const url = window._server + '/frame/createProject';
         fetch(url, {
@@ -124,7 +124,7 @@ export function createNewFolder(newFolderName, parentNodeData) {
         }).then(function(response) {
             if (!response.ok) throw response;
             return response.json();
-        }).then(function (data) {
+        }).then(function () {
             event.eventEmitter.emit(event.CLOSE_CREATE_FOLDER_DIALOG);
             componentEvent.eventEmitter.emit(componentEvent.HIDE_LOADING);
             dispatch(loadData(true, window._projectName, null));
@@ -462,7 +462,7 @@ function buildData() {
                 data.contextMenu.push({
                         name: '导入项目',
                         icon: 'rf rf-import',
-                        click: function (e) {
+                        click: function () {
                             event.eventEmitter.emit(event.OPEN_IMPORT_PROJECT_DIALOG);
                         }
                     }
@@ -482,7 +482,7 @@ function buildData() {
                 {
                     name: '删除项目',
                     icon: 'rf rf-remove',
-                    click: function (data, dispatch) {
+                    click: function (data) {
                         bootbox.confirm("此操作将删除" + data.name + "项目及其下所有文件，你确定要这样做吗？", function (result) {
                             if (!result) {
                                 return;
@@ -496,7 +496,7 @@ function buildData() {
                 data.contextMenu.push({
                         name: '导出项目备份',
                         icon: 'rf rf-export',
-                        click: function (data, dispatch) {
+                        click: function (data) {
                             bootbox.confirm("真的要导出项目" + data.name + "的备份文件吗？", function (result) {
                                 if (!result) {
                                     return;
@@ -530,14 +530,14 @@ function buildData() {
                 {
                     name: '查看源码',
                     icon: 'rf rf-code',
-                    click: function (data, dispatch) {
+                    click: function (data) {
                         seeFileSource(data);
                     }
                 },
                 {
                     name: '查看版本信息',
                     icon: 'rf rf-version',
-                    click: function (data, dispatch) {
+                    click: function (data) {
                         data['rpp'] = data['fullPath'].split('/')[1];
                         data['page'] = 1;
                         seeFileVersions(data);
@@ -582,7 +582,7 @@ function buildData() {
                 {
                     name: '添加目录',
                     icon: Styles.frameStyle.getFolderIcon(),
-                    click: function (data, dispatch) {
+                    click: function (data) {
                         event.eventEmitter.emit(event.OPEN_CREATE_FOLDER_DIALOG, {nodeData: data})
                     }
                 },
@@ -616,7 +616,7 @@ function buildData() {
                 {
                     name: '添加目录',
                     icon: Styles.frameStyle.getFolderIcon(),
-                    click: function (data, dispatch) {
+                    click: function (data) {
                         event.eventEmitter.emit(event.OPEN_CREATE_FOLDER_DIALOG, {nodeData: data})
                     }
                 },
@@ -643,7 +643,7 @@ function buildData() {
                 {
                     name: '添加目录',
                     icon: Styles.frameStyle.getFolderIcon(),
-                    click: function (data, dispatch) {
+                    click: function (data) {
                         event.eventEmitter.emit(event.OPEN_CREATE_FOLDER_DIALOG, {nodeData: data})
                     }
                 },
@@ -663,7 +663,7 @@ function buildData() {
                 {
                     name: '添加目录',
                     icon: Styles.frameStyle.getFolderIcon(),
-                    click: function (data, dispatch) {
+                    click: function (data) {
                         event.eventEmitter.emit(event.OPEN_CREATE_FOLDER_DIALOG, {nodeData: data})
                     }
                 },
@@ -683,7 +683,7 @@ function buildData() {
                 {
                     name: '添加目录',
                     icon: Styles.frameStyle.getFolderIcon(),
-                    click: function (data, dispatch) {
+                    click: function (data) {
                         event.eventEmitter.emit(event.OPEN_CREATE_FOLDER_DIALOG, {nodeData: data})
                     }
                 },
@@ -764,7 +764,7 @@ function buildData() {
     }
     var children = data.children;
     if (children) {
-        children.forEach((child, index) => {
+        children.forEach((child) => {
             if (arguments.length === 3) {
                 buildData(child, level, arguments[2]);
             } else {
@@ -779,35 +779,35 @@ function buildLibContextMenu() {
         {
             name: '添加目录',
             icon: Styles.frameStyle.getFolderIcon(),
-            click: function (data, dispatch) {
+            click: function (data) {
                 event.eventEmitter.emit(event.OPEN_CREATE_FOLDER_DIALOG, {nodeData: data})
             }
         },
         {
             name: '添加变量库',
             icon: Styles.frameStyle.getVariableIcon(),
-            click: function (data, dispatch) {
+            click: function (data) {
                 event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'vl.xml', nodeData: data})
             }
         },
         {
             name: '添加常量库',
             icon: Styles.frameStyle.getConstantIcon(),
-            click: function (data, dispatch) {
+            click: function (data) {
                 event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'cl.xml', nodeData: data})
             }
         },
         {
             name: '添加参数库',
             icon: Styles.frameStyle.getParameterIcon(),
-            click: function (data, dispatch) {
+            click: function (data) {
                 event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'pl.xml', nodeData: data})
             }
         },
         {
             name: '添加动作库',
             icon: Styles.frameStyle.getActionIcon(),
-            click: function (data, dispatch) {
+            click: function (data) {
                 event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'al.xml', nodeData: data})
             }
         }
@@ -818,7 +818,7 @@ function buildFullContextMenu(isFolder, folderType) {
     const menus = [{
         name: isFolder ? '添加子目录' : '添加目录',
         icon: Styles.frameStyle.getFolderIcon(),
-        click: function (data, dispatch) {
+        click: function (data) {
             event.eventEmitter.emit(event.OPEN_CREATE_FOLDER_DIALOG, {nodeData: data})
         }
     }];
@@ -828,28 +828,28 @@ function buildFullContextMenu(isFolder, folderType) {
             {
                 name: '添加变量库',
                 icon: Styles.frameStyle.getVariableIcon(),
-                click: function (data, dispatch) {
+                click: function (data) {
                     event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'vl.xml', nodeData: data})
                 }
             },
             {
                 name: '添加常量库',
                 icon: Styles.frameStyle.getConstantIcon(),
-                click: function (data, dispatch) {
+                click: function (data) {
                     event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'cl.xml', nodeData: data})
                 }
             },
             {
                 name: '添加参数库',
                 icon: Styles.frameStyle.getParameterIcon(),
-                click: function (data, dispatch) {
+                click: function (data) {
                     event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'pl.xml', nodeData: data})
                 }
             },
             {
                 name: '添加动作库',
                 icon: Styles.frameStyle.getActionIcon(),
-                click: function (data, dispatch) {
+                click: function (data) {
                     event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'al.xml', nodeData: data})
                 }
             }
@@ -864,21 +864,21 @@ function buildFullContextMenu(isFolder, folderType) {
             {
                 name: '添加向导式决策集',
                 icon: Styles.frameStyle.getRuleIcon(),
-                click: function (data, dispatch) {
+                click: function (data) {
                     event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'rs.xml', nodeData: data})
                 }
             },
             {
                 name: '添加向导式决策库',
                 icon: Styles.frameStyle.getRuleIcon(),
-                click: function (data, dispatch) {
+                click: function (data) {
                     event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'rsl.xml', nodeData: data})
                 }
             },
             {
                 name: '添加脚本式决策集',
                 icon: Styles.frameStyle.getUlIcon(),
-                click: function (data, dispatch) {
+                click: function (data) {
                     event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'ul', nodeData: data})
                 }
             }
@@ -893,14 +893,14 @@ function buildFullContextMenu(isFolder, folderType) {
             {
                 name: '添加决策表',
                 icon: Styles.frameStyle.getDecisionTableIcon(),
-                click: function (data, dispatch) {
+                click: function (data) {
                     event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'dt.xml', nodeData: data})
                 }
             },
             {
                 name: '添加交叉决策表',
                 icon: Styles.frameStyle.getCrossDecisionTableIcon(),
-                click: function (data, dispatch) {
+                click: function (data) {
                     event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'ct.xml', nodeData: data})
                 }
             }
@@ -914,7 +914,7 @@ function buildFullContextMenu(isFolder, folderType) {
         menus.push({
             name: '添加决策树',
             icon: Styles.frameStyle.getDecisionTreeIcon(),
-            click: function (data, dispatch) {
+            click: function (data) {
                 event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'dtree.xml', nodeData: data})
             }
         });
@@ -927,7 +927,7 @@ function buildFullContextMenu(isFolder, folderType) {
         menus.push({
             name: '添加评分卡',
             icon: Styles.frameStyle.getScorecardIcon(),
-            click: function (data, dispatch) {
+            click: function (data) {
                 event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'sc', nodeData: data})
             }
         });
@@ -936,7 +936,7 @@ function buildFullContextMenu(isFolder, folderType) {
         menus.push({
             name: '添加决策流',
             icon: Styles.frameStyle.getFlowIcon(),
-            click: function (data, dispatch) {
+            click: function (data) {
                 event.eventEmitter.emit(event.OPEN_CREATE_FILE_DIALOG, {fileType: 'rl.xml', nodeData: data})
             }
         });
@@ -950,7 +950,7 @@ function buildFullContextMenu(isFolder, folderType) {
             {
                 name: '删除',
                 icon: 'rf rf-remove',
-                click: function (data, dispatch) {
+                click: function (data) {
                     bootbox.confirm("删除目录[" + data.name + "],将会同时删除其下所有子目录及文件，确认吗？", function (result) {
                         if (!result) {
                             return;
@@ -962,21 +962,21 @@ function buildFullContextMenu(isFolder, folderType) {
             {
                 name: '修改目录名',
                 icon: 'rf rf-rename',
-                click: function (data, dispatch) {
+                click: function (data) {
                     event.eventEmitter.emit(event.SHOW_RENAME_DIALOG, data);
                 }
             },
             {
                 name: '锁定目录',
                 icon: 'rf rf-lock',
-                click: function (data, dispatch) {
+                click: function (data) {
                     lockFile(data.fullPath, dispatch);
                 }
             },
             {
                 name: '解锁目录',
                 icon: 'rf rf-unlock',
-                click: function (data, dispatch) {
+                click: function (data) {
                     unlockFile(data.fullPath, dispatch);
                 }
             }
@@ -993,7 +993,7 @@ function buildPasteMenuItem() {
     return {
         name: '粘贴文件',
         icon: 'rf rf-paste',
-        click: function (data, dispatch) {
+        click: function (data) {
             let sourceFileData = window.___cutFileData, copy = false;
             if (!sourceFileData) {
                 sourceFileData = window.___copyFileData;
@@ -1047,14 +1047,14 @@ function buildFileContextMenu() {
         {
             name: '查看源码',
             icon: 'rf rf-code',
-            click: function (data, dispatch) {
+            click: function (data) {
                 seeFileSource(data);
             }
         },
         {
             name: '查看版本信息',
             icon: 'rf rf-version',
-            click: function (data, dispatch) {
+            click: function (data) {
                 data['page'] = 1;
                 seeFileVersions(data);
             }
@@ -1062,7 +1062,7 @@ function buildFileContextMenu() {
         {
             name: '删除文件',
             icon: 'rf rf-remove',
-            click: function (data, dispatch) {
+            click: function (data) {
                 bootbox.confirm("真的要删除[" + data.name + "]文件吗？", function (result) {
                     if (!result) {
                         return;
@@ -1074,14 +1074,14 @@ function buildFileContextMenu() {
         {
             name: '修改文件名',
             icon: 'rf rf-rename',
-            click: function (data, dispatch) {
+            click: function (data) {
                 event.eventEmitter.emit(event.SHOW_RENAME_DIALOG, data);
             }
         },
         {
             name: '复制文件',
             icon: 'rf rf-copy',
-            click: function (data, dispatch) {
+            click: function (data) {
                 window.___copyFileData = data;
                 window.___cutFileData = null;
             }
@@ -1089,7 +1089,7 @@ function buildFileContextMenu() {
         {
             name: '剪切文件',
             icon: 'rf rf-cut',
-            click: function (data, dispatch) {
+            click: function (data) {
                 window.___cutFileData = data;
                 window.___copyFileData = null;
             }
@@ -1097,14 +1097,14 @@ function buildFileContextMenu() {
         {
             name: '锁定文件',
             icon: 'rf rf-lock',
-            click: function (data, dispatch) {
+            click: function (data) {
                 lockFile(data.fullPath, dispatch);
             }
         },
         {
             name: '解锁文件',
             icon: 'rf rf-unlock',
-            click: function (data, dispatch) {
+            click: function (data) {
                 unlockFile(data.fullPath, dispatch);
             }
         }
@@ -1228,7 +1228,7 @@ function projectDelete(item, dispatch, isFolder) {
         }).then(function(response) {
             if (!response.ok) throw response;
             return response.json();
-        }).then(function (data) {
+        }).then(function () {
             if (!isFolder) {
                 dispatch({data: item, type: DEL});
             } else {
@@ -1260,7 +1260,7 @@ function fileDelete(item, dispatch, isFolder) {
         }).then(function(response) {
             if (!response.ok) throw response;
             return response.json();
-        }).then(function (data) {
+        }).then(function () {
             if (!isFolder) {
                 dispatch({data: item, type: DEL});
             } else {
