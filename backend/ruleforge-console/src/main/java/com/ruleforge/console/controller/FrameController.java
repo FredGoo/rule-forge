@@ -2,9 +2,13 @@ package com.ruleforge.console.controller;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.ruleforge.Utils;
 import com.ruleforge.console.EnvironmentProvider;
+import com.ruleforge.console.entity.ProjectEntity;
+import com.ruleforge.console.entity.ProjectRuntimeFlowEntity;
+import com.ruleforge.console.entity.ProjectVersionEntity;
+import com.ruleforge.console.repository.data.ProjectRepository;
+import com.ruleforge.console.repository.data.RuntimeRepository;
 import com.ruleforge.console.repository.model.FileType;
 import com.ruleforge.console.repository.model.RepositoryFile;
 import com.ruleforge.console.repository.model.Type;
@@ -13,15 +17,10 @@ import com.ruleforge.console.servlet.RequestContext;
 import com.ruleforge.console.servlet.frame.ExportProject;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.runtime.cache.CacheUtils;
-import com.ruleforge.console.entity.ProjectEntity;
-import com.ruleforge.console.entity.ProjectRuntimeFlowEntity;
-import com.ruleforge.console.entity.ProjectVersionEntity;
-import com.ruleforge.console.mapper.ProjectMapper;
-import com.ruleforge.console.mapper.ProjectRuntimeFlowMapper;
-import com.ruleforge.console.mapper.ProjectVersionMapper;
 import com.ruleforge.console.model.Repository;
 import com.ruleforge.console.model.User;
 import com.ruleforge.console.service.RuleForgeRepositoryService;
+import com.ruleforge.console.storage.GitStorageService;
 import com.ruleforge.console.util.EnvironmentUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -74,9 +73,9 @@ public class FrameController extends BaseController {
     private static final String CLASSIFY_COOKIE_NAME = "_lib_classify";
     private final RuleForgeRepositoryService ruleforgeRepositoryService;
     private final EnvironmentProvider environmentProvider;
-    private final ProjectMapper projectMapper;
-    private final ProjectVersionMapper projectVersionMapper;
-    private final ProjectRuntimeFlowMapper projectRuntimeFlowMapper;
+    private final ProjectRepository projectRepository;
+    private final RuntimeRepository runtimeRepository;
+    private final GitStorageService gitStorageService;
 
     @PostMapping("/loadProjects")
     public Map<String, Object> loadProjects(@RequestParam(value = "projectName", required = false) String projectName,
@@ -125,7 +124,8 @@ public class FrameController extends BaseController {
     @PostMapping("/fileSource")
     public Map<String, Object> fileSource(@RequestParam("path") String path,
                                           @RequestParam(required = false) String env,
-                                          @RequestParam(required = false) String projectVersion) throws Exception {
+                                          @RequestParam(required = false) String projectVersion,
+                                          @RequestParam(required = false) String gitTag) throws Exception {
         path = Utils.decodeURL(path);
         String[] subpaths = path.split(":");
         path = Utils.decodeURL(subpaths[0]);
@@ -134,7 +134,20 @@ public class FrameController extends BaseController {
             version = subpaths[1];
         }
         InputStream inputStream;
-        if (StringUtils.hasText(env)) {
+
+        // If gitTag is provided, read directly from Git by tag
+        if (StringUtils.hasText(gitTag)) {
+            String projectName = extractProjectNameFromPath(path);
+            if (projectName != null && gitStorageService.repoExists(projectName)) {
+                String gitPath = path.startsWith("/") ? path.substring(1) : path;
+                inputStream = gitStorageService.readFileStream(projectName, gitTag, gitPath);
+                if (inputStream == null) {
+                    throw new RuleException("File [" + path + "] not found at Git tag [" + gitTag + "]");
+                }
+            } else {
+                throw new RuleException("Git repository not found for project in path [" + path + "]");
+            }
+        } else if (StringUtils.hasText(env)) {
             inputStream = this.ruleforgeRepositoryService.readFile(path, version, projectVersion, false);
         } else {
             inputStream = this.ruleforgeRepositoryService.readFile(path, version);
@@ -179,10 +192,7 @@ public class FrameController extends BaseController {
         if (!CollectionUtils.isEmpty(versionList)) {
             // todo
             VersionFile versionFile = files.get(0);
-            LambdaQueryWrapper<ProjectRuntimeFlowEntity> lambdaQueryWrapper = new LambdaQueryWrapper<ProjectRuntimeFlowEntity>()
-                    .eq(ProjectRuntimeFlowEntity::getProjectId, versionFile.getProjectId())
-                    .in(ProjectRuntimeFlowEntity::getProjectVersion, versionList);
-            List<ProjectRuntimeFlowEntity> projectRuntimeFlowEntities = projectRuntimeFlowMapper.selectList(lambdaQueryWrapper);
+            List<ProjectRuntimeFlowEntity> projectRuntimeFlowEntities = runtimeRepository.findFlowsByProjectIdAndVersions(versionFile.getProjectId(), versionList);
             if (!CollectionUtils.isEmpty(projectRuntimeFlowEntities)) {
                 testVersionAuditStatusMap.putAll(projectRuntimeFlowEntities
                         .stream()
@@ -443,12 +453,8 @@ public class FrameController extends BaseController {
             tOut.write(bytes, 0, bytes.length);
             tOut.closeArchiveEntry();
             // todo
-            LambdaQueryWrapper<ProjectEntity> projectEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectEntity>()
-                    .eq(ProjectEntity::getName, projectName);
-            ProjectEntity projectEntity = this.projectMapper.selectOne(projectEntityLambdaQueryWrapper);
-            LambdaQueryWrapper<ProjectVersionEntity> projectVersionEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectVersionEntity>()
-                    .eq(ProjectVersionEntity::getProjectId, projectEntity.getId());
-            List<ProjectVersionEntity> projectVersionEntityList = this.projectVersionMapper.selectList(projectVersionEntityLambdaQueryWrapper);
+            ProjectEntity projectEntity = this.projectRepository.findByName(projectName);
+            List<ProjectVersionEntity> projectVersionEntityList = this.projectRepository.findVersionsByProjectId(projectEntity.getId(), null, false);
             bytes = JSON.toJSONString(projectVersionEntityList).getBytes();
             tarEntry = new TarArchiveEntry("projectVersion.json");
             tarEntry.setSize(bytes.length);
@@ -557,7 +563,7 @@ public class FrameController extends BaseController {
                         version.setProjectId(projectId); // 设置为当前项目的 ID
                         version.setId(null); // 将 ID 设置为 null，以便 MybatisPlus 自动生成新的 ID
                     }
-                    this.projectVersionMapper.insertBatchSomeColumn(projectVersionEntityList);
+                    this.projectRepository.batchInsertVersions(projectVersionEntityList);
                 }
 
             } catch (Exception e) {
@@ -839,6 +845,16 @@ public class FrameController extends BaseController {
         String newPath = req.getParameter("newPath");
         newPath = Utils.decodeURL(newPath);
         this.ruleforgeRepositoryService.fileRename(path, newPath);
+    }
+
+    /**
+     * Extract project name from a file path like "/projectName/folder/file.xml".
+     */
+    private String extractProjectNameFromPath(String path) {
+        if (path == null || path.isEmpty()) return null;
+        String cleaned = path.startsWith("/") ? path.substring(1) : path;
+        int slash = cleaned.indexOf('/');
+        return slash > 0 ? cleaned.substring(0, slash) : cleaned;
     }
 
 }

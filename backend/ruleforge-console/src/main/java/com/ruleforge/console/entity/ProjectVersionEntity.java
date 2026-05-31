@@ -20,4 +20,6 @@ public class ProjectVersionEntity {
     private Date createTime;
     private String createUser;
     private String comment;
+    private String gitCommitSha;
+    private String gitBranch;
 }

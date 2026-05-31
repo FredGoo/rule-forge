@@ -18,6 +18,7 @@ public class FileVersionEntity {
     private String filePath;
     private String fileName;
     private String fileContent;
+    private String gitCommitSha;
     private String fileComment;
     private String versionNum;
     private Long versionNumReal;

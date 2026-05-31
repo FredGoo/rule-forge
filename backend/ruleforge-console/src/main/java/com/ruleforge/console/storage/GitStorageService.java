@@ -1,97 +1,133 @@
 package com.ruleforge.console.storage;
 
-import com.ruleforge.console.model.User;
+import com.ruleforge.console.storage.model.FileDiff;
+import com.ruleforge.console.storage.model.MergeResult;
 
-import java.io.File;
+import java.io.InputStream;
 import java.util.List;
 
 /**
- * Git 本地操作服务接口
+ * Git-based version storage service.
+ * Operates on per-project Git repositories at {gitBase}/{projectName}/.
+ * <p>
+ * Branch conventions:
+ * - "main" = production baseline
+ * - "user/{username}" = per-user working branches
+ * <p>
+ * Tag conventions:
+ * - "pkg/{packageId}/{version}" = package version tags
  */
 public interface GitStorageService {
 
-    /**
-     * 克隆远程 Git 仓库到本地
-     *
-     * @param repositoryUrl 远程仓库 URL
-     * @param localPath     本地存储路径
-     * @param user          操作用户 (可选, 用于认证等)
-     * @return 克隆操作是否成功
-     * @throws Exception 操作异常
-     */
-    boolean cloneRepository(String repositoryUrl, File localPath, User user) throws Exception;
+    // ---- Repository lifecycle ----
 
     /**
-     * 从远程仓库拉取最新更新
-     *
-     * @param localPath 本地仓库路径
-     * @param user      操作用户 (可选)
-     * @return 拉取操作是否成功
-     * @throws Exception 操作异常
+     * Initialize a new Git repository for a project.
+     * Creates the directory and runs git init with an initial empty commit on "main".
      */
-    boolean pullUpdates(File localPath, User user) throws Exception;
+    void initRepo(String projectName);
 
     /**
-     * 提交本地更改到本地仓库
-     *
-     * @param localPath     本地仓库路径
-     * @param commitMessage 提交信息
-     * @param user          操作用户 (可选)
-     * @return 提交操作是否成功
-     * @throws Exception 操作异常
+     * Check if a Git repository exists for a project.
      */
-    boolean commitChanges(File localPath, String commitMessage, User user) throws Exception;
+    boolean repoExists(String projectName);
+
+    // ---- Branch operations ----
 
     /**
-     * 将本地提交推送到远程仓库
-     *
-     * @param localPath 本地仓库路径
-     * @param user      操作用户 (可选)
-     * @return 推送操作是否成功
-     * @throws Exception 操作异常
+     * Create a new branch from a parent branch.
+     * If the branch already exists, this is a no-op.
      */
-    boolean pushChanges(File localPath, User user) throws Exception;
+    void createBranch(String projectName, String branchName, String parentBranch);
 
     /**
-     * 创建新分支
-     *
-     * @param localPath  本地仓库路径
-     * @param branchName 分支名称
-     * @param user       操作用户 (可选)
-     * @return 创建分支操作是否成功
-     * @throws Exception 操作异常
+     * List all branches in the project repository.
      */
-    boolean createBranch(File localPath, String branchName, User user) throws Exception;
+    List<String> listBranches(String projectName);
 
     /**
-     * 切换到指定分支
-     *
-     * @param localPath  本地仓库路径
-     * @param branchName 分支名称
-     * @param user       操作用户 (可选)
-     * @return 切换分支操作是否成功
-     * @throws Exception 操作异常
+     * Delete a branch (typically after merge).
      */
-    boolean checkoutBranch(File localPath, String branchName, User user) throws Exception;
+    void deleteBranch(String projectName, String branchName);
+
+    // ---- File operations ----
 
     /**
-     * 获取当前分支名称
+     * Write a file to a branch's working tree.
+     * Does NOT auto-commit; caller must call commit() separately.
      *
-     * @param localPath 本地仓库路径
-     * @return 当前分支名称
-     * @throws Exception 操作异常
+     * @param projectName project name
+     * @param branch      target branch name
+     * @param filePath    path relative to repo root (e.g., "projectA/folder/file.xml")
+     * @param content     file content (should be pre-canonicalized)
      */
-    String getCurrentBranch(File localPath) throws Exception;
+    void writeFile(String projectName, String branch, String filePath, String content);
 
     /**
-     * 获取所有本地分支列表
+     * Read a file from a specific revision (branch name, tag, or commit SHA).
+     * Reads directly from the Git object store without checking out a working tree.
      *
-     * @param localPath 本地仓库路径
-     * @return 本地分支列表
-     * @throws Exception 操作异常
+     * @return file content as string, or null if the file does not exist at the given revision
      */
-    List<String> listLocalBranches(File localPath) throws Exception;
+    String readFile(String projectName, String revision, String filePath);
 
-    List<String> compareTags(String projectName, String originVersion, String targetVersion) throws Exception;
+    /**
+     * Read a file as InputStream from a specific revision.
+     */
+    InputStream readFileStream(String projectName, String revision, String filePath);
 
+    /**
+     * Delete a file from a branch's working tree.
+     * Does NOT auto-commit.
+     */
+    void deleteFile(String projectName, String branch, String filePath);
+
+    // ---- Commit and tag ----
+
+    /**
+     * Stage all changes on a branch and commit.
+     *
+     * @return the commit SHA
+     */
+    String commit(String projectName, String branch, String message, String author);
+
+    /**
+     * Create a lightweight tag at the current HEAD of a branch.
+     */
+    void createTag(String projectName, String tagName, String branch);
+
+    /**
+     * Get the commit SHA for a given revision (branch, tag, or SHA).
+     */
+    String getRevisionSha(String projectName, String revision);
+
+    // ---- Merge ----
+
+    /**
+     * Merge a source branch into a target branch.
+     * Tries fast-forward first, then three-way merge.
+     *
+     * @return MergeResult with status (FAST_FORWARD, MERGED, or CONFLICTING)
+     */
+    MergeResult merge(String projectName, String source, String target);
+
+    // ---- Diff ----
+
+    /**
+     * Compare two revisions and return per-file diffs.
+     */
+    List<FileDiff> diff(String projectName, String fromRevision, String toRevision);
+
+    // ---- Remote ----
+
+    /**
+     * Push all branches and tags to the configured remote.
+     * No-op if no remote is configured.
+     */
+    void push(String projectName);
+
+    /**
+     * Add a remote URL for the project repository.
+     */
+    void addRemote(String projectName, String remoteUrl);
 }

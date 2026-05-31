@@ -19,6 +19,7 @@ public class ProjectEntity {
     private boolean projectLock;
     private Long lockVersion;
     private String lockUser;
+    private Boolean gitInitialized;
     private Date createTime;
     private Date updateTime;
 }

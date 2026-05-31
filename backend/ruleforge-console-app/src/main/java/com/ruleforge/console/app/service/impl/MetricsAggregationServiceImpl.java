@@ -1,9 +1,8 @@
 package com.ruleforge.console.app.service.impl;
 
 import com.alibaba.fastjson2.JSON;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.ruleforge.console.app.entity.MetricsSnapshot;
-import com.ruleforge.console.app.mapper.MetricsSnapshotMapper;
+import com.ruleforge.console.app.repository.data.MonitoringRepository;
 import com.ruleforge.console.app.service.IAlertService;
 import com.ruleforge.console.app.service.IMetricsAggregationService;
 import io.micrometer.core.instrument.*;
@@ -25,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 public class MetricsAggregationServiceImpl implements IMetricsAggregationService {
 
     private final MeterRegistry meterRegistry;
-    private final MetricsSnapshotMapper metricsSnapshotMapper;
+    private final MonitoringRepository monitoringRepository;
     private final IAlertService alertService;
 
     @Override
@@ -59,7 +58,7 @@ public class MetricsAggregationServiceImpl implements IMetricsAggregationService
 
         try {
             for (MetricsSnapshot snapshot : snapshots) {
-                metricsSnapshotMapper.insert(snapshot);
+                monitoringRepository.insertSnapshot(snapshot);
             }
             log.debug("聚合写入 {} 条指标快照", snapshots.size());
         } catch (Exception e) {

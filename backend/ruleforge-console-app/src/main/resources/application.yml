@@ -45,10 +45,15 @@ spring:
 ruleforge:
   knowledgeUpdateCycleV2: 300
   isKnowledgeUpdateRemoteV2: false
+  approval:
+    mode: ${APPROVAL_MODE:auto}
   repository:
     dir: ${RF_REPO_DIR:./data/riskruleforge}
   exec:
     url: ${EXECUTOR_URL:http://localhost:8280}
+  git:
+    base: ${GIT_BASE:/opt/data}
+    remote-url: ${GIT_REMOTE_URL:}
   monitoring:
     aggregation-interval-ms: ${MONITORING_AGGREGATION_INTERVAL:60000}
     alert-webhook-timeout-ms: ${MONITORING_WEBHOOK_TIMEOUT:5000}

@@ -14,6 +14,7 @@
         <module>ruleforge-core</module>
         <module>ruleforge-console</module>
         <module>ruleforge-executor</module>
+        <module>ruleforge-decision</module>
         <module>ruleforge-console-app</module>
         <module>ruleforge-executor-app</module>
     </modules>

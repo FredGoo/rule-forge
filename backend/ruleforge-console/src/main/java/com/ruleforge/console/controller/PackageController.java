@@ -1,38 +1,33 @@
 package com.ruleforge.console.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.ruleforge.Utils;
 import com.ruleforge.builder.KnowledgeBase;
 import com.ruleforge.builder.KnowledgeBuilder;
 import com.ruleforge.builder.ResourceBase;
 import com.ruleforge.console.ExternalProcessService;
+import com.ruleforge.console.entity.ProjectEntity;
+import com.ruleforge.console.entity.ProjectRuntimeConfigEntity;
+import com.ruleforge.console.entity.ProjectRuntimeFlowEntity;
+import com.ruleforge.console.entity.ProjectVersionEntity;
+import com.ruleforge.console.repository.data.ProjectRepository;
+import com.ruleforge.console.repository.data.RuntimeRepository;
 import com.ruleforge.console.repository.model.FileType;
 import com.ruleforge.console.repository.model.ResourcePackage;
 import com.ruleforge.console.servlet.common.RefFile;
 import com.ruleforge.console.servlet.respackage.HttpSessionKnowledgeCache;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.model.library.variable.VariableCategory;
-import com.ruleforge.console.entity.ProjectEntity;
-import com.ruleforge.console.entity.ProjectRuntimeConfigEntity;
-import com.ruleforge.console.entity.ProjectRuntimeFlowEntity;
-import com.ruleforge.console.entity.ProjectVersionEntity;
-import com.ruleforge.console.mapper.PackageMapper;
-import com.ruleforge.console.mapper.PackageVersionMapper;
-import com.ruleforge.console.mapper.ProjectMapper;
-import com.ruleforge.console.mapper.ProjectRuntimeConfigMapper;
-import com.ruleforge.console.mapper.ProjectRuntimeFlowMapper;
-import com.ruleforge.console.mapper.ProjectVersionMapper;
 import com.ruleforge.console.model.PackageConfig;
 import com.ruleforge.console.model.User;
 import com.ruleforge.console.service.RuleForgeRepositoryService;
 import com.ruleforge.console.storage.GitStorageService;
+import com.ruleforge.console.storage.model.FileDiff;
+import com.ruleforge.console.storage.model.MergeResult;
 import com.ruleforge.console.util.EnvironmentUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.dom4j.Element;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -64,14 +59,8 @@ public class PackageController extends BaseController {
     private final KnowledgeBuilder knowledgeBuilder;
     public static final String VCS_KEY = "_vcs";
     public static final String KB_KEY = "_kb";
-    private final ProjectMapper projectMapper;
-    private final PackageMapper packageMapper;
-    private final PackageVersionMapper packageVersionMapper;
-    private final ProjectRuntimeConfigMapper projectRuntimeConfigMapper;
-    private final ProjectRuntimeFlowMapper projectRuntimeFlowMapper;
-    private final ProjectVersionMapper projectVersionMapper;
-    @Value("${ruleforgeV2.git.base:/opt/data}")
-    private String gitBase;
+    private final ProjectRepository projectRepository;
+    private final RuntimeRepository runtimeRepository;
 
     @PostMapping("/loadPackages")
     public List<ResourcePackage> loadPackages(@RequestParam("project") String project,
@@ -181,6 +170,22 @@ public class PackageController extends BaseController {
         return map;
     }
 
+    @PostMapping("/getPackageDiffStructured")
+    public List<FileDiff> getPackageDiffStructured(
+            @RequestParam String project,
+            @RequestParam String fromVersion,
+            @RequestParam String toVersion) throws Exception {
+        return this.ruleforgeRepositoryService.getPackageVersionDiffStructured(project, fromVersion, toVersion);
+    }
+
+    @PostMapping("/getFileDiffStructured")
+    public FileDiff getFileDiffStructured(
+            @RequestParam String filePath,
+            @RequestParam String fromVersion,
+            @RequestParam String toVersion) throws Exception {
+        return this.ruleforgeRepositoryService.getFileVersionDiffStructured(filePath, fromVersion, toVersion);
+    }
+
     @PostMapping("/refreshKnowledgeCache")
     public String deployTestPackage(@RequestParam String project,
                                     @RequestParam(required = false) String title,
@@ -192,16 +197,8 @@ public class PackageController extends BaseController {
                                     @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm") Date endTime) throws Exception {
         User user = EnvironmentUtils.getLoginUser(null);
         // todo 修改使用标记
-        LambdaQueryWrapper<ProjectEntity> projectEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectEntity>()
-                .eq(ProjectEntity::getName, project)
-                .last("limit 1");
-        ProjectEntity projectEntity = projectMapper.selectOne(projectEntityLambdaQueryWrapper);
-        LambdaQueryWrapper<ProjectRuntimeFlowEntity> projectRuntimeFlowEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectRuntimeFlowEntity>()
-                .in(ProjectRuntimeFlowEntity::getAuditStatus, 20, 90, 91)
-                .eq(ProjectRuntimeFlowEntity::getProjectVersion, targetVersion)
-                .eq(ProjectRuntimeFlowEntity::getExecEnv, "test")
-                .eq(ProjectRuntimeFlowEntity::getProjectId, projectEntity.getId());
-        Long count = projectRuntimeFlowMapper.selectCount(projectRuntimeFlowEntityLambdaQueryWrapper);
+        ProjectEntity projectEntity = projectRepository.findByName(project);
+        long count = runtimeRepository.countActiveFlows(projectEntity.getId(), targetVersion, "test");
         if (count > 0) {
             return "当前审批状态不支持发起测试审批";
         }
@@ -216,17 +213,9 @@ public class PackageController extends BaseController {
             return "发起测试审批失败";
         } else {
             Date date = new Date();
-            LambdaUpdateWrapper<ProjectRuntimeFlowEntity> projectRuntimeFlowEntityLambdaUpdateWrapper = new LambdaUpdateWrapper<ProjectRuntimeFlowEntity>()
-                    .eq(ProjectRuntimeFlowEntity::getProjectId, projectEntity.getId())
-                    .eq(ProjectRuntimeFlowEntity::getExecEnv, "test")
-                    .eq(ProjectRuntimeFlowEntity::getProjectVersion, targetVersion)
-                    .set(ProjectRuntimeFlowEntity::getAuditStatus, 20)
-                    .set(ProjectRuntimeFlowEntity::getProportion, rate)
-                    .set(ProjectRuntimeFlowEntity::getStartTime, startTime)
-                    .set(ProjectRuntimeFlowEntity::getEndTime, endTime)
-                    .set(ProjectRuntimeFlowEntity::getUpdateTime, date)
-                    .set(ProjectRuntimeFlowEntity::getUpdateUser, user.getUsername());
-            if (this.projectRuntimeFlowMapper.update(null, projectRuntimeFlowEntityLambdaUpdateWrapper) < 1) {
+            boolean updated = runtimeRepository.upsertFlow(projectEntity.getId(), targetVersion, "test",
+                    20, rate, startTime, endTime, date, user.getUsername());
+            if (!updated) {
                 ProjectRuntimeFlowEntity projectRuntimeFlowEntity = new ProjectRuntimeFlowEntity();
                 projectRuntimeFlowEntity.setProjectId(projectEntity.getId());
                 projectRuntimeFlowEntity.setProjectVersion(targetVersion);
@@ -239,7 +228,7 @@ public class PackageController extends BaseController {
                 projectRuntimeFlowEntity.setCreateUser(user.getUsername());
                 projectRuntimeFlowEntity.setUpdateTime(date);
                 projectRuntimeFlowEntity.setUpdateUser(user.getUsername());
-                this.projectRuntimeFlowMapper.insert(projectRuntimeFlowEntity);
+                runtimeRepository.insertFlow(projectRuntimeFlowEntity);
             }
             // todo 测试环境自动通过
             if ("autoProcess".equals(processId)) {
@@ -267,49 +256,19 @@ public class PackageController extends BaseController {
             String version = params.get("versionCode");
             boolean passAudit = Objects.equals(4, status);
             // todo
-            ProjectEntity projectEntity = projectMapper.selectOne(new LambdaQueryWrapper<ProjectEntity>()
-                    .eq(ProjectEntity::getName, project)
-                    .last("limit 1"));
-            ProjectVersionEntity projectVersionEntity = projectVersionMapper.selectOne(new LambdaQueryWrapper<ProjectVersionEntity>()
-                    .eq(ProjectVersionEntity::getProjectId, projectEntity.getId())
-                    .eq(ProjectVersionEntity::getVersionName, version)
-                    .last("limit 1"));
-            ProjectRuntimeFlowEntity projectRuntimeFlowEntity = projectRuntimeFlowMapper.selectOne(new LambdaQueryWrapper<ProjectRuntimeFlowEntity>()
-                    .eq(ProjectRuntimeFlowEntity::getProjectVersion, version)
-                    .eq(ProjectRuntimeFlowEntity::getAuditStatus, 20)
-                    .eq(ProjectRuntimeFlowEntity::getProjectId, projectEntity.getId()));
+            ProjectEntity projectEntity = projectRepository.findByName(project);
+            ProjectVersionEntity projectVersionEntity = projectRepository.findVersionByProjectIdAndVersionName(projectEntity.getId(), version);
+            ProjectRuntimeFlowEntity projectRuntimeFlowEntity = runtimeRepository.findFlowByProjectVersionAndAuditStatus(projectEntity.getId(), version, 20);
             String createUser = projectRuntimeFlowEntity.getCreateUser();
             Date startTime = projectRuntimeFlowEntity.getStartTime();
             Integer proportion = projectRuntimeFlowEntity.getProportion();
             Date endTime = projectRuntimeFlowEntity.getEndTime();
-            int update = projectRuntimeFlowMapper.update(null, new LambdaUpdateWrapper<ProjectRuntimeFlowEntity>()
-                    .eq(ProjectRuntimeFlowEntity::getProjectId, projectEntity.getId())
-                    .eq(ProjectRuntimeFlowEntity::getProjectVersion, version)
-                    .eq(ProjectRuntimeFlowEntity::getExecEnv, "test")
-                    .set(ProjectRuntimeFlowEntity::getAuditStatus, passAudit ? 90 : 91)
-                    .set(ProjectRuntimeFlowEntity::getUpdateTime, new Date())
-                    .set(ProjectRuntimeFlowEntity::getUpdateUser, createUser));
-            log.info("callbackTestUruleResult projectRuntimeFlowMapper update: {}", update);
+            runtimeRepository.updateFlowStatus(projectEntity.getId(), version, "test", passAudit ? 90 : 91, createUser);
+            log.info("callbackTestUruleResult projectRuntimeFlowMapper update: {}", true);
             if (passAudit) {
                 // 通知client
                 this.externalProcessService.syncExec(project + "/" + projectVersionEntity.getPackageId(), "test", createUser, proportion, startTime, endTime);
-                if (this.projectRuntimeConfigMapper.update(null, new LambdaUpdateWrapper<ProjectRuntimeConfigEntity>()
-                        .eq(ProjectRuntimeConfigEntity::getProjectId, projectEntity.getId())
-                        .eq(ProjectRuntimeConfigEntity::getExecEnv, "test")
-                        .eq(ProjectRuntimeConfigEntity::getPackageId, projectVersionEntity.getPackageId())
-                        .set(ProjectRuntimeConfigEntity::getUpdateUser, createUser)
-                        .set(ProjectRuntimeConfigEntity::getUpdateTime, new Date())
-                        .set(ProjectRuntimeConfigEntity::getProjectVersion, version)) < 1) {
-                    ProjectRuntimeConfigEntity projectRuntimeConfigEntity = new ProjectRuntimeConfigEntity();
-                    projectRuntimeConfigEntity.setProjectId(projectEntity.getId());
-                    projectRuntimeConfigEntity.setPackageId(projectVersionEntity.getPackageId());
-                    projectRuntimeConfigEntity.setProjectVersion(version);
-                    projectRuntimeConfigEntity.setExecEnv("test");
-                    projectRuntimeConfigEntity.setCreateTime(new Date());
-                    projectRuntimeConfigEntity.setCreateUser(createUser);
-                    int insert = this.projectRuntimeConfigMapper.insert(projectRuntimeConfigEntity);
-                    log.info("callbackTestUruleResult projectRuntimeConfigMapper insert: {}", insert);
-                }
+                runtimeRepository.upsertConfig(projectEntity.getId(), projectVersionEntity.getPackageId(), "test", version, createUser);
             }
             result.put("status", true);
         } catch (Exception e) {
@@ -342,6 +301,138 @@ public class PackageController extends BaseController {
         this.httpSessionKnowledgeCache.remove(req, KB_KEY);
         this.httpSessionKnowledgeCache.put(req, KB_KEY, knowledgeBase);
         return knowledgeBase;
+    }
+
+    /**
+     * Merge a user branch into main.
+     * Used when a user wants to integrate their changes with the main branch.
+     * Returns merge status (success, conflicts) with details.
+     */
+    @PostMapping("/mergeBranch")
+    public Map<String, Object> mergeBranch(@RequestParam String project,
+                                            @RequestParam String sourceBranch) throws Exception {
+        Map<String, Object> result = new HashMap<>();
+
+        if (!gitStorageService.repoExists(project)) {
+            result.put("success", false);
+            result.put("message", "Git repository not found for project: " + project);
+            return result;
+        }
+
+        MergeResult mergeResult = gitStorageService.merge(project, sourceBranch, "main");
+        result.put("status", mergeResult.getStatus().name());
+        result.put("mergeCommitSha", mergeResult.getMergeCommitSha());
+
+        switch (mergeResult.getStatus()) {
+            case FAST_FORWARD, MERGED -> {
+                result.put("success", true);
+                result.put("message", "Merge completed successfully");
+                gitStorageService.push(project);
+            }
+            case CONFLICTING -> {
+                result.put("success", false);
+                result.put("message", "Merge conflict detected. Please resolve conflicts manually.");
+                result.put("conflictingFiles", mergeResult.getConflictingFiles());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * List all branches for a project.
+     */
+    @PostMapping("/listBranches")
+    public Map<String, Object> listBranches(@RequestParam String project) throws Exception {
+        Map<String, Object> result = new HashMap<>();
+        if (!gitStorageService.repoExists(project)) {
+            result.put("branches", List.of());
+            return result;
+        }
+        result.put("branches", gitStorageService.listBranches(project));
+        return result;
+    }
+
+    /**
+     * Load the file tree for a specific package and version.
+     * Returns the list of files with their versions in the package,
+     * optionally at a specific Git tag (version).
+     */
+    @PostMapping("/loadPackageTree")
+    public Map<String, Object> loadPackageTree(@RequestParam String project,
+                                                 @RequestParam String packageId,
+                                                 @RequestParam(required = false) String version) throws Exception {
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+
+        // Find the project
+        ProjectEntity projectEntity = projectRepository.findByName(project);
+        if (projectEntity == null) {
+            result.put("success", false);
+            result.put("message", "Project not found: " + project);
+            return result;
+        }
+
+        // Get project versions for this package
+        List<ProjectVersionEntity> versions = projectRepository.findVersionsByProjectId(projectEntity.getId(), packageId, true);
+
+        // If version is specified, find that version; otherwise use the latest
+        ProjectVersionEntity targetVersion = null;
+        if (version != null && !version.isEmpty()) {
+            for (ProjectVersionEntity pve : versions) {
+                if (version.equals(pve.getVersionName())) {
+                    targetVersion = pve;
+                    break;
+                }
+            }
+        }
+        if (targetVersion == null && !versions.isEmpty()) {
+            targetVersion = versions.get(0);
+        }
+
+        result.put("versions", versions.stream().map(v -> {
+            Map<String, Object> vMap = new HashMap<>();
+            vMap.put("version", v.getVersionName());
+            vMap.put("comment", v.getComment());
+            vMap.put("createUser", v.getCreateUser());
+            vMap.put("createTime", v.getCreateTime());
+            vMap.put("auditStatus", v.getAuditStatus());
+            vMap.put("gitCommitSha", v.getGitCommitSha());
+            return vMap;
+        }).toList());
+
+        // Get files for the target version
+        if (targetVersion != null) {
+            String gitTag = "pkg/" + packageId + "/" + targetVersion.getVersionName();
+
+            // Load resource items for this package from the package file
+            List<Map<String, Object>> resourceItems = new ArrayList<>();
+            try {
+                String packagePath = "/" + project + "/" + RES_PACKGE_FILE + "/" + packageId + "/package.xml";
+                InputStream is = ruleforgeRepositoryService.readFile(packagePath);
+                if (is != null) {
+                    String content = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                    org.dom4j.Document doc = org.dom4j.DocumentHelper.parseText(content);
+                    List<org.dom4j.Element> items = doc.getRootElement().elements("item");
+                    for (org.dom4j.Element item : items) {
+                        Map<String, Object> itemMap = new HashMap<>();
+                        itemMap.put("path", item.attributeValue("path"));
+                        itemMap.put("name", item.attributeValue("name"));
+                        itemMap.put("version", item.attributeValue("version"));
+                        itemMap.put("gitTag", gitTag);
+                        resourceItems.add(itemMap);
+                    }
+                    is.close();
+                }
+            } catch (Exception e) {
+                log.debug("Failed to load package items: {}", e.getMessage());
+            }
+
+            result.put("currentVersion", targetVersion.getVersionName());
+            result.put("gitTag", gitTag);
+            result.put("resourceItems", resourceItems);
+        }
+
+        return result;
     }
 
 }

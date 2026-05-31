@@ -2,10 +2,10 @@ package com.ruleforge.console.app.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ruleforge.console.app.entity.Datasource;
-import com.ruleforge.console.app.entity.DatasourceEntityMapping;
-import com.ruleforge.console.app.entity.DatasourceFieldMapping;
-import com.ruleforge.console.app.service.IDatasourceService;
+import com.ruleforge.decision.entity.Datasource;
+import com.ruleforge.decision.entity.DatasourceEntityMapping;
+import com.ruleforge.decision.entity.DatasourceFieldMapping;
+import com.ruleforge.decision.service.IDatasourceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;

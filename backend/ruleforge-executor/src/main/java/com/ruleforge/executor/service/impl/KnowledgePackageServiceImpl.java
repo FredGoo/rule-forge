@@ -5,6 +5,7 @@ import com.ruleforge.builder.KnowledgeBuilder;
 import com.ruleforge.builder.ResourceBase;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.runtime.KnowledgePackage;
+import com.ruleforge.runtime.cache.KnowledgeCache;
 import com.ruleforge.runtime.service.KnowledgePackageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class KnowledgePackageServiceImpl implements KnowledgePackageService {
     private final KnowledgeBuilder knowledgeBuilder;
     private final RestTemplate consoleRestTemplate;
+    private final KnowledgeCache knowledgeCache;
 
     @Override
     public KnowledgePackage buildKnowledgePackage(String packageInfo) throws RuleException {
@@ -40,11 +42,18 @@ public class KnowledgePackageServiceImpl implements KnowledgePackageService {
         String packageId = info[1];
         String projectVersion = "";
 
+        // 检查灰度版本覆盖
+        String grayVersionOverride = GrayVersionContext.get();
+
         List<Map<String, Object>> packageList = sendRequest(project);
         ResourceBase resourceBase = this.knowledgeBuilder.newResourceBase();
         for (Map<String, Object> item : packageList) {
             if (packageId.equals(item.get("id"))) {
-                if (item.get("testVersion") != null) {
+                if (grayVersionOverride != null) {
+                    // 灰度路由: 使用灰度策略指定的版本
+                    projectVersion = grayVersionOverride;
+                    log.info("灰度版本覆盖: packageId={}, grayVersion={}", packageId, grayVersionOverride);
+                } else if (item.get("testVersion") != null) {
                     projectVersion = item.get("testVersion").toString();
                 } else {
                     projectVersion = "LATEST";
@@ -64,7 +73,7 @@ public class KnowledgePackageServiceImpl implements KnowledgePackageService {
 
     @Override
     public boolean isKnowledgePackageNeedUpdate(String packageInfo) {
-        return true;
+        return knowledgeCache.isKnowledgeDirty(packageInfo);
     }
 
     private List<Map<String, Object>> sendRequest(String project) {

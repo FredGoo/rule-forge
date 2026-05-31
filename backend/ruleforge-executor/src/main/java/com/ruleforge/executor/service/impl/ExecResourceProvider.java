@@ -44,11 +44,45 @@ public class ExecResourceProvider implements ResourceProvider {
         map.add("path", path);
         map.add("env", "test");
         map.add("projectVersion", projectVersion);
+        // Pass gitTag if projectVersion looks like a version number (not LATEST or snapshot)
+        if (StringUtils.hasText(projectVersion)
+                && !"LATEST".equalsIgnoreCase(projectVersion)
+                && !"snapshot".equalsIgnoreCase(projectVersion)) {
+            // Build tag name from path: extract project and packageId
+            // path format: /projectName/.../packageId/...
+            String gitTag = buildGitTag(path, projectVersion);
+            if (gitTag != null) {
+                map.add("gitTag", gitTag);
+            }
+        }
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
         ParameterizedTypeReference<Map<String, String>> responseType =
                 new ParameterizedTypeReference<>() {};
         ResponseEntity<Map<String, String>> response = this.consoleRestTemplate.exchange(
                 url, HttpMethod.POST, request, responseType);
         return response.getBody().get("content");
+    }
+
+    /**
+     * Build a Git tag from the file path and version.
+     * Attempts to extract packageId from path segments.
+     * Tag format: pkg/{packageId}/{version}
+     */
+    private String buildGitTag(String path, String version) {
+        // Path format: /projectName/资源包.rp/packageId/file.xml
+        // We try to find the package segment
+        if (path == null || !path.startsWith("/")) return null;
+        String[] parts = path.split("/");
+        // parts[0] = "", parts[1] = projectName, parts[2+] = path segments
+        // Look for segment after 资源包.rp or .rp
+        for (int i = 2; i < parts.length - 1; i++) {
+            if (parts[i].endsWith(".rp")) {
+                String packageId = parts[i + 1];
+                if (StringUtils.hasText(packageId)) {
+                    return "pkg/" + packageId + "/" + version;
+                }
+            }
+        }
+        return null;
     }
 }

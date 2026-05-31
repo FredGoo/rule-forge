@@ -14,56 +14,63 @@ RuleForge 当前已具备的能力：
 ## 实施顺序
 
 ```
-监控与告警 → 上游数据源管理 → 规则版本与发布管理 → 下游 Agent 分析
+监控与告警 ✅ → 上游数据源管理 ✅ → 规则版本与发布管理 ✅ → 下游 Agent 分析
 ```
 
-1. **监控与告警** — 投入产出比最高，基于现有 decision_log 即可上手，纯新增模块零侵入，为后续方向提供数据基础
-2. **上游数据源管理** — 需要改 LazyGeneralEntity 核心逻辑，有了监控才能安全地改动
-3. **规则版本与发布管理** — 需要环境隔离基础设施，且涉及团队流程变更
-4. **下游 Agent 分析** — 依赖前三个方向的数据积累（日志聚合、版本对比、监控指标）
+1. ~~**监控与告警** — 投入产出比最高，基于现有 decision_log 即可上手，纯新增模块零侵入，为后续方向提供数据基础~~ **已完成**
+2. ~~**上游数据源管理** — 需要改 LazyGeneralEntity 核心逻辑，有了监控才能安全地改动~~ **已完成**
+3. ~~**规则版本与发布管理** — 需要环境隔离基础设施，且涉及团队流程变更~~ **已完成**
+4. **下游 Agent 分析** — 依赖前三个方向的数据积累（日志聚合、版本对比、监控指标） **← 当前阶段**
 
 ## 路线图总览
 
 | 方向 | 目标 | 优先级 | 状态 |
 |------|------|:------:|:----:|
-| 上游数据源管理 | 统一管理外部数据接入 | P0 | 规划中 |
-| 规则版本与发布管理 | 变更审批、灰度发布、回滚 | P0 | 规划中 |
-| 监控与告警 | 决策执行全链路可观测 | P1 | 规划中 |
-| 下游 Agent 分析 | AI 分析决策结果，优化规则 | P2 | 规划中 |
+| 监控与告警 | 决策执行全链路可观测 | P1 | ✅ 已完成 |
+| 上游数据源管理 | 统一管理外部数据接入 | P0 | ✅ 已完成 |
+| 规则版本与发布管理 | 变更审批、灰度发布、回滚、陪跑 | P0 | ✅ 已完成 |
+| 下游 Agent 分析 | AI 分析决策结果，优化规则 | P2 | 🚧 当前阶段 |
 
 ---
 
-## 方向一：上游数据源管理
+## 方向一：监控与告警 ✅ 已完成
 
-### 现状
+### 已实现
 
-变量数据获取逻辑硬编码在业务层（`LazyGeneralEntity` 按 clazz 查数据库），接入新的数据源需要改动 Java 代码并重新部署。
+- **执行耗时 Metrics** — Micrometer + Prometheus，P50/P95/P99 延迟、各阶段耗时分解
+- **成功率监控** — 按规则包、决策流统计成功/失败率
+- **异常告警** — 失败率超阈值、执行超时主动告警
+- **决策趋势看板** — 决策结果分布、通过率趋势
 
-### 目标
+---
 
-提供可配置的数据源管理能力，业务人员通过界面即可接入新的数据源，无需代码变更。
+## 方向二：上游数据源管理 ✅ 已完成
 
-### 关键特性
+### 已实现
 
-- **数据源注册中心** — 支持 REST API、JDBC 数据库、Kafka/消息队列等多种数据源类型
-- **变量映射配置** — 将外部数据字段映射为规则引擎内部的变量定义
-- **连接管理** — 连接池、超时、重试、熔断策略
-- **数据缓存** — 对热点变量数据提供 TTL 缓存，减少外部调用
-- **数据源测试** — 在配置阶段即可测试连通性和数据预览
+- **数据源注册中心** — 支持 REST API、JDBC、Advance AI 三种数据源类型，JSON 配置
+- **变量映射配置** — 实体级映射（clazz → datasource）+ 字段级映射（规则变量名 → 外部字段名）
+- **连接管理** — HikariCP 连接池、超时、缓存策略
+- **数据缓存** — 120h TTL，数据库缓存 + 审计日志
+- **数据源测试** — 配置阶段测试连通性
+- **路由集成** — DatasourceRoutingProvider 替代硬编码，零侵入核心引擎
+- **前端界面** — DatasourcePanel（数据源 CRUD + 映射配置 + 字段映射查看）
+- **监控与日志** — nd_datasource_log 全链路记录（请求/响应/状态/耗时）
 
-### 可能的实现方向
+### 模块结构
 
 ```
 数据源管理模块
-├── datasource-registry    数据源注册与元数据管理
-├── datasource-connectors  各类型连接器（API、JDBC、MQ）
-├── variable-mapping       数据字段 → 规则变量映射
-└── datasource-cache       数据缓存层
+├── DatasourceRegistry        数据源注册与元数据（nd_datasource）
+├── DataSourceConnectors      各类型连接器（REST/JDBC/AdvanceAI）
+├── VariableMapping           数据字段 → 规则变量映射（entity_mapping + field_mapping）
+├── DatasourceCache           数据缓存层（DB 缓存 + TTL）
+└── DatasourceRoutingProvider  零侵入路由集成
 ```
 
 ---
 
-## 方向二：下游 Agent 分析
+## 方向三：下游 Agent 分析 🚧 当前阶段
 
 ### 现状
 
@@ -94,7 +101,7 @@ Agent 分析模块
 
 ---
 
-## 方向三：规则版本与发布管理
+## 方向四：规则版本与发布管理 ✅ 已完成
 
 ### 现状
 
@@ -106,49 +113,37 @@ Agent 分析模块
 
 ### 关键特性
 
-- **变更审批工作流** — 规则变更需经过审批才能发布到生产环境
-- **环境隔离** — dev / staging / prod 环境独立，规则按环境发布
-- **灰度发布** — 新规则先对部分流量生效，验证无误后全量发布
-- **版本 Diff** — 发布前可视化对比新旧版本差异
-- **一键回滚** — 出问题时秒级回退到上一版本
+- **变更审批工作流** — 规则变更需经过审批才能发布到生产环境 ✅
+- **环境隔离** — dev / staging / prod 环境独立，规则按环境发布 ✅
+- **灰度发布** — 新规则先对部分流量生效，验证无误后全量发布 ✅
+- **版本 Diff** — 发布前可视化对比新旧版本差异 ✅
+- **一键回滚** — 出问题时秒级回退到上一版本 ✅
+- **应用层灰度路由** — executor-app 内部根据请求特征路由到不同规则版本 ✅
+- **陪跑流量重放** — 异步执行影子规则包，自动对比主/陪跑结果差异 ✅
 
-### 可能的实现方向
+### 已实现
+
+- **审批任务表** — `gr_approval_task` 支持内部审批流程，auto/manual 两种模式
+- **ApprovalController** — REST 端点：listPending / approve / reject / listByProject
+- **DeploymentController** — REST 端点：deploy / current / history / environments / promote / rollback / registerNode / heartbeat
+- **ExternalProcessServiceImpl** — 真审批逻辑替代硬编码 stub，配置 `ruleforge.approval.mode`
+- **结构化 Diff API** — `getPackageDiffStructured` / `getFileDiffStructured` 返回 `List<FileDiff>` JSON
+- **ReleasePanel 前端** — 三 Tab 面板（环境管理 / 审批流程 / 部署历史），替换 PlaceholderPanel
+- **DiffViewer 组件** — 基于 diff2html 的 side-by-side 可视化 diff
+- **一键回滚** — 部署历史表格中的回滚按钮，自动通知 executor
+
+### 模块结构
 
 ```
 版本与发布模块
-├── approval-workflow      审批工作流（可复用 Flowable）
-├── environment-manager    环境管理与隔离
-├── release-manager        发布管理（灰度、全量）
-├── version-diff           版本差异对比
-└── rollback-manager       回滚管理
-```
-
----
-
-## 方向四：监控与告警
-
-### 现状
-
-`decision_log` 表记录了各阶段耗时，但没有实时监控、告警和可视化看板。线上问题依赖人工查日志。
-
-### 目标
-
-实现决策执行全链路可观测，异常情况主动告警。
-
-### 关键特性
-
-- **执行耗时 Metrics** — P50/P95/P99 延迟、各阶段耗时分解
-- **成功率监控** — 按规则包、决策流统计成功/失败率
-- **异常告警** — 失败率超阈值、执行超时、知识包加载失败等主动告警（钉钉/企微/邮件）
-- **决策趋势看板** — 可视化展示决策结果分布、通过率趋势、风险分布
-- **链路追踪** — 单次决策的完整执行链路（哪个节点耗时多久、触发了哪些规则）
-
-### 可能的实现方向
-
-```
-监控与告警模块
-├── metrics-collector      指标采集（Micrometer + Prometheus）
-├── alert-manager          告警规则引擎与通知
-├── dashboard              决策趋势看板（Grafana / 内嵌页面）
-└── trace-collector        执行链路追踪
+├── ApprovalTaskEntity     审批任务实体
+├── ApprovalRepository     审批任务数据访问
+├── ApprovalController     审批 REST 端点
+├── DeploymentController   部署管理 REST 端点
+├── GrayStrategyService    灰度策略服务（WHITELIST/PERCENT_USER/PERCENT_RANDOM）
+├── GrayVersionContext     ThreadLocal 灰度版本透传
+├── ShadowExecutionService 陪跑异步执行服务
+├── ShadowComparisonService 陪跑结果自动对比（4维度 × 4级严重度）
+├── ReleasePanel           前端版本发布面板（6 Tab）
+└── DiffViewer             前端可视化 diff 组件
 ```

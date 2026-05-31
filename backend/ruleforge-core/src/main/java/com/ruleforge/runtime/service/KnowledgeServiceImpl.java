@@ -132,7 +132,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                 log.info("Successfully fetched knowledge package [{}]. Updating cache.", packageId);
                 // fetchKnowledgePackage 内部已 resetTimestamp
                 cache.putKnowledge(packageId, fetchedPackage);
-                // 获取成功后，清除脏标记 (putKnowledge 应该隐式处理，或者在这里显式调用 unmarkDirty)
+                // Clear dirty flag after successful fetch
+                cache.clearKnowledgeDirty(packageId);
                 return fetchedPackage;
             } else {
                 // fetchKnowledgePackage 返回 null 表示远程和本地都获取失败

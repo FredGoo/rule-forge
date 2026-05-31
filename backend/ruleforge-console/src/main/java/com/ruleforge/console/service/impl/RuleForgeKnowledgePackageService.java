@@ -1,20 +1,19 @@
 package com.ruleforge.console.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.ruleforge.builder.KnowledgeBase;
 import com.ruleforge.builder.KnowledgeBuilder;
 import com.ruleforge.builder.ResourceBase;
+import com.ruleforge.console.entity.ProjectEntity;
+import com.ruleforge.console.entity.ProjectRuntimeConfigEntity;
+import com.ruleforge.console.repository.data.ProjectRepository;
+import com.ruleforge.console.repository.data.RuntimeRepository;
 import com.ruleforge.console.repository.model.ResourceItem;
 import com.ruleforge.console.repository.model.ResourcePackage;
+import com.ruleforge.console.model.PackageConfig;
+import com.ruleforge.console.service.RuleForgeRepositoryService;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.runtime.KnowledgePackage;
 import com.ruleforge.runtime.service.KnowledgePackageService;
-import com.ruleforge.console.entity.ProjectEntity;
-import com.ruleforge.console.entity.ProjectRuntimeConfigEntity;
-import com.ruleforge.console.mapper.ProjectMapper;
-import com.ruleforge.console.mapper.ProjectRuntimeConfigMapper;
-import com.ruleforge.console.model.PackageConfig;
-import com.ruleforge.console.service.RuleForgeRepositoryService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -27,8 +26,8 @@ import java.util.List;
 public class RuleForgeKnowledgePackageService implements KnowledgePackageService {
     private final KnowledgeBuilder knowledgeBuilder;
     private final RuleForgeRepositoryService ruleforgeRepositoryService;
-    private final ProjectMapper projectMapper;
-    private final ProjectRuntimeConfigMapper projectRuntimeConfigMapper;
+    private final ProjectRepository projectRepository;
+    private final RuntimeRepository runtimeRepository;
 
     @Override
     public KnowledgePackage buildKnowledgePackage(String packageInfo) throws RuleException {
@@ -49,15 +48,8 @@ public class RuleForgeKnowledgePackageService implements KnowledgePackageService
             PackageConfig packageConfig = this.ruleforgeRepositoryService.loadPackageConfigs(project.contains(":") ? project.split(":")[0] : project);
 
             // todo
-            ProjectEntity projectEntity = this.projectMapper.selectOne(new LambdaQueryWrapper<ProjectEntity>()
-                    .eq(ProjectEntity::getName, project)
-                    .last("limit 1"));
-            LambdaQueryWrapper<ProjectRuntimeConfigEntity> projectRuntimeConfigEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectRuntimeConfigEntity>()
-                    .eq(ProjectRuntimeConfigEntity::getProjectId, projectEntity.getId())
-                    .eq(ProjectRuntimeConfigEntity::getPackageId, packageId)
-                    .eq(ProjectRuntimeConfigEntity::getExecEnv, "prod")
-                    .last("limit 1");
-            ProjectRuntimeConfigEntity projectRuntime = this.projectRuntimeConfigMapper.selectOne(projectRuntimeConfigEntityLambdaQueryWrapper);
+            ProjectEntity projectEntity = this.projectRepository.findByName(project);
+            ProjectRuntimeConfigEntity projectRuntime = this.runtimeRepository.findConfigByPackage(projectEntity.getId(), packageId, "prod");
 
             if (!latest && !project.contains(":")) {
                 if (projectRuntime != null) {
