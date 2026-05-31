@@ -56,6 +56,10 @@ public interface KnowledgeCache {
      */
     boolean isKnowledgeDirty(String fullPackageId);
 
-    // (可选) 新增：清除更新标记。也可以让 putKnowledge 隐式清除。
-    // void unmarkKnowledgeDirty(String packageId, Environment environment);
+    /**
+     * Clear the dirty flag for a knowledge package after refresh.
+     *
+     * @param fullPackageId full package ID
+     */
+    void clearKnowledgeDirty(String fullPackageId);
 }

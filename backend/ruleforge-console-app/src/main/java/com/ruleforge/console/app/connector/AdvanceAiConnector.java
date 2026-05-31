@@ -1,11 +1,10 @@
 package com.ruleforge.console.app.connector;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruleforge.console.app.entity.Datasource;
 import com.ruleforge.console.app.entity.DatasourceLog;
-import com.ruleforge.console.app.mapper.DatasourceLogMapper;
+import com.ruleforge.console.app.repository.data.DatasourceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -32,7 +31,7 @@ import java.util.regex.Pattern;
 public class AdvanceAiConnector implements DataSourceConnector {
 
     private final AdvanceAiTokenManager tokenManager;
-    private final DatasourceLogMapper datasourceLogMapper;
+    private final DatasourceRepository datasourceRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -352,15 +351,7 @@ public class AdvanceAiConnector implements DataSourceConnector {
     // ===== 缓存查询 =====
 
     private DatasourceLog queryCache(Long datasourceId, String userId, String apiEndpoint) {
-        return datasourceLogMapper.selectOne(
-                new LambdaQueryWrapper<DatasourceLog>()
-                        .eq(DatasourceLog::getDatasourceId, datasourceId)
-                        .eq(DatasourceLog::getUserId, userId)
-                        .eq(DatasourceLog::getApiEndpoint, apiEndpoint)
-                        .eq(DatasourceLog::getStatus, "SUCCESS")
-                        .isNotNull(DatasourceLog::getResponseData)
-                        .orderByDesc(DatasourceLog::getCreatedAt)
-                        .last("LIMIT 1"));
+        return datasourceRepository.findCachedLog(datasourceId, userId, apiEndpoint);
     }
 
     private boolean isCacheExpired(DatasourceLog logEntry, long ttlHours) {
@@ -392,7 +383,7 @@ public class AdvanceAiConnector implements DataSourceConnector {
             logEntry.setErrorMessage(errorMessage != null ? truncate(errorMessage, 1024) : null);
             logEntry.setResponseTimeMs(responseTimeMs);
             logEntry.setRequestId(requestId);
-            datasourceLogMapper.insert(logEntry);
+            datasourceRepository.insertDatasourceLog(logEntry);
         } catch (Exception e) {
             log.error("记录数据源调用日志失败", e);
         }

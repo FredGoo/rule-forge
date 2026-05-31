@@ -1,13 +1,10 @@
 package com.ruleforge.console.app.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.ruleforge.console.app.connector.DataSourceConnector;
 import com.ruleforge.console.app.entity.Datasource;
 import com.ruleforge.console.app.entity.DatasourceEntityMapping;
 import com.ruleforge.console.app.entity.DatasourceFieldMapping;
-import com.ruleforge.console.app.mapper.DatasourceEntityMappingMapper;
-import com.ruleforge.console.app.mapper.DatasourceFieldMappingMapper;
-import com.ruleforge.console.app.mapper.DatasourceMapper;
+import com.ruleforge.console.app.repository.data.DatasourceRepository;
 import com.ruleforge.console.app.service.IDatasourceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,9 +24,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DatasourceServiceImpl implements IDatasourceService {
 
-    private final DatasourceMapper datasourceMapper;
-    private final DatasourceEntityMappingMapper entityMappingMapper;
-    private final DatasourceFieldMappingMapper fieldMappingMapper;
+    private final DatasourceRepository datasourceRepository;
     private final List<DataSourceConnector> connectors;
 
     // ===== 字段映射内存缓存 =====
@@ -39,25 +34,25 @@ public class DatasourceServiceImpl implements IDatasourceService {
 
     @Override
     public List<Datasource> listDatasources() {
-        return datasourceMapper.selectList(null);
+        return datasourceRepository.findAllDatasources();
     }
 
     @Override
     public Datasource getDatasourceById(Long id) {
-        return datasourceMapper.selectById(id);
+        return datasourceRepository.findDatasourceById(id);
     }
 
     @Override
     public Datasource createDatasource(Datasource datasource) {
         datasource.setCreatedAt(null);
         datasource.setUpdatedAt(null);
-        datasourceMapper.insert(datasource);
+        datasourceRepository.insertDatasource(datasource);
         return datasource;
     }
 
     @Override
     public Datasource updateDatasource(Datasource datasource) {
-        datasourceMapper.updateById(datasource);
+        datasourceRepository.updateDatasource(datasource);
         // 清除字段映射缓存
         evictFieldMappingCache(datasource.getId());
         return datasource;
@@ -65,13 +60,13 @@ public class DatasourceServiceImpl implements IDatasourceService {
 
     @Override
     public void deleteDatasource(Long id) {
-        datasourceMapper.deleteById(id);
+        datasourceRepository.deleteDatasource(id);
         evictFieldMappingCache(id);
     }
 
     @Override
     public boolean testConnection(Long id) {
-        Datasource ds = datasourceMapper.selectById(id);
+        Datasource ds = datasourceRepository.findDatasourceById(id);
         if (ds == null || !Boolean.TRUE.equals(ds.getEnabled())) {
             return false;
         }
@@ -91,14 +86,12 @@ public class DatasourceServiceImpl implements IDatasourceService {
 
     @Override
     public DatasourceEntityMapping getMappingByClazz(String clazz) {
-        return entityMappingMapper.selectOne(
-                new LambdaQueryWrapper<DatasourceEntityMapping>()
-                        .eq(DatasourceEntityMapping::getClazz, clazz));
+        return datasourceRepository.findEntityMappingByClazz(clazz);
     }
 
     @Override
     public List<DatasourceEntityMapping> listEntityMappings() {
-        return entityMappingMapper.selectList(null);
+        return datasourceRepository.findAllEntityMappings();
     }
 
     @Override
@@ -106,46 +99,38 @@ public class DatasourceServiceImpl implements IDatasourceService {
         DatasourceEntityMapping existing = getMappingByClazz(clazz);
         if (existing != null) {
             existing.setDatasourceId(datasourceId);
-            entityMappingMapper.updateById(existing);
+            datasourceRepository.updateEntityMapping(existing);
         } else {
             DatasourceEntityMapping mapping = new DatasourceEntityMapping();
             mapping.setClazz(clazz);
             mapping.setDatasourceId(datasourceId);
-            entityMappingMapper.insert(mapping);
+            datasourceRepository.insertEntityMapping(mapping);
         }
     }
 
     @Override
     public void deleteEntityMapping(String clazz) {
-        entityMappingMapper.delete(
-                new LambdaQueryWrapper<DatasourceEntityMapping>()
-                        .eq(DatasourceEntityMapping::getClazz, clazz));
+        datasourceRepository.deleteEntityMappingByClazz(clazz);
     }
 
     // ===== 字段映射 =====
 
     @Override
     public List<DatasourceFieldMapping> getFieldMappings(Long datasourceId, String clazz) {
-        return fieldMappingMapper.selectList(
-                new LambdaQueryWrapper<DatasourceFieldMapping>()
-                        .eq(DatasourceFieldMapping::getDatasourceId, datasourceId)
-                        .eq(DatasourceFieldMapping::getClazz, clazz));
+        return datasourceRepository.findFieldMappings(datasourceId, clazz);
     }
 
     @Override
     public void saveFieldMappings(Long datasourceId, String clazz, List<DatasourceFieldMapping> mappings) {
         // 先删除旧映射
-        fieldMappingMapper.delete(
-                new LambdaQueryWrapper<DatasourceFieldMapping>()
-                        .eq(DatasourceFieldMapping::getDatasourceId, datasourceId)
-                        .eq(DatasourceFieldMapping::getClazz, clazz));
+        datasourceRepository.deleteFieldMappings(datasourceId, clazz);
         // 批量插入新映射
         for (DatasourceFieldMapping mapping : mappings) {
             mapping.setId(null);
             mapping.setDatasourceId(datasourceId);
             mapping.setClazz(clazz);
-            fieldMappingMapper.insert(mapping);
         }
+        datasourceRepository.insertFieldMappings(mappings);
         // 清除缓存
         evictFieldMappingCache(datasourceId);
     }
@@ -158,7 +143,7 @@ public class DatasourceServiceImpl implements IDatasourceService {
         if (mapping == null) {
             return null;
         }
-        return datasourceMapper.selectById(mapping.getDatasourceId());
+        return datasourceRepository.findDatasourceById(mapping.getDatasourceId());
     }
 
     @Override

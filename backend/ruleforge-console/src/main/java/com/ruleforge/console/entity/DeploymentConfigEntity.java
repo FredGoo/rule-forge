@@ -8,18 +8,18 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-@TableName("gr_project_version")
-public class ProjectVersionEntity {
+@TableName("gr_deployment_config")
+public class DeploymentConfigEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long projectId;
     private String packageId;
-    private String versionName;
-    private Long versionNumReal;
-    private Integer AuditStatus;// 0 草稿，10 测试中，20 审批中，90 通过，91 拒绝
+    private Long executorNodeId;
+    private String gitTag;
+    private String projectVersion;
+    private String execEnv;
+    private String deployStatus;
+    private Date deployTime;
+    private String deployUser;
     private Date createTime;
-    private String createUser;
-    private String comment;
-    private String gitCommitSha;
-    private String gitBranch;
 }

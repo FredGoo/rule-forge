@@ -20,17 +20,10 @@ import com.ruleforge.console.app.entity.ShadowFlowParams;
 import com.ruleforge.console.app.entity.ShadowMessageLog;
 import com.ruleforge.console.app.entity.ShadowNodeLog;
 import com.ruleforge.console.app.entity.ShadowRuleLog;
-import com.ruleforge.console.app.mapper.ShadowFlowLogMapper;
-import com.ruleforge.console.app.mapper.ShadowFlowParamsMapper;
-import com.ruleforge.console.app.mapper.ShadowMessageLogMapper;
-import com.ruleforge.console.app.mapper.ShadowNodeLogMapper;
-import com.ruleforge.console.app.mapper.ShadowRuleLogMapper;
+import com.ruleforge.console.app.repository.data.DecisionLogRepository;
 import com.ruleforge.console.app.service.IShadowDecisionLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ibatis.session.ExecutorType;
-import org.apache.ibatis.session.SqlSession;
-import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,12 +40,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ShadowDecisionLogServiceImpl implements IShadowDecisionLogService {
 
-    private final ShadowFlowLogMapper flowLogMapper;
-    private final ShadowFlowParamsMapper flowParamsMapper;
-    private final ShadowNodeLogMapper nodeLogMapper;
-    private final ShadowRuleLogMapper ruleLogMapper;
-    private final ShadowMessageLogMapper messageLogMapper;
-    private final SqlSessionFactory sqlSessionFactory;
+    private final DecisionLogRepository decisionLogRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -124,7 +112,7 @@ public class ShadowDecisionLogServiceImpl implements IShadowDecisionLogService {
         flowLog.setErrorStackTrace(errorStackTrace);
         flowLog.setCreatedAt(now);
 
-        flowLogMapper.insert(flowLog);
+        decisionLogRepository.insertShadowFlowLog(flowLog);
         Long flowLogId = flowLog.getId();
 
         // 1.1 保存参数数据
@@ -135,7 +123,7 @@ public class ShadowDecisionLogServiceImpl implements IShadowDecisionLogService {
         flowParams.setOutputParams(toJson(outputParams));
         flowParams.setEntityData(toJson(entityData));
         flowParams.setCreatedAt(now);
-        flowParamsMapper.insert(flowParams);
+        decisionLogRepository.insertShadowFlowParams(flowParams);
 
         if (response == null) {
             return;
@@ -282,25 +270,11 @@ public class ShadowDecisionLogServiceImpl implements IShadowDecisionLogService {
         if ((ruleLogs == null || ruleLogs.isEmpty()) && (msgLogs == null || msgLogs.isEmpty())) {
             return;
         }
-        try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH, false)) {
-            try {
-                if (ruleLogs != null && !ruleLogs.isEmpty()) {
-                    ShadowRuleLogMapper batchRuleMapper = sqlSession.getMapper(ShadowRuleLogMapper.class);
-                    for (ShadowRuleLog ruleLog : ruleLogs) {
-                        batchRuleMapper.insert(ruleLog);
-                    }
-                }
-                if (msgLogs != null && !msgLogs.isEmpty()) {
-                    ShadowMessageLogMapper batchMsgMapper = sqlSession.getMapper(ShadowMessageLogMapper.class);
-                    for (ShadowMessageLog msgLog : msgLogs) {
-                        batchMsgMapper.insert(msgLog);
-                    }
-                }
-                sqlSession.commit();
-            } catch (Exception e) {
-                sqlSession.rollback();
-                throw e;
-            }
+        if (ruleLogs != null && !ruleLogs.isEmpty()) {
+            decisionLogRepository.batchInsertShadowRuleLogs(ruleLogs);
+        }
+        if (msgLogs != null && !msgLogs.isEmpty()) {
+            decisionLogRepository.batchInsertShadowMessageLogs(msgLogs);
         }
     }
 }

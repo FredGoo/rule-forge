@@ -1,11 +1,14 @@
 package com.ruleforge.console.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.ruleforge.Utils;
 import com.ruleforge.builder.resource.Resource;
 import com.ruleforge.console.ExternalProcessService;
+import com.ruleforge.console.entity.ProjectEntity;
+import com.ruleforge.console.entity.ProjectRuntimeConfigEntity;
+import com.ruleforge.console.entity.ProjectVersionEntity;
 import com.ruleforge.console.repository.ExternalRepository;
+import com.ruleforge.console.repository.data.ProjectRepository;
+import com.ruleforge.console.repository.data.RuntimeRepository;
 import com.ruleforge.console.repository.model.FileType;
 import com.ruleforge.console.repository.model.RepositoryFile;
 import com.ruleforge.console.servlet.common.ErrorInfo;
@@ -25,17 +28,12 @@ import com.ruleforge.model.library.variable.Variable;
 import com.ruleforge.parse.deserializer.*;
 import com.ruleforge.runtime.BuiltInActionLibraryBuilder;
 import com.ruleforge.runtime.cache.CacheUtils;
-import com.ruleforge.console.entity.ProjectEntity;
-import com.ruleforge.console.entity.ProjectRuntimeConfigEntity;
-import com.ruleforge.console.entity.ProjectVersionEntity;
-import com.ruleforge.console.mapper.ProjectMapper;
-import com.ruleforge.console.mapper.ProjectRuntimeConfigMapper;
-import com.ruleforge.console.mapper.ProjectVersionMapper;
 import com.ruleforge.console.model.PackageConfig;
 import com.ruleforge.console.model.Repository;
 import com.ruleforge.console.model.User;
 import com.ruleforge.console.storage.RepositoryResourceProvider;
 import com.ruleforge.console.service.RuleForgeRepositoryService;
+import com.ruleforge.console.storage.GitStorageService;
 import com.ruleforge.console.util.CompareUtils;
 import com.ruleforge.console.util.EnvironmentUtils;
 import com.ruleforge.console.util.FileUploadUtils;
@@ -91,9 +89,9 @@ public class CommonController extends BaseController {
     private final DSLRuleSetBuilder dslRuleSetBuilder;
 
     // todo
-    private final ProjectVersionMapper projectVersionMapper;
-    private final ProjectMapper projectMapper;
-    private final ProjectRuntimeConfigMapper projectRuntimeConfigMapper;
+    private final ProjectRepository projectRepository;
+    private final RuntimeRepository runtimeRepository;
+    private final GitStorageService gitStorageService;
 
     @PostConstruct
     public void init() {
@@ -321,9 +319,7 @@ public class CommonController extends BaseController {
             project = project.replace(".rp", "");
             User user = EnvironmentUtils.getLoginUser(null);
             // todo
-            LambdaQueryWrapper<ProjectEntity> projectEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectEntity>()
-                    .eq(ProjectEntity::getName, project);
-            ProjectEntity projectEntity = this.projectMapper.selectOne(projectEntityLambdaQueryWrapper);
+            ProjectEntity projectEntity = this.projectRepository.findByName(project);
 
             if (!org.springframework.util.StringUtils.hasText(targetVersion)) {
                 String filePath = "/" + project + "/" + RES_PACKAGE_FILE;
@@ -340,10 +336,7 @@ public class CommonController extends BaseController {
             }
 
             // todo
-            LambdaQueryWrapper<ProjectVersionEntity> projectVersionEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectVersionEntity>()
-                    .eq(ProjectVersionEntity::getProjectId, projectEntity.getId())
-                    .eq(ProjectVersionEntity::getVersionName, targetVersion);
-            ProjectVersionEntity projectVersion = this.projectVersionMapper.selectOne(projectVersionEntityLambdaQueryWrapper);
+            ProjectVersionEntity projectVersion = this.projectRepository.findVersionByProjectIdAndVersionName(projectEntity.getId(), targetVersion);
 
             // 获取版本差异
             String explain = this.ruleforgeRepositoryService.getPackageVersionDiff(project, targetVersion);
@@ -371,10 +364,10 @@ public class CommonController extends BaseController {
                             projectVersion.setComment(remark);
                             projectVersion.setCreateUser(user.getUsername());
                             projectVersion.setCreateTime(new Date());
-                            this.projectVersionMapper.insert(projectVersion);
+                            this.projectRepository.insertVersion(projectVersion);
                         } else {
                             projectVersion.setAuditStatus(20);
-                            this.projectVersionMapper.updateById(projectVersion);
+                            this.projectRepository.updateVersion(projectVersion);
                         }
 //                        this.ruleforgeRepositoryService.updatePackageConfigs(project, packageConfig);
 
@@ -427,11 +420,8 @@ public class CommonController extends BaseController {
             String version = params.get("versionCode");
 
             // todo 加载知识包版本配置
-            ProjectEntity projectEntity = this.projectMapper.selectOne(new LambdaQueryWrapper<ProjectEntity>()
-                    .eq(ProjectEntity::getName, project));
-            ProjectVersionEntity projectVersion = this.projectVersionMapper.selectOne(new LambdaQueryWrapper<ProjectVersionEntity>()
-                    .eq(ProjectVersionEntity::getProjectId, projectEntity.getId())
-                    .eq(ProjectVersionEntity::getVersionName, version));
+            ProjectEntity projectEntity = this.projectRepository.findByName(project);
+            ProjectVersionEntity projectVersion = this.projectRepository.findVersionByProjectIdAndVersionName(projectEntity.getId(), version);
 
             PackageConfig packageConfig = this.ruleforgeRepositoryService.loadPackageConfigs(project);
             if (projectVersion.getAuditStatus() > 89) {
@@ -443,30 +433,39 @@ public class CommonController extends BaseController {
             if (status == 4) {
                 Date date = new Date();
                 // todo
-                LambdaUpdateWrapper<ProjectRuntimeConfigEntity> projectRuntimeConfigEntityLambdaUpdateWrapper = new LambdaUpdateWrapper<ProjectRuntimeConfigEntity>()
-                        .eq(ProjectRuntimeConfigEntity::getProjectId, projectEntity.getId())
-                        .eq(ProjectRuntimeConfigEntity::getPackageId, projectVersion.getPackageId())
-                        .eq(ProjectRuntimeConfigEntity::getExecEnv, "prod")
-                        .set(ProjectRuntimeConfigEntity::getUpdateTime, date)
-                        .set(ProjectRuntimeConfigEntity::getProjectVersion, version);
-                if (this.projectRuntimeConfigMapper.update(null, projectRuntimeConfigEntityLambdaUpdateWrapper) < 1) {
-                    ProjectRuntimeConfigEntity projectRuntimeConfigEntity = new ProjectRuntimeConfigEntity();
-                    projectRuntimeConfigEntity.setProjectId(projectEntity.getId());
-                    projectRuntimeConfigEntity.setPackageId(projectVersion.getPackageId());
-                    projectRuntimeConfigEntity.setProjectVersion(version);
-                    projectRuntimeConfigEntity.setExecEnv("prod");
-                    projectRuntimeConfigEntity.setCreateUser(projectVersion.getCreateUser());
-                    projectRuntimeConfigEntity.setCreateTime(date);
-                    int insert = this.projectRuntimeConfigMapper.insert(projectRuntimeConfigEntity);
-                    log.info("callbackTestUruleResult projectRuntimeConfigMapper insert: {}", insert);
-                }
+                this.runtimeRepository.upsertConfig(projectEntity.getId(), projectVersion.getPackageId(), "prod", version, projectVersion.getCreateUser());
                 auditStatus = 90;
 
                 CacheUtils.getKnowledgeCache().removeKnowledgeByProjectName(project);
+
+                // Git integration: create tag + push + notify executor on approval
+                if (gitStorageService.repoExists(project)) {
+                    try {
+                        String packageId = projectVersion.getPackageId();
+                        if (packageId != null) {
+                            String tagName = "pkg/" + packageId + "/" + version;
+                            gitStorageService.createTag(project, tagName, "main");
+                            gitStorageService.push(project);
+                            log.info("Created Git tag [{}] for approved version [{}] in project [{}]",
+                                    tagName, version, project);
+                        }
+                    } catch (Exception e) {
+                        log.error("Git tag creation failed during approval for project [{}]", project, e);
+                    }
+                }
+
+                // Notify executor to refresh knowledge cache
+                try {
+                    String fullPackageId = project + "/" + projectVersion.getPackageId();
+                    this.externalProcessService.syncExec(fullPackageId, "prod",
+                            projectVersion.getCreateUser(), null, null, null);
+                } catch (Exception e) {
+                    log.error("Failed to notify executor for project [{}]", project, e);
+                }
             }
             // 更新审批状态
             projectVersion.setAuditStatus(auditStatus);
-            this.projectVersionMapper.updateById(projectVersion);
+            this.projectRepository.updateVersion(projectVersion);
 
             packageConfig.setLock(false);
             this.ruleforgeRepositoryService.updatePackageConfigs(project, packageConfig);

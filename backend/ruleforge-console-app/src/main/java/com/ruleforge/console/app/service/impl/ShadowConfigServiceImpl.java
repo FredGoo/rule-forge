@@ -1,7 +1,7 @@
 package com.ruleforge.console.app.service.impl;
 
 import com.ruleforge.console.app.entity.ShadowConfig;
-import com.ruleforge.console.app.mapper.ShadowConfigMapper;
+import com.ruleforge.console.app.repository.data.DatasourceRepository;
 import com.ruleforge.console.app.service.IShadowConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,11 +18,11 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class ShadowConfigServiceImpl implements IShadowConfigService {
 
-    private final ShadowConfigMapper shadowConfigMapper;
+    private final DatasourceRepository datasourceRepository;
 
     @Override
     public List<ShadowConfig> findEnabledByMainPath(String mainRulePackagePath) {
-        return shadowConfigMapper.findEnabledByMainPath(mainRulePackagePath);
+        return datasourceRepository.findEnabledShadowConfigsByMainPath(mainRulePackagePath);
     }
 
     @Override

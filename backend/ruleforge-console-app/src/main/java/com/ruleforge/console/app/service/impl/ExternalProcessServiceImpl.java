@@ -25,10 +25,16 @@ public class ExternalProcessServiceImpl implements ExternalProcessService {
     @Override
     public void syncExec(String fullPackageId, String env, String username, Integer proportion, Date start, Date end) {
         log.info("syncExec {} {} {}", fullPackageId, env, proportion);
-        String url = "/test/knowledge";
-        Map<String, String> params = new HashMap<>();
-        params.put("packageId", fullPackageId);
-//        this.execRestTemplate.postForObject(url, params, Void.class);
+        try {
+            String url = "/test/knowledge";
+            Map<String, String> params = new HashMap<>();
+            params.put("packageId", fullPackageId);
+            params.put("env", env);
+            this.execRestTemplate.postForObject(url, params, Void.class);
+            log.info("Successfully notified executor for package [{}]", fullPackageId);
+        } catch (Exception e) {
+            log.error("Failed to notify executor for package [{}]: {}", fullPackageId, e.getMessage());
+        }
     }
 
     @Override

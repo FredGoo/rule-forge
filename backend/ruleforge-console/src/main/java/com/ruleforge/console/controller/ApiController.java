@@ -1,24 +1,19 @@
 package com.ruleforge.console.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.ruleforge.console.EnvironmentProvider;
 import com.ruleforge.console.repository.model.RepositoryFile;
 import com.ruleforge.console.entity.ProjectEntity;
 import com.ruleforge.console.entity.ProjectVersionEntity;
-import com.ruleforge.console.mapper.ProjectMapper;
-import com.ruleforge.console.mapper.ProjectVersionMapper;
+import com.ruleforge.console.repository.data.ProjectRepository;
 import com.ruleforge.console.model.Repository;
 import com.ruleforge.console.model.User;
 import com.ruleforge.console.service.RuleForgeRepositoryService;
+import com.ruleforge.console.storage.GitStorageService;
+import com.ruleforge.console.storage.XmlCanonicalizer;
+import com.ruleforge.console.config.GitConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.lib.PersonIdent;
-import org.eclipse.jgit.transport.RefSpec;
-import org.eclipse.jgit.transport.URIish;
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,11 +22,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.TimeZone;
 
 @Slf4j
 @RestController("ruleforgeApiController")
@@ -41,154 +33,124 @@ public class ApiController {
 
     private final RuleForgeRepositoryService ruleforgeRepositoryService;
     private final EnvironmentProvider environmentProvider;
-    private final ProjectMapper projectMapper;
-    private final ProjectVersionMapper projectVersionMapper;
-    @Value("${ruleforgeV2.git.base:/opt/data}")
-    private String gitBase;
+    private final ProjectRepository projectRepository;
+    private final GitStorageService gitStorageService;
+    private final GitConfig gitConfig;
+    private final XmlCanonicalizer xmlCanonicalizer;
 
+    /**
+     * Migrate a project's version history from DB to Git.
+     * Initializes a Git repo (if not exists), iterates all project versions,
+     * writes files for each version, commits, and creates tags.
+     */
     @GetMapping("/fix-git")
     public ResponseEntity<?> fixGit(@RequestParam String projectName) {
-        log.info("Received request to git.");
+        log.info("Received request to migrate project [{}] to Git", projectName);
         try {
             User user = this.environmentProvider.getLoginUser(null);
 
-            // 获取版本文件
-            Repository repository = this.ruleforgeRepositoryService.loadRepository(projectName, user, false, null, null);
+            // Initialize Git repo for the project
+            gitStorageService.initRepo(projectName);
+            gitStorageService.addRemote(projectName, gitConfig.getRemoteUrl());
 
-            // 使用gitBase路径创建目录并写入文件
-            Path gitBasePath = Paths.get(gitBase, projectName);
-            if (!Files.exists(gitBasePath)) {
-                Files.createDirectories(gitBasePath);
-                log.info("Created directory: {}", gitBasePath);
+            // Load repository file tree
+            Repository repository = this.ruleforgeRepositoryService.loadRepository(
+                    projectName, user, false, null, null);
+
+            // Get all project versions ordered by version number
+            ProjectEntity projectEntity = this.projectRepository.findByName(projectName);
+            if (projectEntity == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Project not found: " + projectName);
             }
 
-            // todo
-            LambdaQueryWrapper<ProjectEntity> projectEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectEntity>()
-                    .eq(ProjectEntity::getName, projectName);
-            ProjectEntity projectEntity = this.projectMapper.selectOne(projectEntityLambdaQueryWrapper);
-            LambdaQueryWrapper<ProjectVersionEntity> projectVersionEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectVersionEntity>()
-                    .eq(ProjectVersionEntity::getProjectId, projectEntity.getId())
-                    .orderByAsc(ProjectVersionEntity::getVersionNumReal);
-            List<ProjectVersionEntity> projectVersionEntityList = this.projectVersionMapper.selectList(projectVersionEntityLambdaQueryWrapper);
+            List<ProjectVersionEntity> versionList = this.projectRepository.findVersionsByProjectId(projectEntity.getId(), null, false);
 
-            // 使用 JGit 初始化 Git 仓库
-            try (Git git = Git.init().setDirectory(gitBasePath.toFile()).call()) {
-                log.info("Initialized Git repository in: {}", gitBasePath);
-                RepositoryFile rootFile = repository.getRootFile().getChildren().get(0);
+            RepositoryFile rootFile = repository.getRootFile().getChildren().get(0);
 
-                for (ProjectVersionEntity projectVersion : projectVersionEntityList) {
-                    String version = projectVersion.getVersionName();
+            for (ProjectVersionEntity projectVersion : versionList) {
+                String version = projectVersion.getVersionName();
+                String tagName = version;
 
-                    // 检查本地 Git 仓库是否已经存在该版本的 tag
-                    boolean tagExists = git.tagList().call().stream()
-                            .anyMatch(tag -> tag.getName().equals("refs/tags/" + version));
-                    if (tagExists) {
-                        log.info("Tag {} already exists. Skipping version: {}", version, version);
-                        continue;
-                    }
-
-                    iterateRepositoryFile(rootFile, Paths.get(gitBase), version);
-
-                    // 提交更改到 Git
-                    git.add().addFilepattern(".").call();
-
-                    // 设定自定义的时间（作者时间 & 提交时间）
-                    TimeZone timeZone = TimeZone.getTimeZone("Asia/Shanghai");
-                    PersonIdent committer = new PersonIdent(projectVersion.getCreateUser(), "ruleforge@example.com", projectVersion.getCreateTime(), timeZone);
-
-                    git.commit()
-                            .setMessage(projectVersion.getComment())
-                            .setCommitter(committer)
-                            .call();
-                    log.info("Committed changes to Git repository in: {}", gitBasePath);
-
-                    // 打一个 tag
-                    git.tag().setName(version).call();
-                    log.info("Created tag: {} in Git repository in: {}", version, gitBasePath);
+                // Skip if tag already exists
+                String existingSha = gitStorageService.getRevisionSha(projectName, tagName);
+                if (existingSha != null) {
+                    log.info("Tag [{}] already exists for project [{}]. Skipping.", tagName, projectName);
+                    continue;
                 }
-            } catch (Exception e) {
-                log.error("Failed to process Git repository in: {}", gitBasePath, e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to initialize, commit, or tag in Git repository.");
+
+                // Write all files for this version
+                iterateAndWriteFiles(rootFile, projectName, "main", version);
+
+                // Commit
+                String author = projectVersion.getCreateUser() != null
+                        ? projectVersion.getCreateUser() : "system";
+                String commitSha = gitStorageService.commit(
+                        projectName, "main", projectVersion.getComment(), author);
+
+                // Create tag
+                gitStorageService.createTag(projectName, tagName, "main");
+                log.info("Migrated version [{}] for project [{}] (sha={})",
+                        version, projectName, commitSha);
             }
 
-            return ResponseEntity.ok(null);
+            // Push everything to remote
+            gitStorageService.push(projectName);
+
+            return ResponseEntity.ok("Migration completed. " + versionList.size() + " versions processed.");
         } catch (Exception e) {
-            log.error("Project git failed.", e);
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body("git failed: " + e.getMessage());
+            log.error("Git migration failed for project [{}]", projectName, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Migration failed: " + e.getMessage());
         }
     }
 
+    /**
+     * Push a project's Git repository to the configured remote.
+     */
     @GetMapping("/fix-git-push")
     public ResponseEntity<?> fixGitPush(@RequestParam String projectName) {
-        log.info("Received request to git push.");
+        log.info("Received request to push project [{}] to remote", projectName);
         try {
-            // 使用gitBase路径创建目录并写入文件
-            Path gitBasePath = Paths.get(gitBase, projectName);
+            gitStorageService.addRemote(projectName, gitConfig.getRemoteUrl());
+            gitStorageService.push(projectName);
 
-            // 使用 JGit 初始化 Git 仓库
-            try (Git git = Git.init().setDirectory(gitBasePath.toFile()).call()) {
-                log.info("Initialized Git repository in: {}", gitBasePath);
-
-                // 设置远程仓库地址
-                String remoteRepoUrl = "http://localhost:8083/ruleforge-data-dev/" + projectName + ".git";
-                git.remoteAdd().setName("origin").setUri(new URIish(remoteRepoUrl)).call();
-
-                // 推送主分支到远程
-                git.push()
-                        .setRemote("origin")
-                        .setRefSpecs(new RefSpec("refs/heads/master"))
-                        .setCredentialsProvider(new UsernamePasswordCredentialsProvider("ruleforge", "CHANGE_ME"))
-                        .call();
-
-                // 推送所有 tag
-                git.push()
-                        .setRemote("origin")
-                        .setPushTags()
-                        .setCredentialsProvider(new UsernamePasswordCredentialsProvider("ruleforge", "CHANGE_ME"))
-                        .call();
-
-            } catch (Exception e) {
-                log.error("Failed to process Git repository in: {}", gitBasePath, e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to initialize, commit, or tag in Git repository.");
-            }
-
-            return ResponseEntity.ok(null);
+            return ResponseEntity.ok("Push completed.");
         } catch (Exception e) {
-            log.error("Project git failed.", e);
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body("git failed: " + e.getMessage());
+            log.error("Git push failed for project [{}]", projectName, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Push failed: " + e.getMessage());
         }
     }
 
-    private void iterateRepositoryFile(RepositoryFile repositoryFile, Path gitBasePath, String version) throws Exception {
-        List<RepositoryFile> repositoryFileList = repositoryFile.getChildren();
-        if (repositoryFileList != null && !repositoryFileList.isEmpty()) {
-            for (RepositoryFile repositoryFileItem : repositoryFileList) {
-                if (repositoryFileItem.getChildren() != null && !repositoryFileItem.getChildren().isEmpty()) {
-                    Path folderPath = gitBasePath.resolve(repositoryFileItem.getFullPath().substring(1));
-                    if (!Files.exists(folderPath)) {
-                        Files.createDirectories(folderPath);
-                        log.info("Created directory: {}", folderPath);
-                    }
-                    iterateRepositoryFile(repositoryFileItem, gitBasePath, version);
-                } else {
-                    log.info("iterateRepositoryFile repositoryFileItem: {}", repositoryFileItem.getFullPath());
-                    syncVersionFileList(repositoryFileItem, gitBasePath, version);
-                }
+    private void iterateAndWriteFiles(RepositoryFile repositoryFile, String projectName,
+                                       String branch, String version) throws Exception {
+        List<RepositoryFile> children = repositoryFile.getChildren();
+        if (children == null || children.isEmpty()) return;
+
+        for (RepositoryFile child : children) {
+            if (child.getChildren() != null && !child.getChildren().isEmpty()) {
+                iterateAndWriteFiles(child, projectName, branch, version);
+            } else {
+                writeFileToGit(child, projectName, branch, version);
             }
         }
     }
 
-    private void syncVersionFileList(RepositoryFile repositoryFile, Path gitBasePath, String version) throws Exception {
-        Path filePath = gitBasePath.resolve(repositoryFile.getFullPath().substring(1));
+    private void writeFileToGit(RepositoryFile repositoryFile, String projectName,
+                                 String branch, String version) throws Exception {
+        String fullPath = repositoryFile.getFullPath();
+        try (InputStream is = this.ruleforgeRepositoryService.readFile(fullPath, "latest", version, false)) {
+            if (is == null) {
+                log.debug("No content for file [{}] at version [{}]", fullPath, version);
+                return;
+            }
+            String content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            String canonical = xmlCanonicalizer.canonicalize(content);
 
-        InputStream is = this.ruleforgeRepositoryService.readFile(repositoryFile.getFullPath(), "latest", version, false);
-        if (is != null) {
-            String fileContent = IOUtils.toString(is);
-            Files.write(filePath, fileContent.getBytes());
-            log.info("Wrote file: {}", filePath);
-        } else {
-            log.info("Wrote none file: {}", filePath);
+            String gitPath = fullPath.startsWith("/") ? fullPath.substring(1) : fullPath;
+            gitStorageService.writeFile(projectName, branch, gitPath, canonical);
+            log.debug("Wrote file [{}] for version [{}]", gitPath, version);
         }
     }
-
 }

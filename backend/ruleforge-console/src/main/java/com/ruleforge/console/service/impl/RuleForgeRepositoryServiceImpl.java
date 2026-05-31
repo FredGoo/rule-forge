@@ -1,17 +1,19 @@
 package com.ruleforge.console.service.impl;
 
 import com.alibaba.fastjson2.JSON;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.ruleforge.Utils;
 import com.ruleforge.console.repository.RepositoryService;
+import com.ruleforge.console.repository.data.FileRepository;
+import com.ruleforge.console.repository.data.LockRepository;
+import com.ruleforge.console.repository.data.PackageRepository;
+import com.ruleforge.console.repository.data.ProjectRepository;
+import com.ruleforge.console.repository.data.RuntimeRepository;
 import com.ruleforge.console.repository.model.*;
 import com.ruleforge.console.servlet.common.RefFile;
 import com.ruleforge.console.servlet.frame.ExportProject;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.console.entity.*;
 import com.ruleforge.console.exception.NoPermissionException;
-import com.ruleforge.console.mapper.*;
 import com.ruleforge.console.model.DefaultUser;
 import com.ruleforge.console.model.PackageConfig;
 import com.ruleforge.console.model.Repository;
@@ -19,8 +21,12 @@ import com.ruleforge.console.model.User;
 import com.ruleforge.console.service.RuleForgeRepositoryService;
 import com.ruleforge.console.service.PermissionService;
 import com.ruleforge.console.service.RepositoryInterceptor;
+import com.ruleforge.console.storage.BranchContext;
+import com.ruleforge.console.storage.GitStorageService;
 import com.ruleforge.console.storage.ProjectStorageService;
-import com.ruleforge.console.util.CompareUtils;
+import com.ruleforge.console.storage.XmlCanonicalizer;
+import com.ruleforge.console.config.GitConfig;
+import com.ruleforge.console.storage.model.GitOperationException;
 import com.ruleforge.console.util.FileTypeUtils;
 import com.ruleforge.console.util.VersionFileUtils;
 import com.ruleforge.console.util.VersionUtils;
@@ -56,17 +62,16 @@ import static com.ruleforge.console.storage.impl.DatabaseProjectStorageServiceIm
 public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryService, RepositoryService {
 
     private final PermissionService permissionService;
-    private final ProjectMapper projectMapper;
-    private final ProjectImportFlowMapper projectImportFlowMapper;
-    private final FileMapper fileMapper;
-    private final FileRelationMapper fileRelationMapper;
-    private final FileVersionMapper fileVersionMapper;
-    private final LockMapper lockMapper;
-    private final ProjectVersionMapper projectVersionMapper;
-    private final ProjectVersionMappingMapper projectVersionMappingMapper;
+    private final ProjectRepository projectRepository;
+    private final FileRepository fileRepository;
+    private final LockRepository lockRepository;
+    private final PackageRepository packageRepository;
+    private final RuntimeRepository runtimeRepository;
     private final ProjectStorageService projectStorageService;
     private final RepositoryInterceptor repositoryInterceptor;
-    private final ProjectRuntimeConfigMapper projectRuntimeConfigMapper;
+    private final GitStorageService gitStorageService;
+    private final GitConfig gitConfig;
+    private final XmlCanonicalizer xmlCanonicalizer;
 
 
 
@@ -77,7 +82,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
 
     @Override
     public List<String> loadProjectNames() throws Exception {
-        List<ProjectEntity> projects = projectMapper.selectList(null);
+        List<ProjectEntity> projects = projectRepository.findAll();
         List<String> names = new ArrayList<>();
         for (ProjectEntity project : projects) {
             names.add(project.getName());
@@ -109,19 +114,13 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
     public List<ResourcePackage> loadProjectResourcePackages(String project, String env) throws Exception {
         String[] projectArray = project.split(":");
         String version = null;
-        ProjectEntity projectEntity = this.projectMapper.selectOne(new LambdaQueryWrapper<ProjectEntity>()
-                .eq(ProjectEntity::getName, projectArray[0])
-                .last("limit 1"));
+        ProjectEntity projectEntity = this.projectRepository.findByName(projectArray[0]);
 
         if (projectArray.length > 1) {
             project = projectArray[0];
             version = projectArray[1];
         } else if (org.springframework.util.StringUtils.hasText(env)) {
-            LambdaQueryWrapper<ProjectRuntimeConfigEntity> projectRuntimeConfigEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectRuntimeConfigEntity>()
-                    .eq(ProjectRuntimeConfigEntity::getProjectId, projectEntity.getId())
-                    .eq(ProjectRuntimeConfigEntity::getExecEnv, env)
-                    .last("limit 1");
-            ProjectRuntimeConfigEntity projectRuntime = this.projectRuntimeConfigMapper.selectOne(projectRuntimeConfigEntityLambdaQueryWrapper);
+            ProjectRuntimeConfigEntity projectRuntime = this.runtimeRepository.findConfigByProjectIdAndEnv(projectEntity.getId(), env);
             version = projectRuntime.getProjectVersion();
         }
 
@@ -131,8 +130,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         inputStream.close();
 
         // todo
-        List<ProjectRuntimeConfigEntity> projectRuntimeConfigEntityList = this.projectRuntimeConfigMapper.selectList(new LambdaQueryWrapper<ProjectRuntimeConfigEntity>()
-                .eq(ProjectRuntimeConfigEntity::getProjectId, projectEntity.getId()));
+        List<ProjectRuntimeConfigEntity> projectRuntimeConfigEntityList = this.runtimeRepository.findConfigsByProjectId(projectEntity.getId());
         Map<String, String> packageRuntimeMap = new HashMap<>();
         for (ProjectRuntimeConfigEntity projectRuntimeConfigEntity : projectRuntimeConfigEntityList) {
             packageRuntimeMap.put(projectRuntimeConfigEntity.getPackageId() + "_" + projectRuntimeConfigEntity.getExecEnv(), projectRuntimeConfigEntity.getProjectVersion());
@@ -189,11 +187,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             return true;
         }
 
-        LambdaQueryWrapper<FileEntity> fileLQW = new LambdaQueryWrapper<FileEntity>()
-                .select(FileEntity::getId)
-                .eq(FileEntity::getFilePath, filePath)
-                .last("limit 1");
-        FileEntity file = this.fileMapper.selectOne(fileLQW);
+        FileEntity file = this.fileRepository.findByFilePathSelectId(filePath);
         return file != null;
     }
 
@@ -211,12 +205,22 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         ProjectEntity project = new ProjectEntity();
         project.setName(projectName);
         project.setCreateTime(new Date());
-        this.projectMapper.insert(project);
+        this.projectRepository.insert(project);
 
         createResourcePackageFile(project.getId(), projectName, user);
         createAllResourceFolder(project.getId(), projectRootPath);
         createPackageConfigFile(projectName, user);
         createClientConfigFile(projectName, user);
+
+        // Initialize Git repository for the new project
+        try {
+            gitStorageService.initRepo(projectName);
+            gitStorageService.addRemote(projectName, gitConfig.getRemoteUrl());
+            log.info("Initialized Git repo for new project [{}]", projectName);
+        } catch (GitOperationException e) {
+            log.error("Failed to initialize Git repo for project [{}]", projectName, e);
+        }
+
         return buildProjectFile(project, null, classify, null);
     }
 
@@ -227,14 +231,14 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         allResource.setProjectId(projectId);
         allResource.setFilePath(projectRootPath);
         allResource.setCreateTime(new Date());
-        this.fileMapper.insert(allResource);
+        this.fileRepository.insert(allResource);
 
         FileRelationEntity fileRelation = new FileRelationEntity();
         fileRelation.setAncestor(projectId);
         fileRelation.setDescendant(allResource.getId());
         fileRelation.setDistance(1);
         fileRelation.setProjectId(projectId);
-        this.fileRelationMapper.insert(fileRelation);
+        this.fileRepository.insertRelation(fileRelation);
     }
 
     private void createResourcePackageFile(Long projectId, String project, User user) throws Exception {
@@ -246,7 +250,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             file.setProjectId(projectId);
             file.setFilePath(filePath);
             file.setCreateTime(new Date());
-            this.fileMapper.insert(file);
+            this.fileRepository.insert(file);
 
             FileVersionEntity fileVersionEntity = new FileVersionEntity();
             fileVersionEntity.setFilePath(filePath);
@@ -256,14 +260,14 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             fileVersionEntity.setProjectId(projectId);
             fileVersionEntity.setCreateUser(user.getUsername());
             fileVersionEntity.setCreateDate(new Date());
-            this.fileVersionMapper.insert(fileVersionEntity);
+            this.fileRepository.insert(fileVersionEntity);
 
             FileRelationEntity fileRelation = new FileRelationEntity();
             fileRelation.setAncestor(projectId);
             fileRelation.setDescendant(file.getId());
             fileRelation.setDistance(1);
             fileRelation.setProjectId(projectId);
-            this.fileRelationMapper.insert(fileRelation);
+            this.fileRepository.insertRelation(fileRelation);
         }
     }
 
@@ -334,10 +338,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
 
         String versionNum = null;
         try {
-            LambdaQueryWrapper<FileEntity> fileLQW = new LambdaQueryWrapper<FileEntity>()
-                    .eq(FileEntity::getFilePath, path)
-                    .last("limit 1");
-            FileEntity file = this.fileMapper.selectOne(fileLQW);
+            FileEntity file = this.fileRepository.findByFilePath(path);
             if (file == null) {
                 throw new RuleException("File [" + path + "] not exist.");
             }
@@ -351,56 +352,32 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             }
 
             if (newVersion) {
-                LambdaQueryWrapper<FileVersionEntity> tmpFileVersionLQW = new LambdaQueryWrapper<FileVersionEntity>()
-                        .eq(FileVersionEntity::getFileId, file.getId());
-                if (packageFile) {
-                    tmpFileVersionLQW.orderByDesc(FileVersionEntity::getVersionNumReal).last("limit 1");
-                } else {
-                    tmpFileVersionLQW.eq(FileVersionEntity::getVersionNum, SNAPSHOT_VERSION).last("limit 1");
-                }
-                FileVersionEntity tmpFileVersion = this.fileVersionMapper.selectOne(tmpFileVersionLQW);
+                FileVersionEntity tmpFileVersion = this.fileRepository.findLatestByFileId(file.getId(), packageFile);
 
                 if (tmpFileVersion != null) {
                     // 获取最新的release版本
-                    LambdaQueryWrapper<FileVersionEntity> versionLQW = new LambdaQueryWrapper<FileVersionEntity>()
-                            .eq(FileVersionEntity::getFilePath, path)
-                            .lt(FileVersionEntity::getVersionNumReal, SNAPSHOT_VERSION_REAL)
-                            .orderByDesc(FileVersionEntity::getVersionNumReal, FileVersionEntity::getId)
-                            .last("limit 1");
-                    FileVersionEntity latestVersion = this.fileVersionMapper.selectOne(versionLQW);
+                    FileVersionEntity latestVersion = this.fileRepository.findLatestReleaseByFilePathFull(path);
 
                     String tmpOldVersionNum = tmpFileVersion.getVersionNum();
                     tmpFileVersion = VersionUtils.incrementVersionFileVersion(latestVersion, tmpFileVersion);
                     if (packageFile && !SNAPSHOT_VERSION.equals(tmpOldVersionNum)) {
                         tmpFileVersion.setId(null);
-                        tmpFileVersion.setFileContent(content);
+                        tmpFileVersion.setFileContent(null);
                         tmpFileVersion.setAfterComment(null);
                         tmpFileVersion.setCreateUser(user.getUsername());
                         tmpFileVersion.setCreateDate(calendar.getTime());
                         tmpFileVersion.setUpdateTime(null);
-                        int insertRes = this.fileVersionMapper.insert(tmpFileVersion);
+                        this.fileRepository.insert(tmpFileVersion);
                     } else {
-                        LambdaUpdateWrapper<FileVersionEntity> fileLUW = new LambdaUpdateWrapper<FileVersionEntity>()
-                                .eq(FileVersionEntity::getId, tmpFileVersion.getId())
-                                .set(FileVersionEntity::getVersionNum, tmpFileVersion.getVersionNum())
-                                .set(FileVersionEntity::getVersionNumReal, tmpFileVersion.getVersionNumReal())
-                                .set(FileVersionEntity::getUpdateTime, new Date());
-                        int updateRes = this.fileVersionMapper.update(null, fileLUW);
+                        this.fileRepository.updateVersionNumAndReal(tmpFileVersion.getId(), tmpFileVersion.getVersionNum(), tmpFileVersion.getVersionNumReal(), tmpFileVersion.getProjectVersionNumReal());
                     }
                     versionNum = tmpFileVersion.getVersionNum();
                 } else {
                     // 获取最新的release版本
-                    LambdaQueryWrapper<FileVersionEntity> versionLQW = new LambdaQueryWrapper<FileVersionEntity>()
-                            .eq(FileVersionEntity::getFilePath, path)
-                            .lt(FileVersionEntity::getVersionNumReal, SNAPSHOT_VERSION_REAL)
-                            .orderByDesc(FileVersionEntity::getVersionNumReal, FileVersionEntity::getId)
-                            .last("limit 1");
-                    FileVersionEntity latestVersion = this.fileVersionMapper.selectOne(versionLQW);
+                    FileVersionEntity latestVersion = this.fileRepository.findLatestReleaseByFilePathFull(path);
 
+                    // Content diff not stored in DB — Git is the content source
                     String contentDiff = "";
-                    if (latestVersion != null) {
-                        contentDiff = CompareUtils.compareContent(latestVersion.getFileContent(), content);
-                    }
                     log.info("\n{}", contentDiff);
 
                     tmpFileVersion = new FileVersionEntity();
@@ -408,55 +385,39 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
                     tmpFileVersion.setFileId(file.getId());
                     tmpFileVersion.setFileName(file.getFilePath());
                     tmpFileVersion.setFilePath(file.getFilePath());
-                    tmpFileVersion.setFileContent(content);
+                    tmpFileVersion.setFileContent(null);
                     tmpFileVersion.setProjectId(file.getProjectId());
-                    tmpFileVersion.setAfterComment(contentDiff);
+                    tmpFileVersion.setAfterComment(null);
                     tmpFileVersion.setCreateUser(user.getUsername());
                     tmpFileVersion.setCreateDate(calendar.getTime());
                     tmpFileVersion.setUpdateTime(null);
                     tmpFileVersion.setProjectVersionNumReal(SNAPSHOT_VERSION_REAL);
-                    int insertRes = this.fileVersionMapper.insert(tmpFileVersion);
+                    this.fileRepository.insert(tmpFileVersion);
                     versionNum = tmpFileVersion.getVersionNum();
                 }
             } else {
-                // 对比差异
-                LambdaQueryWrapper<FileVersionEntity> latestLQW = new LambdaQueryWrapper<FileVersionEntity>()
-                        .eq(FileVersionEntity::getFilePath, path)
-                        .lt(FileVersionEntity::getVersionNumReal, SNAPSHOT_VERSION_REAL)
-                        .orderByDesc(FileVersionEntity::getVersionNumReal)
-                        .last("limit 1");
-                FileVersionEntity latestVersion = this.fileVersionMapper.selectOne(latestLQW);
+                // 对比差异 — content diff not stored in DB when Git is source
                 String contentDiff = "";
-                if (latestVersion != null) {
-                    contentDiff = CompareUtils.compareContent(latestVersion.getFileContent(), content);
-                }
                 log.info("\n{}", contentDiff);
 
-                LambdaUpdateWrapper<FileVersionEntity> fileLUW = new LambdaUpdateWrapper<FileVersionEntity>()
-                        .eq(FileVersionEntity::getFilePath, path)
-                        .set(FileVersionEntity::getFileContent, content)
-                        .set(FileVersionEntity::getAfterComment, contentDiff)
-                        .set(FileVersionEntity::getUpdateTime, new Date());
-                if (file.getProjectId() == 0) {
-                    fileLUW.eq(FileVersionEntity::getVersionNum, "latest");
+                String targetVersionNum = (file.getProjectId() == 0) ? "latest" : SNAPSHOT_VERSION;
+                FileVersionEntity existingVersion = this.fileRepository.findByFileIdAndVersionNum(file.getId(), targetVersionNum);
+                if (existingVersion != null) {
+                    this.fileRepository.updateVersionNumAndReal(existingVersion.getId(), existingVersion.getVersionNum(), existingVersion.getVersionNumReal(), existingVersion.getProjectVersionNumReal());
                 } else {
-                    fileLUW.eq(FileVersionEntity::getVersionNum, SNAPSHOT_VERSION);
-                }
-                int updateRes = this.fileVersionMapper.update(null, fileLUW);
-                if (updateRes < 1) {
                     FileVersionEntity newFile = new FileVersionEntity();
                     newFile.setFileId(file.getId());
                     newFile.setFilePath(file.getFilePath());
                     newFile.setFileName(file.getName());
                     newFile.setProjectId(file.getProjectId());
-                    newFile.setFileContent(content);
-                    newFile.setAfterComment(contentDiff);
+                    newFile.setFileContent(null);
+                    newFile.setAfterComment(null);
                     newFile.setVersionNum(SNAPSHOT_VERSION);
                     newFile.setVersionNumReal(SNAPSHOT_VERSION_REAL);
                     newFile.setProjectVersionNumReal(SNAPSHOT_VERSION_REAL);
                     newFile.setCreateUser(user.getUsername());
                     newFile.setCreateDate(calendar.getTime());
-                    this.fileVersionMapper.insert(newFile);
+                    this.fileRepository.insert(newFile);
                 }
                 versionNum = SNAPSHOT_VERSION;
             }
@@ -465,15 +426,26 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         }
 
         this.repositoryInterceptor.saveFile(path, content);
+
+        // Write to Git — this is the primary content store
+        String gitCommitSha = dualWriteToGit(path, content, user != null ? user.getUsername() : null);
+
+        // Record git commit SHA in DB metadata
+        if (gitCommitSha != null && versionNum != null) {
+            try {
+                this.fileRepository.updateGitCommitSha(path, versionNum, gitCommitSha);
+            } catch (Exception e) {
+                log.debug("Failed to update gitCommitSha for [{}]: {}", path, e.getMessage());
+            }
+        }
+
         return versionNum;
     }
 
     @Override
     public List<RefFile> getFlowRefs(List<String> pathList) {
         // 遍历项目
-        LambdaQueryWrapper<FileEntity> tmpFileVersionLQW = new LambdaQueryWrapper<FileEntity>()
-                .in(FileEntity::getFilePath, pathList);
-        List<FileEntity> fileEntityList = this.fileMapper.selectList(tmpFileVersionLQW);
+        List<FileEntity> fileEntityList = this.fileRepository.findByFilePathIn(pathList);
 
         List<RefFile> repositoryFileList = new ArrayList<>(fileEntityList.size());
         for (FileEntity fileEntity : fileEntityList) {
@@ -483,11 +455,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             refFile.setVersion("LATEST");
             // todo
             List<String> versionList = new ArrayList<>(25);
-            LambdaQueryWrapper<FileVersionEntity> fileVersionEntityLambdaQueryWrapper = new LambdaQueryWrapper<FileVersionEntity>()
-                    .eq(FileVersionEntity::getFileId, fileEntity.getId())
-                    .orderByDesc(FileVersionEntity::getVersionNumReal)
-                    .last("limit 25");
-            List<FileVersionEntity> fileVersionEntityList = this.fileVersionMapper.selectList(fileVersionEntityLambdaQueryWrapper);
+            List<FileVersionEntity> fileVersionEntityList = this.fileRepository.findVersionsByFilePath(fileEntity.getFilePath(), true, 1, 25, true);
             for (FileVersionEntity fileVersion : fileVersionEntityList) {
                 versionList.add(fileVersion.getVersionNum());
             }
@@ -517,16 +485,47 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
 
     @Override
     public String getPackageVersionDiff(String project, String version) {
-        try {
-            LambdaQueryWrapper<ProjectEntity> projectEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectEntity>()
-                    .eq(ProjectEntity::getName, project)
-                    .last("limit 1");
-            ProjectEntity projectEntity = this.projectMapper.selectOne(projectEntityLambdaQueryWrapper);
-            LambdaQueryWrapper<FileVersionEntity> lqw = new LambdaQueryWrapper<FileVersionEntity>()
-                    .eq(FileVersionEntity::getProjectId, projectEntity.getId())
-                    .eq(FileVersionEntity::getProjectVersionNumReal, VersionUtils.convertVersionToLong(version));
+        // Git-based diff: compare current version tag with the previous version tag
+        if (gitStorageService.repoExists(project)) {
+            try {
+                // Find previous version
+                ProjectEntity projectEntity = this.projectRepository.findByName(project);
+                if (projectEntity != null) {
+                    ProjectVersionEntity currentPVE = this.projectRepository.findVersionByProjectIdAndVersionName(projectEntity.getId(), version);
+                    if (currentPVE != null) {
+                        // Find previous version
+                        ProjectVersionEntity prevPVE = this.projectRepository.findPreviousVersion(projectEntity.getId(), currentPVE.getVersionNumReal());
 
-            List<FileVersionEntity> fileVersionEntityList = this.fileVersionMapper.selectList(lqw);
+                        String packageId = currentPVE.getPackageId();
+                        if (packageId != null) {
+                            String currentTag = "pkg/" + packageId + "/" + version;
+                            String prevTag = prevPVE != null ? "pkg/" + packageId + "/" + prevPVE.getVersionName() : null;
+
+                            if (prevTag != null) {
+                                List<com.ruleforge.console.storage.model.FileDiff> diffs =
+                                        gitStorageService.diff(project, prevTag, currentTag);
+                                StringBuilder sb = new StringBuilder();
+                                for (com.ruleforge.console.storage.model.FileDiff d : diffs) {
+                                    sb.append(d.getFilePath()).append(" [").append(d.getDiffType()).append("]\n");
+                                    if (d.getPatch() != null) {
+                                        sb.append(d.getPatch()).append("\n");
+                                    }
+                                    sb.append("\n");
+                                }
+                                return sb.toString();
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Git diff failed, falling back to DB: {}", e.getMessage());
+            }
+        }
+
+        // Fallback to DB-based diff
+        try {
+            ProjectEntity projectEntity = this.projectRepository.findByName(project);
+            List<FileVersionEntity> fileVersionEntityList = this.fileRepository.findByProjectIdAndProjectVersionNumReal(projectEntity.getId(), VersionUtils.convertVersionToLong(version));
             StringBuilder sb = new StringBuilder();
             for (FileVersionEntity fileVersion : fileVersionEntityList) {
                 sb.append(fileVersion.getFilePath()).append("\n")
@@ -542,12 +541,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
 
     @Override
     public String getFileVersionDiff(String filePath, String targetVersion) {
-        LambdaQueryWrapper<FileVersionEntity> lqw = new LambdaQueryWrapper<FileVersionEntity>()
-                .eq(FileVersionEntity::getFilePath, filePath)
-                .orderByDesc(FileVersionEntity::getVersionNumReal)
-                .last("limit 1");
-
-        FileVersionEntity fileVersion = this.fileVersionMapper.selectOne(lqw);
+        FileVersionEntity fileVersion = this.fileRepository.findLatestReleaseByFilePathFull(filePath);
         return fileVersion.getFilePath() + "\n" +
                 fileVersion.getAfterComment() + "\n\n";
     }
@@ -560,14 +554,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
     @Override
     public void deleteFile(String path, User user, Type type) throws Exception {
         // 获取所有file
-        LambdaQueryWrapper<FileEntity> fileLQW = new LambdaQueryWrapper<FileEntity>()
-                .select(FileEntity::getId, FileEntity::getFileType)
-                .eq(FileEntity::getFilePath, path)
-                .last("limit 1");
-        if (type != null) {
-            fileLQW.eq(FileEntity::getFileType, type.ordinal());
-        }
-        FileEntity file = this.fileMapper.selectOne(fileLQW);
+        FileEntity file = this.fileRepository.findByFilePathWithType(path, type != null ? type.ordinal() : null);
         if (file == null) {
             return;
         }
@@ -575,96 +562,82 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         long fileId = file.getId();
 
         // 判断下级是否为空，为空则终止删除
-        LambdaQueryWrapper<FileRelationEntity> relationLQW = new LambdaQueryWrapper<FileRelationEntity>()
-                .eq(FileRelationEntity::getAncestor, fileId);
-        List<FileRelationEntity> relationFileList = this.fileRelationMapper.selectList(relationLQW);
+        List<FileRelationEntity> relationFileList = this.fileRepository.findRelationsByAncestor(fileId);
         if (!relationFileList.isEmpty()) {
             return;
         }
 
         // 删除relation
-        relationLQW = new LambdaQueryWrapper<FileRelationEntity>()
-                .eq(FileRelationEntity::getDescendant, fileId);
-        Integer relationDeleteNum = this.fileRelationMapper.delete(relationLQW);
+        this.fileRepository.deleteRelationsByDescendant(fileId);
 
         // 删除file
-        fileLQW = new LambdaQueryWrapper<FileEntity>()
-                .eq(FileEntity::getId, fileId);
-        Integer fileDeleteNum = this.fileMapper.delete(fileLQW);
+        this.fileRepository.deleteFileById(fileId);
 
         // 删除file version
-        LambdaQueryWrapper<FileVersionEntity> versionLQW = new LambdaQueryWrapper<FileVersionEntity>()
-                .eq(FileVersionEntity::getFileId, fileId);
-        Integer fileVersionDeleteNum = this.fileVersionMapper.delete(versionLQW);
+        this.fileRepository.deleteFileVersionsByFileId(fileId);
 
         this.repositoryInterceptor.deleteFile(path);
+        dualDeleteFromGit(path);
     }
 
     @Override
     public void deleteProject(String projectName, User user) throws Exception {
         // 获取所有file
-        LambdaQueryWrapper<ProjectEntity> projectLQW = new LambdaQueryWrapper<ProjectEntity>()
-                .select(ProjectEntity::getId)
-                .eq(ProjectEntity::getName, projectName)
-                .last("limit 1");
-        ProjectEntity project = this.projectMapper.selectOne(projectLQW);
+        ProjectEntity project = this.projectRepository.findByNameSelectId(projectName);
         if (project == null) {
             return;
         }
         long projectId = project.getId();
 
         // 删除project
-        Integer projectDeleteNum = this.projectMapper.delete(projectLQW);
+        this.projectRepository.deleteByName(projectName);
 
         // 删除relation
-        LambdaQueryWrapper<FileRelationEntity> relationLQW = new LambdaQueryWrapper<FileRelationEntity>()
-                .in(FileRelationEntity::getProjectId, projectId);
-        Integer relationDeleteNum = this.fileRelationMapper.delete(relationLQW);
+        this.fileRepository.deleteRelationsByProjectId(projectId);
 
         // 删除file
-        LambdaQueryWrapper<FileEntity> fileLQW = new LambdaQueryWrapper<FileEntity>()
-                .eq(FileEntity::getId, projectId)
-                .or()
-                .eq(FileEntity::getProjectId, projectId);
-        Integer fileDeleteNum = this.fileMapper.delete(fileLQW);
+        this.fileRepository.deleteFilesByIdOrProjectId(projectId);
 
         // 删除file version
-        LambdaQueryWrapper<FileVersionEntity> versionLQW = new LambdaQueryWrapper<FileVersionEntity>()
-                .eq(FileVersionEntity::getProjectId, projectId);
-        Integer fileVersionDeleteNum = this.fileVersionMapper.delete(versionLQW);
+        this.fileRepository.deleteFileVersionsByProjectId(projectId);
 
         // 删除project version
-        LambdaQueryWrapper<ProjectVersionEntity> projectVersionEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectVersionEntity>()
-                .eq(ProjectVersionEntity::getProjectId, projectId);
-        Integer projectVersionDeleteNum = this.projectVersionMapper.delete(projectVersionEntityLambdaQueryWrapper);
+        this.projectRepository.deleteVersionsByProjectId(projectId);
 
         // 删除project version mapping
-        LambdaQueryWrapper<ProjectVersionMappingEntity> projectVersionMappingEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectVersionMappingEntity>()
-                .eq(ProjectVersionMappingEntity::getProjectId, projectId);
-        Integer projectVersionMappingDeleteNum = this.projectVersionMappingMapper.delete(projectVersionMappingEntityLambdaQueryWrapper);
+        this.projectRepository.deleteMappingsByProjectId(projectId);
 
         this.repositoryInterceptor.deleteFile("/" + projectName);
     }
 
     @Override
     public Long lockPath(String project, User user) throws Exception {
-        LambdaQueryWrapper<LockEntity> queryWrapper = new LambdaQueryWrapper<LockEntity>()
-                .eq(LockEntity::getLockResource, project);
+        // For package files, lock at package level instead of file level
+        String lockResource = project;
+        if (project.contains(RES_PACKAGE_FILE)) {
+            // Extract project + package path for package-level locking
+            // e.g., "/projectA/资源包.rp/pkg1" → "/projectA/资源包.rp"
+            int pkgIdx = project.indexOf(RES_PACKAGE_FILE);
+            int nextSlash = project.indexOf('/', pkgIdx + RES_PACKAGE_FILE.length());
+            if (nextSlash > 0) {
+                lockResource = project.substring(0, nextSlash);
+            }
+        }
 
-        LockEntity lockEntity = this.lockMapper.selectOne(queryWrapper);
+        LockEntity lockEntity = this.lockRepository.findByResource(lockResource);
         if (lockEntity != null) {
             return null;
         }
 
         lockEntity = new LockEntity();
-        lockEntity.setLockResource(project);
+        lockEntity.setLockResource(lockResource);
         lockEntity.setCreateTime(new Date());
-        return this.lockMapper.insert(lockEntity) > 0 ? lockEntity.getId() : null;
+        return this.lockRepository.insert(lockEntity).getId();
     }
 
     @Override
     public boolean unlockPath(String project, User user, Long versionNum) throws Exception {
-        return this.lockMapper.deleteById(versionNum) > 0;
+        return this.lockRepository.deleteById(versionNum);
     }
 
     @Override
@@ -680,11 +653,13 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         Repository repo = new Repository();
 
         // 遍历项目
-        LambdaQueryWrapper<ProjectEntity> fileQW = new LambdaQueryWrapper<>();
+        List<ProjectEntity> projectEntityList;
         if (!StringUtils.isEmpty(project)) {
-            fileQW.eq(ProjectEntity::getName, project);
+            ProjectEntity pe = this.projectRepository.findByName(project);
+            projectEntityList = pe != null ? List.of(pe) : List.of();
+        } else {
+            projectEntityList = this.projectRepository.findAll();
         }
-        List<ProjectEntity> projectEntityList = this.projectMapper.selectList(fileQW);
         if (projectEntityList != null) {
             List<String> projectNames = new ArrayList<>(projectEntityList.size());
             RepositoryFile rootFile = new RepositoryFile();
@@ -744,26 +719,19 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
     public List<String> getReferenceFiles(String targetProject, String path, String searchText, String searchTextScript) throws Exception {
         List<String> referenceFiles = new ArrayList<>();
 
-        LambdaQueryWrapper<ProjectEntity> projectEntityLambdaQueryWrapper = new LambdaQueryWrapper<ProjectEntity>()
-                .select(ProjectEntity::getId)
-                .gt(ProjectEntity::getId, 0);
-        if (org.springframework.util.StringUtils.hasText(targetProject)) {
-            projectEntityLambdaQueryWrapper.eq(ProjectEntity::getName, targetProject);
-        }
-        List<ProjectEntity> projectEntityList = this.projectMapper.selectList(projectEntityLambdaQueryWrapper);
+        List<ProjectEntity> projectEntityList = this.projectRepository.findByIdGreaterThanZero(
+                org.springframework.util.StringUtils.hasText(targetProject) ? targetProject : null);
 
         for (ProjectEntity projectEntity : projectEntityList) {
-            LambdaQueryWrapper<FileEntity> fileEntityLambdaQueryWrapper = new LambdaQueryWrapper<FileEntity>()
-                    .ne(FileEntity::getFileType, Type.resourcePackage.ordinal())
-                    .ne(FileEntity::getFileType, Type.packageConfig.ordinal())
-                    .eq(FileEntity::getProjectId, projectEntity.getId());
-            List<FileEntity> fileEntityList = this.fileMapper.selectList(fileEntityLambdaQueryWrapper);
+            List<FileEntity> fileEntityList = this.fileRepository.findByProjectIdExcludingTypes(projectEntity.getId(),
+                    Type.resourcePackage.ordinal(), Type.packageConfig.ordinal());
+
             List<Long> fileIdList = new ArrayList<>();
             for (FileEntity fileEntity : fileEntityList) {
                 fileIdList.add(fileEntity.getId());
             }
 
-            List<FileVersionEntity> fileVersionEntityList = this.fileVersionMapper.selectLatestVersionByFileIds(fileIdList);
+            List<FileVersionEntity> fileVersionEntityList = this.fileRepository.selectLatestVersionByFileIds(fileIdList);
             for (FileVersionEntity fileVersionEntity : fileVersionEntityList) {
                 String content = fileVersionEntity.getFileContent();
                 boolean containPath = content.contains(path);
@@ -797,23 +765,17 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             path = pathArray[0];
             version = pathArray[1];
         }
-        LambdaQueryWrapper<FileVersionEntity> fileVersionLQW = new LambdaQueryWrapper<FileVersionEntity>()
-                .select(FileVersionEntity::getFileContent, FileVersionEntity::getVersionNum)
-                .eq(FileVersionEntity::getFilePath, path)
-                .last("limit 1");
-        if (!containSnapshot) {
-            fileVersionLQW.lt(FileVersionEntity::getVersionNumReal, SNAPSHOT_VERSION_REAL);
-            if (org.springframework.util.StringUtils.hasText(projectVersion)) {
-                fileVersionLQW.le(FileVersionEntity::getProjectVersionNumReal, VersionUtils.convertVersionToLong(projectVersion));
-            }
-        }
-        if (org.springframework.util.StringUtils.hasText(version) && !version.equalsIgnoreCase("latest")) {
-            fileVersionLQW.eq(FileVersionEntity::getVersionNum, version);
-        } else {
-            fileVersionLQW.orderByDesc(FileVersionEntity::getVersionNumReal);
-        }
 
-        FileVersionEntity fileVersionEntity = this.fileVersionMapper.selectOne(fileVersionLQW);
+        // Git-first read: try Git before falling back to DB
+        InputStream gitStream = tryReadFromGit(path, version, projectVersion, containSnapshot);
+        if (gitStream != null) {
+            return gitStream;
+        }
+        // Fall through to DB read
+
+        FileVersionEntity fileVersionEntity = this.fileRepository.findByFilePathForRead(path,
+                (version != null && !version.equalsIgnoreCase("latest")) ? version : null,
+                projectVersion, containSnapshot);
         if (fileVersionEntity != null) {
             log.info(String.format("readFile path: %s, project version: %s, input version: %s, real version: %s containSnapshot：%s", path, projectVersion, version, fileVersionEntity.getVersionNum(), containSnapshot));
             return IOUtils.toInputStream(fileVersionEntity.getFileContent(), StandardCharsets.UTF_8);
@@ -823,14 +785,55 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         }
     }
 
+    /**
+     * Try to read a file from Git storage.
+     * Returns null if Git read is not possible (no repo, no tag, etc.).
+     */
+    private InputStream tryReadFromGit(String path, String version, String projectVersion, boolean containSnapshot) {
+        try {
+            String projectName = extractProjectName(path);
+            if (projectName == null || !gitStorageService.repoExists(projectName)) {
+                return null;
+            }
+
+            String gitPath = path.startsWith("/") ? path.substring(1) : path;
+            String revision = null;
+
+            if (org.springframework.util.StringUtils.hasText(projectVersion)) {
+                // Try package version tag: pkg/{packageId}/{version}
+                // For now, use the projectVersion as a tag directly
+                revision = projectVersion;
+            } else if (org.springframework.util.StringUtils.hasText(version)
+                    && !version.equalsIgnoreCase("latest") && !version.equals(SNAPSHOT_VERSION)) {
+                // Try specific file version as a tag
+                revision = version;
+            }
+
+            if (revision != null) {
+                InputStream stream = gitStorageService.readFileStream(projectName, revision, gitPath);
+                if (stream != null) {
+                    log.debug("Read file [{}] from Git at revision [{}]", path, revision);
+                    return stream;
+                }
+            }
+
+            // For "latest" or snapshot — read from user branch or main
+            String branch = BranchContext.getBranch() != null ? BranchContext.getBranch() : "main";
+            InputStream stream = gitStorageService.readFileStream(projectName, branch, gitPath);
+            if (stream != null) {
+                log.debug("Read file [{}] from Git on branch [{}]", path, branch);
+            }
+            return stream;
+        } catch (Exception e) {
+            log.debug("Git read failed for [{}], falling back to DB: {}", path, e.getMessage());
+            return null;
+        }
+    }
+
     @Override
     public VersionFile loadFileProperty(String path, String version) throws Exception {
         path = processPath(path);
-        LambdaQueryWrapper<FileVersionEntity> fileVersionLQW = new LambdaQueryWrapper<FileVersionEntity>()
-                .eq(FileVersionEntity::getFilePath, path)
-                .eq(FileVersionEntity::getVersionNum, version)
-                .last("limit 1");
-        FileVersionEntity fileVersionEntity = this.fileVersionMapper.selectOne(fileVersionLQW);
+        FileVersionEntity fileVersionEntity = this.fileRepository.findByFilePathAndVersion(path, version);
 
         VersionFile versionFile = new VersionFile();
         versionFile.setName(fileVersionEntity.getFileName());
@@ -849,28 +852,13 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
     @Override
     public List<VersionFile> getVersionFiles(String path, boolean desc, int page, int row, boolean containContent, boolean containLatest) throws Exception {
         path = processPath(path);
-        FileEntity fileEntity = this.fileMapper.selectOne(new LambdaQueryWrapper<FileEntity>()
-                .eq(FileEntity::getFilePath, path)
-                .last("limit 1"));
+        FileEntity fileEntity = this.fileRepository.findByFilePath(path);
         if (fileEntity == null) {
             throw new RuleException("File [" + path + "] not exist.");
         }
 
         List<VersionFile> files = new ArrayList<>();
-        LambdaQueryWrapper<FileVersionEntity> versionLQW = new LambdaQueryWrapper<FileVersionEntity>()
-                .eq(FileVersionEntity::getFilePath, path);
-        if (!containLatest) {
-            versionLQW.ne(FileVersionEntity::getVersionNum, "latest");
-        }
-        if (desc) {
-            versionLQW.orderByDesc(FileVersionEntity::getCreateDate);
-        } else {
-            versionLQW.orderByAsc(FileVersionEntity::getCreateDate);
-        }
-        if (row > 0 && page > 0) {
-            versionLQW.last("limit " + (page - 1) * row + "," + row);
-        }
-        List<FileVersionEntity> versionEntityList = this.fileVersionMapper.selectList(versionLQW);
+        List<FileVersionEntity> versionEntityList = this.fileRepository.findVersionsByFilePath(path, desc, page, row, containLatest);
 
         versionEntityList.forEach(version -> {
             String versionName = version.getVersionNum();
@@ -902,18 +890,12 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
     @Override
     public Long countVersionFiles(String path) throws Exception {
         path = processPath(path);
-        LambdaQueryWrapper<FileEntity> fileLQW = new LambdaQueryWrapper<FileEntity>()
-                .eq(FileEntity::getFilePath, path)
-                .last("limit 1");
-        FileEntity fileEntity = this.fileMapper.selectOne(fileLQW);
+        FileEntity fileEntity = this.fileRepository.findByFilePath(path);
         if (fileEntity == null) {
             throw new RuleException("File [" + path + "] not exist.");
         }
 
-        LambdaQueryWrapper<FileVersionEntity> versionLQW = new LambdaQueryWrapper<FileVersionEntity>()
-                .eq(FileVersionEntity::getFilePath, path)
-                .ne(FileVersionEntity::getVersionNum, "latest");
-        return this.fileVersionMapper.selectCount(versionLQW);
+        return this.fileRepository.countVersionsByFilePath(path);
     }
 
     @Override
@@ -922,7 +904,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         ProjectEntity project = new ProjectEntity();
         project.setName(repositoryFile.getName());
         project.setCreateTime(new Date());
-        this.projectMapper.insert(project);
+        this.projectRepository.insert(project);
 
         Map<String, Long> fileIdMap = importFile(repositoryFile.getChildren(), Lists.newArrayList(project.getId()), loadLatest, false);
 
@@ -956,11 +938,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             }
 
             String parentPath = path.substring(0, path.lastIndexOf("/"));
-            LambdaQueryWrapper<FileEntity> parentFileLQW = new LambdaQueryWrapper<FileEntity>()
-                    .eq(FileEntity::getFilePath, parentPath)
-                    .ne(FileEntity::getFileType, Type.project.ordinal())
-                    .last("limit 1");
-            FileEntity parentFile = this.fileMapper.selectOne(parentFileLQW);
+            FileEntity parentFile = this.fileRepository.findByFilePathNeType(parentPath, Type.project.ordinal());
 
             String fileName = path.substring(path.lastIndexOf("/") + 1);
             String createUser = user.getUsername();
@@ -979,7 +957,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             file.setProjectId(projectId);
             file.setFilePath(path);
             file.setCreateTime(new Date());
-            this.fileMapper.insert(file);
+            this.fileRepository.insert(file);
 
             if (isFile) {
                 FileVersionEntity fileVersionEntity = new FileVersionEntity();
@@ -992,12 +970,10 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
                 fileVersionEntity.setProjectId(projectId);
                 fileVersionEntity.setCreateUser(createUser);
                 fileVersionEntity.setCreateDate(new Date());
-                this.fileVersionMapper.insert(fileVersionEntity);
+                this.fileRepository.insert(fileVersionEntity);
             }
 
-            LambdaQueryWrapper<FileRelationEntity> relationLQW = new LambdaQueryWrapper<FileRelationEntity>()
-                    .eq(FileRelationEntity::getDescendant, parentFile.getId());
-            List<FileRelationEntity> parentRelationList = this.fileRelationMapper.selectList(relationLQW);
+            List<FileRelationEntity> parentRelationList = this.fileRepository.findRelationsByDescendant(parentFile.getId());
             List<FileRelationEntity> fileRelationList = new ArrayList<>(parentRelationList.size() + 1);
             parentRelationList.forEach(parentRelation -> {
                 FileRelationEntity fileRelation = new FileRelationEntity();
@@ -1013,7 +989,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             fileRelation.setDistance(1);
             fileRelation.setProjectId(projectId);
             fileRelationList.add(fileRelation);
-            this.fileRelationMapper.insertBatchSomeColumn(fileRelationList);
+            this.fileRepository.batchInsertRelations(fileRelationList);
 
             this.repositoryInterceptor.createFile(path, content);
         } catch (Exception ex) {
@@ -1046,7 +1022,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             file.setFilePath(repositoryFile.getFullPath());
             file.setFileType(repositoryFile.getType().ordinal());
             file.setProjectId(parentIdListCopy.get(0));
-            this.fileMapper.insert(file);
+            this.fileRepository.insert(file);
 
             // 记录文件ID
             fileIdMap.put(file.getFilePath(), file.getId());
@@ -1071,7 +1047,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
                 relation.setDistance(parentIdListCopy.size() - i);
                 relationList.add(relation);
             }
-            this.fileRelationMapper.insertBatchSomeColumn(relationList);
+            this.fileRepository.batchInsertRelations(relationList);
 
             parentIdListCopy.add(file.getId());
             Map<String, Long> fileIdMapChild = importFile(repositoryFile.getChildren(), parentIdListCopy, loadLatest, loadRemoteVersionFile);
@@ -1088,6 +1064,83 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             return "/" + path;
         }
         return path;
+    }
+
+    /**
+     * Extract project name from a path like "/projectName/folder/file.xml".
+     * Returns the first path segment.
+     */
+    private String extractProjectName(String path) {
+        if (path == null || path.isEmpty()) return null;
+        String cleaned = path.startsWith("/") ? path.substring(1) : path;
+        int slash = cleaned.indexOf('/');
+        return slash > 0 ? cleaned.substring(0, slash) : cleaned;
+    }
+
+    /**
+     * Dual-write a file to Git. Called after successful DB write.
+     * Uses per-user branch if BranchContext is set, otherwise writes to main.
+     * Non-blocking: logs errors but does not throw.
+     *
+     * @return the Git commit SHA, or null if Git write was skipped/failed
+     */
+    private String dualWriteToGit(String path, String content, String author) {
+        try {
+            String projectName = extractProjectName(path);
+            if (projectName == null || !gitStorageService.repoExists(projectName)) return null;
+
+            String gitPath = path.startsWith("/") ? path.substring(1) : path;
+            String canonical = xmlCanonicalizer.canonicalize(content);
+
+            // Determine branch: use BranchContext if set, otherwise user-based branch
+            String branch = BranchContext.getBranch();
+            if (branch == null && author != null) {
+                branch = BranchContext.forUser(author);
+            }
+            if (branch == null) {
+                branch = "main";
+            }
+
+            // Ensure branch exists (create from main if needed)
+            if (!"main".equals(branch)) {
+                try {
+                    gitStorageService.createBranch(projectName, branch, "main");
+                } catch (GitOperationException ignored) {
+                    // Branch may already exist, that's fine
+                }
+            }
+
+            gitStorageService.writeFile(projectName, branch, gitPath, canonical);
+            String commitSha = gitStorageService.commit(projectName, branch,
+                    "Save: " + path, author != null ? author : "system");
+            gitStorageService.push(projectName);
+            log.debug("Dual-write to Git succeeded: {} on branch {} (sha={})", path, branch, commitSha);
+            return commitSha;
+        } catch (GitOperationException e) {
+            log.error("Git dual-write failed (DB write succeeded): {}", path, e);
+            return null;
+        }
+    }
+
+    /**
+     * Dual-delete a file from Git. Called after successful DB delete.
+     * Uses BranchContext branch if set, otherwise main.
+     * Non-blocking: logs errors but does not throw.
+     */
+    private void dualDeleteFromGit(String path) {
+        try {
+            String projectName = extractProjectName(path);
+            if (projectName == null || !gitStorageService.repoExists(projectName)) return;
+
+            String gitPath = path.startsWith("/") ? path.substring(1) : path;
+            String branch = BranchContext.getBranch() != null ? BranchContext.getBranch() : "main";
+            gitStorageService.deleteFile(projectName, branch, gitPath);
+            gitStorageService.commit(projectName, branch, "Delete: " + path, "system");
+            gitStorageService.push(projectName);
+            log.debug("Dual-delete from Git succeeded: {} on branch {}", path, branch);
+        } catch (GitOperationException e) {
+            log.error("Git dual-delete failed (DB delete succeeded): {}", path, e);
+        }
     }
 
     private void syncVersionFileLatestFromLocal(RepositoryFile repositoryFile, long projectId) {
@@ -1138,9 +1191,9 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
 
         int batchSize = 50;
         if (fileVersionEntityList.size() > batchSize) {
-            Lists.partition(fileVersionEntityList, batchSize).forEach(this.fileVersionMapper::insertBatchSomeColumn);
+            Lists.partition(fileVersionEntityList, batchSize).forEach(this.fileRepository::batchInsert);
         } else {
-            this.fileVersionMapper.insertBatchSomeColumn(fileVersionEntityList);
+            this.fileRepository.batchInsert(fileVersionEntityList);
         }
     }
 
@@ -1197,12 +1250,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         DefaultUser defaultUser = new DefaultUser();
         defaultUser.setUsername("system");
         defaultUser.setAdmin(true);
-        LambdaUpdateWrapper<FileVersionEntity> fileLUW = new LambdaUpdateWrapper<FileVersionEntity>()
-                .eq(FileVersionEntity::getFilePath, filePath)
-                .eq(FileVersionEntity::getVersionNum, "latest")
-                .set(FileVersionEntity::getFileContent, document.asXML())
-                .set(FileVersionEntity::getUpdateTime, new Date());
-        int updateRes = this.fileVersionMapper.update(null, fileLUW);
+        this.fileRepository.updateContentByVersionNum(filePath, "latest", document.asXML());
     }
 
     @Override
@@ -1243,10 +1291,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         projectFile.setName(projectNode.getName());
         projectFile.setFullPath("/" + projectNode.getName());
 
-        LambdaQueryWrapper<FileRelationEntity> fileLQW = new LambdaQueryWrapper<>();
-        fileLQW.eq(FileRelationEntity::getAncestor, projectNode.getId())
-                .eq(FileRelationEntity::getDistance, 1);
-        List<FileEntity> fileEntityList = this.fileMapper.selectListByAncestor(fileLQW);
+        List<FileEntity> fileEntityList = this.fileRepository.findChildrenByAncestor(projectNode.getId());
         log.info("{}: fileEntityList result:{}", projectNode.getName(), JSON.toJSONString(fileEntityList));
         if (CollectionUtils.isEmpty(fileEntityList)) {
             log.info("{}: fileEntityList file is null", projectNode.getName());
@@ -1381,11 +1426,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
     private void buildNodes(FileEntity parentFile, RepositoryFile parent, FileType[] types, Type folderType, String searchFileName) throws Exception {
         LibType libType = parent.getLibType();
 
-        LambdaQueryWrapper<FileRelationEntity> fileLQW = new LambdaQueryWrapper<>();
-        fileLQW
-                .eq(FileRelationEntity::getAncestor, parentFile.getId())
-                .eq(FileRelationEntity::getDistance, 1);
-        List<FileEntity> fileEntityList = this.fileMapper.selectListByAncestor(fileLQW);
+        List<FileEntity> fileEntityList = this.fileRepository.findChildrenByAncestor(parentFile.getId());
         fileEntityList.forEach(fileNode -> {
             if (fileNode.getFileType() < 0) {
                 FileType detected = FileTypeUtils.getFileTypeByFileName(fileNode.getName());
@@ -1393,7 +1434,7 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
                     Type mappedType = FileTypeUtils.mapFileNameToType(fileNode.getName());
                     if (mappedType != null) {
                         fileNode.setFileType(mappedType.ordinal());
-                        this.fileMapper.updateById(fileNode);
+                        this.fileRepository.updateById(fileNode);
                     }
                 } else {
                     return;
@@ -1568,24 +1609,13 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
 
     @Override
     public List<VersionFile> getProjectVersions(String projectName, boolean desc, int page, int row) throws Exception {
-        ProjectEntity project = projectMapper.selectOne(new LambdaQueryWrapper<ProjectEntity>()
-                .eq(ProjectEntity::getName, projectName));
+        ProjectEntity project = projectRepository.findByName(projectName);
         if (project == null) {
             throw new RuleException("Project [" + projectName + "] not found.");
         }
         Long projectId = project.getId();
-        LambdaQueryWrapper<ProjectVersionEntity> queryWrapper = new LambdaQueryWrapper<ProjectVersionEntity>()
-                .eq(ProjectVersionEntity::getProjectId, projectId);
-        if (desc) {
-            queryWrapper.orderByDesc(ProjectVersionEntity::getVersionNumReal);
-        } else {
-            queryWrapper.orderByAsc(ProjectVersionEntity::getVersionNumReal);
-        }
-        if (row > 0 && page > 0) {
-            queryWrapper.last("limit " + (page - 1) * row + "," + row);
-        }
 
-        List<ProjectVersionEntity> projectVersionEntities = projectVersionMapper.selectList(queryWrapper);
+        List<ProjectVersionEntity> projectVersionEntities = projectRepository.findVersionsByProjectIdPaged(projectId, desc, page, row);
         List<VersionFile> versionFiles = new ArrayList<>();
         if (!CollectionUtils.isEmpty(projectVersionEntities)) {
             for (ProjectVersionEntity entity : projectVersionEntities) {
@@ -1597,17 +1627,13 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
 
     @Override
     public List<VersionFile> getProjectPackageVersions(String projectName, String packageId) throws Exception {
-        ProjectEntity project = projectMapper.selectOne(new LambdaQueryWrapper<ProjectEntity>()
-                .eq(ProjectEntity::getName, projectName));
+        ProjectEntity project = projectRepository.findByName(projectName);
         if (project == null) {
             throw new RuleException("Project [" + projectName + "] not found.");
         }
         Long projectId = project.getId();
 
-        List<ProjectVersionEntity> projectVersionEntities = projectVersionMapper.selectList(new LambdaQueryWrapper<ProjectVersionEntity>()
-                .eq(ProjectVersionEntity::getProjectId, projectId)
-                .eq(ProjectVersionEntity::getPackageId, packageId)
-                .orderByDesc(ProjectVersionEntity::getVersionNumReal));
+        List<ProjectVersionEntity> projectVersionEntities = projectRepository.findVersionsByProjectId(projectId, packageId, true);
         List<VersionFile> versionFiles = new ArrayList<>();
         if (!CollectionUtils.isEmpty(projectVersionEntities)) {
             for (ProjectVersionEntity entity : projectVersionEntities) {

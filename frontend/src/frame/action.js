@@ -1174,10 +1174,15 @@ export function saveFileSource(file, content) {
 
 export function seeFileSource(data) {
     var url = window._server + "/frame/fileSource";
+    const params = {path: data.fullPath};
+    // Include gitTag for version-aware reading
+    if (window._currentGitTag) {
+        params.gitTag = window._currentGitTag;
+    }
     fetch(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({path: data.fullPath}).toString()
+        body: new URLSearchParams(params).toString()
     }).then(function(response) {
         if (!response.ok) throw response;
         return response.json();

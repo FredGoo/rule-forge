@@ -1,7 +1,7 @@
 package com.ruleforge.console.app.service.impl;
 
 import com.ruleforge.console.app.entity.RuleVariableDef;
-import com.ruleforge.console.app.mapper.RuleVariableDefMapper;
+import com.ruleforge.console.app.repository.data.DatasourceRepository;
 import com.ruleforge.console.app.service.IRuleVariableDefService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,11 +19,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RuleVariableDefServiceImpl implements IRuleVariableDefService {
 
-    private final RuleVariableDefMapper ruleVariableDefMapper;
+    private final DatasourceRepository datasourceRepository;
 
     @Override
     public List<RuleVariableDef> findAll() {
-        return ruleVariableDefMapper.selectList(null);
+        return datasourceRepository.findAllVariableDefs();
     }
 
     @Override

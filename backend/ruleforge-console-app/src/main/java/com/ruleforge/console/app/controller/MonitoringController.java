@@ -2,11 +2,10 @@ package com.ruleforge.console.app.controller;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.ruleforge.console.app.entity.AlertHistory;
 import com.ruleforge.console.app.entity.AlertRule;
 import com.ruleforge.console.app.entity.MetricsSnapshot;
-import com.ruleforge.console.app.mapper.MetricsSnapshotMapper;
+import com.ruleforge.console.app.repository.data.MonitoringRepository;
 import com.ruleforge.console.app.service.IAlertService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +23,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MonitoringController {
 
-    private final MetricsSnapshotMapper metricsSnapshotMapper;
+    private final MonitoringRepository monitoringRepository;
     private final IAlertService alertService;
 
     @GetMapping("/metrics")
@@ -34,21 +33,7 @@ public class MonitoringController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Date endTime,
             @RequestParam(required = false) String tags
     ) {
-        QueryWrapper<MetricsSnapshot> wrapper = new QueryWrapper<MetricsSnapshot>()
-                .eq("metric_name", metricName)
-                .orderByAsc("snapshot_time");
-
-        if (startTime != null) {
-            wrapper.ge("snapshot_time", startTime);
-        }
-        if (endTime != null) {
-            wrapper.le("snapshot_time", endTime);
-        }
-        if (tags != null && !tags.isEmpty()) {
-            wrapper.eq("tags", tags);
-        }
-
-        List<MetricsSnapshot> snapshots = metricsSnapshotMapper.selectList(wrapper);
+        List<MetricsSnapshot> snapshots = monitoringRepository.findMetricsByMetricName(metricName, startTime, endTime, tags);
 
         Map<String, Object> result = convertToEChartsFormat(snapshots);
         return ResponseEntity.ok(result);
@@ -56,11 +41,7 @@ public class MonitoringController {
 
     @GetMapping("/metrics/packages")
     public ResponseEntity<?> listPackages() {
-        QueryWrapper<MetricsSnapshot> wrapper = new QueryWrapper<MetricsSnapshot>()
-                .select("DISTINCT tags")
-                .isNotNull("tags");
-
-        List<MetricsSnapshot> snapshots = metricsSnapshotMapper.selectList(wrapper);
+        List<MetricsSnapshot> snapshots = monitoringRepository.findDistinctTags();
 
         List<String> packages = snapshots.stream()
                 .map(MetricsSnapshot::getTags)

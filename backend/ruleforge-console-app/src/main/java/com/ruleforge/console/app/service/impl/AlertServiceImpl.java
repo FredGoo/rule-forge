@@ -1,14 +1,10 @@
 package com.ruleforge.console.app.service.impl;
 
 import com.alibaba.fastjson2.JSON;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.ruleforge.console.app.entity.AlertHistory;
 import com.ruleforge.console.app.entity.AlertRule;
 import com.ruleforge.console.app.entity.MetricsSnapshot;
-import com.ruleforge.console.app.mapper.AlertHistoryMapper;
-import com.ruleforge.console.app.mapper.AlertRuleMapper;
-import com.ruleforge.console.app.mapper.MetricsSnapshotMapper;
+import com.ruleforge.console.app.repository.data.MonitoringRepository;
 import com.ruleforge.console.app.service.IAlertService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,9 +20,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AlertServiceImpl implements IAlertService {
 
-    private final AlertRuleMapper alertRuleMapper;
-    private final AlertHistoryMapper alertHistoryMapper;
-    private final MetricsSnapshotMapper metricsSnapshotMapper;
+    private final MonitoringRepository monitoringRepository;
     private final RestTemplate restTemplate;
 
     @Value("${ruleforge.monitoring.alert-webhook-timeout-ms:5000}")
@@ -34,9 +28,7 @@ public class AlertServiceImpl implements IAlertService {
 
     @Override
     public void evaluateAlerts() {
-        List<AlertRule> rules = alertRuleMapper.selectList(
-                new QueryWrapper<AlertRule>().eq("enabled", 1)
-        );
+        List<AlertRule> rules = monitoringRepository.findEnabledAlertRules();
 
         for (AlertRule rule : rules) {
             try {
@@ -49,43 +41,32 @@ public class AlertServiceImpl implements IAlertService {
 
     @Override
     public List<AlertRule> listAlertRules() {
-        return alertRuleMapper.selectList(new QueryWrapper<AlertRule>().orderByDesc("created_at"));
+        return monitoringRepository.findAllAlertRules();
     }
 
     @Override
     public AlertRule saveAlertRule(AlertRule rule) {
         rule.setEnabled(true);
         rule.setCreatedAt(new Date());
-        alertRuleMapper.insert(rule);
+        monitoringRepository.insertAlertRule(rule);
         return rule;
     }
 
     @Override
     public AlertRule updateAlertRule(AlertRule rule) {
         rule.setUpdatedAt(new Date());
-        alertRuleMapper.updateById(rule);
+        monitoringRepository.updateAlertRule(rule);
         return rule;
     }
 
     @Override
     public void deleteAlertRule(Long id) {
-        alertRuleMapper.deleteById(id);
+        monitoringRepository.deleteAlertRule(id);
     }
 
     @Override
     public List<AlertHistory> listAlertHistory(Long alertRuleId, Date startTime, Date endTime) {
-        QueryWrapper<AlertHistory> wrapper = new QueryWrapper<AlertHistory>()
-                .orderByDesc("fired_at");
-        if (alertRuleId != null) {
-            wrapper.eq("alert_rule_id", alertRuleId);
-        }
-        if (startTime != null) {
-            wrapper.ge("fired_at", startTime);
-        }
-        if (endTime != null) {
-            wrapper.le("fired_at", endTime);
-        }
-        return alertHistoryMapper.selectList(wrapper);
+        return monitoringRepository.findAlertHistory(alertRuleId, startTime, endTime);
     }
 
     private void evaluateRule(AlertRule rule) {
@@ -93,7 +74,8 @@ public class AlertServiceImpl implements IAlertService {
             return;
         }
 
-        List<MetricsSnapshot> recentSnapshots = queryRecentSnapshots(rule);
+        List<MetricsSnapshot> recentSnapshots = monitoringRepository.findLatestMetrics(
+                rule.getMetricName(), rule.getDurationMin(), rule.getMetricTags());
         if (recentSnapshots.size() < rule.getDurationMin()) {
             return;
         }
@@ -116,19 +98,6 @@ public class AlertServiceImpl implements IAlertService {
         }
         long cooldownMs = (long) rule.getCooldownMin() * 60 * 1000;
         return System.currentTimeMillis() - rule.getLastFiredAt().getTime() < cooldownMs;
-    }
-
-    private List<MetricsSnapshot> queryRecentSnapshots(AlertRule rule) {
-        QueryWrapper<MetricsSnapshot> wrapper = new QueryWrapper<MetricsSnapshot>()
-                .eq("metric_name", rule.getMetricName())
-                .orderByDesc("snapshot_time")
-                .last("LIMIT " + rule.getDurationMin());
-
-        if (rule.getMetricTags() != null && !rule.getMetricTags().isEmpty()) {
-            wrapper.eq("tags", rule.getMetricTags());
-        }
-
-        return metricsSnapshotMapper.selectList(wrapper);
     }
 
     private double extractMetricValue(MetricsSnapshot snapshot) {
@@ -201,11 +170,9 @@ public class AlertServiceImpl implements IAlertService {
             log.warn("告警 Webhook 发送失败: rule={}, url={}", rule.getName(), rule.getWebhookUrl(), e);
         }
 
-        alertHistoryMapper.insert(history);
+        monitoringRepository.insertAlertHistory(history);
 
-        alertRuleMapper.update(null, new UpdateWrapper<AlertRule>()
-                .eq("id", rule.getId())
-                .set("last_fired_at", new Date()));
+        monitoringRepository.updateAlertRuleLastFired(rule.getId(), new Date());
     }
 
     private String truncate(String s, int maxLen) {

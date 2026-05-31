@@ -5,6 +5,7 @@ import com.ruleforge.builder.KnowledgeBuilder;
 import com.ruleforge.builder.ResourceBase;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.runtime.KnowledgePackage;
+import com.ruleforge.runtime.cache.KnowledgeCache;
 import com.ruleforge.runtime.service.KnowledgePackageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class KnowledgePackageServiceImpl implements KnowledgePackageService {
     private final KnowledgeBuilder knowledgeBuilder;
     private final RestTemplate consoleRestTemplate;
+    private final KnowledgeCache knowledgeCache;
 
     @Override
     public KnowledgePackage buildKnowledgePackage(String packageInfo) throws RuleException {
@@ -64,7 +66,7 @@ public class KnowledgePackageServiceImpl implements KnowledgePackageService {
 
     @Override
     public boolean isKnowledgePackageNeedUpdate(String packageInfo) {
-        return true;
+        return knowledgeCache.isKnowledgeDirty(packageInfo);
     }
 
     private List<Map<String, Object>> sendRequest(String project) {

@@ -20,17 +20,10 @@ import com.ruleforge.console.app.entity.DecisionFlowParams;
 import com.ruleforge.console.app.entity.DecisionMessageLog;
 import com.ruleforge.console.app.entity.DecisionNodeLog;
 import com.ruleforge.console.app.entity.DecisionRuleLog;
-import com.ruleforge.console.app.mapper.DecisionFlowLogMapper;
-import com.ruleforge.console.app.mapper.DecisionFlowParamsMapper;
-import com.ruleforge.console.app.mapper.DecisionMessageLogMapper;
-import com.ruleforge.console.app.mapper.DecisionNodeLogMapper;
-import com.ruleforge.console.app.mapper.DecisionRuleLogMapper;
+import com.ruleforge.console.app.repository.data.DecisionLogRepository;
 import com.ruleforge.console.app.service.IDecisionLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ibatis.session.ExecutorType;
-import org.apache.ibatis.session.SqlSession;
-import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,12 +41,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DecisionLogServiceImpl implements IDecisionLogService {
 
-    private final DecisionFlowLogMapper flowLogMapper;
-    private final DecisionFlowParamsMapper flowParamsMapper;
-    private final DecisionNodeLogMapper nodeLogMapper;
-    private final DecisionRuleLogMapper ruleLogMapper;
-    private final DecisionMessageLogMapper messageLogMapper;
-    private final SqlSessionFactory sqlSessionFactory;
+    private final DecisionLogRepository decisionLogRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -170,7 +158,7 @@ public class DecisionLogServiceImpl implements IDecisionLogService {
         flowLog.setErrorStackTrace(errorStackTrace);
         flowLog.setCreatedAt(now);
 
-        flowLogMapper.insert(flowLog);
+        decisionLogRepository.insertFlowLog(flowLog);
         Long flowLogId = flowLog.getId();
 
         // 1.1 保存参数数据到单独的表
@@ -181,7 +169,7 @@ public class DecisionLogServiceImpl implements IDecisionLogService {
         flowParams.setOutputParams(toJson(outputParams));
         flowParams.setEntityData(toJson(entityData));
         flowParams.setCreatedAt(now);
-        flowParamsMapper.insert(flowParams);
+        decisionLogRepository.insertFlowParams(flowParams);
 
         if (response == null) {
             return flowLogId;
@@ -333,32 +321,16 @@ public class DecisionLogServiceImpl implements IDecisionLogService {
 
     /**
      * 批量写入规则日志和消息日志。
-     * 用 SqlSession BATCH 模式：所有 INSERT 缓存在内存，最后一次 commit。
-     * 50 条规则日志从 50 次 DB 往返降到 1 次。
      */
     private void batchInsert(List<DecisionRuleLog> ruleLogs, List<DecisionMessageLog> msgLogs) {
         if ((ruleLogs == null || ruleLogs.isEmpty()) && (msgLogs == null || msgLogs.isEmpty())) {
             return;
         }
-        try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH, false)) {
-            try {
-                if (ruleLogs != null && !ruleLogs.isEmpty()) {
-                    DecisionRuleLogMapper batchRuleMapper = sqlSession.getMapper(DecisionRuleLogMapper.class);
-                    for (DecisionRuleLog ruleLog : ruleLogs) {
-                        batchRuleMapper.insert(ruleLog);
-                    }
-                }
-                if (msgLogs != null && !msgLogs.isEmpty()) {
-                    DecisionMessageLogMapper batchMsgMapper = sqlSession.getMapper(DecisionMessageLogMapper.class);
-                    for (DecisionMessageLog msgLog : msgLogs) {
-                        batchMsgMapper.insert(msgLog);
-                    }
-                }
-                sqlSession.commit();
-            } catch (Exception e) {
-                sqlSession.rollback();
-                throw e;
-            }
+        if (ruleLogs != null && !ruleLogs.isEmpty()) {
+            decisionLogRepository.batchInsertRuleLogs(ruleLogs);
+        }
+        if (msgLogs != null && !msgLogs.isEmpty()) {
+            decisionLogRepository.batchInsertMessageLogs(msgLogs);
         }
     }
 }

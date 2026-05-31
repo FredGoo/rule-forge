@@ -3,13 +3,12 @@ package com.ruleforge.console.app.service.impl;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.ruleforge.console.repository.ExternalRepository;
 import com.ruleforge.model.library.Datatype;
 import com.ruleforge.model.library.variable.*;
 import com.ruleforge.console.model.SaveProcessItemDto;
 import com.ruleforge.console.app.entity.RuleVariableDef;
-import com.ruleforge.console.app.mapper.RuleVariableDefMapper;
+import com.ruleforge.console.app.repository.data.DatasourceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -27,7 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ExternalRepositoryImpl implements ExternalRepository {
 
-    private final RuleVariableDefMapper ruleVariableDefMapper;
+    private final DatasourceRepository datasourceRepository;
 
     @Override
     public JSONArray findDataByDate(Date start, Date end) {
@@ -59,12 +58,7 @@ public class ExternalRepositoryImpl implements ExternalRepository {
     public List<Variable> generalEntityToVariables(String clazz) {
         List<Variable> variables = new ArrayList<>();
         // 根据 clazz 从 nd_rule_variable_def 表查询对应变量定义，按 sort_no 排序，仅取启用的
-        List<RuleVariableDef> defs = ruleVariableDefMapper.selectList(
-                new LambdaQueryWrapper<RuleVariableDef>()
-                        .eq(RuleVariableDef::getClazz, clazz)
-                        .eq(RuleVariableDef::getDsStatus, 1)
-                        .orderByAsc(RuleVariableDef::getSortNo)
-        );
+        List<RuleVariableDef> defs = datasourceRepository.findVariableDefsByClazz(clazz);
 
         if (defs != null) {
             for (RuleVariableDef def : defs) {
