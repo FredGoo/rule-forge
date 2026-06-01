@@ -22,7 +22,7 @@ export class VariableValue {
         const self = this;
         renderReact(VariableValueWidget, {
             initialData: data,
-            libraries: window._ruleforgeEditorVariableLibraries,
+            libraries: window._ruleforgeEditorVariableLibraries as any,
             act: act,
             onDirty: function () { if (window._setDirty) window._setDirty(); },
             onFunctionPropertyUpdate: function (variables: any) {

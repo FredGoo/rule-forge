@@ -537,7 +537,7 @@ export default class RuleForgePropertiesPanel extends Component<PropertiesPanelP
         versionInput.oninput = () => { tempRule.version = versionInput.value; };
         eventBeanInput.oninput = () => { tempRule.eventBean = eventBeanInput.value; };
 
-        container.querySelector('.rf-rule-browse')!.onclick = () => {
+        (container.querySelector('.rf-rule-browse')! as HTMLElement).onclick = () => {
             componentEvent.eventEmitter.emit(componentEvent.OPEN_KNOWLEDGE_TREE_DIALOG, {
                 project: window._project,
                 callback: (file: string, version: string) => {
@@ -552,11 +552,11 @@ export default class RuleForgePropertiesPanel extends Component<PropertiesPanelP
         };
 
         const close = () => document.body.removeChild(container);
-        container.querySelector('.rf-rule-edit-close')!.onclick = close;
-        container.querySelector('.rf-rule-cancel')!.onclick = close;
+        (container.querySelector('.rf-rule-edit-close')! as HTMLElement).onclick = close;
+        (container.querySelector('.rf-rule-cancel')! as HTMLElement).onclick = close;
         container.onclick = (e) => { if (e.target === container) close(); };
 
-        container.querySelector('.rf-rule-save')!.onclick = () => {
+        (container.querySelector('.rf-rule-save')! as HTMLElement).onclick = () => {
             rulesList[idx] = tempRule;
             updateCallback(rulesList);
             close();

@@ -10,7 +10,7 @@
 import HeaderRow from './HeaderRow';
 import RowContext from './RowContext';
 import ContentRow from './ScoreCardRow';
-import { ConditionColumn, ActionColumn } from './ScoreCardColumn';
+import ConditionColumn, { ActionColumn } from './ScoreCardColumn';
 import TableAction from './TableAction';
 import { getParameter, ajaxSave, handleResponseError } from '../../Utils.js';
 import {
@@ -24,6 +24,7 @@ import {
     refreshParameterLibraries,
     refreshFunctionLibraries
 } from '../common/URule';
+import { Remark } from '../../Remark.js';
 
 declare const MsgBox: {
     confirm(message: string, callback: () => void): void;
@@ -161,10 +162,10 @@ export default class ComplexScoreCard {
             return;
         }
 
-        const postData = {
+        const postData: Record<string, string> = {
             content: encodeURIComponent(xml),
             file: file,
-            newVersion: isNewVersion
+            newVersion: String(isNewVersion)
         };
         const saveUrl = window._server + '/common/saveFile';
 
@@ -186,7 +187,7 @@ export default class ComplexScoreCard {
                         if (decodedFileName.includes('%')) {
                             decodedFileName = decodeURIComponent(decodedFileName);
                         }
-                        bootbox.confirm('是否对【' + decodedFileName + '】生成新版本?', function (confirmed) {
+                        window.bootbox.confirm('是否对【' + decodedFileName + '】生成新版本?', function (confirmed) {
                             if (confirmed) {
                                 ajaxSave(saveUrl, postData, function (res: any) {
                                     if (res.status) {

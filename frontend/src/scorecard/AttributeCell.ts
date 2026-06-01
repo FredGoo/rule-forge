@@ -22,7 +22,7 @@ declare const ruleforge: {
 
 export default class AttributeCell extends Cell {
     category: Category | string | null = null;
-    categoryName?: string;
+    declare categoryName?: string;
     variable?: Variable;
     categorySelector!: HTMLSpanElement;
     categoryContainer!: HTMLElement;
@@ -101,7 +101,7 @@ export default class AttributeCell extends Cell {
         del.innerHTML = '<i class="glyphicon glyphicon-remove" style="cursor: pointer" title="删除当前属性行"/>';
         container.appendChild(del);
         del.addEventListener('click', function () {
-            bootbox.confirm("真的要删除？", function (result) {
+            window.bootbox.confirm("真的要删除？", function (result) {
                 if (!result) return;
                 (_this.row as any).remove();
             });
@@ -176,16 +176,14 @@ export default class AttributeCell extends Cell {
             this.categorySelector.classList.add('dropdown-initialized');
             // 手动绑定dropdown toggle事件
             const toggle = this.categorySelector.querySelector('.dropdown-toggle');
-            toggle!.removeEventListener('click.dropdown');
-            toggle!.addEventListener('click.dropdown', function (e) {
+            toggle!.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 _this.categorySelector.classList.toggle('open');
             });
 
             // 点击其他地方关闭dropdown
-            document.removeEventListener('click.category-dropdown');
-            document.addEventListener('click.category-dropdown', function (e) {
+            document.addEventListener('click', function handler(e) {
                 if (!_this.categorySelector.contains(e.target as Node)) {
                     _this.categorySelector.classList.remove('open');
                 }
@@ -234,11 +232,10 @@ export default class AttributeCell extends Cell {
         }
         if (!(this.propContainer as any).menu) {
             (this.propContainer as any).menu = new RuleForge.menu.Menu({ menuItems });
-            this.propContainer.removeEventListener('click.property');
-            this.propContainer.addEventListener('click.property', function (e) {
+            this.propContainer.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-                ((<any>_this.propContainer).menu as MenuInstance).show(e);
+                ((<any>_this.propContainer).menu as MenuInstance).show(e as unknown as MouseEvent);
             });
         } else {
             ((this.propContainer as any).menu as MenuInstance).setConfig({ menuItems });

@@ -46,7 +46,7 @@ export default class HeaderRow {
  */
 class ConditionHeaderCell extends ResizableHeaderCell {
     complexTable: import('./ComplexScoreCard').default;
-    conditionCol: any;
+    declare conditionCol: any;
     labelContainer!: HTMLSpanElement;
     variableCategoryList: any[] = [];
     parameterList: any[] = [];
@@ -268,7 +268,7 @@ class ConditionHeaderCell extends ResizableHeaderCell {
  */
 class ActionHeaderCell extends ResizableHeaderCell {
     complexTable: import('./ComplexScoreCard').default;
-    actionCol: any;
+    declare actionCol: any;
     actionType?: number;
     labelContainer!: HTMLSpanElement;
     customLabel?: string;
@@ -309,7 +309,7 @@ class ActionHeaderCell extends ResizableHeaderCell {
 
     insertActionColumn(complexTable: import('./ComplexScoreCard').default, actionType: number): void {
         const self = this;
-        bootbox.prompt('请输入自定义列名称：', function (name) {
+        window.bootbox.prompt('请输入自定义列名称：', function (name) {
             if (name) {
                 const rowContext = new RowContext(complexTable);
                 rowContext.setCustomActionHeaderLabel(name);

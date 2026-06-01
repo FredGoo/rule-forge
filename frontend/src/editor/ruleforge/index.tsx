@@ -84,14 +84,14 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         xml = encodeURIComponent(xml);
-        const postData: Record<string, string> = { content: xml, file: file, newVersion: String(isNewVersion) };
         const url = window._server + '/common/saveFile';
         if (isNewVersion) {
-            saveNewVersion(url, postData, function () {
+            saveNewVersion(url, { file: file, content: xml }, function () {
                 toolbarApi.clearDirty();
                 window.bootbox.alert('保存成功!');
             });
         } else {
+            const postData: Record<string, string> = { content: xml, file: file, newVersion: String(isNewVersion) };
             ajaxSave(url, postData, function () {
                 toolbarApi.clearDirty();
                 window.bootbox.alert('保存成功!');

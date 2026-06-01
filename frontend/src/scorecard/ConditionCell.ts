@@ -40,13 +40,16 @@ export default class ConditionCell extends Cell {
             }
             _this.cellCondition.renderTo(dialogContent);
             const caption = "配置条件";
-            window.bootbox.dialog(caption, dialogContent, [], [{
-                name: 'hide.bs.modal',
+            window.bootbox.dialog({
+                title: caption,
+                message: dialogContent.outerHTML,
+                closeButton: true,
+                buttons: {},
                 callback: function () {
                     conditionContainer.innerHTML = '';
                     conditionContainer.appendChild(_this.cellCondition!.getDisplayContainer());
                 }
-            }], true);
+            });
         });
 
         if (this.row.rowType && this.row.rowType === 'condition') {
@@ -56,9 +59,9 @@ export default class ConditionCell extends Cell {
             del.innerHTML = '<i class="glyphicon glyphicon-trash" style="cursor: pointer" title="删除当前行"/>';
             container.appendChild(del);
             del.addEventListener('click', function () {
-                bootbox.confirm("真的要删除？", function (result) {
+                window.bootbox.confirm("真的要删除？", function (result) {
                     if (!result) return;
-                    _this.row.remove!();
+                    (_this.row as any).remove();
                 });
             });
         }

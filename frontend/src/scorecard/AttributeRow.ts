@@ -6,7 +6,7 @@ import CustomCell from './CustomCell';
 export default class AttributeRow extends Row {
     conditionRows: ConditionRow[] = [];
     attributeCell!: AttributeCell;
-    tr: HTMLTableRowElement;
+    declare tr: HTMLTableRowElement;
 
     constructor(table: import('./ScoreCardTable').default, rowData?: any) {
         super(table);
@@ -74,25 +74,25 @@ export default class AttributeRow extends Row {
     removeConditionRow(conditionRow: ConditionRow): void {
         const pos = this.conditionRows.indexOf(conditionRow);
         this.conditionRows.splice(pos, 1);
-        let rowSpan: number | string = this.attributeCell.td.rowSpan;
+        let rowSpan: number = this.attributeCell.td.rowSpan;
         if (!rowSpan) {
             rowSpan = 0;
         } else {
-            rowSpan = parseInt(rowSpan as string) - 1;
+            rowSpan = rowSpan - 1;
         }
-        this.attributeCell.td.rowSpan = rowSpan as number;
+        this.attributeCell.td.rowSpan = rowSpan;
         conditionRow.tr.remove();
     }
 
     addConditionRow(conditionRowData?: any): void {
         const newConditionRow = new ConditionRow(this.scoreCardTable, this, conditionRowData);
-        let rowSpan: number | string = this.attributeCell.td.rowSpan;
+        let rowSpan: number = this.attributeCell.td.rowSpan;
         if (!rowSpan) {
             rowSpan = 2;
         } else {
-            rowSpan = parseInt(rowSpan as string) + 1;
+            rowSpan = rowSpan + 1;
         }
-        this.attributeCell.td.rowSpan = rowSpan as number;
+        this.attributeCell.td.rowSpan = rowSpan;
         if (this.conditionRows.length > 0) {
             this.conditionRows[this.conditionRows.length - 1].tr.after(newConditionRow.tr);
         } else {

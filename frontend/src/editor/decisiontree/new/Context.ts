@@ -3,6 +3,7 @@
  */
 
 import Raphael from 'raphael';
+import type { RaphaelPaper } from 'raphael';
 import VariableNode from './VariableNode.js';
 import ActionNode from './ActionNode.js';
 import ConditionNode from './ConditionNode.js';
@@ -16,7 +17,7 @@ export default class Context {
 
     constructor(container: HTMLElement) {
         this.container = container;
-        this.paper = new Raphael(container, '100%', '100%');
+        this.paper = new (Raphael as any)(container, '100%', '100%');
     }
 
     newVariableNode(parentNode: any): VariableNode {

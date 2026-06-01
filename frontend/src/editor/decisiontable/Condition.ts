@@ -6,14 +6,16 @@
 
 // Context.js, ComparisonOperator.js, InputType.js are still JS side-effects
 // that attach classes to the global `ruleforge` namespace.
+interface ComparisonOperatorInstance {
+    getContainer: () => HTMLElement;
+    getOperator: () => string;
+    setOperator: (op: string) => void;
+    initRightValue: (data: Record<string, unknown>) => void;
+    getInputType: () => InputTypeLike | null;
+}
+
 declare const ruleforge: {
-    ComparisonOperator: new (callback: () => void) => {
-        getContainer: () => HTMLElement;
-        getOperator: () => string;
-        setOperator: (op: string) => void;
-        initRightValue: (data: Record<string, unknown>) => void;
-        getInputType: () => InputTypeLike | null;
-    };
+    ComparisonOperator: new (callback: () => void) => ComparisonOperatorInstance;
 };
 
 interface InputTypeLike {
@@ -26,7 +28,7 @@ interface InputTypeLike {
 
 export class Condition {
     private container: HTMLElement;
-    private operator: ReturnType<typeof ruleforge.ComparisonOperator>;
+    private operator: ComparisonOperatorInstance;
     private inputType: InputTypeLike | null = null;
 
     constructor(parentContainer: HTMLElement) {
@@ -74,7 +76,7 @@ export class Condition {
         return xml;
     }
 
-    getOperator(): ReturnType<typeof ruleforge.ComparisonOperator> {
+    getOperator(): ComparisonOperatorInstance {
         return this.operator;
     }
 

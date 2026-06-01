@@ -1,14 +1,16 @@
 import Raphael from 'raphael';
 
+type PaperLike = ReturnType<typeof Raphael>;
+
 export class Context {
     container: HTMLElement;
-    paper: RaphaelPaper;
+    paper: PaperLike;
     rule: any;
     rootJoin: any = null;
 
     constructor(container: HTMLElement, rule: any) {
         this.container = container;
-        this.paper = new Raphael(this.container, '100%', '100%') as unknown as RaphaelPaper;
+        this.paper = new (Raphael as any)(this.container, '100%', '100%');
         this.rule = rule;
     }
 
@@ -28,7 +30,7 @@ export class Context {
         return this.container;
     }
 
-    getPaper(): RaphaelPaper {
+    getPaper(): PaperLike {
         return this.paper;
     }
 
@@ -43,11 +45,6 @@ export class Context {
     getTotalChildrenCount(): number {
         return this.rootJoin.getChildrenCount();
     }
-}
-
-// Raphael paper type (minimal)
-interface RaphaelPaper {
-    [key: string]: any;
 }
 
 // Backward-compatible global registration

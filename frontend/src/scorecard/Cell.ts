@@ -8,7 +8,7 @@ export default class Cell {
     categoryName?: string;
     datatype?: string;
     weight?: string;
-    cellCondition?: { toXml(): string };
+    cellCondition?: { toXml(): string; initData(joint: any): void; renderTo(container: HTMLElement): void; getDisplayContainer(): HTMLElement; };
     inputType?: { toXml(): string; setValueType(valueType: string, value: any): void; getContainer(): HTMLElement };
 
     constructor(row: import('./Row').default, col: import('./Col').default, cellData?: any) {

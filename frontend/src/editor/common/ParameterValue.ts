@@ -20,7 +20,7 @@ export class ParameterValue {
         const self = this;
         renderReact(ParameterValueWidget, {
             initialData: data,
-            libraries: window._ruleforgeEditorParameterLibraries,
+            libraries: window._ruleforgeEditorParameterLibraries as any,
             act: act,
             onDirty: function () { if (window._setDirty) window._setDirty(); },
             ref: function (ref: any) { self.widgetRef = ref; },

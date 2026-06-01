@@ -5,6 +5,7 @@ import TableAction from './TableAction';
 import AttributeCol from './AttributeCol';
 import ConditionCol from './ConditionCol';
 import ScoreCol from './ScoreCol';
+import { Remark } from '../Remark.js';
 
 export default class ScoreCardTable {
     remark: any;
@@ -194,7 +195,7 @@ export default class ScoreCardTable {
             window._setDirty?.();
         } else {
             const _this = this;
-            bootbox.prompt("请输入列名", function (name) {
+            window.bootbox.prompt("请输入列名", function (name) {
                 if (!name || name.length < 1) {
                     return;
                 }

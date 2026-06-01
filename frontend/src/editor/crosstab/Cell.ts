@@ -151,7 +151,7 @@ export default class Cell extends BaseCell {
                 }
             }]
         };
-        const menu = new RuleForge.menu.Menu(menuConfig);
+        const menu = new RuleForge.menu.Menu(menuConfig as MenuConfig);
         this.td.addEventListener('contextmenu', function (e: MouseEvent) {
             menu.show(e);
         });

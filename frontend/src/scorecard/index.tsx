@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                 });
             } else {
-                ajaxSave(url, {content, file, newVersion}, function () {
+                ajaxSave(url, {content, file, newVersion} as unknown as Record<string, string>, function () {
                     window.bootbox.alert("保存成功", function () {
                         toolbarApi.clearDirty();
                     });

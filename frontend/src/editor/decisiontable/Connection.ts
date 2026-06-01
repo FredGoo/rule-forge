@@ -20,7 +20,7 @@ interface PaperLike {
 }
 
 interface PathElement {
-    attr: (attrs: Record<string, string> | [string, string]) => void;
+    attr: (attrsOrKey: Record<string, string> | [string, string] | string, value?: string) => void;
     remove: () => void;
 }
 

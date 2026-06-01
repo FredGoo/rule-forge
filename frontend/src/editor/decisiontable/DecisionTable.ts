@@ -308,7 +308,7 @@ export class DecisionTable {
                     window.bootbox.alert('保存成功!');
                 });
             } else {
-                ajaxSave(url, postData, function () {
+                ajaxSave(url, postData as unknown as Record<string, string>, function () {
                     self.resetState();
                     window.bootbox.alert('保存成功!');
                 });

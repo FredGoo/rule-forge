@@ -213,7 +213,7 @@ export class ScriptDecisionTable {
                     self.resetState();
                 });
             } else {
-                ajaxSave(url, postData, function (): void {
+                ajaxSave(url, postData as unknown as Record<string, string>, function (): void {
                     self.resetState();
                 });
             }

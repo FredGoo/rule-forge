@@ -3,6 +3,7 @@
  */
 
 import Raphael from 'raphael';
+import type { RaphaelPath } from 'raphael';
 
 export default class Connection {
     context: any;
@@ -12,7 +13,7 @@ export default class Connection {
     startY: number = 0;
     endX: number = 0;
     endY: number = 0;
-    path: Raphael.Element | null = null;
+    path: RaphaelPath | null = null;
     node: any = null;
     isJoin?: boolean;
 

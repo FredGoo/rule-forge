@@ -181,13 +181,15 @@ export default class ConditionCell extends HighlightCell {
         }
         const self = this;
         this.cellCondition.renderTo(dialog);
-        window.bootbox.dialog('配置条件', dialog, [], [{
-            name: 'hide.bs.modal',
+        window.bootbox.dialog({
+            title: '配置条件',
+            message: dialog.outerHTML,
+            closeButton: true,
             callback: function () {
                 container.innerHTML = '';
                 container.appendChild(self.cellCondition.getDisplayContainer());
             }
-        }], true);
+        });
     }
 
     increaseRowSpan(): void {

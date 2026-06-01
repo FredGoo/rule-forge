@@ -88,7 +88,7 @@ export function formatDate(date: Date | number | string, format: string): string
     return format;
 }
 
-export function saveNewVersion(url: string, postData: { file: string; content: string }, cb: () => void): void {
+export function saveNewVersion(url: string, postData: { file: string; content: string; [key: string]: unknown }, cb: () => void): void {
     fetch(window._server + '/common/checkFileDirty', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -112,7 +112,7 @@ export function saveNewVersion(url: string, postData: { file: string; content: s
                 }
                 window.bootbox.confirm(`是否对【${decodedFileName}】生成新版本？`, function (result: boolean) {
                     if (result) {
-                        ajaxSave(url, postData, function () {
+                        ajaxSave(url, postData as Record<string, string>, function () {
                             cb();
                         })
                     }
