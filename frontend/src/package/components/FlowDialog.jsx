@@ -1,4 +1,4 @@
-import React, {Component} from 'react';
+import {Component} from 'react';
 import * as event from '../event.js';
 import * as action from '../action.js';
 import Grid from '../../components/grid/component/Grid.jsx';
@@ -73,25 +73,49 @@ export default class FlowDialog extends Component {
                     icon: 'glyphicon glyphicon-send',
                     style: {fontSize: '20px', color: '#d9534f', padding: '0px 4px', cursor: 'pointer'},
                     click: function (rowIndex, rowData) {
-                        const ce = window.parent.componentEvent;
-                        ce.eventEmitter.emit(ce.SHOW_LOADING);
                         const flowId = rowData.id;
-                        action.doBatchTest({
-                            'project': project,
-                            'packageId': packageId,
-                            'files': files,
-                            'flowId': flowId
-                        }, function (testResult) {
-                            ce.eventEmitter.emit(ce.HIDE_LOADING);
-                            const errorList = testResult['errorList'];
-                            window.bootbox.alert(JSON.stringify(errorList));
+                        const sessionId = window._importSessionId;
 
-                            const datetime = new Date();
-                            const filePrefix = '' + datetime.getFullYear() + (datetime.getMonth() + 1) + datetime.getDate()
-                                + datetime.getHours() + datetime.getMinutes() + datetime.getSeconds() + '_';
-                            document.getElementById("input-prefix").value = filePrefix;
-                            document.getElementById(formId).submit();
-                        });
+                        if (sessionId) {
+                            // 新流程：使用 sessionId 异步执行
+                            const ce = window.parent.componentEvent;
+                            ce.eventEmitter.emit(ce.SHOW_LOADING);
+                            action.startBatchTest(sessionId, {
+                                files: files,
+                                flowId: flowId,
+                                project: project,
+                                packageId: packageId
+                            }, function (result) {
+                                ce.eventEmitter.emit(ce.HIDE_LOADING);
+                                if (result.sessionId) {
+                                    // 打开批量测试对话框显示进度
+                                    event.eventEmitter.emit(event.OPEN_BATCH_TEST_DIALOG, {
+                                        files: files,
+                                        sessionId: result.sessionId
+                                    });
+                                }
+                            });
+                        } else {
+                            // 旧流程兼容：无 sessionId 时走同步批量测试
+                            const ce = window.parent.componentEvent;
+                            ce.eventEmitter.emit(ce.SHOW_LOADING);
+                            action.doBatchTest({
+                                'project': project,
+                                'packageId': packageId,
+                                'files': files,
+                                'flowId': flowId
+                            }, function (testResult) {
+                                ce.eventEmitter.emit(ce.HIDE_LOADING);
+                                const errorList = testResult['errorList'];
+                                window.bootbox.alert(JSON.stringify(errorList));
+
+                                const datetime = new Date();
+                                const filePrefix = '' + datetime.getFullYear() + (datetime.getMonth() + 1) + datetime.getDate()
+                                    + datetime.getHours() + datetime.getMinutes() + datetime.getSeconds() + '_';
+                                document.getElementById("input-prefix").value = filePrefix;
+                                document.getElementById(formId).submit();
+                            });
+                        }
                     }
                 }
             ]

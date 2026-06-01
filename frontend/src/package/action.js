@@ -797,12 +797,93 @@ export function doBatchTest(data, callback) {
         return response.json();
     }).then(function (result) {
         callback(result);
-        const ce = window.parent.componentEvent;
-        ce.eventEmitter.emit(ce.HIDE_LOADING);
     }).catch(function () {
         const ce = window.parent.componentEvent;
         ce.eventEmitter.emit(ce.HIDE_LOADING);
         alert('批量测试操作失败.');
+    });
+}
+
+/**
+ * 上传 Excel 文件，返回 { sessionId, totalRows }
+ * 替代原有的 iframe + form 提交方式
+ */
+export function importExcelData(files, file, callback) {
+    var url = window._server + '/packageeditor/importExcelTemplate';
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('targetFiles', files);
+
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (result) {
+        callback(result);
+    }).catch(function (response) {
+        const ce = window.parent.componentEvent;
+        ce.eventEmitter.emit(ce.HIDE_LOADING);
+        if (response && response.text) {
+            response.text().then(function(text) {
+                window.bootbox.alert("<span style='color: red'>导入Excel失败：" + text + "</span>");
+            });
+        } else {
+            window.bootbox.alert("<span style='color: red'>导入Excel失败</span>");
+        }
+    });
+}
+
+/**
+ * 发起异步批量测试（使用 sessionId）
+ */
+export function startBatchTest(sessionId, params, callback) {
+    var url = window._server + '/packageeditor/doBatchTest';
+    var data = {
+        sessionId: sessionId,
+        files: params.files
+    };
+    if (params.flowId) {
+        data.flowId = params.flowId;
+    }
+    if (params.project) {
+        data.project = params.project;
+    }
+    if (params.packageId) {
+        data.packageId = params.packageId;
+    }
+
+    fetch(url, {
+        method: 'POST',
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data)
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (result) {
+        callback(result);
+    }).catch(function () {
+        const ce = window.parent.componentEvent;
+        ce.eventEmitter.emit(ce.HIDE_LOADING);
+        window.bootbox.alert('批量测试操作失败.');
+    });
+}
+
+/**
+ * 轮询批量测试进度
+ */
+export function getBatchTestProgress(sessionId, callback) {
+    var url = window._server + '/packageeditor/batchTestProgress?sessionId=' + sessionId;
+    fetch(url, {
+        method: 'GET'
+    }).then(function(response) {
+        if (!response.ok) throw response;
+        return response.json();
+    }).then(function (result) {
+        callback(result);
+    }).catch(function () {
+        // 静默失败，下次轮询重试
     });
 }
 
