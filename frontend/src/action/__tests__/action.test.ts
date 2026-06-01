@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as ACTIONS from '../action.js';
-import { setupMockServer, teardownMockServer } from '../../__test_utils__/mockServer.js';
 import { setupMockBootbox, teardownMockBootbox } from '../../__test_utils__/mockBootbox.js';
 
-// Mock save from api/client.js to intercept the module import
+// Mock api/client.js to intercept the module import
 vi.mock('../../api/client.js', () => ({
     save: vi.fn(),
+    formPost: vi.fn(),
 }));
 
 // Helper to flush microtask queue for async thunks that don't return promises
@@ -100,16 +100,14 @@ describe('Action Module - Action Creators', () => {
 });
 
 describe('Action Module - Thunks', () => {
-    let mockServer: any, dispatch: any;
+    let dispatch: any;
 
     beforeEach(() => {
-        mockServer = setupMockServer();
         setupMockBootbox();
         dispatch = vi.fn();
     });
 
     afterEach(() => {
-        teardownMockServer();
         teardownMockBootbox();
     });
 
@@ -119,12 +117,13 @@ describe('Action Module - Thunks', () => {
                 { id: 'bean1', name: 'Bean 1', methods: [] },
             ],
         };
-        mockServer.mockResponse('/xml', [masterData]);
+        const { formPost } = await import('../../api/client.js') as any;
+        (formPost as any).mockResolvedValue([masterData]);
 
         const thunk = ACTIONS.loadMasterData('test-files') as any;
         thunk(dispatch);
 
-        await flushAsync(mockServer.fetchMock);
+        await flushAsync(formPost);
 
         expect(dispatch).toHaveBeenCalledWith({
             type: ACTIONS.LOAD_MASTER_COMPLETED,
@@ -133,12 +132,13 @@ describe('Action Module - Thunks', () => {
     });
 
     it('GIVEN server error WHEN loadMasterData thunk is dispatched THEN it should handle error', async () => {
-        mockServer.mockError('/xml', 500);
+        const { formPost } = await import('../../api/client.js') as any;
+        (formPost as any).mockRejectedValue(new Error('server error'));
 
         const thunk = ACTIONS.loadMasterData('test-files') as any;
         thunk(dispatch);
 
-        await flushAsync(mockServer.fetchMock);
+        await flushAsync(formPost);
 
         expect(dispatch).not.toHaveBeenCalledWith(
             expect.objectContaining({ type: ACTIONS.LOAD_MASTER_COMPLETED })
@@ -150,12 +150,13 @@ describe('Action Module - Thunks', () => {
             { name: 'method1', methodName: 'method1' },
             { name: 'method2', methodName: 'method2' },
         ];
-        mockServer.mockResponse('/loadMethods', result);
+        const { formPost } = await import('../../api/client.js') as any;
+        (formPost as any).mockResolvedValue(result);
 
         const thunk = ACTIONS.loadBeanMethods('bean1') as any;
         thunk(dispatch);
 
-        await flushAsync(mockServer.fetchMock);
+        await flushAsync(formPost);
 
         expect(dispatch).toHaveBeenCalledWith({
             type: ACTIONS.LOADED_BEAN_METHODS,
@@ -164,12 +165,13 @@ describe('Action Module - Thunks', () => {
     });
 
     it('GIVEN server error WHEN loadBeanMethods thunk is dispatched THEN it should handle error', async () => {
-        mockServer.mockError('/loadMethods', 401);
+        const { formPost } = await import('../../api/client.js') as any;
+        (formPost as any).mockRejectedValue(new Error('unauthorized'));
 
         const thunk = ACTIONS.loadBeanMethods('bean1') as any;
         thunk(dispatch);
 
-        await flushAsync(mockServer.fetchMock);
+        await flushAsync(formPost);
 
         expect(dispatch).not.toHaveBeenCalledWith(
             expect.objectContaining({ type: ACTIONS.LOADED_BEAN_METHODS })

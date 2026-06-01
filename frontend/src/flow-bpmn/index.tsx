@@ -7,7 +7,7 @@ import FlowEditor from './FlowEditor.jsx';
 import KnowledgeTreeDialog from '../components/dialog/component/KnowledgeTreeDialog.jsx';
 import QuickTestDialog from '../components/dialog/component/QuickTestDialog.jsx';
 import {buildProjectNameFromFile, getParameter, handleResponseError} from '../Utils.js';
-import {save, saveNewVersion} from '../api/client.js';
+import {save, saveNewVersion, formPost} from '../api/client.js';
 import * as event from '../components/componentEvent.js';
 import * as componentEvent from '../components/componentEvent.js';
 
@@ -106,14 +106,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (!editorRef) return;
                         editorRef.saveXML().then(function (xml: string) {
                             if (!xml) return;
-                            fetch(window._server + '/flow/deploy', {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                                body: new URLSearchParams({file: file}).toString()
-                            }).then(function (response: any) {
-                                if (!response.ok) throw response;
-                                return response.json();
-                            }).then(function (data: any) {
+                            formPost('/flow/deploy', {file: file}).then(function (data: any) {
                                 window.bootbox.alert('部署成功! Deployment ID: ' + (data.deploymentId || ''));
                             }).catch(function (response: any) {
                                 handleResponseError(response, '部署失败：');

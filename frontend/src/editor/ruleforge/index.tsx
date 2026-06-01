@@ -58,7 +58,7 @@ import * as componentEvent from '../../components/componentEvent.js';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { getParameter, buildProjectNameFromFile, loadEditorData, handleResponseError } from '../../Utils.js';
-import { save, saveNewVersion } from '../../api/client.js';
+import { save, saveNewVersion, formPost } from '../../api/client.js';
 import { RuleFactory } from './RuleFactory.js';
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -107,14 +107,7 @@ document.addEventListener('DOMContentLoaded', function () {
             rule.initTopJoin();
         } else {
             const projectName = file.split('/')[1];
-            fetch(window._server + '/common/findRuleByKey', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ ruleKey: ruleKey, projectName: projectName }).toString()
-            }).then(function (response) {
-                if (!response.ok) throw response;
-                return response.json();
-            }).then(function (res: any[]) {
+            formPost('/common/findRuleByKey', { ruleKey: ruleKey, projectName: projectName }).then(function (res: any[]) {
                 if (res != null && res.length > 0) {
                     factory.addRule(res[0]);
                 } else {

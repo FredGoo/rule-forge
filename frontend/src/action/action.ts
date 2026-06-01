@@ -1,5 +1,4 @@
-import {save as apiSave} from '../api/client.js';
-import {handleResponseError} from '../Utils.js';
+import {save as apiSave, formPost} from '../api/client.js';
 
 export const LOAD_MASTER_COMPLETED = 'load_master_completed';
 export const LOAD_SLAVE_COMPLETE = 'load_slave_completed';
@@ -120,19 +119,9 @@ export function saveData(data: SpringBean[], newVersion: boolean, file: string) 
 
 export function loadBeanMethods(beanId: string) {
     return function (dispatch: Function) {
-        var url = window._server + '/actioneditor/loadMethods';
-        fetch(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({beanId}).toString()
-        }).then(function(response) {
-            if (!response.ok) throw response;
-            return response.json();
-        }).then(function (result: ActionMethod[]) {
+        formPost<ActionMethod[]>('/actioneditor/loadMethods', {beanId}).then(function (result) {
             dispatch({type: LOADED_BEAN_METHODS, result});
-        }).catch(function (response: Response) {
-            handleResponseError(response, '服务端错误：');
-        });
+        }).catch(function () {});
     }
 }
 
@@ -166,19 +155,9 @@ export function addParameter() {
 
 export function loadMasterData(files: string) {
     return function (dispatch: Function) {
-        var url = window._server + "/xml";
-        fetch(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({files}).toString()
-        }).then(function(response) {
-            if (!response.ok) throw response;
-            return response.json();
-        }).then(function (data: MasterDataResponse[]) {
+        formPost<MasterDataResponse[]>('/xml', {files}).then(function (data) {
             dispatch({type: LOAD_MASTER_COMPLETED, masterData: data[0]});
-        }).catch(function (response: Response) {
-            handleResponseError(response, '服务端错误：');
-        });
+        }).catch(function () {});
     }
 }
 

@@ -3,6 +3,7 @@ import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import CommonTree from '../../components/tree/component/CommonTree.jsx';
 import * as event from '../../components/componentEvent.js';
 import { buildData } from '../../components/componentAction.js';
+import { formPost } from '../../api/client.js';
 
 interface ResourceListState {
     visible: boolean;
@@ -24,14 +25,7 @@ export default class ResourceListDialogComponent extends Component<{}, ResourceL
             this.type = config.type;
             this.callback = config.callback;
             this.currentNodeData = null;
-            const url = (window.ruleforgeServer || '') + 'ruleforge?action=loadrepo&filetype=' + config.type + '&path=' + config.file;
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-            }).then(function (response) {
-                if (!response.ok) throw response;
-                return response.json();
-            }).then(function (data: any) {
+            formPost('ruleforge?action=loadrepo&filetype=' + config.type + '&path=' + config.file, {}).then(function (data: any) {
                 buildData(data);
                 this.setState({ treeData: data, visible: true });
             }.bind(this)).catch(function () {

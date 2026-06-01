@@ -9,20 +9,13 @@ import {syntaxHighlighting, defaultHighlightStyle, foldGutter, indentOnInput} fr
 import {bracketMatching} from '@codemirror/language';
 import {closeBrackets, closeBracketsKeymap} from '@codemirror/autocomplete';
 import {searchKeymap} from '@codemirror/search';
+import {formPost} from '../../api/client.js';
 
 function buildLintFunction(type: string) {
     return function (view: any): any[] | Promise<any[]> {
         const text = view.state.doc.toString();
         if (!text || text.trim().length === 0) return [];
-        const url = window._server + '/common/scriptValidation';
-        return fetch(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({type, content: text}).toString()
-        }).then(function (response) {
-            if (!response.ok) return [];
-            return response.json();
-        }).then(function (result: any[]) {
+        return formPost('/common/scriptValidation', {type, content: text}).then(function (result: any[]) {
             if (!result) return [];
             return result.map(function (item: any) {
                 const line = view.state.doc.line(item.line || 1);

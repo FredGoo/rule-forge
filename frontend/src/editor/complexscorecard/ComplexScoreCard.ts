@@ -13,7 +13,7 @@ import ContentRow from './ScoreCardRow';
 import ConditionColumn, { ActionColumn } from './ScoreCardColumn';
 import TableAction from './TableAction';
 import { getParameter, handleResponseError } from '../../Utils.js';
-import { save, saveNewVersion } from '../../api/client.js';
+import { save, saveNewVersion, formPost } from '../../api/client.js';
 import {
     constantLibraries,
     actionLibraries,
@@ -310,20 +310,13 @@ export default class ComplexScoreCard {
     loadFile(callback: (data: any) => void): void {
         const self = this;
         const file = getParameter('file');
-        let loadUrl = window._server + '/common/loadXml';
+        let loadPath = '/common/loadXml';
         const doImport = getParameter('doImport');
         if (doImport && doImport.length > 1) {
-            loadUrl += '?doImport=true';
+            loadPath += '?doImport=true';
         }
 
-        fetch(loadUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ files: file }).toString()
-        }).then(function (response) {
-            if (!response.ok) throw response;
-            return response.json();
-        }).then(function (response: any[]) {
+        formPost(loadPath, { files: file }).then(function (response: any[]) {
             const data = response[0];
             self.remark.setData(data.remark);
 

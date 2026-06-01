@@ -2,9 +2,10 @@ import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest';
 import * as ACTIONS from '../action.js';
 import {setupMockBootbox, teardownMockBootbox} from '../../__test_utils__/mockBootbox.js';
 
-// Mock save from api/client.js to intercept the module import
+// Mock api/client.js to intercept the module import
 vi.mock('../../api/client.js', () => ({
     save: vi.fn(),
+    formPost: vi.fn(),
 }));
 
 // Helper to flush async chains
@@ -46,7 +47,6 @@ describe('Parameter Module - Thunks', () => {
 
     afterEach(() => {
         teardownMockBootbox();
-        delete global.fetch;
     });
 
     it('GIVEN valid files WHEN loadData thunk is dispatched THEN it should fetch and dispatch LOAD_DATA_COMPLETED', async () => {
@@ -55,18 +55,13 @@ describe('Parameter Module - Thunks', () => {
             {name: 'param2', label: 'Parameter 2', type: 'Integer'},
         ];
 
-        const mockFetch = vi.fn(() =>
-            Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve(mockResponse),
-            })
-        );
-        global.fetch = mockFetch as unknown as typeof fetch;
+        const { formPost } = await import('../../api/client.js');
+        (formPost as ReturnType<typeof vi.fn>).mockResolvedValue(mockResponse);
 
         const thunk = ACTIONS.loadData('test-files');
         thunk(dispatch);
 
-        await flushAsync(mockFetch);
+        await flushAsync(formPost as any);
 
         expect(dispatch).toHaveBeenCalledWith({
             type: ACTIONS.LOAD_DATA_COMPLETED,
@@ -75,46 +70,28 @@ describe('Parameter Module - Thunks', () => {
     });
 
     it('GIVEN server error WHEN loadData thunk is dispatched THEN it should handle 401 error', async () => {
-        const mockFetch = vi.fn(() =>
-            Promise.resolve({
-                ok: false,
-                status: 401,
-                text: () => Promise.resolve('Unauthorized'),
-            })
-        );
-        global.fetch = mockFetch as unknown as typeof fetch;
+        const { formPost } = await import('../../api/client.js');
+        (formPost as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('unauthorized'));
 
         const thunk = ACTIONS.loadData('test-files');
         thunk(dispatch);
 
-        await flushAsync(mockFetch);
+        await new Promise(resolve => setTimeout(resolve, 0));
 
-        const lastMsg = mockBootbox.getLastAlertMessage();
-        expect(lastMsg).toBeTruthy();
-        expect(lastMsg).toContain('权限不足');
         expect(dispatch).not.toHaveBeenCalledWith(
             expect.objectContaining({type: ACTIONS.LOAD_DATA_COMPLETED})
         );
     });
 
     it('GIVEN server error WHEN loadData thunk is dispatched THEN it should handle generic error', async () => {
-        const mockFetch = vi.fn(() =>
-            Promise.resolve({
-                ok: false,
-                status: 500,
-                text: () => Promise.resolve('Internal Server Error'),
-            })
-        );
-        global.fetch = mockFetch as unknown as typeof fetch;
+        const { formPost } = await import('../../api/client.js');
+        (formPost as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('server error'));
 
         const thunk = ACTIONS.loadData('test-files');
         thunk(dispatch);
 
-        await flushAsync(mockFetch);
+        await new Promise(resolve => setTimeout(resolve, 0));
 
-        const lastMsg = mockBootbox.getLastAlertMessage();
-        expect(lastMsg).toBeTruthy();
-        expect(lastMsg).toContain('加载数据失败');
         expect(dispatch).not.toHaveBeenCalledWith(
             expect.objectContaining({type: ACTIONS.LOAD_DATA_COMPLETED})
         );

@@ -19,7 +19,7 @@ import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibrary
 import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.jsx';
 import EditorToolbar from '../../components/editor-toolbar/EditorToolbar.jsx';
 import {buildProjectNameFromFile, getParameter, handleResponseError} from '../../Utils.js';
-import {save, saveNewVersion} from '../../api/client.js';
+import {save, saveNewVersion, formPost} from '../../api/client.js';
 import * as event from '../../components/componentEvent.js';
 import * as componentEvent from '../../components/componentEvent.js';
 
@@ -100,15 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
             window.bootbox.alert('请先输入脚本.');
             return;
         }
-        const url = window._server + '/uleditor/loadULLibs';
-        fetch(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({content: content}).toString()
-        }).then(function (response) {
-            if (!response.ok) throw response;
-            return response.json();
-        }).then(function (data: any) {
+        formPost('/uleditor/loadULLibs', {content: content}).then(function (data: any) {
             codeMirror._library = data;
         }).catch(function (response: any) {
             handleResponseError(response, '资源库加载失败：');
@@ -182,15 +174,7 @@ function buildScriptLintFunction(type: string) {
             updateLinting(editor, []);
             return;
         }
-        const url = window._server + '/common/scriptValidation';
-        fetch(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({type, content: text}).toString()
-        }).then(function (response) {
-            if (!response.ok) throw response;
-            return response.json();
-        }).then(function (result: any[]) {
+        formPost('/common/scriptValidation', {type, content: text}).then(function (result: any[]) {
             if (result) {
                 for (const item of result) {
                     item.from = {line: item.line - 1};

@@ -1,6 +1,7 @@
 import {Component} from 'react';
 import ScriptEditorPopup from './ScriptEditorPopup.jsx';
 import * as componentEvent from '../../components/componentEvent.js';
+import {formPost} from '../../api/client.js';
 import './ruleforge-properties.css';
 
 interface FlowItem {
@@ -88,12 +89,7 @@ export default class RuleForgePropertiesPanel extends Component<PropertiesPanelP
     loadPackagesIfNeeded() {
         const taskType = this.getTaskType();
         if (taskType === 'package') {
-            const url = window._server + '/packageeditor/loadPackages';
-            fetch(url, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: new URLSearchParams({project: window._project || ''}).toString()
-            }).then(r => r.ok ? r.json() : []).then((data: any) => {
+            formPost('/packageeditor/loadPackages', {project: window._project || ''}, {silent: true}).then((data: any) => {
                 this.setState({packages: data || []});
             }).catch(() => this.setState({packages: []}));
         }

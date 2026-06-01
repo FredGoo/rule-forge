@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import Grid from '../../components/grid/component/Grid.jsx';
 import * as event from '../../components/componentEvent.js';
+import { httpGet } from '../../api/client.js';
 
 interface ConditionListState {
     visible: boolean;
@@ -41,13 +42,9 @@ export default class ConditionListDialogComponent extends Component<{}, Conditio
     }
 
     _loadData(config: any): void {
-        const url = 'ruleforge?action=loadcommonconditions&project=' + config.project
+        httpGet('ruleforge?action=loadcommonconditions&project=' + config.project
             + '&category=' + config.category
-            + '&variable=' + config.variable;
-        fetch(url).then(function (response) {
-            if (!response.ok) throw response;
-            return response.json();
-        }).then(function (data) {
+            + '&variable=' + config.variable).then(function (data) {
             this.setState({ data: data || [] });
         }.bind(this)).catch(function () {
             RuleForge.alert('加载常用条件失败');

@@ -93,20 +93,14 @@ interface EditorData {
     [key: string]: unknown;
 }
 
+import { formPost } from './api/client.js';
+
 export function loadEditorData(file: string, extraParams?: Record<string, string>): Promise<EditorData> {
-    var url = window._server + '/common/loadXml';
     var params: Record<string, string> = {files: file};
     if (extraParams) {
         Object.assign(params, extraParams);
     }
-    return fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams(params).toString()
-    }).then(function (response) {
-        if (!response.ok) throw response;
-        return response.json();
-    }).then(function (data: EditorData[]) {
+    return formPost<EditorData[]>('/common/loadXml', params).then(function (data) {
         var editorData = data[0];
         if (editorData.libraries) {
             loadLibraries(editorData.libraries);
