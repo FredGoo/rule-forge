@@ -4,7 +4,7 @@ import {
     loadDatasources, createDatasource, updateDatasource, deleteDatasource,
     testConnection, setSelectedDatasource, setTab,
     loadEntityMappings, saveEntityMapping,
-    loadFieldMappings,
+    loadFieldMappings, saveFieldMappings,
     DatasourceItem, EntityMapping, FieldMapping
 } from './action';
 
@@ -16,6 +16,12 @@ interface DatasourcePanelProps {
     activeTab: string;
 }
 
+interface ModelListItem {
+    model_id: string;
+    name: string;
+    active: boolean;
+}
+
 interface DatasourcePanelState {
     showForm: boolean;
     formDatasource: DatasourceItem | null;
@@ -23,6 +29,7 @@ interface DatasourcePanelState {
     mappingClazz: string;
     mappingDatasourceId: string;
     mappingFieldClazz: string;
+    availableModels: ModelListItem[];
 }
 
 class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelState> {
@@ -33,7 +40,8 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
         testResult: null,
         mappingClazz: '',
         mappingDatasourceId: '',
-        mappingFieldClazz: ''
+        mappingFieldClazz: '',
+        availableModels: []
     };
 
     componentDidMount() {
@@ -94,6 +102,34 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
         this.setState({mappingFieldClazz: clazz});
         this.props.dispatch(setSelectedDatasource({id: dsId, clazz}));
         this.props.dispatch(loadFieldMappings(dsId, clazz));
+    };
+
+    handleFetchModelFields = (dsId: number, clazz: string, ds: DatasourceItem) => {
+        let config: Record<string, unknown> = {};
+        try { config = JSON.parse(ds.configJson || '{}'); } catch (_e) { /* ignore */ }
+        const url = config.modelServiceUrl as string;
+        const modelId = config.modelId as string;
+        if (!url || !modelId) {
+            alert('请先在数据源配置中填写模型服务地址和模型 ID');
+            return;
+        }
+        fetch(url + '/models/' + encodeURIComponent(modelId))
+            .then(res => {
+                if (!res.ok) throw new Error('模型不存在');
+                return res.json();
+            })
+            .then((modelInfo: { input_fields: Array<{name: string}>; output_fields: Array<{name: string}> }) => {
+                const allFields = [...modelInfo.input_fields, ...modelInfo.output_fields];
+                const mappings: FieldMapping[] = allFields.map(f => ({
+                    variableName: f.name,
+                    remoteField: f.name
+                }));
+                this.props.dispatch(saveFieldMappings(dsId, clazz, mappings));
+            })
+            .catch(err => {
+                console.error('获取模型字段失败', err);
+                alert('获取模型字段失败: ' + err.message);
+            });
     };
 
     render() {
@@ -177,6 +213,7 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
     renderForm(formDatasource: DatasourceItem) {
         const isAdvanceAi = formDatasource.type === 'ADVANCE_AI';
         const isJdbc = formDatasource.type === 'JDBC';
+        const isPkl = formDatasource.type === 'PKL';
 
         let configJson: Record<string, unknown> = {};
         try { configJson = JSON.parse(formDatasource.configJson || '{}'); } catch (_e) { /* ignore */ }
@@ -203,6 +240,7 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
                                     <option value="ADVANCE_AI">Advance AI</option>
                                     <option value="REST_API">REST API</option>
                                     <option value="JDBC">JDBC</option>
+                                    <option value="PKL">PKL 模型</option>
                                 </select>
                             </div>
                         </div>
@@ -216,7 +254,8 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
 
                         {isAdvanceAi && this.renderAdvanceAiConfig(configJson)}
                         {isJdbc && this.renderJdbcConfig(configJson)}
-                        {!isAdvanceAi && !isJdbc && this.renderRestConfig(configJson)}
+                        {isPkl && this.renderPklConfig(configJson)}
+                        {!isAdvanceAi && !isJdbc && !isPkl && this.renderRestConfig(configJson)}
 
                         <div className="form-group">
                             <div className="col-sm-offset-2 col-sm-6">
@@ -317,6 +356,73 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
         );
     }
 
+    renderPklConfig(config: Record<string, unknown>) {
+        return (
+            <>
+                <div className="form-group">
+                    <label className="col-sm-2 control-label">模型服务地址</label>
+                    <div className="col-sm-6">
+                        <input className="form-control input-sm"
+                               value={(config.modelServiceUrl as string) || ''}
+                               placeholder="http://localhost:8501"
+                               onChange={e => this.updateConfigJson('modelServiceUrl', e.target.value)} />
+                    </div>
+                </div>
+                <div className="form-group">
+                    <label className="col-sm-2 control-label">模型 ID</label>
+                    <div className="col-sm-4">
+                        <input className="form-control input-sm"
+                               value={(config.modelId as string) || ''}
+                               placeholder="credit_scoring_v1"
+                               onChange={e => this.updateConfigJson('modelId', e.target.value)} />
+                    </div>
+                    <div className="col-sm-2">
+                        <button className="btn btn-sm btn-default" onClick={() => this.fetchModelList()}>
+                            <i className="glyphicon glyphicon-refresh"></i> 加载模型
+                        </button>
+                    </div>
+                </div>
+                {this.state.availableModels.length > 0 && (
+                    <div className="form-group">
+                        <label className="col-sm-2 control-label">可选模型</label>
+                        <div className="col-sm-6">
+                            <select className="form-control input-sm"
+                                    onChange={e => this.updateConfigJson('modelId', e.target.value)}>
+                                <option value="">选择模型...</option>
+                                {this.state.availableModels.map(m => (
+                                    <option key={m.model_id} value={m.model_id}>
+                                        {m.name} ({m.model_id}) {m.active ? '✓' : '✗'}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    }
+
+    fetchModelList = () => {
+        const {formDatasource} = this.state;
+        if (!formDatasource) return;
+        let config: Record<string, unknown> = {};
+        try { config = JSON.parse(formDatasource.configJson || '{}'); } catch (_e) { /* ignore */ }
+        const url = config.modelServiceUrl as string;
+        if (!url) {
+            alert('请先填写模型服务地址');
+            return;
+        }
+        fetch(url + '/models')
+            .then(res => res.json())
+            .then((data: ModelListItem[]) => {
+                this.setState({availableModels: data});
+            })
+            .catch(err => {
+                console.error('加载模型列表失败', err);
+                alert('加载模型列表失败，请检查模型服务地址');
+            });
+    };
+
     updateConfigJson = (field: string, value: string) => {
         let config: Record<string, unknown> = {};
         try { config = JSON.parse(this.state.formDatasource?.configJson || '{}'); } catch (_e) { /* ignore */ }
@@ -358,6 +464,15 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
                                                 onClick={() => this.handleLoadFieldMappings(m.datasourceId, m.clazz)}>
                                             字段映射
                                         </button>
+                                        {ds && ds.type === 'PKL' && (
+                                            <>
+                                                {' '}
+                                                <button className="btn btn-xs btn-warning"
+                                                        onClick={() => this.handleFetchModelFields(m.datasourceId, m.clazz, ds)}>
+                                                    获取模型字段
+                                                </button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             );
