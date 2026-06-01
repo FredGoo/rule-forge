@@ -60,7 +60,7 @@ Phase 12 Rust 引擎        P3  ─┘── 远期
 | ClickHouse 分析 | 高性能分析数据库 | 5.4.0 | P1 | 📋 规划中 |
 | 数据源批量测试 | CSV/JSON 批量导入测试 | 5.5.0 | P1 | 📋 规划中 |
 | 文档与 Demo | GitHub Pages + VitePress | 5.6.0 | P2 | 📋 规划中 |
-| PMML/PKL 模型 | Python 模型导入执行 | 5.7.0 | P2 | 📋 规划中 |
+| PMML/PKL 模型 | Python 模型导入执行 | 5.7.0 | P2 | ✅ 已完成 |
 | Rust 执行引擎 | RETE 高性能重写 | 5.8.0 | P3 | 📋 远期规划 |
 
 ---
@@ -80,7 +80,7 @@ Phase 12 Rust 引擎        P3  ─┘── 远期
 
 ### 已实现
 
-- **数据源注册中心** — REST API / JDBC / Advance AI 三种连接器，JSON 配置
+- **数据源注册中心** — REST API / JDBC / Advance AI / PKL 模型四种连接器，JSON 配置
 - **变量映射配置** — 实体级映射 + 字段级映射（规则变量名 → 外部字段名）
 - **连接管理** — HikariCP 连接池、超时、缓存策略
 - **数据缓存** — 120h TTL，数据库缓存 + 审计日志
@@ -288,17 +288,46 @@ docs-site/
 
 ---
 
-## Phase 11: PMML/PKL 模型支持 📋 规划中 (5.7.0)
+## Phase 11: PKL 模型支持 ✅ 已完成 (5.7.0)
 
 ### 问题
 
-风控模型用 Python 训练，导出 PMML 或 PKL，规则引擎无法直接使用。
+风控模型用 Python 训练，导出 PKL 文件，规则引擎无法直接使用模型预测结果。
 
-### 方案
+### 已实现
 
-- **PMML** — `org.jpmml:pmml-evaluator` 加载 PMML 文件 → 输入变量 → 输出预测结果
-- **PKL** — 独立 Python 微服务（Flask + pickle.load → REST API），通过 REST 调用
-- 集成为新的规则动作类型 — "模型预测"动作
+- **Python model-service** (FastAPI + uv) — PKL 模型上传、字段自动检测、激活/停用、预测
+- **PklModelConnector** — Java DataSourceConnector 实现，通过 REST 调用 model-service，提取预测字段值
+- **前端 PKL 配置** — DatasourcePanel 新增 PKL 类型，模型服务地址 + 模型 ID + 模型列表加载
+- **字段映射自动填充** — "获取模型字段"按钮从 model-service 拉取输入/输出字段，自动创建映射
+- **模型生命周期** — 上传 → 自动检测字段 → 激活 → 预测 → 停用 → 删除
+
+### 架构
+
+```
+规则执行 → DatasourceRoutingProvider → PklModelConnector
+                                          ↓
+                                     Python model-service (FastAPI)
+                                          ↓
+                                     pickle.load() → model.predict()
+                                          ↓
+                                     返回预测结果 JSON
+```
+
+### 模块结构
+
+```
+PKL 模型模块
+├── model-service/                Python 微服务（FastAPI + uv）
+│   ├── app/models/registry.py    模型注册表（内存 + 文件系统持久化）
+│   ├── app/models/loader.py      PKL 加载 + sklearn 字段自动检测
+│   ├── app/routes/predict.py     POST /predict
+│   ├── app/routes/manage.py      CRUD /models + activate/deactivate
+│   └── app/routes/health.py      GET /health
+├── PklModelConnector.java        Java DataSourceConnector 实现
+├── DatasourcePanel (PKL)         前端配置表单 + 模型字段自动填充
+└── saveFieldMappings action       批量字段映射保存
+```
 
 ---
 
