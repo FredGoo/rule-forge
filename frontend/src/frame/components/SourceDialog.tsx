@@ -1,9 +1,12 @@
-import '../../../node_modules/codemirror/mode/xml/xml.js';
-import {Component} from 'react';
 import CodeMirror from 'codemirror';
+import {Component} from 'react';
 import CommonDialog from '../../components/dialog/component/CommonDialog.jsx';
 import * as event from '../event.js';
 import * as action from '../action.js';
+
+// Expose CodeMirror globally so mode plugins (e.g. xml mode) can register themselves.
+// Must happen before the dynamic import below.
+window.CodeMirror = CodeMirror as any;
 
 interface SourceDialogProps {
     dispatch?: (action: unknown) => void;
@@ -24,7 +27,11 @@ export default class SourceDialog extends Component<SourceDialogProps, SourceDia
         this.state = {title: '', visible: false};
     }
 
-    componentDidMount() {
+    async componentDidMount() {
+        // Dynamic import: xml mode needs window.CodeMirror at evaluation time.
+        // Static imports are hoisted above all code, so this must be dynamic.
+        await import('../../../node_modules/codemirror/mode/xml/xml.js');
+
         const editorId = this.editorId;
         const codeMirror = CodeMirror.fromTextArea(document.getElementById(editorId) as HTMLTextAreaElement, {
             mode: 'xml',

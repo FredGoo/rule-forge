@@ -40,16 +40,19 @@ class ConfigPanel extends Component<ConfigPanelProps, ConfigPanelState> {
     async loadConfig() {
         try {
             const resp = await fetch(window._server + '/agent/config');
+            if (!resp.ok) return;
             const config = await resp.json();
-            this.setState({
-                vendor: config['llm.vendor'] || '',
-                apiKey: config['llm.api_key'] || '',
-                baseUrl: config['llm.base_url'] || '',
-                model: config['llm.model'] || '',
-                temperature: config['llm.temperature'] || '0.7',
-                maxTokens: config['llm.max_tokens'] || '4096',
-                systemPrompt: config['system_prompt'] || '',
-            });
+            if (typeof config === 'object' && config !== null) {
+                this.setState({
+                    vendor: config['llm.vendor'] || '',
+                    apiKey: config['llm.api_key'] || '',
+                    baseUrl: config['llm.base_url'] || '',
+                    model: config['llm.model'] || '',
+                    temperature: config['llm.temperature'] || '0.7',
+                    maxTokens: config['llm.max_tokens'] || '4096',
+                    systemPrompt: config['system_prompt'] || '',
+                });
+            }
         } catch (e) {
             console.error('Failed to load config', e);
         }
@@ -58,8 +61,11 @@ class ConfigPanel extends Component<ConfigPanelProps, ConfigPanelState> {
     async loadVendors() {
         try {
             const resp = await fetch(window._server + '/agent/vendors');
+            if (!resp.ok) return;
             const vendors: VendorInfo[] = await resp.json();
-            this.setState({vendors});
+            if (Array.isArray(vendors)) {
+                this.setState({vendors});
+            }
         } catch (e) {
             console.error('Failed to load vendors', e);
         }

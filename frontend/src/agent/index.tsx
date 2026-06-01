@@ -1,13 +1,11 @@
 import {Component} from 'react';
-import {createStore} from 'redux';
-import {Provider, connect} from 'react-redux';
-import reducer from './reducer';
+import {connect} from 'react-redux';
 import {
     loadSessions, createSession, loadMessages, sendMessage,
     deleteSession, loadStatus
 } from './action';
-import ChatPanel from './components/ChatPanel';
-import ConfigPanel from './components/ConfigPanel';
+import ChatPanel from './components/ChatPanel.tsx';
+import ConfigPanel from './components/ConfigPanel.tsx';
 import type {AgentSession, AgentMessage} from './action';
 import type {AgentState} from './reducer';
 
@@ -56,6 +54,7 @@ class AgentPanel extends Component<AgentPanelProps, AgentPanelState> {
     render() {
         const {sessions, activeSessionId, messages, loading, streaming, status} = this.props;
         const {showConfig} = this.state;
+        const safeSessions = Array.isArray(sessions) ? sessions : [];
 
         return (
             <div style={{display: 'flex', flexDirection: 'column', height: '100%', background: '#fff'}}>
@@ -110,14 +109,14 @@ class AgentPanel extends Component<AgentPanelProps, AgentPanelState> {
                     <div style={{flex: 1, overflow: 'auto'}}>
                         {/* Session list */}
                         <div style={{padding: 8}}>
-                            {sessions.length === 0 && (
+                            {safeSessions.length === 0 && (
                                 <div style={{textAlign: 'center', padding: '40px 20px', color: '#999'}}>
                                     <i className="glyphicon glyphicon-education"
                                        style={{fontSize: 32, display: 'block', marginBottom: 8}}/>
                                     点击 + 开始与 AI 对话
                                 </div>
                             )}
-                            {sessions.map((s: AgentSession) => (
+                            {safeSessions.map((s: AgentSession) => (
                                 <div key={s.id}
                                      style={{
                                          padding: '8px 12px', cursor: 'pointer',
@@ -151,25 +150,5 @@ const selector = (state: { agent: AgentState }) => ({
 });
 
 const AgentPanelConnected = connect(selector)(AgentPanel);
-
-// Standalone entry
-const store = createStore(reducer);
-
-class AgentEntry extends Component {
-    render() {
-        return (
-            <Provider store={store}>
-                <AgentPanelConnected/>
-            </Provider>
-        );
-    }
-}
-
-const container = document.getElementById('container');
-if (container) {
-    import('react-dom/client').then(({createRoot}) => {
-        createRoot(container).render(<AgentEntry/>);
-    });
-}
 
 export default AgentPanelConnected;
