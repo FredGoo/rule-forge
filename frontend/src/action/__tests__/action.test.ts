@@ -10,7 +10,7 @@ vi.mock('../../Utils.js', () => ({
 }));
 
 // Helper to flush microtask queue for async thunks that don't return promises
-async function flushAsync(mockFetch) {
+async function flushAsync(mockFetch: any) {
     if (mockFetch.mock.results[0]) {
         await mockFetch.mock.results[0].value;
     }
@@ -101,7 +101,7 @@ describe('Action Module - Action Creators', () => {
 });
 
 describe('Action Module - Thunks', () => {
-    let mockServer, dispatch;
+    let mockServer: any, dispatch: any;
 
     beforeEach(() => {
         mockServer = setupMockServer();
@@ -122,7 +122,7 @@ describe('Action Module - Thunks', () => {
         };
         mockServer.mockResponse('/xml', [masterData]);
 
-        const thunk = ACTIONS.loadMasterData('test-files');
+        const thunk = ACTIONS.loadMasterData('test-files') as any;
         thunk(dispatch);
 
         await flushAsync(mockServer.fetchMock);
@@ -136,7 +136,7 @@ describe('Action Module - Thunks', () => {
     it('GIVEN server error WHEN loadMasterData thunk is dispatched THEN it should handle error', async () => {
         mockServer.mockError('/xml', 500);
 
-        const thunk = ACTIONS.loadMasterData('test-files');
+        const thunk = ACTIONS.loadMasterData('test-files') as any;
         thunk(dispatch);
 
         await flushAsync(mockServer.fetchMock);
@@ -153,7 +153,7 @@ describe('Action Module - Thunks', () => {
         ];
         mockServer.mockResponse('/loadMethods', result);
 
-        const thunk = ACTIONS.loadBeanMethods('bean1');
+        const thunk = ACTIONS.loadBeanMethods('bean1') as any;
         thunk(dispatch);
 
         await flushAsync(mockServer.fetchMock);
@@ -167,7 +167,7 @@ describe('Action Module - Thunks', () => {
     it('GIVEN server error WHEN loadBeanMethods thunk is dispatched THEN it should handle error', async () => {
         mockServer.mockError('/loadMethods', 401);
 
-        const thunk = ACTIONS.loadBeanMethods('bean1');
+        const thunk = ACTIONS.loadBeanMethods('bean1') as any;
         thunk(dispatch);
 
         await flushAsync(mockServer.fetchMock);
@@ -179,7 +179,7 @@ describe('Action Module - Thunks', () => {
 });
 
 describe('Action Module - saveData Function', () => {
-    let mockBootbox;
+    let mockBootbox: any;
 
     beforeEach(() => {
         mockBootbox = setupMockBootbox();
@@ -190,9 +190,9 @@ describe('Action Module - saveData Function', () => {
     });
 
     it('GIVEN valid action data WHEN saveData is called THEN it should generate correct XML', async () => {
-        const { ajaxSave } = await import('../../Utils.js');
-        ajaxSave.mockClear();
-        ajaxSave.mockImplementation((_url, _postData, callback) => {
+        const { ajaxSave } = await import('../../Utils.js') as any;
+        (ajaxSave as any).mockClear();
+        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
             if (callback) callback();
         });
 
@@ -213,10 +213,10 @@ describe('Action Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'actions.xml');
+        ACTIONS.saveData(data as any, false, 'actions.xml');
 
         expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = ajaxSave.mock.calls[0];
+        const callArgs = (ajaxSave as any).mock.calls[0];
         const xmlContent = decodeURIComponent(callArgs[1].content);
 
         expect(xmlContent).toContain('<?xml version="1.0" encoding="utf-8"?>');
@@ -241,10 +241,10 @@ describe('Action Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'actions.xml');
+        ACTIONS.saveData(data as any, false, 'actions.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertCalls = window.bootbox.alert.mock.calls;
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertCalls = (window as any).bootbox.alert.mock.calls;
         const lastAlert = alertCalls[alertCalls.length - 1][0];
         expect(lastAlert).toContain('动作名称不能为空');
     });
@@ -260,10 +260,10 @@ describe('Action Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'actions.xml');
+        ACTIONS.saveData(data as any, false, 'actions.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertCalls = window.bootbox.alert.mock.calls;
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertCalls = (window as any).bootbox.alert.mock.calls;
         const lastAlert = alertCalls[alertCalls.length - 1][0];
         expect(lastAlert).toContain('Bean Id不能为空');
     });
@@ -277,10 +277,10 @@ describe('Action Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'actions.xml');
+        ACTIONS.saveData(data as any, false, 'actions.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertCalls = window.bootbox.alert.mock.calls;
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertCalls = (window as any).bootbox.alert.mock.calls;
         const lastAlert = alertCalls[alertCalls.length - 1][0];
         expect(lastAlert).toContain('动作分类[Action Bean]下未定义具体的动作方法');
     });
@@ -296,10 +296,10 @@ describe('Action Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'actions.xml');
+        ACTIONS.saveData(data as any, false, 'actions.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertCalls = window.bootbox.alert.mock.calls;
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertCalls = (window as any).bootbox.alert.mock.calls;
         const lastAlert = alertCalls[alertCalls.length - 1][0];
         expect(lastAlert).toContain('名称不能为空');
     });
@@ -315,10 +315,10 @@ describe('Action Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'actions.xml');
+        ACTIONS.saveData(data as any, false, 'actions.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertCalls = window.bootbox.alert.mock.calls;
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertCalls = (window as any).bootbox.alert.mock.calls;
         const lastAlert = alertCalls[alertCalls.length - 1][0];
         expect(lastAlert).toContain('方法名不能为空');
     });
@@ -338,10 +338,10 @@ describe('Action Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'actions.xml');
+        ACTIONS.saveData(data as any, false, 'actions.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertCalls = window.bootbox.alert.mock.calls;
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertCalls = (window as any).bootbox.alert.mock.calls;
         const lastAlert = alertCalls[alertCalls.length - 1][0];
         expect(lastAlert).toContain('参数名不能为空');
     });
@@ -361,22 +361,22 @@ describe('Action Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'actions.xml');
+        ACTIONS.saveData(data as any, false, 'actions.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertCalls = window.bootbox.alert.mock.calls;
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertCalls = (window as any).bootbox.alert.mock.calls;
         const lastAlert = alertCalls[alertCalls.length - 1][0];
         expect(lastAlert).toContain('参数类型不能为空');
     });
 
     it('GIVEN valid data and newVersion=true WHEN saveData is called THEN it should prompt for version comment', async () => {
-        const { ajaxSave } = await import('../../Utils.js');
-        ajaxSave.mockClear();
-        ajaxSave.mockImplementation((_url, _postData, callback) => {
+        const { ajaxSave } = await import('../../Utils.js') as any;
+        (ajaxSave as any).mockClear();
+        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
             if (callback) callback();
         });
 
-        window.bootbox.prompt = vi.fn((_msg, callback) => {
+        (window as any).bootbox.prompt = vi.fn((_msg: any, callback: any) => {
             callback('Test version comment');
         });
 
@@ -390,10 +390,10 @@ describe('Action Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, true, 'actions.xml');
+        ACTIONS.saveData(data as any, true, 'actions.xml');
 
         expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = ajaxSave.mock.calls[0];
+        const callArgs = (ajaxSave as any).mock.calls[0];
         expect(callArgs[1].versionComment).toBe('Test version comment');
     });
 });

@@ -7,7 +7,7 @@ vi.mock('bpmn-js/lib/Modeler', () => {
     return {
         default: class MockModeler {
             constructor() {}
-            importXML(xml) {
+            importXML(xml: string) {
                 if (!xml || xml.trim() === '') return Promise.reject(new Error('empty xml'));
                 return Promise.resolve({ warnings: [] });
             }
@@ -37,7 +37,7 @@ describe('FlowEditor', () => {
         // The component renders a wrapper div with a child div (containerRef)
         const wrapper = container.firstChild;
         expect(wrapper).not.toBeNull();
-        expect(wrapper.firstChild).not.toBeNull();
+        expect((wrapper as Element).firstChild).not.toBeNull();
     });
 
     // Given FlowEditor 组件不传 xml prop

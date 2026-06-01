@@ -27,7 +27,7 @@ describe('Action Module - Combined Reducer', () => {
                 ],
             };
             const action = { type: ACTIONS.LOAD_MASTER_COMPLETED, masterData };
-            const newState = reducer(initialState, action);
+            const newState = reducer(initialState as any, action as any);
 
             expect(newState.master.data).toEqual(masterData.springBeans);
             expect(newState.master.data).toHaveLength(2);
@@ -43,7 +43,7 @@ describe('Action Module - Combined Reducer', () => {
                 methodList: {},
             };
             const action = { type: ACTIONS.ADD_MASTER };
-            const newState = reducer(existingState, action);
+            const newState = reducer(existingState as any, action as any);
 
             expect(newState.master.data).toHaveLength(2);
             expect(newState.master.data[1]).toEqual({ id: '', name: '', methods: [] });
@@ -57,7 +57,7 @@ describe('Action Module - Combined Reducer', () => {
                 methodList: {},
             };
             const action = { type: ACTIONS.ADD_MASTER };
-            const newState = reducer(initialState, action);
+            const newState = reducer(initialState as any, action as any);
 
             expect(newState.master.data).toHaveLength(1);
             expect(newState.master.data[0]).toEqual({ id: '', name: '', methods: [] });
@@ -77,7 +77,7 @@ describe('Action Module - Combined Reducer', () => {
                 methodList: {},
             };
             const action = { type: ACTIONS.DEL_MASTER, rowIndex: 1 };
-            const newState = reducer(existingState, action);
+            const newState = reducer(existingState as any, action as any);
 
             expect(newState.master.data).toHaveLength(2);
             expect(newState.master.data[0].id).toBe('bean1');
@@ -95,7 +95,7 @@ describe('Action Module - Combined Reducer', () => {
             };
             const saveDataSpy = vi.spyOn(ACTIONS, 'saveData');
             const action = { type: ACTIONS.SAVE, newVersion: true, file: 'test.xml' };
-            const newState = reducer(state, action);
+            const newState = reducer(state as any, action as any);
 
             expect(saveDataSpy).toHaveBeenCalledWith(state.master.data, true, 'test.xml');
             expect(newState.master).toEqual(state.master);
@@ -110,7 +110,7 @@ describe('Action Module - Combined Reducer', () => {
                 methodList: {},
             };
             const action = { type: 'UNKNOWN_ACTION' };
-            const newState = reducer(state, action);
+            const newState = reducer(state as any, action as any);
 
             expect(newState).toEqual(state);
         });
@@ -133,7 +133,7 @@ describe('Action Module - Combined Reducer', () => {
                 ],
             };
             const action = { type: ACTIONS.LOAD_SLAVE_COMPLETE, masterRowData };
-            const newState = reducer(initialState, action);
+            const newState = reducer(initialState as any, action as any);
 
             expect(newState.slave.data).toEqual(masterRowData);
             expect(newState.slave.data.methods[0].id).toBeDefined();
@@ -155,7 +155,7 @@ describe('Action Module - Combined Reducer', () => {
                 methodList: {},
             };
             const action = { type: ACTIONS.ADD_SLAVE };
-            const newState = reducer(existingState, action);
+            const newState = reducer(existingState as any, action as any);
 
             expect(newState.slave.data.methods).toHaveLength(2);
             expect(newState.slave.data.methods[1]).toEqual({ name: '', methodName: '', parameters: [] });
@@ -176,7 +176,7 @@ describe('Action Module - Combined Reducer', () => {
             };
             const customMethod = { name: 'customMethod', methodName: 'customMethod', parameters: [] };
             const action = { type: ACTIONS.ADD_SLAVE, newSlaveData: customMethod };
-            const newState = reducer(existingState, action);
+            const newState = reducer(existingState as any, action as any);
 
             expect(newState.slave.data.methods).toHaveLength(1);
             expect(newState.slave.data.methods[0]).toEqual(customMethod);
@@ -190,9 +190,9 @@ describe('Action Module - Combined Reducer', () => {
                 methodList: {},
             };
             const action = { type: ACTIONS.ADD_SLAVE };
-            const newState = reducer(existingState, action);
+            const newState = reducer(existingState as any, action as any);
 
-            expect(window.bootbox.alert).toHaveBeenCalledWith('请先指定方法所属的Bean');
+            expect((window as any).bootbox.alert).toHaveBeenCalledWith('请先指定方法所属的Bean');
             expect(newState.slave).toEqual(existingState.slave);
         });
 
@@ -214,7 +214,7 @@ describe('Action Module - Combined Reducer', () => {
                 methodList: {},
             };
             const action = { type: ACTIONS.DEL_SLAVE, rowIndex: 1 };
-            const newState = reducer(existingState, action);
+            const newState = reducer(existingState as any, action as any);
 
             expect(newState.slave.data.methods).toHaveLength(2);
             expect(newState.slave.data.methods[0].name).toBe('method1');
@@ -239,7 +239,7 @@ describe('Action Module - Combined Reducer', () => {
                 ],
             };
             const action = { type: ACTIONS.LOAD_METHOD_COMPLETED, slaveData };
-            const newState = reducer(initialState, action);
+            const newState = reducer(initialState as any, action as any);
 
             expect(newState.method.data).toEqual(slaveData);
             expect(newState.method.data.parameters).toHaveLength(2);
@@ -259,7 +259,7 @@ describe('Action Module - Combined Reducer', () => {
                 methodList: {},
             };
             const action = { type: ACTIONS.LOAD_SLAVE_COMPLETE };
-            const newState = reducer(existingState, action);
+            const newState = reducer(existingState as any, action as any);
 
             expect(newState.method.data).toEqual({});
         });
@@ -278,7 +278,7 @@ describe('Action Module - Combined Reducer', () => {
                 methodList: {},
             };
             const action = { type: ACTIONS.ADD_PARAMETER };
-            const newState = reducer(existingState, action);
+            const newState = reducer(existingState as any, action as any);
 
             expect(newState.method.data.parameters).toHaveLength(2);
             expect(newState.method.data.parameters[1]).toEqual({ name: '', type: 'String' });
@@ -292,9 +292,9 @@ describe('Action Module - Combined Reducer', () => {
                 methodList: {},
             };
             const action = { type: ACTIONS.ADD_PARAMETER };
-            const newState = reducer(existingState, action);
+            const newState = reducer(existingState as any, action as any);
 
-            expect(window.bootbox.alert).toHaveBeenCalledWith('请先指定参数所属的方法');
+            expect((window as any).bootbox.alert).toHaveBeenCalledWith('请先指定参数所属的方法');
             expect(newState.method).toEqual(existingState.method);
         });
 
@@ -316,7 +316,7 @@ describe('Action Module - Combined Reducer', () => {
                 methodList: {},
             };
             const action = { type: ACTIONS.DEL_PARAMETER, rowIndex: 1 };
-            const newState = reducer(existingState, action);
+            const newState = reducer(existingState as any, action as any);
 
             expect(newState.method.data.parameters).toHaveLength(2);
             expect(newState.method.data.parameters[0].name).toBe('param1');
@@ -337,7 +337,7 @@ describe('Action Module - Combined Reducer', () => {
                 { name: 'method2', methodName: 'method2' },
             ];
             const action = { type: ACTIONS.LOADED_BEAN_METHODS, result };
-            const newState = reducer(initialState, action);
+            const newState = reducer(initialState as any, action as any);
 
             expect(newState.methodList.data).toEqual(result);
             expect(newState.methodList.data).toHaveLength(2);
@@ -352,15 +352,15 @@ describe('Action Module - Combined Reducer', () => {
                 method: {},
                 methodList: {},
             };
-            let state = reducer(initialState, {
+            let state = reducer(initialState as any, {
                 type: ACTIONS.LOAD_MASTER_COMPLETED,
                 masterData: { springBeans: [{ id: 'bean1', name: 'Bean 1', methods: [] }] },
-            });
+            } as any);
 
             state = reducer(state, {
                 type: ACTIONS.LOAD_SLAVE_COMPLETE,
                 masterRowData: { id: 'bean1', name: 'Bean 1', methods: [] },
-            });
+            } as any);
 
             expect(state.master.data).toEqual([{ id: 'bean1', name: 'Bean 1', methods: [] }]);
             expect(state.slave.data).toEqual({ id: 'bean1', name: 'Bean 1', methods: [] });

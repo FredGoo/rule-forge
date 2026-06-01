@@ -11,7 +11,7 @@ describe('Variable Module - Master Reducer', () => {
             { name: 'Category2', type: 'Custom', clazz: 'com.example.Cat2', variables: [] },
         ];
         const action = { type: ACTIONS.LOAD_MASTER_COMPLETED, masterData };
-        const newState = reducer(initialState, action);
+        const newState = reducer(initialState as any, action as any);
 
         expect(newState.master.data).toEqual(masterData);
         expect(newState.master.data).toHaveLength(2);
@@ -28,7 +28,7 @@ describe('Variable Module - Master Reducer', () => {
             },
         };
         const action = { type: ACTIONS.DEL_MASTER, rowIndex: 1 };
-        const newState = reducer(existingState, action);
+        const newState = reducer(existingState as any, action as any);
 
         expect(newState.master.data).toHaveLength(2);
         expect(newState.master.data[0].name).toBe('Cat1');
@@ -44,7 +44,7 @@ describe('Variable Module - Master Reducer', () => {
             },
         };
         const action = { type: ACTIONS.ADD_MASTER, masterName: 'Cat2' };
-        const newState = reducer(existingState, action);
+        const newState = reducer(existingState as any, action as any);
 
         expect(newState.master.data).toHaveLength(2);
         expect(newState.master.data[1]).toEqual({ name: 'Cat2', clazz: '', type: 'Custom', variables: [] });
@@ -52,7 +52,7 @@ describe('Variable Module - Master Reducer', () => {
 
     it('GIVEN an existing state WHEN ADD_MASTER action is dispatched with duplicate name THEN it should alert and return unchanged state', () => {
         const bootboxAlert = vi.fn();
-        window.bootbox = { alert: bootboxAlert };
+        (window as any).bootbox = { alert: bootboxAlert };
 
         const existingState = {
             master: {
@@ -62,12 +62,12 @@ describe('Variable Module - Master Reducer', () => {
             },
         };
         const action = { type: ACTIONS.ADD_MASTER, masterName: 'Cat1' };
-        const newState = reducer(existingState, action);
+        const newState = reducer(existingState as any, action as any);
 
         expect(newState.master.data).toHaveLength(1);
         expect(bootboxAlert).toHaveBeenCalledWith('[Cat1]已经存在，添加失败');
 
-        delete window.bootbox;
+        delete (window as any).bootbox;
     });
 
     it('GIVEN an existing state WHEN GENERATED_FIELDS action is dispatched THEN it should set variables for the category at specified index', () => {
@@ -84,7 +84,7 @@ describe('Variable Module - Master Reducer', () => {
             { name: 'var2', label: 'Variable 2', type: 'Integer' },
         ];
         const action = { type: ACTIONS.GENERATED_FIELDS, variables: newVariables, rowIndex: 0 };
-        const newState = reducer(existingState, action);
+        const newState = reducer(existingState as any, action as any);
 
         expect(newState.master.data[0].variables).toEqual(newVariables);
         expect(newState.master.data[1].variables).toEqual([]);
@@ -111,7 +111,7 @@ describe('Variable Module - Master Reducer', () => {
             clazz: 'com.example.NewClazz',
         };
         const action = { type: ACTIONS.IMPORT_FIELDS, jsonResult, rowIndex: 0 };
-        const newState = reducer(existingState, action);
+        const newState = reducer(existingState as any, action as any);
 
         expect(newState.master.data[0].variables).toHaveLength(3);
         expect(newState.master.data[0].variables[0].name).toBe('var1');
@@ -137,7 +137,7 @@ describe('Variable Module - Master Reducer', () => {
             variables: [{ name: 'var2', label: 'V2', type: 'Integer' }],
         };
         const action = { type: ACTIONS.IMPORT_FIELDS, jsonResult, rowIndex: 0 };
-        const newState = reducer(existingState, action);
+        const newState = reducer(existingState as any, action as any);
 
         expect(newState.master.data[0].variables).toHaveLength(2);
         expect(newState.master.data[0].clazz).toBe('original.Clazz');
@@ -152,7 +152,7 @@ describe('Variable Module - Master Reducer', () => {
             },
         };
         const action = { type: ACTIONS.SAVE, newVersion: true, file: 'test.xml' };
-        const newState = reducer(state, action);
+        const newState = reducer(state as any, action as any);
 
         expect(saveDataSpy).toHaveBeenCalledWith(state.master.data, true, 'test.xml');
         expect(newState.master).toBe(state.master);
@@ -163,7 +163,7 @@ describe('Variable Module - Master Reducer', () => {
     it('GIVEN an initial state WHEN unknown action is dispatched THEN it should return the same state', () => {
         const state = { master: { data: [] } };
         const action = { type: 'UNKNOWN_ACTION' };
-        const newState = reducer(state, action);
+        const newState = reducer(state as any, action as any);
 
         expect(newState.master).toBe(state.master);
     });
@@ -182,7 +182,7 @@ describe('Variable Module - Slave Reducer', () => {
             ],
         };
         const action = { type: ACTIONS.LOAD_SLAVE_COMPLETE, masterRowData };
-        const newState = reducer(initialState, action);
+        const newState = reducer(initialState as any, action as any);
 
         expect(newState.slave.data).toEqual(masterRowData);
     });
@@ -203,7 +203,7 @@ describe('Variable Module - Slave Reducer', () => {
             },
         };
         const action = { type: ACTIONS.DEL_SLAVE, rowIndex: 1 };
-        const newState = reducer(existingState, action);
+        const newState = reducer(existingState as any, action as any);
 
         expect(newState.slave.data.variables).toHaveLength(2);
         expect(newState.slave.data.variables[0].name).toBe('var1');
@@ -224,7 +224,7 @@ describe('Variable Module - Slave Reducer', () => {
             },
         };
         const action = { type: ACTIONS.ADD_SLAVE };
-        const newState = reducer(existingState, action);
+        const newState = reducer(existingState as any, action as any);
 
         expect(newState.slave.data.variables).toHaveLength(2);
         expect(newState.slave.data.variables[1]).toEqual({ name: '', label: '', type: 'String' });
@@ -233,7 +233,7 @@ describe('Variable Module - Slave Reducer', () => {
     it('GIVEN an initial state WHEN unknown action is dispatched THEN it should return the same state', () => {
         const state = { slave: { data: {} } };
         const action = { type: 'UNKNOWN_ACTION' };
-        const newState = reducer(state, action);
+        const newState = reducer(state as any, action as any);
 
         expect(newState.slave).toBe(state.slave);
     });
@@ -243,15 +243,15 @@ describe('Variable Module - Combined Reducer', () => {
     it('GIVEN an initial state WHEN multiple actions are dispatched THEN it should maintain separate state slices', () => {
         const initialState = { master: {}, slave: {} };
 
-        let state = reducer(initialState, {
+        let state = reducer(initialState as any, {
             type: ACTIONS.LOAD_MASTER_COMPLETED,
             masterData: [{ name: 'Cat1', type: 'Custom', clazz: 'c1', variables: [] }],
-        });
+        } as any);
 
         state = reducer(state, {
             type: ACTIONS.LOAD_SLAVE_COMPLETE,
             masterRowData: { name: 'Cat1', type: 'Custom', clazz: 'c1', variables: [] },
-        });
+        } as any);
 
         expect(state.master.data).toEqual([
             { name: 'Cat1', type: 'Custom', clazz: 'c1', variables: [] },

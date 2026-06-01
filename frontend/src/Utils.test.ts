@@ -47,7 +47,7 @@ describe('Utils - formatDate', () => {
 });
 
 describe('Utils - getParameter', () => {
-    const originalSearch = window.location.search;
+    const originalSearch = (window as any).location.search;
 
     afterEach(() => {
         Object.defineProperty(window, 'location', {
@@ -102,7 +102,7 @@ describe('Utils - buildProjectNameFromFile', () => {
 });
 
 describe('Utils - handleResponseError', () => {
-    let mockBootbox;
+    let mockBootbox: any;
 
     beforeEach(() => {
         mockBootbox = setupMockBootbox();
@@ -113,8 +113,8 @@ describe('Utils - handleResponseError', () => {
     });
 
     it('GIVEN a 401 response WHEN handleResponseError is called THEN it should alert permission denied', () => {
-        handleResponseError({ status: 401 });
-        expect(window.bootbox.alert).toHaveBeenCalledWith('权限不足，不能进行此操作.');
+        handleResponseError({ status: 401 } as any);
+        expect((window as any).bootbox.alert).toHaveBeenCalledWith('权限不足，不能进行此操作.');
     });
 
     it('GIVEN a response with text method and error body WHEN handleResponseError is called THEN it should alert the error text with prefix', async () => {
@@ -123,10 +123,10 @@ describe('Utils - handleResponseError', () => {
             text: vi.fn().mockResolvedValue('Something went wrong'),
         };
 
-        const result = handleResponseError(response, 'Error:');
+        const result = handleResponseError(response as any, 'Error:');
         await result;
 
-        expect(window.bootbox.alert).toHaveBeenCalledWith(
+        expect((window as any).bootbox.alert).toHaveBeenCalledWith(
             "<span style='color: red'>Error:Something went wrong</span>"
         );
     });
@@ -137,24 +137,24 @@ describe('Utils - handleResponseError', () => {
             text: vi.fn().mockResolvedValue(''),
         };
 
-        const result = handleResponseError(response, 'Error:');
+        const result = handleResponseError(response as any, 'Error:');
         await result;
 
-        expect(window.bootbox.alert).toHaveBeenCalledWith(
+        expect((window as any).bootbox.alert).toHaveBeenCalledWith(
             "<span style='color: red'>Error:</span>"
         );
     });
 
     it('GIVEN a response with no text method WHEN handleResponseError is called THEN it should alert generic error', () => {
-        handleResponseError({ status: 500 });
-        expect(window.bootbox.alert).toHaveBeenCalledWith(
+        handleResponseError({ status: 500 } as any);
+        expect((window as any).bootbox.alert).toHaveBeenCalledWith(
             "<span style='color: red'>服务端出错</span>"
         );
     });
 
     it('GIVEN a response with no text method and custom prefix WHEN handleResponseError is called THEN it should alert with prefix', () => {
-        handleResponseError({ status: 503 }, 'Custom prefix');
-        expect(window.bootbox.alert).toHaveBeenCalledWith(
+        handleResponseError({ status: 503 } as any, 'Custom prefix');
+        expect((window as any).bootbox.alert).toHaveBeenCalledWith(
             "<span style='color: red'>Custom prefix</span>"
         );
     });
@@ -165,30 +165,30 @@ describe('Utils - handleResponseError', () => {
             text: vi.fn().mockResolvedValue('detail'),
         };
 
-        const result = handleResponseError(response);
+        const result = handleResponseError(response as any);
         await result;
 
-        expect(window.bootbox.alert).toHaveBeenCalledWith(
+        expect((window as any).bootbox.alert).toHaveBeenCalledWith(
             "<span style='color: red'>服务端错误：detail</span>"
         );
     });
 });
 
 describe('Utils - ajaxSave', () => {
-    let mockBootbox;
-    let fetchMock;
+    let mockBootbox: any;
+    let fetchMock: any;
 
     beforeEach(() => {
         mockBootbox = setupMockBootbox();
         fetchMock = vi.fn();
         global.fetch = fetchMock;
-        window._server = '';
+        (window as any)._server = '';
     });
 
     afterEach(() => {
         teardownMockBootbox();
-        global.fetch = undefined;
-        delete window._server;
+        (global as any).fetch = undefined;
+        delete (window as any)._server;
     });
 
     it('GIVEN a successful response with status true WHEN ajaxSave is called THEN it should invoke callback with result', async () => {
@@ -216,7 +216,7 @@ describe('Utils - ajaxSave', () => {
         await new Promise(resolve => setTimeout(resolve, 0));
 
         expect(callback).not.toHaveBeenCalled();
-        expect(window.bootbox.alert).toHaveBeenCalledWith('Save failed');
+        expect((window as any).bootbox.alert).toHaveBeenCalledWith('Save failed');
     });
 
     it('GIVEN a failed HTTP response WHEN ajaxSave is called THEN it should call handleResponseError', async () => {
@@ -232,7 +232,7 @@ describe('Utils - ajaxSave', () => {
 
         expect(callback).not.toHaveBeenCalled();
         // handleResponseError alerts for 500 with text
-        expect(window.bootbox.alert).toHaveBeenCalled();
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
     });
 
     it('GIVEN a network error WHEN ajaxSave is called THEN it should alert generic error', async () => {
@@ -243,7 +243,7 @@ describe('Utils - ajaxSave', () => {
         await new Promise(resolve => setTimeout(resolve, 0));
 
         expect(callback).not.toHaveBeenCalled();
-        expect(window.bootbox.alert).toHaveBeenCalledWith(
+        expect((window as any).bootbox.alert).toHaveBeenCalledWith(
             "<span style='color: red'>服务端出错</span>"
         );
     });
@@ -258,20 +258,20 @@ describe('Utils - ajaxSave', () => {
         ajaxSave('/save', { key: 'val' }, callback);
         await new Promise(resolve => setTimeout(resolve, 0));
 
-        expect(window.bootbox.alert).toHaveBeenCalledWith('保存失败');
+        expect((window as any).bootbox.alert).toHaveBeenCalledWith('保存失败');
     });
 });
 
 describe('Utils - nextIFrameId', () => {
     it('GIVEN initial iframe_id_ WHEN nextIFrameId is called THEN it should increment and return next ID', () => {
-        window.iframe_id_ = 10;
+        (window as any).iframe_id_ = 10;
         const result = nextIFrameId();
         expect(result).toBe('_iframe11');
-        expect(window.iframe_id_).toBe(11);
+        expect((window as any).iframe_id_).toBe(11);
     });
 
     it('GIVEN consecutive calls WHEN nextIFrameId is called multiple times THEN each call should return a unique ID', () => {
-        window.iframe_id_ = 0;
+        (window as any).iframe_id_ = 0;
         const id1 = nextIFrameId();
         const id2 = nextIFrameId();
         const id3 = nextIFrameId();

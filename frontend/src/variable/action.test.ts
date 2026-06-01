@@ -10,7 +10,7 @@ vi.mock('../Utils.js', () => ({
 }));
 
 // Helper to flush async chains
-async function flushAsync(mockFetch) {
+async function flushAsync(mockFetch: any) {
     if (mockFetch.mock && mockFetch.mock.results[0]) {
         await mockFetch.mock.results[0].value;
     }
@@ -27,7 +27,7 @@ describe('Variable Module - Action Creators', () => {
 
     it('GIVEN rowIndex and jsonResult WHEN importFields is called THEN it should return IMPORT_FIELDS action', () => {
         const jsonResult = { variables: [{ name: 'v1', label: 'V1', type: 'String' }], clazz: 'com.test.Cls' };
-        const action = ACTIONS.importFields(2, jsonResult);
+        const action = ACTIONS.importFields(2, jsonResult as any);
         expect(action.type).toBe(ACTIONS.IMPORT_FIELDS);
         expect(action.rowIndex).toBe(2);
         expect(action.jsonResult).toEqual(jsonResult);
@@ -58,14 +58,14 @@ describe('Variable Module - Action Creators', () => {
 
     it('GIVEN masterRowData WHEN loadSlaveData is called THEN it should return LOAD_SLAVE_COMPLETE action', () => {
         const masterRowData = { name: 'Cat1', variables: [] };
-        const action = ACTIONS.loadSlaveData(masterRowData);
+        const action = ACTIONS.loadSlaveData(masterRowData as any);
         expect(action.type).toBe(ACTIONS.LOAD_SLAVE_COMPLETE);
         expect(action.masterRowData).toEqual(masterRowData);
     });
 });
 
 describe('Variable Module - Thunks', () => {
-    let mockServer, dispatch, mockBootbox;
+    let mockServer: any, dispatch: any, mockBootbox: any;
 
     beforeEach(() => {
         mockServer = setupMockServer();
@@ -85,7 +85,7 @@ describe('Variable Module - Thunks', () => {
         ];
         mockServer.mockResponse('/xml', [masterData]);
 
-        const thunk = ACTIONS.loadMasterData('test-files');
+        const thunk = ACTIONS.loadMasterData('test-files') as any;
         thunk(dispatch);
 
         await flushAsync(mockServer.fetchMock);
@@ -99,7 +99,7 @@ describe('Variable Module - Thunks', () => {
     it('GIVEN server error WHEN loadMasterData thunk is dispatched THEN it should handle error', async () => {
         mockServer.mockError('/xml', 500);
 
-        const thunk = ACTIONS.loadMasterData('test-files');
+        const thunk = ACTIONS.loadMasterData('test-files') as any;
         thunk(dispatch);
 
         await flushAsync(mockServer.fetchMock);
@@ -108,7 +108,7 @@ describe('Variable Module - Thunks', () => {
             expect.objectContaining({ type: ACTIONS.LOAD_MASTER_COMPLETED })
         );
         // Error path shows bootbox alert
-        expect(window.bootbox.alert).toHaveBeenCalled();
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
     });
 
     it('GIVEN valid clazz WHEN generateFields thunk is dispatched THEN it should fetch and dispatch GENERATED_FIELDS', async () => {
@@ -118,7 +118,7 @@ describe('Variable Module - Thunks', () => {
         ];
         mockServer.mockResponse('/variableeditor/generateFields', fields);
 
-        const thunk = ACTIONS.generateFields(0, 'com.example.TestClazz');
+        const thunk = ACTIONS.generateFields(0, 'com.example.TestClazz') as any;
         thunk(dispatch);
 
         await flushAsync(mockServer.fetchMock);
@@ -133,7 +133,7 @@ describe('Variable Module - Thunks', () => {
     it('GIVEN server error WHEN generateFields thunk is dispatched THEN it should handle error', async () => {
         mockServer.mockError('/variableeditor/generateFields', 500);
 
-        const thunk = ACTIONS.generateFields(0, 'com.example.BadClazz');
+        const thunk = ACTIONS.generateFields(0, 'com.example.BadClazz') as any;
         thunk(dispatch);
 
         await flushAsync(mockServer.fetchMock);
@@ -141,12 +141,12 @@ describe('Variable Module - Thunks', () => {
         expect(dispatch).not.toHaveBeenCalledWith(
             expect.objectContaining({ type: ACTIONS.GENERATED_FIELDS })
         );
-        expect(window.bootbox.alert).toHaveBeenCalled();
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
     });
 });
 
 describe('Variable Module - saveData Function', () => {
-    let mockBootbox;
+    let mockBootbox: any;
 
     beforeEach(() => {
         mockBootbox = setupMockBootbox();
@@ -157,9 +157,9 @@ describe('Variable Module - saveData Function', () => {
     });
 
     it('GIVEN valid variable data WHEN saveData is called THEN it should generate correct XML', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        ajaxSave.mockClear();
-        ajaxSave.mockImplementation((_url, _postData, callback) => {
+        const { ajaxSave } = await import('../Utils.js') as any;
+        (ajaxSave as any).mockClear();
+        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
             if (callback) callback();
         });
 
@@ -175,10 +175,10 @@ describe('Variable Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'variables.xml');
+        ACTIONS.saveData(data as any, false, 'variables.xml');
 
         expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = ajaxSave.mock.calls[0];
+        const callArgs = (ajaxSave as any).mock.calls[0];
         const xmlContent = decodeURIComponent(callArgs[1].content);
 
         expect(xmlContent).toContain('<?xml version="1.0" encoding="utf-8"?>');
@@ -195,10 +195,10 @@ describe('Variable Module - saveData Function', () => {
             { name: '', clazz: 'com.example.Clazz', type: 'Custom', variables: [{ name: 'v1', label: 'V1', type: 'String' }] },
         ];
 
-        const result = ACTIONS.saveData(data, false, 'test.xml');
+        const result = ACTIONS.saveData(data as any, false, 'test.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertMsg = window.bootbox.alert.mock.calls[0][0];
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertMsg = (window as any).bootbox.alert.mock.calls[0][0];
         expect(alertMsg).toContain('变量分类名称不能为空');
         // saveData returns undefined when validation fails (no explicit return before bootbox.alert)
         expect(result).toBeUndefined();
@@ -209,10 +209,10 @@ describe('Variable Module - saveData Function', () => {
             { name: 'Cat1', clazz: '', type: 'Custom', variables: [{ name: 'v1', label: 'V1', type: 'String' }] },
         ];
 
-        ACTIONS.saveData(data, false, 'test.xml');
+        ACTIONS.saveData(data as any, false, 'test.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertMsg = window.bootbox.alert.mock.calls[0][0];
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertMsg = (window as any).bootbox.alert.mock.calls[0][0];
         expect(alertMsg).toContain('变量类路径不能为空');
     });
 
@@ -221,10 +221,10 @@ describe('Variable Module - saveData Function', () => {
             { name: 'Cat1', clazz: 'com.example.Cls', type: 'Custom', variables: [] },
         ];
 
-        ACTIONS.saveData(data, false, 'test.xml');
+        ACTIONS.saveData(data as any, false, 'test.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertMsg = window.bootbox.alert.mock.calls[0][0];
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertMsg = (window as any).bootbox.alert.mock.calls[0][0];
         expect(alertMsg).toContain('变量分类[Cat1]下未定义具体变量信息');
     });
 
@@ -241,10 +241,10 @@ describe('Variable Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'test.xml');
+        ACTIONS.saveData(data as any, false, 'test.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertMsg = window.bootbox.alert.mock.calls[0][0];
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertMsg = (window as any).bootbox.alert.mock.calls[0][0];
         expect(alertMsg).toContain('变量名[var1]重复');
     });
 
@@ -261,21 +261,21 @@ describe('Variable Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'test.xml');
+        ACTIONS.saveData(data as any, false, 'test.xml');
 
-        expect(window.bootbox.alert).toHaveBeenCalled();
-        const alertMsg = window.bootbox.alert.mock.calls[0][0];
+        expect((window as any).bootbox.alert).toHaveBeenCalled();
+        const alertMsg = (window as any).bootbox.alert.mock.calls[0][0];
         expect(alertMsg).toContain('变量标题[SameLabel]重复');
     });
 
     it('GIVEN data with newVersion=true WHEN saveData is called THEN it should prompt for version comment', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        ajaxSave.mockClear();
-        ajaxSave.mockImplementation((_url, _postData, callback) => {
+        const { ajaxSave } = await import('../Utils.js') as any;
+        (ajaxSave as any).mockClear();
+        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
             if (callback) callback();
         });
 
-        window.bootbox.prompt = vi.fn((msg, callback) => {
+        (window as any).bootbox.prompt = vi.fn((msg: any, callback: any) => {
             callback('Test version comment');
         });
 
@@ -288,19 +288,19 @@ describe('Variable Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, true, 'variables.xml');
+        ACTIONS.saveData(data as any, true, 'variables.xml');
 
-        expect(window.bootbox.prompt).toHaveBeenCalled();
+        expect((window as any).bootbox.prompt).toHaveBeenCalled();
         expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = ajaxSave.mock.calls[0];
+        const callArgs = (ajaxSave as any).mock.calls[0];
         expect(callArgs[1].versionComment).toBe('Test version comment');
     });
 
     it('GIVEN data with newVersion=true and cancelled prompt WHEN saveData is called THEN it should not save', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        ajaxSave.mockClear();
+        const { ajaxSave } = await import('../Utils.js') as any;
+        (ajaxSave as any).mockClear();
 
-        window.bootbox.prompt = vi.fn((msg, callback) => {
+        (window as any).bootbox.prompt = vi.fn((msg: any, callback: any) => {
             callback(null);
         });
 
@@ -313,16 +313,16 @@ describe('Variable Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, true, 'variables.xml');
+        ACTIONS.saveData(data as any, true, 'variables.xml');
 
-        expect(window.bootbox.prompt).toHaveBeenCalled();
+        expect((window as any).bootbox.prompt).toHaveBeenCalled();
         expect(ajaxSave).not.toHaveBeenCalled();
     });
 
     it('GIVEN valid data with newVersion=false WHEN saveData is called THEN it should save without prompting', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        ajaxSave.mockClear();
-        ajaxSave.mockImplementation((_url, _postData, callback) => {
+        const { ajaxSave } = await import('../Utils.js') as any;
+        (ajaxSave as any).mockClear();
+        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
             if (callback) callback();
         });
 
@@ -335,16 +335,16 @@ describe('Variable Module - saveData Function', () => {
             },
         ];
 
-        ACTIONS.saveData(data, false, 'variables.xml');
+        ACTIONS.saveData(data as any, false, 'variables.xml');
 
-        expect(window.bootbox.prompt).not.toHaveBeenCalled();
+        expect((window as any).bootbox.prompt).not.toHaveBeenCalled();
         expect(ajaxSave).toHaveBeenCalled();
     });
 
     it('GIVEN valid data WHEN saveData is called THEN it should return SAVE_COMPLETED action', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        ajaxSave.mockClear();
-        ajaxSave.mockImplementation((_url, _postData, callback) => {
+        const { ajaxSave } = await import('../Utils.js') as any;
+        (ajaxSave as any).mockClear();
+        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
             if (callback) callback();
         });
 
@@ -357,7 +357,7 @@ describe('Variable Module - saveData Function', () => {
             },
         ];
 
-        const result = ACTIONS.saveData(data, false, 'variables.xml');
+        const result = ACTIONS.saveData(data as any, false, 'variables.xml');
         expect(result).toEqual({ type: ACTIONS.SAVE_COMPLETED });
     });
 });
