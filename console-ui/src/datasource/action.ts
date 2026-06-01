@@ -127,6 +127,14 @@ export function setSelectedDatasource(datasource: { id: number; clazz: string })
     return {type: SET_SELECTED_DATASOURCE, data: datasource};
 }
 
+export function saveFieldMappings(datasourceId: number, clazz: string, mappings: FieldMapping[]): ThunkAction {
+    return function (dispatch) {
+        jsonPut('/datasource/' + datasourceId + '/field-mappings?clazz=' + encodeURIComponent(clazz), mappings, {silent: true})
+            .then(() => dispatch(loadFieldMappings(datasourceId, clazz)))
+            .catch(err => console.error('保存字段映射失败', err));
+    };
+}
+
 export function setTab(tab: string) {
     return {type: SET_TAB, data: tab};
 }

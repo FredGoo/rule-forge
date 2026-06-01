@@ -5,7 +5,65 @@ All notable changes to RuleForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.0.0] - 2026-05-31
+## [Unreleased]
+
+### Added
+
+**Phase 11: PKL 模型支持 (5.7.0)**
+- Python model-service (FastAPI + uv)：PKL 模型上传、sklearn 字段自动检测、激活/停用、预测
+- PklModelConnector：Java DataSourceConnector 实现，REST 调用 model-service，提取预测字段值
+- 前端 PKL 配置表单：模型服务地址 + 模型 ID + 模型列表加载
+- "获取模型字段"按钮：自动填充字段映射（input_fields + output_fields）
+- saveFieldMappings action：批量字段映射保存
+
+### Changed
+
+**前端 HTTP 现代化**
+- 新增 `src/api/client.ts` 集中式 HTTP 客户端（formPost, jsonPost, jsonPut, httpGet, httpDelete, save, saveNewVersion）
+- 全量迁移 ~150 个原始 fetch/ajaxSave/XMLHttpRequest → Promise 化统一接口
+- 消除 `ajaxSave` 回调模式、同步 XMLHttpRequest、分散的错误处理
+- 仅保留 5 处原始 fetch：SSE 流式、FormData 上传、纯文本/XML 响应
+- 前端 Playwright E2E 测试覆盖 Phase 5-7
+- 目录重命名：backend/ → server/，frontend/ → console-ui/
+
+## [5.3.0] - 2026-06-01
+
+### Added
+
+**Phase 7: 内置 Agent（AI 助手）**
+- LlmClient — OpenAI 兼容 Chat Completions API，SSE 流式 + tool_calls 增量解析
+- AgentConfigService — DB 存储配置，30s 缓存，运行时修改无需重启
+- VendorPresets — 10 个预配置 LLM 厂商
+- ToolRegistry — 11 个注册工具（分析趋势、规则覆盖率、异常检测等）
+- AgentService — Agentic 循环（LLM → tool_calls → 执行 → 再调 LLM），最多 10 轮
+- AgentController — REST + SSE 端点
+- Flyway V5.3.0 — nd_agent_config, nd_agent_chat_session, nd_agent_chat_message
+- 前端 AgentPanel 聊天界面 + 配置面板
+
+## [5.2.0] - 2026-06-01
+
+### Changed
+
+**Phase 6: 前端 UI 现代化**
+- Webpack 5 → Vite 8（构建 ~25s → ~1s）
+- JavaScript → TypeScript（~120 源文件，strict: false）
+- Ant Design 5 安装 + 主题配置 + AntdProvider
+- 已迁移模块：login, reference, datasource, client, constant, parameter, variable,
+  action, permission, resource, release, simulation, monitoring, analysis, package,
+  components/, frame/
+
+## [5.1.0] - 2026-05-31
+
+### Added
+
+**Phase 5: 规则仿真**
+- SimulationServiceImpl 异步批量仿真（LOADING → RUNNING → COMPARING → COMPLETED）
+- 4 维度对比：状态匹配、结果匹配、输出字段、规则执行
+- SimulationController 5 个 REST 端点（启动/进度/结果/历史/统计）
+- 前端 SimulationPanel（配置表单 + 进度条 + 结果表 + 统计）
+- CLI `ruleforge simulation run/list/results/stats`
+
+## [5.0.0] - 2026-05-30
 
 ### Added
 
@@ -16,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 批量 INSERT 优化决策日志写入性能
 
 **Phase 2: 上游数据源管理**
-- 数据源注册中心：REST API / JDBC / Advance AI 三种连接器
+- 数据源注册中心：REST API / JDBC / Advance AI / PKL 模型四种连接器
 - 变量映射配置：实体级映射 + 字段级映射（JSON 配置）
 - DatasourceRoutingProvider 零侵入路由集成
 - 前端 DatasourcePanel（CRUD + 映射配置）
@@ -39,51 +97,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ruleforge CLI（Node.js）：analysis + export 命令组
 - Claude Code Skills（6 个）
 - 测试覆盖：100 个测试（后端 40 + 前端 41 + CLI 19）
-
-## [5.1.0] - 2026-05-28
-
-### Added
-
-**Phase 5: 规则仿真**
-- SimulationServiceImpl 异步批量仿真（LOADING → RUNNING → COMPARING → COMPLETED）
-- 4 维度对比：状态匹配、结果匹配、输出字段、规则执行
-- SimulationController 5 个 REST 端点（启动/进度/结果/历史/统计）
-- 前端 SimulationPanel（配置表单 + 进度条 + 结果表 + 统计）
-- CLI `ruleforge simulation run/list/results/stats`
-
-## [5.2.0] - 2026-05-30
-
-### Changed
-
-**Phase 6: 前端 UI 现代化**
-- Webpack 5 → Vite 8（构建 ~25s → ~1s）
-- JavaScript → TypeScript（~120 源文件，strict: false）
-- Ant Design 5 安装 + 主题配置 + AntdProvider
-- 已迁移模块：login, reference, datasource, client, constant, parameter, variable,
-  action, permission, resource, release, simulation, monitoring, analysis, package,
-  components/, frame/
-
-## [5.3.0] - 2026-05-31
-
-### Added
-
-**Phase 7: 内置 Agent（AI 助手）**
-- LlmClient — OpenAI 兼容 Chat Completions API，SSE 流式 + tool_calls 增量解析
-- AgentConfigService — DB 存储配置，30s 缓存，运行时修改无需重启
-- VendorPresets — 10 个预配置 LLM 厂商
-- ToolRegistry — 11 个注册工具（分析趋势、规则覆盖率、异常检测等）
-- AgentService — Agentic 循环（LLM → tool_calls → 执行 → 再调 LLM），最多 10 轮
-- AgentController — REST + SSE 端点
-- Flyway V5.3.0 — nd_agent_config, nd_agent_chat_session, nd_agent_chat_message
-- 前端 AgentPanel 聊天界面 + 配置面板
-
-## [Unreleased]
-
-### Changed
-
-**前端 HTTP 现代化**
-- 新增 `src/api/client.ts` 集中式 HTTP 客户端（formPost, jsonPost, jsonPut, httpGet, httpDelete, save, saveNewVersion）
-- 全量迁移 ~150 个原始 fetch/ajaxSave/XMLHttpRequest → Promise 化统一接口
-- 消除 `ajaxSave` 回调模式、同步 XMLHttpRequest、分散的错误处理
-- 仅保留 5 处原始 fetch：SSE 流式、FormData 上传、纯文本/XML 响应
-- 前端 Playwright E2E 测试覆盖 Phase 5-7
