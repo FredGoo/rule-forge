@@ -7,7 +7,8 @@
 import HandsontableModule from 'handsontable';
 const Handsontable = (HandsontableModule as any).default || HandsontableModule;
 
-import { ajaxSave, getParameter, saveNewVersion } from '../../Utils.js';
+import { getParameter } from '../../Utils.js';
+import { save, saveNewVersion } from '../../api/client.js';
 import * as event from '../../components/componentEvent.js';
 import {
     constantLibraries,
@@ -282,10 +283,10 @@ export class DecisionTable {
         });
 
         document.getElementById('saveButtonNewVersion')!.addEventListener('click', function () {
-            save(true);
+            doSave(true);
         });
         document.getElementById('saveButton')!.addEventListener('click', function () {
-            save(false);
+            doSave(false);
         });
 
         document.getElementById('testButton')!.addEventListener('click', function () {
@@ -294,21 +295,21 @@ export class DecisionTable {
             event.eventEmitter.emit(event.OPEN_QUICK_TEST_DIALOG, { project: window._project, file: decodedFile });
         });
 
-        function save(newVersion: boolean): void {
+        function doSave(newVersion: boolean): void {
             if (!newVersion && document.getElementById('saveButton')!.classList.contains('disabled')) {
                 return;
             }
             let file = getParameter('file'), xml = self.toXml();
             xml = encodeURIComponent(xml);
-            const postData = { content: xml, file, newVersion };
-            const url = window._server + '/common/saveFile';
+            const postData: Record<string, string> = { content: xml, file, newVersion: String(newVersion) };
+            const url = '/common/saveFile';
             if (newVersion) {
-                saveNewVersion(url, postData, function () {
+                saveNewVersion(url, { file, content: xml }).then(function () {
                     self.resetState();
                     window.bootbox.alert('保存成功!');
-                });
+                }).catch(function () {});
             } else {
-                ajaxSave(url, postData as unknown as Record<string, string>, function () {
+                save(url, postData).then(function () {
                     self.resetState();
                     window.bootbox.alert('保存成功!');
                 });

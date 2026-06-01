@@ -7,7 +7,8 @@
 import HandsontableModule from 'handsontable';
 const Handsontable = (HandsontableModule as any).default || HandsontableModule;
 
-import { getParameter, ajaxSave, saveNewVersion } from '../../Utils.js';
+import { getParameter } from '../../Utils.js';
+import { save, saveNewVersion } from '../../api/client.js';
 import '../../../node_modules/codemirror/addon/hint/show-hint.js';
 import '../../../node_modules/codemirror/addon/mode/simple.js';
 import './then_mode.js';
@@ -193,27 +194,27 @@ export class ScriptDecisionTable {
         });
 
         document.getElementById('saveButton')!.addEventListener('click', function (): void {
-            save(false);
+            doSave(false);
         });
 
         document.getElementById('saveButtonNewVersion')!.addEventListener('click', function (): void {
-            save(true);
+            doSave(true);
         });
 
-        function save(newVersion: boolean): void {
+        function doSave(newVersion: boolean): void {
             if (document.getElementById('saveButton')!.classList.contains('disabled')) {
                 return;
             }
             let file = getParameter('file'), xml = self.toXml();
             xml = encodeURI(xml);
-            const postData = { content: xml, file, newVersion };
-            const url = window._server + '/common/saveFile';
+            const postData: Record<string, string> = { content: xml, file, newVersion: String(newVersion) };
+            const url = '/common/saveFile';
             if (newVersion) {
-                saveNewVersion(url, postData, function (): void {
+                saveNewVersion(url, { file, content: xml }).then(function (): void {
                     self.resetState();
-                });
+                }).catch(function () {});
             } else {
-                ajaxSave(url, postData as unknown as Record<string, string>, function (): void {
+                save(url, postData).then(function (): void {
                     self.resetState();
                 });
             }

@@ -18,7 +18,8 @@ import KnowledgeTreeDialog from '../../components/dialog/component/KnowledgeTree
 import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibraryDialog.jsx';
 import QuickTestDialog from '../../components/dialog/component/QuickTestDialog.jsx';
 import EditorToolbar from '../../components/editor-toolbar/EditorToolbar.jsx';
-import {ajaxSave, buildProjectNameFromFile, getParameter, saveNewVersion, handleResponseError} from '../../Utils.js';
+import {buildProjectNameFromFile, getParameter, handleResponseError} from '../../Utils.js';
+import {save, saveNewVersion} from '../../api/client.js';
 import * as event from '../../components/componentEvent.js';
 import * as componentEvent from '../../components/componentEvent.js';
 
@@ -67,12 +68,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const postData = {content, file};
         const url = window._server + '/common/saveFile';
         if (newVersion) {
-            saveNewVersion(url, postData, function () {
+            saveNewVersion(url, { file, content }).then(function () {
                 toolbarApi.clearDirty();
                 window.bootbox.alert('保存成功!');
-            });
+            }).catch(function () {});
         } else {
-            ajaxSave(url, postData, function () {
+            save(url, postData as Record<string, string>).then(function () {
                 toolbarApi.clearDirty();
             });
         }

@@ -2,10 +2,9 @@ import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest';
 import * as ACTIONS from '../action.js';
 import {setupMockBootbox, teardownMockBootbox} from '../../__test_utils__/mockBootbox.js';
 
-// Mock ajaxSave from Utils to intercept the module import
-vi.mock('../../Utils.js', () => ({
-    ajaxSave: vi.fn(),
-    handleResponseError: vi.fn(),
+// Mock save from api/client.js to intercept the module import
+vi.mock('../../api/client.js', () => ({
+    save: vi.fn(),
 }));
 
 // Helper to flush async chains
@@ -134,11 +133,9 @@ describe('Parameter Module - saveData Function', () => {
     });
 
     it('GIVEN valid parameter data WHEN saveData is called THEN it should generate correct XML', async () => {
-        const {ajaxSave} = await import('../../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: unknown, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const {save} = await import('../../api/client.js');
+        (save as ReturnType<typeof vi.fn>).mockClear();
+        (save as ReturnType<typeof vi.fn>).mockResolvedValue({ status: true });
 
         const data = [
             {name: 'param1', label: 'Parameter 1', type: 'String'},
@@ -147,8 +144,8 @@ describe('Parameter Module - saveData Function', () => {
 
         ACTIONS.saveData(data, false, 'parameters.xml');
 
-        expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = (ajaxSave as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect(save).toHaveBeenCalled();
+        const callArgs = (save as ReturnType<typeof vi.fn>).mock.calls[0];
         const postData = callArgs[1] as Record<string, unknown>;
         const xmlContent = decodeURIComponent(postData.content as string);
 
@@ -184,11 +181,9 @@ describe('Parameter Module - saveData Function', () => {
     });
 
     it('GIVEN valid data and newVersion=true WHEN saveData is called THEN it should prompt for version comment', async () => {
-        const {ajaxSave} = await import('../../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: unknown, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const {save} = await import('../../api/client.js');
+        (save as ReturnType<typeof vi.fn>).mockClear();
+        (save as ReturnType<typeof vi.fn>).mockResolvedValue({ status: true });
 
         window.bootbox.prompt = vi.fn((_msg: string, callback: (result: string) => void) => {
             callback('Test version comment');
@@ -200,17 +195,15 @@ describe('Parameter Module - saveData Function', () => {
 
         ACTIONS.saveData(data, true, 'parameters.xml');
 
-        expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = (ajaxSave as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect(save).toHaveBeenCalled();
+        const callArgs = (save as ReturnType<typeof vi.fn>).mock.calls[0];
         expect(callArgs[1].versionComment).toBe('Test version comment');
     });
 
-    it('GIVEN valid data and newVersion=true WHEN saveData is called and prompt is cancelled THEN it should not call ajaxSave', async () => {
-        const {ajaxSave} = await import('../../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: unknown, callback?: () => void) => {
-            if (callback) callback();
-        });
+    it('GIVEN valid data and newVersion=true WHEN saveData is called and prompt is cancelled THEN it should not call save', async () => {
+        const {save} = await import('../../api/client.js');
+        (save as ReturnType<typeof vi.fn>).mockClear();
+        (save as ReturnType<typeof vi.fn>).mockResolvedValue({ status: true });
 
         window.bootbox.prompt = vi.fn((_msg: string, callback: (result: string | null) => void) => {
             callback(null);
@@ -222,15 +215,13 @@ describe('Parameter Module - saveData Function', () => {
 
         ACTIONS.saveData(data, true, 'parameters.xml');
 
-        expect(ajaxSave).not.toHaveBeenCalled();
+        expect(save).not.toHaveBeenCalled();
     });
 
-    it('GIVEN valid data and newVersion=false WHEN saveData is called THEN it should call ajaxSave directly', async () => {
-        const {ajaxSave} = await import('../../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: unknown, callback?: () => void) => {
-            if (callback) callback();
-        });
+    it('GIVEN valid data and newVersion=false WHEN saveData is called THEN it should call save directly', async () => {
+        const {save} = await import('../../api/client.js');
+        (save as ReturnType<typeof vi.fn>).mockClear();
+        (save as ReturnType<typeof vi.fn>).mockResolvedValue({ status: true });
 
         const data = [
             {name: 'param1', label: 'Parameter 1', type: 'String'},
@@ -238,7 +229,7 @@ describe('Parameter Module - saveData Function', () => {
 
         ACTIONS.saveData(data, false, 'parameters.xml');
 
-        expect(ajaxSave).toHaveBeenCalled();
+        expect(save).toHaveBeenCalled();
         expect(window.bootbox.prompt).not.toHaveBeenCalled();
     });
 });

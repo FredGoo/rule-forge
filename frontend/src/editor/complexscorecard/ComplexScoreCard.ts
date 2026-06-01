@@ -12,7 +12,8 @@ import RowContext from './RowContext';
 import ContentRow from './ScoreCardRow';
 import ConditionColumn, { ActionColumn } from './ScoreCardColumn';
 import TableAction from './TableAction';
-import { getParameter, ajaxSave, handleResponseError } from '../../Utils.js';
+import { getParameter, handleResponseError } from '../../Utils.js';
+import { save, saveNewVersion } from '../../api/client.js';
 import {
     constantLibraries,
     actionLibraries,
@@ -167,50 +168,16 @@ export default class ComplexScoreCard {
             file: file,
             newVersion: String(isNewVersion)
         };
-        const saveUrl = window._server + '/common/saveFile';
+        const saveUrl = '/common/saveFile';
 
         if (isNewVersion) {
-            fetch(window._server + '/common/checkFileDirty', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    filePath: file,
-                    content: encodeURIComponent(xml)
-                }).toString()
-            }).then(function (response) {
-                if (!response.ok) throw response;
-                return response.json();
-            }).then(function (res: any) {
-                if (res.status) {
-                    if (res.data) {
-                        let decodedFileName = decodeURIComponent(file!);
-                        if (decodedFileName.includes('%')) {
-                            decodedFileName = decodeURIComponent(decodedFileName);
-                        }
-                        window.bootbox.confirm('是否对【' + decodedFileName + '】生成新版本?', function (confirmed) {
-                            if (confirmed) {
-                                ajaxSave(saveUrl, postData, function (res: any) {
-                                    if (res.status) {
-                                        window.bootbox.alert('保存成功!', function () {
-                                            self.resetState();
-                                        });
-                                    } else {
-                                        window.bootbox.alert(res.message || '保存失败');
-                                    }
-                                });
-                            }
-                        });
-                    } else {
-                        window.bootbox.alert('与最新版本无差异，无需生成新版本');
-                    }
-                } else {
-                    window.bootbox.alert("<span style='color: red'>服务端出错</span>");
-                }
-            }).catch(function (error: any) {
-                handleResponseError(error, '服务端错误：');
-            });
+            saveNewVersion(saveUrl, { file, content: encodeURIComponent(xml) }).then(function () {
+                window.bootbox.alert('保存成功!', function () {
+                    self.resetState();
+                });
+            }).catch(function () {});
         } else {
-            ajaxSave(saveUrl, postData, function () {
+            save(saveUrl, postData).then(function () {
                 window.bootbox.alert('保存成功!', function () {
                     self.resetState();
                 });

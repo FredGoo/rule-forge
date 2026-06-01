@@ -1,4 +1,4 @@
-import {ajaxSave} from '../Utils.js';
+import {save as apiSave} from '../api/client.js';
 
 export const LOAD_MASTER_COMPLETED = 'load_master_completed';
 export const LOAD_SLAVE_COMPLETE = 'load_slave_completed';
@@ -105,12 +105,12 @@ export function saveData(data: VariableCategory[], newVersion: boolean, file: st
                 return;
             }
             postData.versionComment = versionComment;
-            ajaxSave(url, postData, function () {
+            apiSave(url, postData).then(function () {
                 window.bootbox.alert('保存成功!');
             })
         });
     } else {
-        ajaxSave(url, postData, function () {
+        apiSave(url, postData).then(function () {
             window.bootbox.alert('保存成功!');
         })
     }

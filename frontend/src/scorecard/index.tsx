@@ -44,9 +44,10 @@ import * as event from '../components/componentEvent.js';
 import QuickTestDialog from '../components/dialog/component/QuickTestDialog.jsx';
 import ConfigLibraryDialog from '../components/dialog/component/ConfigLibraryDialog.jsx';
 import EditorToolbar from '../components/editor-toolbar/EditorToolbar.jsx';
-import {saveNewVersion} from "../Utils";
+import {saveNewVersion} from "../api/client.js";
 
-import {ajaxSave, buildProjectNameFromFile, getParameter, loadEditorData} from '../Utils.js';
+import {buildProjectNameFromFile, getParameter, loadEditorData} from '../Utils.js';
+import {save} from '../api/client.js';
 
 import KnowledgeTreeDialog from '../components/dialog/component/KnowledgeTreeDialog.jsx';
 
@@ -65,20 +66,19 @@ document.addEventListener('DOMContentLoaded', function () {
         headers: []
     });
 
-    function save(newVersion: boolean) {
+    function doSave(newVersion: boolean) {
         try {
             let content = cardTable.toXml();
             content = encodeURIComponent(content);
-            const url = window._server + "/common/saveFile";
+            const url = "/common/saveFile";
             if (newVersion) {
-                let postData = {content, file, newVersion};
-                saveNewVersion(url, postData, function () {
+                saveNewVersion(url, { file, content }).then(function () {
                     window.bootbox.alert("保存成功", function () {
                         toolbarApi.clearDirty();
                     });
-                });
+                }).catch(function () {});
             } else {
-                ajaxSave(url, {content, file, newVersion} as unknown as Record<string, string>, function () {
+                save(url, {content, file, newVersion: String(newVersion)} as unknown as Record<string, string>).then(function () {
                     window.bootbox.alert("保存成功", function () {
                         toolbarApi.clearDirty();
                     });
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     createRoot(document.getElementById("toolbarContainer")!).render(
         <EditorToolbar
-            onSave={save}
+            onSave={doSave}
             onReady={(api: any) => { toolbarApi = api; }}
             extraButtons={[
                 <button key="addAttr" type="button" className="btn btn-default"

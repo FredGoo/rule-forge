@@ -3,9 +3,13 @@ import * as ACTIONS from './action.js';
 import {setupMockServer, teardownMockServer} from '../__test_utils__/mockServer.js';
 import {setupMockBootbox, teardownMockBootbox} from '../__test_utils__/mockBootbox.js';
 
-// Mock ajaxSave and handleResponseError from Utils to intercept the module import
+// Mock save from api/client.js (replaces the old ajaxSave from Utils.js)
+vi.mock('../api/client.js', () => ({
+    save: vi.fn(),
+}));
+
+// Mock handleResponseError from Utils (still used by action.ts for error handling)
 vi.mock('../Utils.js', () => ({
-    ajaxSave: vi.fn(),
     handleResponseError: vi.fn(),
 }));
 
@@ -117,11 +121,9 @@ describe('Constant Module - saveData Function', () => {
     });
 
     it('GIVEN valid constant data WHEN saveData is called THEN it should generate correct XML', async () => {
-        const {ajaxSave} = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: unknown, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const {save} = await import('../api/client.js');
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({status: true});
 
         const data = [
             {
@@ -136,8 +138,8 @@ describe('Constant Module - saveData Function', () => {
 
         ACTIONS.saveData(data, false, 'constants.xml');
 
-        expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = (ajaxSave as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect(save).toHaveBeenCalled();
+        const callArgs = (save as any).mock.calls[0];
         const xmlContent = decodeURIComponent(callArgs[1].content as string);
 
         expect(xmlContent).toContain('<?xml version="1.0" encoding="utf-8"?>');
@@ -234,11 +236,9 @@ describe('Constant Module - saveData Function', () => {
     });
 
     it('GIVEN data with newVersion=true WHEN saveData is called THEN it should prompt for version comment', async () => {
-        const {ajaxSave} = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: unknown, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const {save} = await import('../api/client.js');
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({status: true});
 
         window.bootbox.prompt = vi.fn((msg: string, callback: (result: string) => void) => {
             callback('Test version comment');
@@ -255,14 +255,14 @@ describe('Constant Module - saveData Function', () => {
         ACTIONS.saveData(data, true, 'constants.xml');
 
         expect(window.bootbox.prompt).toHaveBeenCalled();
-        expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = (ajaxSave as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect(save).toHaveBeenCalled();
+        const callArgs = (save as any).mock.calls[0];
         expect(callArgs[1].versionComment).toBe('Test version comment');
     });
 
     it('GIVEN data with newVersion=true and cancelled prompt WHEN saveData is called THEN it should not save', async () => {
-        const {ajaxSave} = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
+        const {save} = await import('../api/client.js');
+        (save as any).mockClear();
 
         window.bootbox.prompt = vi.fn((msg: string, callback: (result: string | null) => void) => {
             callback(null);
@@ -279,15 +279,13 @@ describe('Constant Module - saveData Function', () => {
         ACTIONS.saveData(data, true, 'constants.xml');
 
         expect(window.bootbox.prompt).toHaveBeenCalled();
-        expect(ajaxSave).not.toHaveBeenCalled();
+        expect(save).not.toHaveBeenCalled();
     });
 
     it('GIVEN data with newVersion=false WHEN saveData is called THEN it should save without prompting', async () => {
-        const {ajaxSave} = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: unknown, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const {save} = await import('../api/client.js');
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({status: true});
 
         const data = [
             {
@@ -300,15 +298,13 @@ describe('Constant Module - saveData Function', () => {
         ACTIONS.saveData(data, false, 'constants.xml');
 
         expect(window.bootbox.prompt).not.toHaveBeenCalled();
-        expect(ajaxSave).toHaveBeenCalled();
+        expect(save).toHaveBeenCalled();
     });
 
     it('GIVEN multiple categories WHEN saveData is called THEN it should generate XML for all categories', async () => {
-        const {ajaxSave} = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: unknown, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const {save} = await import('../api/client.js');
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({status: true});
 
         const data = [
             {
@@ -325,7 +321,7 @@ describe('Constant Module - saveData Function', () => {
 
         ACTIONS.saveData(data, false, 'constants.xml');
 
-        const callArgs = (ajaxSave as ReturnType<typeof vi.fn>).mock.calls[0];
+        const callArgs = (save as any).mock.calls[0];
         const xmlContent = decodeURIComponent(callArgs[1].content as string);
 
         expect(xmlContent).toContain("name='Constants1'");

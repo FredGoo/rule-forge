@@ -3,10 +3,9 @@ import * as ACTIONS from '../action.js';
 import { setupMockServer, teardownMockServer } from '../../__test_utils__/mockServer.js';
 import { setupMockBootbox, teardownMockBootbox } from '../../__test_utils__/mockBootbox.js';
 
-// Mock ajaxSave from Utils to intercept the module import
-vi.mock('../../Utils.js', () => ({
-    ajaxSave: vi.fn(),
-    handleResponseError: vi.fn(),
+// Mock save from api/client.js to intercept the module import
+vi.mock('../../api/client.js', () => ({
+    save: vi.fn(),
 }));
 
 // Helper to flush microtask queue for async thunks that don't return promises
@@ -190,11 +189,9 @@ describe('Action Module - saveData Function', () => {
     });
 
     it('GIVEN valid action data WHEN saveData is called THEN it should generate correct XML', async () => {
-        const { ajaxSave } = await import('../../Utils.js') as any;
-        (ajaxSave as any).mockClear();
-        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../../api/client.js') as any;
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         const data = [
             {
@@ -215,8 +212,8 @@ describe('Action Module - saveData Function', () => {
 
         ACTIONS.saveData(data as any, false, 'actions.xml');
 
-        expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = (ajaxSave as any).mock.calls[0];
+        expect(save).toHaveBeenCalled();
+        const callArgs = (save as any).mock.calls[0];
         const xmlContent = decodeURIComponent(callArgs[1].content);
 
         expect(xmlContent).toContain('<?xml version="1.0" encoding="utf-8"?>');
@@ -370,11 +367,9 @@ describe('Action Module - saveData Function', () => {
     });
 
     it('GIVEN valid data and newVersion=true WHEN saveData is called THEN it should prompt for version comment', async () => {
-        const { ajaxSave } = await import('../../Utils.js') as any;
-        (ajaxSave as any).mockClear();
-        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../../api/client.js') as any;
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         (window as any).bootbox.prompt = vi.fn((_msg: any, callback: any) => {
             callback('Test version comment');
@@ -392,8 +387,8 @@ describe('Action Module - saveData Function', () => {
 
         ACTIONS.saveData(data as any, true, 'actions.xml');
 
-        expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = (ajaxSave as any).mock.calls[0];
+        expect(save).toHaveBeenCalled();
+        const callArgs = (save as any).mock.calls[0];
         expect(callArgs[1].versionComment).toBe('Test version comment');
     });
 });

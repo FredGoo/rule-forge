@@ -3,10 +3,9 @@ import * as ACTIONS from './action.js';
 import { setupMockServer, teardownMockServer } from '../__test_utils__/mockServer.js';
 import { setupMockBootbox, teardownMockBootbox } from '../__test_utils__/mockBootbox.js';
 
-// Mock ajaxSave from Utils to intercept the module import
-vi.mock('../Utils.js', () => ({
-    ajaxSave: vi.fn(),
-    handleResponseError: vi.fn(),
+// Mock save from api/client.js to intercept the module import
+vi.mock('../api/client.js', () => ({
+    save: vi.fn(),
 }));
 
 // Helper to flush async chains
@@ -157,11 +156,9 @@ describe('Variable Module - saveData Function', () => {
     });
 
     it('GIVEN valid variable data WHEN saveData is called THEN it should generate correct XML', async () => {
-        const { ajaxSave } = await import('../Utils.js') as any;
-        (ajaxSave as any).mockClear();
-        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../api/client.js') as any;
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         const data = [
             {
@@ -177,8 +174,8 @@ describe('Variable Module - saveData Function', () => {
 
         ACTIONS.saveData(data as any, false, 'variables.xml');
 
-        expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = (ajaxSave as any).mock.calls[0];
+        expect(save).toHaveBeenCalled();
+        const callArgs = (save as any).mock.calls[0];
         const xmlContent = decodeURIComponent(callArgs[1].content);
 
         expect(xmlContent).toContain('<?xml version="1.0" encoding="utf-8"?>');
@@ -269,11 +266,9 @@ describe('Variable Module - saveData Function', () => {
     });
 
     it('GIVEN data with newVersion=true WHEN saveData is called THEN it should prompt for version comment', async () => {
-        const { ajaxSave } = await import('../Utils.js') as any;
-        (ajaxSave as any).mockClear();
-        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../api/client.js') as any;
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         (window as any).bootbox.prompt = vi.fn((msg: any, callback: any) => {
             callback('Test version comment');
@@ -291,14 +286,14 @@ describe('Variable Module - saveData Function', () => {
         ACTIONS.saveData(data as any, true, 'variables.xml');
 
         expect((window as any).bootbox.prompt).toHaveBeenCalled();
-        expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = (ajaxSave as any).mock.calls[0];
+        expect(save).toHaveBeenCalled();
+        const callArgs = (save as any).mock.calls[0];
         expect(callArgs[1].versionComment).toBe('Test version comment');
     });
 
     it('GIVEN data with newVersion=true and cancelled prompt WHEN saveData is called THEN it should not save', async () => {
-        const { ajaxSave } = await import('../Utils.js') as any;
-        (ajaxSave as any).mockClear();
+        const { save } = await import('../api/client.js') as any;
+        (save as any).mockClear();
 
         (window as any).bootbox.prompt = vi.fn((msg: any, callback: any) => {
             callback(null);
@@ -316,15 +311,13 @@ describe('Variable Module - saveData Function', () => {
         ACTIONS.saveData(data as any, true, 'variables.xml');
 
         expect((window as any).bootbox.prompt).toHaveBeenCalled();
-        expect(ajaxSave).not.toHaveBeenCalled();
+        expect(save).not.toHaveBeenCalled();
     });
 
     it('GIVEN valid data with newVersion=false WHEN saveData is called THEN it should save without prompting', async () => {
-        const { ajaxSave } = await import('../Utils.js') as any;
-        (ajaxSave as any).mockClear();
-        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../api/client.js') as any;
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         const data = [
             {
@@ -338,15 +331,13 @@ describe('Variable Module - saveData Function', () => {
         ACTIONS.saveData(data as any, false, 'variables.xml');
 
         expect((window as any).bootbox.prompt).not.toHaveBeenCalled();
-        expect(ajaxSave).toHaveBeenCalled();
+        expect(save).toHaveBeenCalled();
     });
 
     it('GIVEN valid data WHEN saveData is called THEN it should return SAVE_COMPLETED action', async () => {
-        const { ajaxSave } = await import('../Utils.js') as any;
-        (ajaxSave as any).mockClear();
-        (ajaxSave as any).mockImplementation((_url: any, _postData: any, callback: any) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../api/client.js') as any;
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         const data = [
             {

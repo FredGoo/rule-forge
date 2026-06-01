@@ -1,4 +1,5 @@
-import {ajaxSave, handleResponseError} from '../Utils.js';
+import {save as apiSave} from '../api/client.js';
+import {handleResponseError} from '../Utils.js';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type {Dispatch} from 'redux';
@@ -84,12 +85,12 @@ export function saveData(data: ConstantCategory[], newVersion: boolean, file: st
                 return;
             }
             postData.versionComment = versionComment;
-            ajaxSave(url, postData, function () {
+            apiSave(url, postData).then(function () {
                 window.bootbox.alert('保存成功!');
             });
         });
     } else {
-        ajaxSave(url, postData, function () {
+        apiSave(url, postData).then(function () {
             window.bootbox.alert('保存成功!');
         });
     }

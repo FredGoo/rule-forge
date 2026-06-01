@@ -57,7 +57,8 @@ import * as refEvent from '../../reference/event.js';
 import * as componentEvent from '../../components/componentEvent.js';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { getParameter, ajaxSave, saveNewVersion, buildProjectNameFromFile, loadEditorData, handleResponseError } from '../../Utils.js';
+import { getParameter, buildProjectNameFromFile, loadEditorData, handleResponseError } from '../../Utils.js';
+import { save, saveNewVersion } from '../../api/client.js';
 import { RuleFactory } from './RuleFactory.js';
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -86,13 +87,13 @@ document.addEventListener('DOMContentLoaded', function () {
         xml = encodeURIComponent(xml);
         const url = window._server + '/common/saveFile';
         if (isNewVersion) {
-            saveNewVersion(url, { file: file, content: xml }, function () {
+            saveNewVersion(url, { file: file, content: xml }).then(function () {
                 toolbarApi.clearDirty();
                 window.bootbox.alert('保存成功!');
-            });
+            }).catch(function () {});
         } else {
             const postData: Record<string, string> = { content: xml, file: file, newVersion: String(isNewVersion) };
-            ajaxSave(url, postData, function () {
+            save(url, postData).then(function () {
                 toolbarApi.clearDirty();
                 window.bootbox.alert('保存成功!');
             });

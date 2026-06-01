@@ -46,7 +46,8 @@ import ConfigLibraryDialog from '../../components/dialog/component/ConfigLibrary
 import EditorToolbar from '../../components/editor-toolbar/EditorToolbar.tsx';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { getParameter, ajaxSave, saveNewVersion, buildProjectNameFromFile, loadEditorData, handleResponseError } from '../../Utils.js';
+import { getParameter, buildProjectNameFromFile, loadEditorData, handleResponseError } from '../../Utils.js';
+import { save, saveNewVersion } from '../../api/client.js';
 import * as event from '../../components/componentEvent.js';
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -74,12 +75,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const postData = { content: xml, file, newVersion: String(isNewVersion) };
         const url = window._server + '/common/saveFile';
         if (isNewVersion) {
-            saveNewVersion(url, { file, content: xml }, function () {
+            saveNewVersion(url, { file, content: xml }).then(function () {
                 toolbarApi.clearDirty();
                 window.bootbox.alert('保存成功!');
-            });
+            }).catch(function () {});
         } else {
-            ajaxSave(url, postData, function () {
+            save(url, postData as Record<string, string>).then(function () {
                 toolbarApi.clearDirty();
                 window.bootbox.alert('保存成功!');
             });

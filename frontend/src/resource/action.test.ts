@@ -10,10 +10,9 @@ vi.mock('../components/componentEvent.js', () => ({
     HIDE_LOADING: 'HIDE_LOADING',
 }));
 
-// Mock ajaxSave from Utils to intercept the module import
-vi.mock('../Utils.js', () => ({
-    ajaxSave: vi.fn(),
-    handleResponseError: vi.fn(),
+// Mock save from api/client.js (replaces the old ajaxSave from Utils.js)
+vi.mock('../api/client.js', () => ({
+    save: vi.fn(),
 }));
 
 // Helper to flush async chains
@@ -214,11 +213,9 @@ describe('Resource Module - saveData Function', () => {
     });
 
     it('GIVEN valid category data WHEN saveData is called THEN it should generate correct XML', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: Record<string, string>, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../api/client.js');
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         const data = [
             {
@@ -234,8 +231,8 @@ describe('Resource Module - saveData Function', () => {
 
         ACTIONS.saveData(data, false, 'variables.xml');
 
-        expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = (ajaxSave as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect(save).toHaveBeenCalled();
+        const callArgs = (save as any).mock.calls[0];
         const xmlContent = decodeURIComponent(callArgs[1].content);
 
         expect(xmlContent).toContain('<?xml version="1.0" encoding="utf-8"?>');
@@ -248,11 +245,9 @@ describe('Resource Module - saveData Function', () => {
     });
 
     it('GIVEN data with special characters WHEN saveData is called THEN it should escape XML properly', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: Record<string, string>, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../api/client.js');
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         const data = [
             {
@@ -267,7 +262,7 @@ describe('Resource Module - saveData Function', () => {
 
         ACTIONS.saveData(data, false, 'variables.xml');
 
-        const callArgs = (ajaxSave as ReturnType<typeof vi.fn>).mock.calls[0];
+        const callArgs = (save as any).mock.calls[0];
         const xmlContent = decodeURIComponent(callArgs[1].content);
 
         expect(xmlContent).toContain('&lt;Category&gt; &amp; &quot;Category&quot;');
@@ -276,11 +271,9 @@ describe('Resource Module - saveData Function', () => {
     });
 
     it('GIVEN data with newVersion=true WHEN saveData is called THEN it should prompt for version comment', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: Record<string, string>, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../api/client.js');
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         window.bootbox.prompt = vi.fn((msg: string, callback: (result: string | null) => void) => {
             callback('Test version comment');
@@ -298,17 +291,15 @@ describe('Resource Module - saveData Function', () => {
         ACTIONS.saveData(data, true, 'variables.xml');
 
         expect(window.bootbox.prompt).toHaveBeenCalled();
-        expect(ajaxSave).toHaveBeenCalled();
-        const callArgs = (ajaxSave as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect(save).toHaveBeenCalled();
+        const callArgs = (save as any).mock.calls[0];
         expect(callArgs[1].versionComment).toBe('Test version comment');
     });
 
     it('GIVEN data with newVersion=true and no comment WHEN saveData is called THEN it should not save', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: Record<string, string>, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../api/client.js');
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         window.bootbox.prompt = vi.fn((msg: string, callback: (result: string | null) => void) => {
             callback(null); // User cancels
@@ -326,15 +317,13 @@ describe('Resource Module - saveData Function', () => {
         ACTIONS.saveData(data, true, 'variables.xml');
 
         expect(window.bootbox.prompt).toHaveBeenCalled();
-        expect(ajaxSave).not.toHaveBeenCalled();
+        expect(save).not.toHaveBeenCalled();
     });
 
     it('GIVEN data with newVersion=false WHEN saveData is called THEN it should save without prompting', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: Record<string, string>, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../api/client.js');
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         const data = [
             {
@@ -348,15 +337,13 @@ describe('Resource Module - saveData Function', () => {
         ACTIONS.saveData(data, false, 'variables.xml');
 
         expect(window.bootbox.prompt).not.toHaveBeenCalled();
-        expect(ajaxSave).toHaveBeenCalled();
+        expect(save).toHaveBeenCalled();
     });
 
     it('GIVEN multiple categories WHEN saveData is called THEN it should generate XML for all categories', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: Record<string, string>, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../api/client.js');
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         const data = [
             {
@@ -379,7 +366,7 @@ describe('Resource Module - saveData Function', () => {
 
         ACTIONS.saveData(data, false, 'variables.xml');
 
-        const callArgs = (ajaxSave as ReturnType<typeof vi.fn>).mock.calls[0];
+        const callArgs = (save as any).mock.calls[0];
         const xmlContent = decodeURIComponent(callArgs[1].content);
 
         expect(xmlContent).toContain("name='Category1'");
@@ -403,11 +390,9 @@ describe('Resource Module - saveData Function', () => {
     });
 
     it('GIVEN category with no variables WHEN saveData is called THEN it should generate empty category', async () => {
-        const { ajaxSave } = await import('../Utils.js');
-        (ajaxSave as ReturnType<typeof vi.fn>).mockClear();
-        (ajaxSave as ReturnType<typeof vi.fn>).mockImplementation((_url: string, _postData: Record<string, string>, callback?: () => void) => {
-            if (callback) callback();
-        });
+        const { save } = await import('../api/client.js');
+        (save as any).mockClear();
+        (save as any).mockResolvedValue({ status: true });
 
         const data = [
             {
@@ -420,7 +405,7 @@ describe('Resource Module - saveData Function', () => {
 
         ACTIONS.saveData(data, false, 'variables.xml');
 
-        const callArgs = (ajaxSave as ReturnType<typeof vi.fn>).mock.calls[0];
+        const callArgs = (save as any).mock.calls[0];
         const xmlContent = decodeURIComponent(callArgs[1].content);
 
         expect(xmlContent).toContain("<category name='Category1' type='type1' clazz='com.example.Clazz'>");

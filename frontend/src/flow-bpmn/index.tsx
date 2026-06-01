@@ -6,7 +6,8 @@ import {createRoot} from 'react-dom/client';
 import FlowEditor from './FlowEditor.jsx';
 import KnowledgeTreeDialog from '../components/dialog/component/KnowledgeTreeDialog.jsx';
 import QuickTestDialog from '../components/dialog/component/QuickTestDialog.jsx';
-import {buildProjectNameFromFile, getParameter, ajaxSave, saveNewVersion, handleResponseError} from '../Utils.js';
+import {buildProjectNameFromFile, getParameter, handleResponseError} from '../Utils.js';
+import {save, saveNewVersion} from '../api/client.js';
 import * as event from '../components/componentEvent.js';
 import * as componentEvent from '../components/componentEvent.js';
 
@@ -43,12 +44,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const postData: Record<string, string> = {content: encodeURIComponent(xml), file: file, newVersion: String(newVersion)};
             const url = window._server + '/common/saveFile';
             if (newVersion) {
-                saveNewVersion(url, {file, content: encodeURIComponent(xml)}, function () {
+                saveNewVersion(url, {file, content: encodeURIComponent(xml)}).then(function () {
                     event.eventEmitter.emit(event.HIDE_LOADING);
                     window.bootbox.alert('保存成功!');
+                }).catch(function () {
+                    event.eventEmitter.emit(event.HIDE_LOADING);
                 });
             } else {
-                ajaxSave(url, postData, function () {
+                save(url, postData).then(function () {
                     event.eventEmitter.emit(event.HIDE_LOADING);
                     window.bootbox.alert('保存成功!');
                 });

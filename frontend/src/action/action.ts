@@ -1,4 +1,5 @@
-import {ajaxSave, handleResponseError} from '../Utils.js';
+import {save as apiSave} from '../api/client.js';
+import {handleResponseError} from '../Utils.js';
 
 export const LOAD_MASTER_COMPLETED = 'load_master_completed';
 export const LOAD_SLAVE_COMPLETE = 'load_slave_completed';
@@ -105,12 +106,12 @@ export function saveData(data: SpringBean[], newVersion: boolean, file: string) 
                 return;
             }
             postData.versionComment = versionComment;
-            ajaxSave(url, postData, function () {
+            apiSave(url, postData).then(function () {
                 window.bootbox.alert('保存成功!');
             })
         });
     } else {
-        ajaxSave(url, postData, function () {
+        apiSave(url, postData).then(function () {
             window.bootbox.alert('保存成功!');
         })
     }
