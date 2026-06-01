@@ -10,7 +10,7 @@ import {createRoot} from 'react-dom/client';
 import '../Remark.js';
 import '../editor/common/URule.js';
 import '../editor/common/contextMenu.js';
-import '../editor/Math.uuid.js';
+import '../editor/uuid.js';
 import '../editor/common/Context.js';
 import '../editor/decisiontable/CellCondition.js';
 import '../editor/decisiontable/Condition.js';

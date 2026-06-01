@@ -3,7 +3,7 @@ import '../context.standalone.css';
 import './ruleset.css';
 import '../../css/iconfont.css';
 import '../../css/tailwind-base.css';
-import '../Math.uuid.js';
+import '../uuid.js';
 import '../common/contextMenu.js';
 import '../common/URule.js';
 import '../common/Context.js';

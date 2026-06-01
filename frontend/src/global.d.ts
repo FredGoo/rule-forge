@@ -7,11 +7,12 @@
 // ---- Window extensions ----
 
 interface BootboxStatic {
-    alert(message: string, callback?: () => void): void;
-    alert(options: { title?: string; message: string }): void;
-    confirm(message: string, callback: (result: boolean) => void): void;
-    prompt(message: string, callback: (result: string) => void): void;
-    dialog(options: Record<string, unknown>): void;
+    alert(message: string, callback?: () => void): unknown;
+    alert(options: { title?: string; message: string; callback?: () => void }): unknown;
+    confirm(message: string, callback: (result: boolean) => void): unknown;
+    prompt(message: string, callback: (result: string | null) => void): unknown;
+    dialog(options: Record<string, unknown>): unknown;
+    setDefaults(): void;
 }
 
 interface TreeNodeData {

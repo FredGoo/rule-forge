@@ -11,7 +11,7 @@ import '../context.standalone.css';
 import '../../css/iconfont.css';
 import '../ruleforge/ruleset.css';
 import '../../css/tailwind-base.css';
-import '../Math.uuid.js';
+import '../uuid.js';
 import '../../Remark.js';
 import '../common/contextMenu.js';
 import '../common/URule.js';
