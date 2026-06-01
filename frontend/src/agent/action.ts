@@ -52,8 +52,11 @@ export function loadSessions(): (dispatch: Function) => Promise<void> {
     return async (dispatch: Function) => {
         try {
             const resp = await fetch(window._server + '/agent/sessions');
+            if (!resp.ok) return;
             const sessions: AgentSession[] = await resp.json();
-            dispatch({type: SET_SESSIONS, payload: sessions});
+            if (Array.isArray(sessions)) {
+                dispatch({type: SET_SESSIONS, payload: sessions});
+            }
         } catch (e) {
             console.error('Failed to load sessions', e);
         }
@@ -188,10 +191,15 @@ export function loadStatus(): (dispatch: Function) => Promise<void> {
     return async (dispatch: Function) => {
         try {
             const resp = await fetch(window._server + '/agent/status');
+            if (!resp.ok) {
+                // Agent API not available — show "unconfigured" state
+                dispatch({type: SET_STATUS, payload: {available: false, toolsCount: 0, vendor: '', model: ''}});
+                return;
+            }
             const status: AgentStatus = await resp.json();
             dispatch({type: SET_STATUS, payload: status});
         } catch (e) {
-            console.error('Failed to load status', e);
+            dispatch({type: SET_STATUS, payload: {available: false, toolsCount: 0, vendor: '', model: ''}});
         }
     };
 }
