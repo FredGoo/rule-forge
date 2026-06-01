@@ -5,7 +5,7 @@
  * (index.tsx) uses the new canvas-based DecisionTree from ./new/DecisionTree.ts.
  */
 
-import { handleResponseError } from '../../Utils.js';
+import { formPost } from '../../api/client.js';
 import {
     constantLibraries,
     actionLibraries,
@@ -133,7 +133,7 @@ export default class DecisionTree {
             }
             xml += '</decision-tree>';
             xml = encodeURI(xml);
-            const url = (window.ruleforgeServer || '') + 'ruleforge?action=savexml&file=' + file + '';
+            const url = 'ruleforge?action=savexml&file=' + file + '';
             const dialog = document.createElement('div');
             dialog.style.cssText = 'width:100px;height:50px';
             dialog.textContent = '文件保存中...';
@@ -147,31 +147,20 @@ export default class DecisionTree {
             dialog.style.borderRadius = '5px';
             dialog.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
             document.body.appendChild(dialog);
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ xml, newVersion: String(newVersion) }).toString()
-            }).then(function (response) {
-                if (!response.ok) throw response;
-                return response.json();
-            }).then(function () {
-                cancelDirty();
-                dialog.remove();
-            }).catch(function (response) {
-                dialog.remove();
-                handleResponseError(response, '保存失败：');
-            });
+            formPost(url, { xml, newVersion: String(newVersion) })
+                .then(function () {
+                    cancelDirty();
+                    dialog.remove();
+                })
+                .catch(function () {
+                    dialog.remove();
+                });
         }
 
         function _loadDecisionTreeFileData(): void {
-            const url = (window.ruleforgeServer || '') + 'ruleforge?action=loadxml&files=' + file + ',' + version + '';
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-            }).then(function (response) {
-                if (!response.ok) throw response;
-                return response.json();
-            }).then(function (data: any[]) {
+            const url = 'ruleforge?action=loadxml&files=' + file + ',' + version + '';
+            formPost<any[]>(url, {})
+                .then(function (data: any[]) {
                 const treeData = data[0];
                 const libraries = treeData['libraries'];
                 if (libraries) {
@@ -202,8 +191,8 @@ export default class DecisionTree {
                 refreshFunctionLibraries();
                 self.topNode.initData(treeData['variableTreeNode']);
                 cancelDirty();
-            }).catch(function (response) {
-                handleResponseError(response, '加载文件失败：');
+            }).catch(function () {
+                window.bootbox.alert('加载文件失败');
             });
         }
     }

@@ -1,4 +1,5 @@
 import * as event from '../../components/componentEvent.js';
+import { httpGet } from '../../api/client.js';
 
 export class ConditionListDialog {
     project: string;
@@ -15,10 +16,7 @@ export class ConditionListDialog {
     open(doSuccess: (condition: string) => void): void {
         const self = this;
         const url = 'ruleforge?action=loadcommonconditions&project=' + this.project + '&category=' + this.category + '&variable=' + this.colData.variableCategory + '.' + this.colData.variableLabel;
-        fetch(url).then(function (response) {
-            if (!response.ok) throw response;
-            return response.json();
-        }).then(function (data) {
+        httpGet(url).then(function (data: any) {
             self.variable = self.colData.variableCategory + '.' + self.colData.variableLabel;
             event.eventEmitter.emit(event.OPEN_CONDITION_LIST_DIALOG, {
                 variable: self.variable,

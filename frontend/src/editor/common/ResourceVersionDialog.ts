@@ -1,4 +1,5 @@
 import * as event from '../../components/componentEvent.js';
+import { httpGet } from '../../api/client.js';
 
 export class ResourceVersionDialog {
     path: string;
@@ -10,10 +11,7 @@ export class ResourceVersionDialog {
     open(doSuccess: (file: string) => void): void {
         const self = this;
         const url = 'ruleforge?action=loadversion&file=' + this.path;
-        fetch(url).then(function (response) {
-            if (!response.ok) throw response;
-            return response.json();
-        }).then(function (data) {
+        httpGet(url).then(function (data: any) {
             event.eventEmitter.emit(event.OPEN_RESOURCE_VERSION_DIALOG, {
                 path: self.path,
                 data: data || [],

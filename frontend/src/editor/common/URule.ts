@@ -6,6 +6,8 @@
  * for backward compatibility during the migration period.
  */
 
+import { formPost, httpGet } from '../../api/client.js';
+
 /** Helper to create an inline-editable container element. */
 export function generateContainer(): HTMLElement {
     const container = document.createElement('span');
@@ -46,22 +48,16 @@ export function refreshParameterLibraries(): void {
     if (parameterFiles === '' || parameterFiles.length < 2) {
         return;
     }
-    const url = window._server + '/common/loadXml';
-    fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({files: parameterFiles}).toString()
-    }).then(response => {
-        if (!response.ok) throw response;
-        return response.json();
-    }).then((data: unknown[]) => {
-        window._ruleforgeEditorParameterLibraries = data;
-        parameterValueArray.forEach(item => {
-            item.initMenu(data);
+    formPost<unknown[]>('/common/loadXml', { files: parameterFiles })
+        .then((data: unknown[]) => {
+            window._ruleforgeEditorParameterLibraries = data;
+            parameterValueArray.forEach(item => {
+                item.initMenu(data);
+            });
+        })
+        .catch(() => {
+            window.bootbox.alert('加载文件失败！');
         });
-    }).catch(() => {
-        window.bootbox.alert('加载文件失败！');
-    });
 }
 
 export function refreshVariableLibraries(): void {
@@ -69,22 +65,16 @@ export function refreshVariableLibraries(): void {
     if (variableFiles === '' || variableFiles.length < 2) {
         return;
     }
-    const url = window._server + '/common/loadXml';
-    fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({files: variableFiles}).toString()
-    }).then(response => {
-        if (!response.ok) throw response;
-        return response.json();
-    }).then((data: unknown[]) => {
-        window._ruleforgeEditorVariableLibraries = data;
-        variableValueArray.forEach(item => {
-            item.initMenu(data);
+    formPost<unknown[]>('/common/loadXml', { files: variableFiles })
+        .then((data: unknown[]) => {
+            window._ruleforgeEditorVariableLibraries = data;
+            variableValueArray.forEach(item => {
+                item.initMenu(data);
+            });
+        })
+        .catch(() => {
+            window.bootbox.alert('加载文件失败！');
         });
-    }).catch(() => {
-        window.bootbox.alert('加载文件失败！');
-    });
 }
 
 export function refreshActionLibraries(): void {
@@ -92,22 +82,16 @@ export function refreshActionLibraries(): void {
     if (actionFiles === '' || actionFiles.length < 2) {
         actionFiles = 'builtinactions';
     }
-    const url = window._server + '/common/loadXml';
-    fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({files: actionFiles}).toString()
-    }).then(response => {
-        if (!response.ok) throw response;
-        return response.json();
-    }).then((data: unknown[]) => {
-        window._ruleforgeEditorActionLibraries = data;
-        actionTypeArray.forEach(item => {
-            item.initMenu(data);
+    formPost<unknown[]>('/common/loadXml', { files: actionFiles })
+        .then((data: unknown[]) => {
+            window._ruleforgeEditorActionLibraries = data;
+            actionTypeArray.forEach(item => {
+                item.initMenu(data);
+            });
+        })
+        .catch(() => {
+            window.bootbox.alert('加载文件失败！');
         });
-    }).catch(() => {
-        window.bootbox.alert('加载文件失败！');
-    });
 }
 
 export function refreshConstantLibraries(): void {
@@ -115,37 +99,29 @@ export function refreshConstantLibraries(): void {
     if (constantFiles === '' || constantFiles.length < 2) {
         return;
     }
-    const url = window._server + '/common/loadXml';
-    fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({files: constantFiles}).toString()
-    }).then(response => {
-        if (!response.ok) throw response;
-        return response.json();
-    }).then((data: unknown[]) => {
-        window._ruleforgeEditorConstantLibraries = data;
-        constantValueArray.forEach(item => {
-            item.initMenu(data);
+    formPost<unknown[]>('/common/loadXml', { files: constantFiles })
+        .then((data: unknown[]) => {
+            window._ruleforgeEditorConstantLibraries = data;
+            constantValueArray.forEach(item => {
+                item.initMenu(data);
+            });
+        })
+        .catch(() => {
+            window.bootbox.alert('加载文件失败！');
         });
-    }).catch(() => {
-        window.bootbox.alert('加载文件失败！');
-    });
 }
 
 export function refreshFunctionLibraries(): void {
-    const url = window._server + '/common/loadFunctions';
-    fetch(url).then(response => {
-        if (!response.ok) throw response;
-        return response.json();
-    }).then((data: unknown[]) => {
-        (window as unknown as Record<string, unknown>)._ruleforgeEditorFunctionLibraries = data;
-        functionValueArray.forEach(item => {
-            item.initMenu(data);
+    httpGet<unknown[]>('/common/loadFunctions')
+        .then((data: unknown[]) => {
+            (window as unknown as Record<string, unknown>)._ruleforgeEditorFunctionLibraries = data;
+            functionValueArray.forEach(item => {
+                item.initMenu(data);
+            });
+        })
+        .catch(() => {
+            window.bootbox.alert('加载函数失败！');
         });
-    }).catch(() => {
-        window.bootbox.alert('加载函数失败！');
-    });
 }
 
 // --- Initialize ruleforge global namespace (used by unconverted prototype classes) ---

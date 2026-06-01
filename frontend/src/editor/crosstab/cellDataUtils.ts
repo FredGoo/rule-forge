@@ -7,6 +7,8 @@
  * Extracted from the crosstab webpack bundle (module 16).
  */
 
+import { formPost } from '../../api/client.js';
+
 /**
  * Copy cell data to the server-side clipboard.
  *
@@ -14,11 +16,7 @@
  * @param xml - The XML representation of the cell data
  */
 export function copyCellData(type: string, xml: string): void {
-    fetch(window._server + '/common/parseCellData', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({type: type, xml: xml}).toString()
-    });
+    formPost('/common/parseCellData', { type, xml });
 }
 
 /**
@@ -28,22 +26,15 @@ export function copyCellData(type: string, xml: string): void {
  * @param callback - Called with the parsed data on success
  */
 export function pasteCellData(type: string, callback: (data: any) => void): void {
-    fetch(window._server + '/common/loadCellData', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({type: type}).toString()
-    }).then(function (response: Response) {
-        if (!response.ok) throw response as unknown as Error;
-        return response.json();
-    }).then(function (data: any) {
-        if (data) {
-            callback(data);
-        } else {
-            window.bootbox.alert('当前没有数据可供粘贴！');
-        }
-    }).catch(function (error: Error) {
-        if (error) {
-            window.bootbox.alert('粘贴失败: ' + (error.message || error));
-        }
-    });
+    formPost<any>('/common/loadCellData', { type })
+        .then(function (data: any) {
+            if (data) {
+                callback(data);
+            } else {
+                window.bootbox.alert('当前没有数据可供粘贴！');
+            }
+        })
+        .catch(function () {
+            window.bootbox.alert('粘贴失败');
+        });
 }
