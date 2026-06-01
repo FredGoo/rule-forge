@@ -32,7 +32,7 @@ Flyway 版本规则：Phase 5 → `V5.1.0__xxx.sql`，Phase 6 → `V5.2.0__xxx.s
 ## 实施顺序
 
 ```
-Phase 1-4 ✅ 已完成 → Phase 5-12 📋 规划中
+Phase 1-7 ✅ 已完成 → Phase 8-12 📋 规划中
 ```
 
 ```
@@ -54,9 +54,9 @@ Phase 12 Rust 引擎        P3  ─┘── 远期
 | 上游数据源管理 | 统一管理外部数据接入 | 5.0.0 | P0 | ✅ 已完成 |
 | 规则版本与发布管理 | 变更审批、灰度发布、回滚 | 5.0.0 | P0 | ✅ 已完成 |
 | 下游 Agent 分析 | AI 分析决策结果，优化规则 | 5.0.0 | P2 | ✅ 已完成 |
-| 规则仿真 | 批量回放历史流量，预知变更影响 | 5.1.0 | P0 | 📋 规划中 |
-| 前端 UI 现代化 | Ant Design 5 + ProLayout | 5.2.0 | P0 | 📋 规划中 |
-| AgentScope 集成 | Web 内置 AI 对话分析 | 5.3.0 | P1 | 📋 规划中 |
+| 规则仿真 | 批量回放历史流量，预知变更影响 | 5.1.0 | P0 | ✅ 已完成 |
+| 前端 UI 现代化 | TypeScript + Vite + Ant Design 5 | 5.2.0 | P0 | ✅ 已完成 |
+| AgentScope 集成 | Web 内置 AI 对话分析（LLM 工具调用） | 5.3.0 | P1 | ✅ 已完成 |
 | ClickHouse 分析 | 高性能分析数据库 | 5.4.0 | P1 | 📋 规划中 |
 | 数据源批量测试 | CSV/JSON 批量导入测试 | 5.5.0 | P1 | 📋 规划中 |
 | 文档与 Demo | GitHub Pages + VitePress | 5.6.0 | P2 | 📋 规划中 |
@@ -163,104 +163,49 @@ Agent 分析模块
 
 ---
 
-## Phase 5: 规则仿真（主动模拟） 📋 规划中 (5.1.0)
+## Phase 5: 规则仿真（主动模拟） ✅ 已完成 (5.1.0)
 
-### 问题
+### 已实现
 
-规则变更前无法预知影响范围，现有陪跑是被动跑影子，缺少主动模拟工具。
-
-### 方案
-
-在现有 `ShadowExecutionService` + `TestController` 基础上，新增批量仿真 API 和前端界面。
-
-### 关键特性
-
-- **批量历史回放** — 从 DB 加载历史流量 → 构建批量请求 → 发到 executor → 对比结果
-- **仿真结果对比** — 复用 ShadowComparisonService 的 4 维度对比
-- **前端仿真面板** — 选规则包 + 时间范围 → 仿真 → diff 报告
-- **CLI 集成** — `ruleforge simulation run --package loan-rules --from 2026-05-01`
-
-### 新增模块
-
-```
-仿真模块
-├── SimulationController        批量仿真 REST API
-├── SimulationServiceImpl       加载历史流量 → 重放 → 对比
-├── SimulationPanel             前端仿真面板
-├── nd_simulation_result        仿真结果存储表（Flyway V5.1.0）
-└── CLI simulation 命令
-```
-
-### 实施步骤
-
-1. 后端仿真 API（批量加载历史决策 → 重放到指定规则包版本）
-2. 仿真结果对比（复用 ShadowComparisonService）
-3. 前端仿真面板（触发 → 进度 → 结果 diff）
-4. CLI 集成
+- **SimulationServiceImpl** — 异步批量仿真（LOADING → RUNNING → COMPARING → COMPLETED）
+- **4 维度对比** — 状态匹配、结果匹配、输出字段、规则执行（ComparisonUtils 共享工具）
+- **SimulationController** — 5 个 REST 端点（启动/进度/结果/历史/统计）
+- **SimulationPanel** — 前端仿真面板（配置表单 + 进度条 + 结果表 + 统计）
+- **CLI** — `ruleforge simulation run/list/results/stats` 命令
 
 ---
 
-## Phase 6: 前端 UI 现代化 📋 规划中 (5.2.0)
+## Phase 6: 前端 UI 现代化 ✅ 已完成 (5.2.0)
 
 ### 问题
 
-Bootstrap 3.4.1 已过时，UI 影响产品形象和用户体验。
+Bootstrap 3.4.1 已过时，UI 影响产品形象和用户体验。Webpack 5 构建慢（~25s）。
 
-### 方案
+### 已实现
 
-采用 **Ant Design 5 + ProLayout**（React 18 生态成熟，中文文档完善，管理后台标准方案）。
-
-### 关键变更
-
-- Bootstrap 3.4.1 → Ant Design 5.x
-- jQuery 依赖 → React 状态管理
-- ProLayout 管理后台框架
-- 保留 bpmn-js、ECharts、CodeMirror
-- 可选：Webpack → Vite
-
-### 实施策略（分批）
-
-1. 搭 Ant Design ProLayout 框架，替换整体布局
-2. 逐页面迁移（分析仪表盘 → 发布管理 → 规则设计器）
-3. 最后移除 Bootstrap 依赖
+- **Webpack → Vite 8** — 构建时间 ~25s → ~1s
+- **JavaScript → TypeScript** — 渐进迁移（strict: false），~120 源文件已转换
+- **Ant Design 5** — 安装 + 主题配置（#1677ff 匹配设计令牌）+ AntdProvider
+- **已迁移模块**: login, reference, datasource, client, constant, parameter, variable,
+  action, permission, resource, release, simulation, monitoring, analysis, package,
+  components/ (Grid, Tree, Dialog, Splitter, Menu, Widgets), frame/ (root shell)
+- **待后续迭代**: editor/*, scorecard/, flow-bpmn/ (~131 files)
 
 ---
 
-## Phase 7: 内置 Agent（AgentScope 集成） 📋 规划中 (5.3.0)
+## Phase 7: 内置 Agent（AI 助手） ✅ 已完成 (5.3.0)
 
-### 问题
+### 已实现
 
-风控人员不会用 Claude Code / CLI，需要 Web 内置的 AI 对话分析。
-
-### 方案
-
-集成 **AgentScope Java**（阿里开源，Spring Boot Starter，兼容 OpenAI/Anthropic API）。
-
-```xml
-<dependency>
-    <groupId>io.agentscope</groupId>
-    <artifactId>agentscope-spring-boot-starter</artifactId>
-    <version>1.0.5</version>
-</dependency>
-```
-
-### 新增模块
-
-```
-Agent 模块（console-app 内）
-├── AgentConfig          AgentScope + LLM API 配置
-├── AgentController      /agent/chat REST + SSE 流式
-├── RuleAnalysisAgent    规则分析 Agent（调用分析 API）
-├── RuleSuggestAgent     规则优化建议 Agent
-└── 前端 AgentPanel      对话界面
-```
-
-### 关键设计
-
-- 只需配置 OpenAI 或 Anthropic 格式的 API 地址和 Key
-- Agent 的 Tool 就是现有的分析/导出 REST API
-- 支持流式输出（SSE）
-- 不绑定特定模型 — 用户自己配 API
+- **LlmClient** — OpenAI 兼容 Chat Completions API 客户端，支持 SSE 流式 + tool_calls 增量解析
+- **AgentConfigService** — DB 存储配置（nd_agent_config），30s 缓存，运行时修改无需重启
+- **VendorPresets** — 10 个预配置 LLM 厂商（OpenAI, DeepSeek, 通义千问, 智谱, Moonshot, 百川, MiniMax, SiliconFlow, Ollama, 自定义）
+- **ToolRegistry** — 11 个注册工具（分析趋势、规则覆盖率、异常检测、规则导出、监控指标等）
+- **ToolExecutor** — 工具调用直接映射到 IAnalysisService + RuleForgeRepositoryServiceImpl（零网络开销）
+- **AgentService** — Agentic 循环（LLM → tool_calls → 执行工具 → 再调 LLM → 直到文本响应），最多 10 轮
+- **AgentController** — REST + SSE 端点（/agent/chat, sessions, config, vendors, status）
+- **Flyway V5.3.0** — nd_agent_config, nd_agent_chat_session, nd_agent_chat_message 三张表
+- **前端 AgentPanel** — 聊天界面（消息流 + 流式显示 + 工具状态）+ 配置面板（厂商选择 + API Key + 连接测试）
 
 ---
 
