@@ -1,3 +1,363 @@
+-- Flowable 8.0.0 schema bootstrapping
+-- 详见: server/ruleforge-console-app/src/main/java/com/ruleforge/console/app/config/FlowableFlywayConfig.java
+-- 把 Flowable 8.0.0 散落在 jar 里 / 运行时建的所有 act_* 表凑齐,
+-- 一次性跑通 init,避开 Flowable 8.0.0 + Spring Boot 4 下的 create index 顺序 bug。
+
+-- ============== Part 1: ACT_GE_*, ACT_RU_* (runtime), ACT_HI_* (runtime) ==============
+create table ACT_GE_PROPERTY (
+    NAME_ varchar(64),
+    VALUE_ varchar(300),
+    REV_ integer,
+    primary key (NAME_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_GE_BYTEARRAY (
+    ID_ varchar(64),
+    REV_ integer,
+    NAME_ varchar(255),
+    DEPLOYMENT_ID_ varchar(64),
+    BYTES_ LONGBLOB,
+    GENERATED_ TINYINT,
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_RU_VARIABLE (
+    ID_ varchar(64) not null,
+    REV_ integer,
+    TYPE_ varchar(255) not null,
+    NAME_ varchar(255) not null,
+    EXECUTION_ID_ varchar(64),
+    PROC_INST_ID_ varchar(64),
+    TASK_ID_ varchar(64),
+    BYTEARRAY_ID_ varchar(64),
+    DOUBLE_ double,
+    TEXT_ varchar(4000),
+    TEXT2_ varchar(4000),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_RU_TASK (
+    ID_ varchar(64),
+    REV_ integer,
+    EXECUTION_ID_ varchar(64),
+    PROC_INST_ID_ varchar(64),
+    PROC_DEF_ID_ varchar(64),
+    NAME_ varchar(255),
+    PARENT_TASK_ID_ varchar(64),
+    DESCRIPTION_ varchar(4000),
+    TASK_DEF_KEY_ varchar(255),
+    OWNER_ varchar(255),
+    ASSIGNEE_ varchar(255),
+    DELEGATION_ varchar(64),
+    PRIORITY_ integer,
+    CREATE_TIME_ timestamp(3) NULL,
+    DUE_DATE_ datetime(3),
+    CATEGORY_ varchar(255),
+    SUSPENSION_STATE_ integer,
+    TENANT_ID_ varchar(255) default '',
+    FORM_KEY_ varchar(255),
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_RU_IDENTITYLINK (
+    ID_ varchar(64),
+    REV_ integer,
+    GROUP_ID_ varchar(255),
+    TYPE_ varchar(255),
+    USER_ID_ varchar(255),
+    TASK_ID_ varchar(64),
+    PROC_INST_ID_ varchar(64),
+    PROC_DEF_ID_ varchar(64),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_RU_JOB (
+    ID_ varchar(64) NOT NULL,
+    REV_ integer,
+    TYPE_ varchar(255) NOT NULL,
+    LOCK_EXP_TIME_ timestamp(3) NULL,
+    LOCK_OWNER_ varchar(255),
+    EXCLUSIVE_ boolean,
+    EXECUTION_ID_ varchar(64),
+    PROCESS_INSTANCE_ID_ varchar(64),
+    PROC_DEF_ID_ varchar(64),
+    RETRIES_ integer,
+    EXCEPTION_STACK_ID_ varchar(64),
+    EXCEPTION_MSG_ varchar(4000),
+    DUEDATE_ timestamp(3) NULL,
+    REPEAT_ varchar(255),
+    HANDLER_TYPE_ varchar(255),
+    HANDLER_CFG_ varchar(4000),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_RU_TIMER_JOB (
+    ID_ varchar(64) NOT NULL,
+    REV_ integer,
+    TYPE_ varchar(255) NOT NULL,
+    LOCK_EXP_TIME_ timestamp(3) NULL,
+    LOCK_OWNER_ varchar(255),
+    EXCLUSIVE_ boolean,
+    EXECUTION_ID_ varchar(64),
+    PROCESS_INSTANCE_ID_ varchar(64),
+    PROC_DEF_ID_ varchar(64),
+    RETRIES_ integer,
+    EXCEPTION_STACK_ID_ varchar(64),
+    EXCEPTION_MSG_ varchar(4000),
+    DUEDATE_ timestamp(3) NULL,
+    REPEAT_ varchar(255),
+    HANDLER_TYPE_ varchar(255),
+    HANDLER_CFG_ varchar(4000),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_RU_SUSPENDED_JOB (
+    ID_ varchar(64) NOT NULL,
+    REV_ integer,
+    TYPE_ varchar(255) NOT NULL,
+    LOCK_EXP_TIME_ timestamp(3) NULL,
+    LOCK_OWNER_ varchar(255),
+    EXCLUSIVE_ boolean,
+    EXECUTION_ID_ varchar(64),
+    PROCESS_INSTANCE_ID_ varchar(64),
+    PROC_DEF_ID_ varchar(64),
+    RETRIES_ integer,
+    EXCEPTION_STACK_ID_ varchar(64),
+    EXCEPTION_MSG_ varchar(4000),
+    DUEDATE_ timestamp(3) NULL,
+    REPEAT_ varchar(255),
+    HANDLER_TYPE_ varchar(255),
+    HANDLER_CFG_ varchar(4000),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_RU_DEADLETTER_JOB (
+    ID_ varchar(64) NOT NULL,
+    REV_ integer,
+    TYPE_ varchar(255) NOT NULL,
+    LOCK_EXP_TIME_ timestamp(3) NULL,
+    LOCK_OWNER_ varchar(255),
+    EXCLUSIVE_ boolean,
+    EXECUTION_ID_ varchar(64),
+    PROCESS_INSTANCE_ID_ varchar(64),
+    PROC_DEF_ID_ varchar(64),
+    RETRIES_ integer,
+    EXCEPTION_STACK_ID_ varchar(64),
+    EXCEPTION_MSG_ varchar(4000),
+    DUEDATE_ timestamp(3) NULL,
+    REPEAT_ varchar(255),
+    HANDLER_TYPE_ varchar(255),
+    HANDLER_CFG_ varchar(4000),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_RU_EXTERNAL_JOB (
+    ID_ varchar(64) NOT NULL,
+    REV_ integer,
+    TYPE_ varchar(255) NOT NULL,
+    LOCK_EXP_TIME_ timestamp(3) NULL,
+    LOCK_OWNER_ varchar(255),
+    EXCLUSIVE_ boolean,
+    EXECUTION_ID_ varchar(64),
+    PROCESS_INSTANCE_ID_ varchar(64),
+    PROC_DEF_ID_ varchar(64),
+    RETRIES_ integer,
+    EXCEPTION_STACK_ID_ varchar(64),
+    EXCEPTION_MSG_ varchar(4000),
+    DUEDATE_ timestamp(3) NULL,
+    REPEAT_ varchar(255),
+    HANDLER_TYPE_ varchar(255),
+    HANDLER_CFG_ varchar(4000),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_RU_HISTORY_JOB (
+    ID_ varchar(64) NOT NULL,
+    REV_ integer,
+    TYPE_ varchar(255) NOT NULL,
+    LOCK_EXP_TIME_ timestamp(3) NULL,
+    LOCK_OWNER_ varchar(255),
+    EXCLUSIVE_ boolean,
+    EXECUTION_ID_ varchar(64),
+    PROCESS_INSTANCE_ID_ varchar(64),
+    PROC_DEF_ID_ varchar(64),
+    RETRIES_ integer,
+    EXCEPTION_STACK_ID_ varchar(64),
+    EXCEPTION_MSG_ varchar(4000),
+    DUEDATE_ timestamp(3) NULL,
+    REPEAT_ varchar(255),
+    HANDLER_TYPE_ varchar(255),
+    HANDLER_CFG_ varchar(4000),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_RU_EVENT_SUBSCR (
+    ID_ varchar(64) not null,
+    REV_ integer,
+    EVENT_TYPE_ varchar(255) not null,
+    EVENT_NAME_ varchar(255),
+    EXECUTION_ID_ varchar(64),
+    PROC_INST_ID_ varchar(64),
+    ACTIVITY_ID_ varchar(64),
+    CONFIGURATION_ varchar(255),
+    CREATED_ timestamp(3) not null,
+    PROC_DEF_ID_ varchar(64),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_RU_ENTITYLINK (
+    ID_ varchar(64),
+    REV_ integer,
+    CREATE_TIME_ timestamp(3) NULL,
+    LINK_TYPE_ varchar(255),
+    NAME_ varchar(255),
+    SCOPE_ID_ varchar(64),
+    SCOPE_TYPE_ varchar(255),
+    SCOPE_DEFINITION_ID_ varchar(64),
+    PARENT_ELEMENT_ID_ varchar(64),
+    REF_SCOPE_ID_ varchar(64),
+    REF_SCOPE_TYPE_ varchar(255),
+    REF_SCOPE_DEFINITION_ID_ varchar(64),
+    ROOT_SCOPE_ID_ varchar(64),
+    ROOT_SCOPE_TYPE_ varchar(255),
+    HIERARCHY_TYPE_ varchar(255),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_HI_IDENTITYLINK (
+    ID_ varchar(64),
+    GROUP_ID_ varchar(255),
+    TYPE_ varchar(255),
+    USER_ID_ varchar(255),
+    TASK_ID_ varchar(64),
+    CREATE_TIME_ timestamp(3) NULL,
+    PROC_INST_ID_ varchar(64),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_HI_TASKINST (
+    ID_ varchar(64) not null,
+    REV_ integer default 1,
+    PROC_DEF_ID_ varchar(64),
+    TASK_DEF_KEY_ varchar(255),
+    PROC_INST_ID_ varchar(64),
+    EXECUTION_ID_ varchar(64),
+    NAME_ varchar(255),
+    PARENT_TASK_ID_ varchar(64),
+    DESCRIPTION_ varchar(4000),
+    OWNER_ varchar(255),
+    ASSIGNEE_ varchar(255),
+    START_TIME_ datetime(3) not null,
+    CLAIM_TIME_ datetime(3),
+    END_TIME_ datetime(3),
+    DURATION_ bigint,
+    DELETE_REASON_ varchar(4000),
+    PRIORITY_ integer,
+    DUE_DATE_ datetime(3),
+    FORM_KEY_ varchar(255),
+    CATEGORY_ varchar(255),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_HI_VARINST (
+    ID_ varchar(64) not null,
+    REV_ integer default 1,
+    PROC_INST_ID_ varchar(64),
+    EXECUTION_ID_ varchar(64),
+    TASK_ID_ varchar(64),
+    NAME_ varchar(255) not null,
+    VAR_TYPE_ varchar(100),
+    BYTEARRAY_ID_ varchar(64),
+    DOUBLE_ double,
+    TEXT_ varchar(4000),
+    TEXT2_ varchar(4000),
+    CREATE_TIME_ datetime(3),
+    LAST_UPDATED_TIME_ datetime(3),
+    REV_TYPE_ integer,
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_HI_ENTITYLINK (
+    ID_ varchar(64) not null,
+    LINK_TYPE_ varchar(255),
+    CREATE_TIME_ datetime(3),
+    NAME_ varchar(255),
+    SCOPE_ID_ varchar(64),
+    SCOPE_TYPE_ varchar(255),
+    SCOPE_DEFINITION_ID_ varchar(64),
+    PARENT_ELEMENT_ID_ varchar(64),
+    REF_SCOPE_ID_ varchar(64),
+    REF_SCOPE_TYPE_ varchar(255),
+    REF_SCOPE_DEFINITION_ID_ varchar(64),
+    ROOT_SCOPE_ID_ varchar(64),
+    ROOT_SCOPE_TYPE_ varchar(255),
+    HIERARCHY_TYPE_ varchar(255),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_HI_TSK_LOG (
+    ID_ varchar(64) not null,
+    TYPE_ varchar(64),
+    TASK_ID_ varchar(64),
+    TIME_STAMP_ datetime(3) not null,
+    USER_ID_ varchar(255),
+    DATA_ varchar(4000),
+    EXECUTION_ID_ varchar(64),
+    PROC_INST_ID_ varchar(64),
+    PROC_DEF_ID_ varchar(64),
+    TASK_DEF_KEY_ varchar(255),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_HI_DETAIL_TMP (
+    ID_ varchar(64) not null,
+    TYPE_ varchar(255) not null,
+    PROC_INST_ID_ varchar(64) not null,
+    EXECUTION_ID_ varchar(64) not null,
+    TASK_ID_ varchar(64),
+    ACT_INST_ID_ varchar(64),
+    NAME_ varchar(255) not null,
+    VAR_TYPE_ varchar(255),
+    REV_ integer,
+    TIME_ datetime(3) not null,
+    BYTEARRAY_ID_ varchar(64),
+    DOUBLE_ double,
+    TEXT_ varchar(4000),
+    TEXT2_ varchar(4000),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+create table ACT_ID_INFO (
+    ID_ varchar(64),
+    REV_ integer,
+    USER_ID_ varchar(255),
+    TYPE_ varchar(64),
+    KEY_ varchar(255),
+    VALUE_ varchar(255),
+    PASSWORD_ varchar(255),
+    PARENT_ID_ varchar(255),
+    TENANT_ID_ varchar(255) default '',
+    primary key (ID_)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;
+
+-- ============== Part 2: engine.sql(从 Flowable jar 提取) ==============
 create table ACT_RE_DEPLOYMENT (
     ID_ varchar(64),
     NAME_ varchar(255),
@@ -325,6 +685,8 @@ values ('schema.version', '8.0.0.0', 1);
 
 insert into ACT_GE_PROPERTY
 values ('schema.history', 'create(8.0.0.0)', 1);
+
+-- ============== Part 3: history.sql(从 Flowable jar 提取) ==============
 create table ACT_HI_PROCINST (
     ID_ varchar(64) not null,
     REV_ integer default 1,
