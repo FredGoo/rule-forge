@@ -42,7 +42,7 @@ public class DataSourceConfig {
         return buildPool("ExecutorCloudSqlCP", rfDbUrl, rfDbUsername, rfDbPassword, 10);
     }
 
-    @Bean
+    @Bean("flowable")
     public DataSource flowableDataSource() {
         return buildPool("ExecutorFlowableSqlCP", flowableDbUrl, flowableDbUsername, flowableDbPassword, 5);
     }
