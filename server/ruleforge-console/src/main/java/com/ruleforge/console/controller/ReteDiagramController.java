@@ -24,7 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.*;
 
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/retediagram")
+@RequestMapping("/${ruleforge.root.path}/retediagram")
 @RequiredArgsConstructor
 public class ReteDiagramController {
 

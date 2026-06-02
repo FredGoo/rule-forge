@@ -27,7 +27,7 @@ import java.util.List;
 
 @Slf4j
 @RestController("ruleforgeApiController")
-@RequestMapping("/${ruleforgeV2.root.path}/api")
+@RequestMapping("/${ruleforge.root.path}/api")
 @RequiredArgsConstructor
 public class ApiController {
 

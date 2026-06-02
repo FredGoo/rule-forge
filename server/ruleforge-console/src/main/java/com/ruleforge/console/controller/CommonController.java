@@ -63,7 +63,7 @@ import static com.ruleforge.console.storage.RuleForgeBaseRepositoryService.RES_P
 
 @Slf4j
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/common")
+@RequestMapping("/${ruleforge.root.path}/common")
 @RequiredArgsConstructor
 public class CommonController extends BaseController {
 

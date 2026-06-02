@@ -77,7 +77,7 @@ public class KnowledgePackageServiceImpl implements KnowledgePackageService {
     }
 
     private List<Map<String, Object>> sendRequest(String project) {
-        String url = "/ruleforgeV2/packageeditor/loadPackages";
+        String url = "/ruleforge/packageeditor/loadPackages";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         MultiValueMap<String, String> map = new LinkedMultiValueMap<>();

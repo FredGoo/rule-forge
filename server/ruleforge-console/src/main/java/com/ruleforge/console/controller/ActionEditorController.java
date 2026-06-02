@@ -19,7 +19,7 @@ import java.math.BigDecimal;
 import java.util.*;
 
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/actioneditor")
+@RequestMapping("/${ruleforge.root.path}/actioneditor")
 @RequiredArgsConstructor
 public class ActionEditorController {
 

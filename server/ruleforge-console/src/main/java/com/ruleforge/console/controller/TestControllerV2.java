@@ -49,7 +49,7 @@ import java.util.Set;
  */
 @Slf4j
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/test")
+@RequestMapping("/${ruleforge.root.path}/test")
 @RequiredArgsConstructor
 public class TestControllerV2 {
     private final KnowledgeBuilder knowledgeBuilder;

@@ -70,7 +70,7 @@ import java.util.Set;
  */
 @Slf4j
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/packageeditor")
+@RequestMapping("/${ruleforge.root.path}/packageeditor")
 @RequiredArgsConstructor
 public class TestController {
     public static final String KB_KEY = "_kb";

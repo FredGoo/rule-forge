@@ -19,7 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
  */
 @Slf4j
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/loadKnowledge")
+@RequestMapping("/${ruleforge.root.path}/loadKnowledge")
 @RequiredArgsConstructor
 public class LoadKnowledgeController extends BaseController {
 

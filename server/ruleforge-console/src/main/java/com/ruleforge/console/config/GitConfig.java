@@ -7,12 +7,12 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Configuration for Git-based file version storage.
  *
- * Properties are bound from "ruleforgeV2.git.*" in application.yml.
+ * Properties are bound from "ruleforge.git.*" in application.yml.
  * Git is always active — it is the primary content store.
  */
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "ruleforgeV2.git")
+@ConfigurationProperties(prefix = "ruleforge.git")
 public class GitConfig {
 
     /**

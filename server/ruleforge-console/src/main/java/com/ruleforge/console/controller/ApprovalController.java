@@ -23,7 +23,7 @@ import java.util.Map;
 
 @Slf4j
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/approval")
+@RequestMapping("/${ruleforge.root.path}/approval")
 @RequiredArgsConstructor
 public class ApprovalController extends BaseController {
 

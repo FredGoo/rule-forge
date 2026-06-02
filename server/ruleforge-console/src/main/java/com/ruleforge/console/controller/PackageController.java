@@ -48,7 +48,7 @@ import static com.ruleforge.console.repository.BaseRepositoryService.RES_PACKGE_
 
 @Slf4j
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/packageeditor")
+@RequestMapping("/${ruleforge.root.path}/packageeditor")
 @RequiredArgsConstructor
 public class PackageController extends BaseController {
 

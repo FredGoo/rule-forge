@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/clientconfig")
+@RequestMapping("/${ruleforge.root.path}/clientconfig")
 @RequiredArgsConstructor
 public class ClientConfigController {
 

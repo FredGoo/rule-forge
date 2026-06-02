@@ -17,7 +17,7 @@ import java.io.InputStream;
 import java.util.*;
 
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/crosstabeditor")
+@RequestMapping("/${ruleforge.root.path}/crosstabeditor")
 @RequiredArgsConstructor
 public class CrosstabEditorController {
 

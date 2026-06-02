@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/flow")
+@RequestMapping("/${ruleforge.root.path}/flow")
 @RequiredArgsConstructor
 public class BpmnFlowController {
 

@@ -15,7 +15,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/variableeditor")
+@RequestMapping("/${ruleforge.root.path}/variableeditor")
 @RequiredArgsConstructor
 public class VariableController {
 

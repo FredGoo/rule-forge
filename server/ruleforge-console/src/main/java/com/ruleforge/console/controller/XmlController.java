@@ -30,7 +30,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/xml")
+@RequestMapping("/${ruleforge.root.path}/xml")
 @RequiredArgsConstructor
 public class XmlController {
 

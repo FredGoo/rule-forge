@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/deployment")
+@RequestMapping("/${ruleforge.root.path}/deployment")
 @RequiredArgsConstructor
 @Slf4j
 public class DeploymentController {

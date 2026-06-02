@@ -37,7 +37,7 @@ public class ExecResourceProvider implements ResourceProvider {
     }
 
     private String sendRequest(String path, String projectVersion) {
-        String url = "/ruleforgeV2/frame/fileSource";
+        String url = "/ruleforge/frame/fileSource";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         MultiValueMap<String, String> map = new LinkedMultiValueMap<>();

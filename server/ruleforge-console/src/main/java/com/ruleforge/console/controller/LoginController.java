@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}")
+@RequestMapping("/${ruleforge.root.path}")
 public class LoginController {
 
     public static final String USER_SESSION_KEY = "ruleforge.login.user";

@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/permission")
+@RequestMapping("/${ruleforge.root.path}/permission")
 @RequiredArgsConstructor
 public class PermissionController {
 

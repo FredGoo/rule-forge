@@ -67,7 +67,7 @@ import static com.ruleforge.console.storage.RuleForgeBaseRepositoryService.RES_P
 
 @Slf4j
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/frame")
+@RequestMapping("/${ruleforge.root.path}/frame")
 @RequiredArgsConstructor
 public class FrameController extends BaseController {
     private static final String CLASSIFY_COOKIE_NAME = "_lib_classify";

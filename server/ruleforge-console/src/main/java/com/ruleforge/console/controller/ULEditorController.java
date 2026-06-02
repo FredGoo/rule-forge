@@ -29,7 +29,7 @@ import java.io.OutputStream;
  */
 @Slf4j
 @RestController
-@RequestMapping("/${ruleforgeV2.root.path}/uleditor")
+@RequestMapping("/${ruleforge.root.path}/uleditor")
 @RequiredArgsConstructor
 public class ULEditorController extends BaseController {
 
