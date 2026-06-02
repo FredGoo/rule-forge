@@ -7,21 +7,12 @@ FROM maven:3.9-eclipse-temurin-17 AS builder
 
 WORKDIR /build
 
-# 先复制 POM 文件，利用 Docker 缓存加速依赖下载
-COPY pom.xml .
-COPY ruleforge-core/pom.xml ruleforge-core/
-COPY ruleforge-decision/pom.xml ruleforge-decision/
-COPY ruleforge-executor/pom.xml ruleforge-executor/
-COPY ruleforge-executor-app/pom.xml ruleforge-executor-app/
+# 复制整个 server 树(含全部 7 个模块),根 pom 引用了所有子模块
+# 分模块 COPY 会因为根 pom 找不到子模块而构建失败
+COPY . .
 
 # 下载依赖（仅 POM 变化时重新执行）
 RUN mvn dependency:go-offline -B -pl ruleforge-executor-app -am
-
-# 复制源代码
-COPY ruleforge-core/ ruleforge-core/
-COPY ruleforge-decision/ ruleforge-decision/
-COPY ruleforge-executor/ ruleforge-executor/
-COPY ruleforge-executor-app/ ruleforge-executor-app/
 
 # 构建（跳过测试）
 RUN mvn clean package -DskipTests -B -pl ruleforge-executor-app -am
