@@ -79,10 +79,6 @@ flowable:
   database-schema-update: true
   async-executor-activate: false
 
-logging:
-  level:
-    org.springframework.web: DEBUG
-
 # 延迟加载配置
 lazy-load:
   enabled: true
