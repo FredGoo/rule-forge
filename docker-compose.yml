@@ -46,6 +46,10 @@ services:
       RF_DB_URL: jdbc:mysql://mysql:3306/ruleforge_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true
       RF_DB_USERNAME: root
       RF_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ruleforge}
+      # Flowable 独立库 (commit 2)
+      FLOWABLE_DB_URL: jdbc:mysql://mysql:3306/flowable_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true
+      FLOWABLE_DB_USERNAME: root
+      FLOWABLE_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ruleforge}
       EXECUTOR_URL: http://executor-app:8280
       RF_REPO_DIR: /app/data/riskruleforge
       JAVA_OPTS: "-Xmx2048m -Xms512m -XX:+UseG1GC -XX:+UseContainerSupport"
@@ -72,6 +76,10 @@ services:
       RF_DB_URL: jdbc:mysql://mysql:3306/ruleforge_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true
       RF_DB_USERNAME: root
       RF_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ruleforge}
+      # Flowable 独立库 (commit 2)
+      FLOWABLE_DB_URL: jdbc:mysql://mysql:3306/flowable_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true
+      FLOWABLE_DB_USERNAME: root
+      FLOWABLE_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ruleforge}
       CONSOLE_URL: http://console-app:8180
       JAVA_OPTS: "-Xmx1024m -Xms256m -XX:+UseG1GC -XX:+UseContainerSupport"
     volumes:

@@ -20,4 +20,13 @@ public class DataSourceConfig {
     public DataSource ruleforgeDataSource() {
         return DataSourceBuilder.create().build();
     }
+
+    /**
+     * Flowable 专用数据源 — 单独一库,避免和 Flyway 抢 ruleforge_db。
+     */
+    @Bean
+    @ConfigurationProperties(prefix = "spring.datasource.flowable")
+    public DataSource flowableDataSource() {
+        return DataSourceBuilder.create().build();
+    }
 }

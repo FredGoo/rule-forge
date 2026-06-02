@@ -32,4 +32,14 @@ public class DataSourceConfig {
     public DataSource ruleforgeDataSource() {
         return DataSourceBuilder.create().build();
     }
+
+    /**
+     * Flowable 专用数据源 — 单独一库,不让 Flowable 自 init 的 SQL 脚本
+     * 跟 Flyway 管理的 ruleforge_db 抢同一张 schema。
+     */
+    @Bean
+    @ConfigurationProperties(prefix = "spring.datasource.flowable")
+    public DataSource flowableDataSource() {
+        return DataSourceBuilder.create().build();
+    }
 }
