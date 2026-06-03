@@ -107,3 +107,26 @@ logging:
     com.ruleforge: DEBUG
     org.springframework.jdbc: DEBUG
     com.zaxxer.hikari: DEBUG
+
+# Actuator — /actuator/health 给 docker HEALTHCHECK 探活,prometheus 给
+# Phase 1 监控(详见 CHANGELOG 5.0.0)暴露指标
+management:
+  endpoints:
+    web:
+      exposure:
+        # 显式列出: health 给容器探活,info/metrics/prometheus 给运维面板
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      # dev 模式直接展示子组件状态方便排查;生产建议 when-authorized
+      show-details: always
+      probes:
+        enabled: true   # 启用 /actuator/health/liveness 和 /readiness(K8s 风格)
+  health:
+    db:
+      enabled: true    # 检查 HikariCP 能不能拿到连接
+    diskspace:
+      enabled: true
+  info:
+    env:
+      enabled: true    # /actuator/info 暴露 build/git/env 信息

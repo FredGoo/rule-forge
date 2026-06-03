@@ -65,3 +65,24 @@ logging:
   level:
     root: INFO
     com.ruleforge: DEBUG
+
+# Actuator — /actuator/health 给 docker HEALTHCHECK 探活,prometheus 给
+# Phase 1 监控(详见 CHANGELOG 5.0.0)暴露指标
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: true
+    diskspace:
+      enabled: true
+  info:
+    env:
+      enabled: true
