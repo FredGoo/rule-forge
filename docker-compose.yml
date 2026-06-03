@@ -21,11 +21,13 @@ services:
       - mysql_data:/var/lib/mysql
       - ./docker/init-sql:/docker-entrypoint-initdb.d
     healthcheck:
+      # mysqladmin ping 本身就快 (~50ms)。interval 2s 让 console 尽快能连上 mysql。
+      # start_period 给 init SQL 跑完 5s 缓冲,retries 5 = 10s 总等待。
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-ruleforge}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
+      interval: 2s
+      timeout: 2s
+      retries: 5
+      start_period: 5s
     networks:
       - ruleforge
 
