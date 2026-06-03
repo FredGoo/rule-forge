@@ -13,9 +13,12 @@ test.describe('Knowledge Package Management', () => {
         await login(page);
     });
 
-    // Given: User navigates to package editor with a file parameter
-    // When: Page loads
-    // Then: Package editor should render with Splitter and Grids
+    // ── BDD STUB: should load package editor page ──
+    // Given: A logged-in user navigates to /html/package-editor.html?file=/project/test.rp
+    // When:  The page finishes loading and the network is idle
+    // Then:  The browser title should contain "知识包编辑器"
+    // And:   The #container should be visible
+    // And:   At least one visible table.table-bordered should be rendered (master or slave grid)
     test('should load package editor page', async ({ page }) => {
         await page.goto('/html/package-editor.html?file=/project/test.rp');
         await page.waitForLoadState('networkidle');
@@ -32,9 +35,11 @@ test.describe('Knowledge Package Management', () => {
         await expect(visibleTables.first()).toBeVisible({ timeout: 10000 });
     });
 
-    // Given: User is on package editor page
-    // When: Page loads
-    // Then: Toolbar buttons should be visible
+    // ── BDD STUB: should display toolbar buttons ──
+    // Given: A logged-in user is on the package editor page
+    // When:  The toolbar finishes rendering
+    // Then:  Buttons labeled exactly "添加包" and "保存" (in #container .btn-group) should be visible
+    // And:   Buttons containing "生成版本" and "添加文件" should also be visible
     test('should display toolbar buttons', async ({ page }) => {
         await page.goto('/html/package-editor.html?file=/project/test.rp');
         await page.waitForLoadState('networkidle');
@@ -56,9 +61,11 @@ test.describe('Knowledge Package Management', () => {
         await expect(addFileButton).toBeVisible();
     });
 
-    // Given: User is on package editor page
-    // When: Page loads with data
-    // Then: Grid tables should be displayed with correct headers
+    // ── BDD STUB: should display grid tables with headers ──
+    // Given: A logged-in user is on the package editor page
+    // When:  The grid tables finish rendering
+    // Then:  At least one table.table-bordered should be attached to the DOM
+    // And:   Column header labels "编码" and "名称" should be present somewhere in the rendered grid
     test('should display grid tables with headers', async ({ page }) => {
         await page.goto('/html/package-editor.html?file=/project/test.rp');
         await page.waitForLoadState('networkidle');
@@ -75,9 +82,10 @@ test.describe('Knowledge Package Management', () => {
         await expect(nameHeader.first()).toBeAttached();
     });
 
-    // Given: User is on package editor page
-    // When: User clicks "添加包" button
-    // Then: A dialog should appear for creating a package
+    // ── BDD STUB: should show dialog when clicking add package button ──
+    // Given: A logged-in user is on the package editor page
+    // When:  The user clicks the "添加包" toolbar button
+    // Then:  A package-creation dialog (a visible .modal / .modal-dialog / .bootbox) should appear
     test('should show dialog when clicking add package button', async ({ page }) => {
         await page.goto('/html/package-editor.html?file=/project/test.rp');
         await page.waitForLoadState('networkidle');
@@ -115,9 +123,11 @@ test.describe('Knowledge Package Management', () => {
         }
     });
 
-    // Given: User is on package editor page
-    // When: User clicks "保存" button
-    // Then: Save action should be triggered
+    // ── BDD STUB: should trigger save when clicking save button ──
+    // Given: A logged-in user is on the package editor page
+    // When:  The user clicks the "保存" button inside #container .btn-group
+    // Then:  The save handler should fire (a save request to the backend may be issued)
+    // And:   No uncaught error should be thrown
     test('should trigger save when clicking save button', async ({ page }) => {
         await page.goto('/html/package-editor.html?file=/project/test.rp');
         await page.waitForLoadState('networkidle');

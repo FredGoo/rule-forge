@@ -138,9 +138,11 @@ test.describe('Agent AI Assistant Panel', () => {
     // ──────────────────────────────────────────────────
     // Scenario 10: Config panel can be toggled closed
     // ──────────────────────────────────────────────────
-    // Given: Config panel is open
-    // When: User clicks the gear button again
-    // Then: Config panel should hide
+    // Given:  Agent panel is open
+    //  And:   Config panel is currently open(LLM 厂商 label 可见)
+    // When:   User clicks the gear(⚙)button a second time
+    // Then:   Config panel should hide
+    //  And:   the "LLM 厂商" label should no longer be visible
     test('should toggle config panel closed', async ({page}) => {
         // Open config
         await page.locator('button[title="配置"]').click();

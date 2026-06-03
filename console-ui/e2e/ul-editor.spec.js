@@ -13,9 +13,11 @@ test.describe('UL Script Editor', () => {
         await login(page);
     });
 
-    // Given: User navigates to UL editor with a file parameter
-    // When: Page loads
-    // Then: UL script editor should render with CodeMirror
+    // ── BDD STUB: should load UL editor page with CodeMirror ──
+    // Given: A logged-in user navigates to /html/ul-editor.html?file=/project/script.ul
+    // When:  The page finishes loading and the network is idle
+    // Then:  The browser title should contain "脚本编辑器"
+    // And:   At least one .CodeMirror element should be visible (the UL script editor)
     test('should load UL editor page with CodeMirror', async ({ page }) => {
         await page.goto('/html/ul-editor.html?file=/project/script.ul');
         await page.waitForLoadState('networkidle');
@@ -28,9 +30,11 @@ test.describe('UL Script Editor', () => {
         await expect(codeMirror).toBeVisible({ timeout: 15000 });
     });
 
-    // Given: User is on UL editor page
-    // When: Page loads
-    // Then: Toolbar with buttons should be visible
+    // ── BDD STUB: should display toolbar with buttons ──
+    // Given: A logged-in user is on the UL editor page
+    // When:  The EditorToolbar finishes mounting
+    // Then:  The #toolbarContainer should be visible
+    // And:   Buttons labeled "保存", "变量库", "常量库", "动作库", "参数库", and "快速测试" should all be visible
     test('should display toolbar with buttons', async ({ page }) => {
         await page.goto('/html/ul-editor.html?file=/project/script.ul');
         await page.waitForLoadState('networkidle');
@@ -61,9 +65,11 @@ test.describe('UL Script Editor', () => {
         await expect(quickTestButton).toBeVisible();
     });
 
-    // Given: User is on UL editor page
-    // When: CodeMirror initializes
-    // Then: Editor should display code content with line numbers
+    // ── BDD STUB: should display CodeMirror with line numbers ──
+    // Given: A logged-in user is on the UL editor page
+    // When:  CodeMirror has finished initializing
+    // Then:  The .CodeMirror element should be visible
+    // And:   The CodeMirror gutters / line-number column should be visible
     test('should display CodeMirror with line numbers', async ({ page }) => {
         await page.goto('/html/ul-editor.html?file=/project/script.ul');
         await page.waitForLoadState('networkidle');
@@ -77,9 +83,10 @@ test.describe('UL Script Editor', () => {
         await expect(lineNumbers.first()).toBeVisible();
     });
 
-    // Given: User is on UL editor page
-    // When: User clicks on the CodeMirror editor and types
-    // Then: Content should appear in editor
+    // ── BDD STUB: should allow typing in CodeMirror editor ──
+    // Given: A logged-in user is on the UL editor page with CodeMirror rendered
+    // When:  The user clicks inside the .CodeMirror-code / .CodeMirror-scroll area and types "// test comment"
+    // Then:  The typed content should appear inside the .CodeMirror-code element
     test('should allow typing in CodeMirror editor', async ({ page }) => {
         await page.goto('/html/ul-editor.html?file=/project/script.ul');
         await page.waitForLoadState('networkidle');
@@ -100,9 +107,10 @@ test.describe('UL Script Editor', () => {
         await expect(codeContent).toBeVisible();
     });
 
-    // Given: User is on UL editor page
-    // When: Page loads
-    // Then: Dialog container should be present for modal dialogs
+    // ── BDD STUB: should render dialog container ──
+    // Given: A logged-in user is on the UL editor page
+    // When:  The React shell mounts the dialog provider
+    // Then:  The #dialogContainer element should be attached to the DOM
     test('should render dialog container', async ({ page }) => {
         await page.goto('/html/ul-editor.html?file=/project/script.ul');
         await page.waitForLoadState('networkidle');

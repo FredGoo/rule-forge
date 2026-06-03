@@ -14,9 +14,12 @@ test.describe('Main Frame Navigation', () => {
         await page.goto('/index.html');
     });
 
-    // Given: User is logged in and on main frame
-    // When: Page loads
-    // Then: Sidebar with tree and welcome page should be visible
+    // ── BDD STUB: should load main frame with sidebar and welcome page ──
+    // Given: A logged-in user navigates to /index.html
+    // When:  The main frame's React shell finishes its initial mount (Splitter + Welcome page)
+    // Then:  The #container element should be visible
+    // And:   A .tree div representing the sidebar should be visible
+    // And:   A welcome heading "欢迎使用决策系统" should be visible
     test('should load main frame with sidebar and welcome page', async ({ page }) => {
         // Then: The container div should be rendered
         const container = page.locator('#container');
@@ -32,9 +35,12 @@ test.describe('Main Frame Navigation', () => {
         await expect(welcomePage).toBeVisible({ timeout: 10000 });
     });
 
-    // Given: User is on main frame
-    // When: Sidebar loads
-    // Then: Toolbar with dropdowns and search box should be visible
+    // ── BDD STUB: should display sidebar toolbar with search and dropdowns ──
+    // Given: A logged-in user is on the main frame
+    // When:  The sidebar toolbar finishes rendering
+    // Then:  A .fileSearchText input and its .glyphicon-search icon should be visible
+    // And:   At least two .dropdown-toggle controls should be present
+    // And:   A logout link (title="退出登录") and the .glyphicon-user username indicator should be visible
     test('should display sidebar toolbar with search and dropdowns', async ({ page }) => {
         // Then: Search input should be visible
         const searchInput = page.locator('.fileSearchText');
@@ -58,9 +64,12 @@ test.describe('Main Frame Navigation', () => {
         await expect(userSpan).toBeVisible();
     });
 
-    // Given: User is on main frame with sidebar
-    // When: User looks at the tree
-    // Then: Tree nodes should be present with expandable items
+    // ── BDD STUB: should display project tree with nodes ──
+    // Given: A logged-in user is on the main frame
+    // When:  The project tree finishes its initial fetch + render
+    // Then:  At least one .tree li should be visible
+    // And:   Some tree nodes may carry .rf-plus / .rf-minus expand icons
+    // And:   At least one .tree span a link should be visible
     test('should display project tree with nodes', async ({ page }) => {
         // Then: Tree should contain list items
         const treeItems = page.locator('.tree li');
@@ -94,9 +103,11 @@ test.describe('Main Frame Navigation', () => {
         }
     });
 
-    // Given: User is on main frame with project tree
-    // When: User right-clicks on a tree node
-    // Then: Context menu should appear with operations
+    // ── BDD STUB: should show context menu on right-click ──
+    // Given: A logged-in user is on the main frame with a project tree loaded
+    // When:  The user right-clicks on a tree node (.tree span[id^="node-"])
+    // Then:  A visible context menu (a .dropdown-menu:visible or .context-menu:visible) should appear
+    // (The exact menu items depend on the node type — folder vs. file)
     test('should show context menu on right-click', async ({ page }) => {
         // Given: Wait for tree to load
         const treeSpan = page.locator('.tree span[id^="node-"]').first();
@@ -111,9 +122,11 @@ test.describe('Main Frame Navigation', () => {
         await page.waitForTimeout(500);
     });
 
-    // Given: User is on main frame
-    // When: User searches for a file using search box
-    // Then: Tree should reload with filtered results
+    // ── BDD STUB: should search files when entering text and clicking search ──
+    // Given: A logged-in user is on the main frame
+    // When:  The user types "variable" into .fileSearchText and clicks the .glyphicon-search icon
+    // Then:  The tree should re-fetch with the new filter (network goes idle)
+    // And:   The .tree div should remain visible (re-rendered with filtered results)
     test('should search files when entering text and clicking search', async ({ page }) => {
         // Given: Locate search box
         const searchInput = page.locator('.fileSearchText');
@@ -167,9 +180,13 @@ test.describe('Main Frame Navigation', () => {
         }
     });
 
-    // Given: User is on main frame
-    // When: User examines the display mode dropdown
-    // Then: Dropdown should have toggle and menu items
+    // ── BDD STUB: should have display mode dropdown with options ──
+    // Given: A logged-in user is on the main frame
+    // When:  The sidebar toolbar finishes rendering
+    // Then:  The first span.dropdown should be attached
+    // And:   Its .dropdown-toggle should have title="知识库内容展示方式"
+    // And:   Its .dropdown-menu should contain at least one <li><a> menu item
+    // And:   The menu items should include both "分类展示" and "集中展示"
     test('should have display mode dropdown with options', async ({ page }) => {
         // Given: Wait for toolbar to load
         const displayDropdown = page.locator('span.dropdown').first();

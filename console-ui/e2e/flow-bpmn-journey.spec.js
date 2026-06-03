@@ -81,7 +81,12 @@ test.describe('小微信贷决策流 - 完整用户旅程', () => {
         await expect(page.locator('.file-tree-search-wrapper')).toBeVisible();
     });
 
-    // Scenario 2: 创建小微信贷项目
+    // ── BDD STUB: Scenario 2: 应成功创建新项目 "小微信贷决策" ──
+    // Given: A user has logged in (admin / 123456) and the file-tree sidebar is visible
+    // When:  The user clicks the project dropdown in the topbar
+    // And:   Selects "创建新项目"
+    // And:   Enters "小微信贷决策" as the new project name and clicks "保存"
+    // Then:  Re-opening the project dropdown should show "小微信贷决策" as one of the options
     test('Scenario 2: 应成功创建新项目 "小微信贷决策"', async ({ page }) => {
         await page.goto('/html/login.html');
         await page.locator('input[type="text"]').first().fill('admin');
@@ -105,7 +110,14 @@ test.describe('小微信贷决策流 - 完整用户旅程', () => {
         await expect(page.getByText('小微信贷决策')).toBeVisible();
     });
 
-    // Scenario 3 & 4: 切换项目并创建决策流文件
+    // ── BDD STUB: Scenario 3-4: 应切换到新项目并创建决策流文件 ──
+    // Given: A user has logged in and switched to the "小微信贷决策" project via the topbar dropdown
+    // And:   The file tree shows 资源 and 决策流 folder links
+    // When:  The user right-clicks the 决策流 folder
+    // And:   Clicks "添加决策流" in the context menu
+    // And:   Enters "贷款审批决策流" as the file name and clicks "保存"
+    // Then:  Expanding the 决策流 folder should reveal a link named "贷款审批决策流.rl.xml"
+    // (Note: tree should auto-refresh after creation; if not, manually expand the folder)
     test('Scenario 3-4: 应切换到新项目并创建决策流文件', async ({ page }) => {
         // Login
         await page.goto('/html/login.html');
@@ -142,7 +154,13 @@ test.describe('小微信贷决策流 - 完整用户旅程', () => {
         ).toBeVisible({ timeout: 5000 });
     });
 
-    // Scenario 5: 打开决策流编辑器
+    // ── BDD STUB: Scenario 5: 点击决策流文件应打开BPMN编辑器 ──
+    // Given: A user has logged in, switched to the "小微信贷决策" project and expanded the 决策流 folder
+    // When:  The user clicks the "贷款审批决策流.rl.xml" file in the tree
+    // Then:  An iframe whose id contains "贷款审批决策流" should become visible
+    // And:   Inside that iframe, "保存" and "快速测试" toolbar buttons should be visible
+    // And:   The BPMN palette should expose "开始节点", "结束节点", and "规则包节点"
+    // (Note: new (empty) files should not show "加载决策流失败" error; server should return 404 for not-yet-saved BPMN content)
     test('Scenario 5: 点击决策流文件应打开BPMN编辑器', async ({ page }) => {
         // Login and navigate to project
         await page.goto('/html/login.html');

@@ -13,9 +13,11 @@ test.describe('Wizard Rule Editor', () => {
         await login(page);
     });
 
-    // Given: User navigates to ruleset editor with a file parameter
-    // When: Page loads
-    // Then: Ruleset editor should render
+    // ── BDD STUB: should load ruleset editor page ──
+    // Given: A logged-in user navigates to /html/ruleset-editor.html?file=/project/rules.xml
+    // When:  The page finishes loading and the network is idle
+    // Then:  The browser title should contain "决策集编辑器"
+    // And:   The #container element should be visible
     test('should load ruleset editor page', async ({ page }) => {
         await page.goto('/html/ruleset-editor.html?file=/project/rules.xml');
         await page.waitForLoadState('networkidle');
@@ -28,9 +30,11 @@ test.describe('Wizard Rule Editor', () => {
         await expect(container).toBeVisible();
     });
 
-    // Given: User is on ruleset editor page
-    // When: Page loads
-    // Then: Toolbar with buttons should be visible
+    // ── BDD STUB: should display toolbar with rule buttons ──
+    // Given: A logged-in user is on the ruleset editor page
+    // When:  The EditorToolbar finishes mounting
+    // Then:  The #toolbarContainer should be visible
+    // And:   Buttons labeled "保存", "添加规则", "添加循环规则", and "快速测试" should all be visible inside the toolbar
     test('should display toolbar with rule buttons', async ({ page }) => {
         await page.goto('/html/ruleset-editor.html?file=/project/rules.xml');
         await page.waitForLoadState('networkidle');
@@ -56,9 +60,11 @@ test.describe('Wizard Rule Editor', () => {
         await expect(quickTestButton).toBeVisible();
     });
 
-    // Given: User is on ruleset editor page
-    // When: RuleFactory loads data
-    // Then: Container should have rule content
+    // ── BDD STUB: should display rule content in container ──
+    // Given: A logged-in user is on the ruleset editor page
+    // When:  RuleFactory has loaded its data
+    // Then:  The #container should be visible
+    // And:   The #container should have at least one child element (rendered rule rows)
     test('should display rule content in container', async ({ page }) => {
         await page.goto('/html/ruleset-editor.html?file=/project/rules.xml');
         await page.waitForLoadState('networkidle');
@@ -73,9 +79,10 @@ test.describe('Wizard Rule Editor', () => {
         expect(childCount).toBeGreaterThan(0);
     });
 
-    // Given: User is on ruleset editor page
-    // When: User clicks "添加规则" button
-    // Then: A bootbox prompt should appear for rule key
+    // ── BDD STUB: should show prompt when clicking add rule button ──
+    // Given: A logged-in user is on the ruleset editor page with the toolbar rendered
+    // When:  The user clicks the "添加规则" toolbar button
+    // Then:  A bootbox prompt (a visible .modal / .bootbox .modal-dialog) should appear asking for a rule key
     test('should show prompt when clicking add rule button', async ({ page }) => {
         await page.goto('/html/ruleset-editor.html?file=/project/rules.xml');
         await page.waitForLoadState('networkidle');
@@ -100,9 +107,10 @@ test.describe('Wizard Rule Editor', () => {
         }
     });
 
-    // Given: User is on ruleset editor page
-    // When: Page loads
-    // Then: Dialog container should be present for modal dialogs
+    // ── BDD STUB: should render dialog container ──
+    // Given: A logged-in user is on the ruleset editor page
+    // When:  The React shell mounts the dialog provider
+    // Then:  The #dialogContainer element should be attached to the DOM
     test('should render dialog container', async ({ page }) => {
         await page.goto('/html/ruleset-editor.html?file=/project/rules.xml');
         await page.waitForLoadState('networkidle');

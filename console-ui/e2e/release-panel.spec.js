@@ -44,12 +44,11 @@ test.describe('Release Panel', () => {
         await expect(page.locator('button:has-text("陪跑配置")')).toBeVisible();
     });
 
-    // ──────────────────────────────────────────────────
-    // Scenario 3: Default view shows environment content
-    // ──────────────────────────────────────────────────
-    // Given: User has opened the release panel
-    // When: The default "环境管理" tab is active
-    // Then: The environment content area should be visible (empty state "暂无环境配置" or a table)
+    // ── BDD STUB: should display environment content on default tab ──
+    // Given: A logged-in user has opened the release panel via the "版本发布" ActivityBar item
+    // When:  The default "环境管理" tab is active
+    // Then:  The environment content area should be visible
+    // And:   Either the empty-state message "暂无环境配置" or an environment table should be shown
     test('should display environment content on default tab', async ({page}) => {
         // Default tab shows either "暂无环境配置" empty state or an environment table
         const emptyState = page.locator('text=暂无环境配置');

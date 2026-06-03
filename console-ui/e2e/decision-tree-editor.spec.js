@@ -13,9 +13,11 @@ test.describe('Decision Tree Editor', () => {
         await login(page);
     });
 
-    // Given: User navigates to decision tree editor with a file parameter
-    // When: Page loads
-    // Then: Decision tree editor should render
+    // ── BDD STUB: should load decision tree editor page ──
+    // Given: A logged-in user navigates to /html/decision-tree-editor.html?file=/project/decision-tree.xml
+    // When:  The page finishes loading and the network is idle
+    // Then:  The browser title should contain "决策树编辑器"
+    // And:   The #container element should be visible
     test('should load decision tree editor page', async ({ page }) => {
         await page.goto('/html/decision-tree-editor.html?file=/project/decision-tree.xml');
         await page.waitForLoadState('networkidle');
@@ -28,9 +30,13 @@ test.describe('Decision Tree Editor', () => {
         await expect(container).toBeVisible();
     });
 
-    // Given: User is on decision tree editor page
-    // When: Page loads
-    // Then: Toolbar with buttons should be visible
+    // ── BDD STUB: should display toolbar with buttons ──
+    // Given: A logged-in user is on the decision tree editor page
+    // When:  The EditorToolbar component finishes mounting
+    // Then:  The #toolbarContainer should be visible
+    // And:   A button labeled "保存" should be visible inside the toolbar
+    // And:   A button labeled "变量库" should be visible
+    // And:   A button labeled "快速测试" should be visible
     test('should display toolbar with buttons', async ({ page }) => {
         await page.goto('/html/decision-tree-editor.html?file=/project/decision-tree.xml');
         await page.waitForLoadState('networkidle');
@@ -52,9 +58,11 @@ test.describe('Decision Tree Editor', () => {
         await expect(quickTestButton).toBeVisible();
     });
 
-    // Given: User is on decision tree editor page
-    // When: DecisionTree component initializes
-    // Then: Tree canvas area should be rendered
+    // ── BDD STUB: should render decision tree canvas ──
+    // Given: A logged-in user is on the decision tree editor page
+    // When:  The DecisionTree JS module has initialized
+    // Then:  The #container should be visible
+    // And:   The #container should have at least one child element (canvas/SVG nodes)
     test('should render decision tree canvas', async ({ page }) => {
         await page.goto('/html/decision-tree-editor.html?file=/project/decision-tree.xml');
         await page.waitForLoadState('networkidle');
@@ -69,9 +77,10 @@ test.describe('Decision Tree Editor', () => {
         expect(childCount).toBeGreaterThan(0);
     });
 
-    // Given: User is on decision tree editor page
-    // When: User clicks "快速测试" button
-    // Then: Quick test dialog should appear
+    // ── BDD STUB: should show quick test dialog ──
+    // Given: A logged-in user is on the decision tree editor page with the toolbar rendered
+    // When:  The user clicks the "快速测试" button
+    // Then:  A QuickTestDialog (modal/bootbox) should appear inside #dialogContainer
     test('should show quick test dialog', async ({ page }) => {
         await page.goto('/html/decision-tree-editor.html?file=/project/decision-tree.xml');
         await page.waitForLoadState('networkidle');
@@ -93,9 +102,10 @@ test.describe('Decision Tree Editor', () => {
         expect(typeof dialogVisible).toBe('boolean');
     });
 
-    // Given: User is on decision tree editor page
-    // When: Page loads
-    // Then: Dialog container should be present for modal dialogs
+    // ── BDD STUB: should render dialog container ──
+    // Given: A logged-in user is on the decision tree editor page
+    // When:  The React shell mounts the dialog provider
+    // Then:  The #dialogContainer element should be attached to the DOM
     test('should render dialog container', async ({ page }) => {
         await page.goto('/html/decision-tree-editor.html?file=/project/decision-tree.xml');
         await page.waitForLoadState('networkidle');

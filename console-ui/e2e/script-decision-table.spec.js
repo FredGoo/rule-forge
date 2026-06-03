@@ -13,9 +13,11 @@ test.describe('Script Decision Table Editor', () => {
         await login(page);
     });
 
-    // Given: User navigates to script decision table editor with a file parameter
-    // When: Page loads
-    // Then: Script decision table editor should render
+    // ── BDD STUB: should load script decision table editor page ──
+    // Given: A logged-in user navigates to /html/script-decision-table-editor.html?file=/project/script-table.xml
+    // When:  The page finishes loading and the network is idle
+    // Then:  The browser title should contain "脚本式决策表编辑器"
+    // And:   The #container element should be visible
     test('should load script decision table editor page', async ({ page }) => {
         await page.goto('/html/script-decision-table-editor.html?file=/project/script-table.xml');
         await page.waitForLoadState('networkidle');
@@ -28,9 +30,11 @@ test.describe('Script Decision Table Editor', () => {
         await expect(container).toBeVisible();
     });
 
-    // Given: User is on script decision table editor page
-    // When: Page loads
-    // Then: Container should have content
+    // ── BDD STUB: should render container with content ──
+    // Given: A logged-in user is on the script decision table editor page
+    // When:  The ScriptDecisionTable component has finished its initial render
+    // Then:  The #container should be visible
+    // And:   The #container should contain at least one child element (rendered table UI)
     test('should render container with content', async ({ page }) => {
         await page.goto('/html/script-decision-table-editor.html?file=/project/script-table.xml');
         await page.waitForLoadState('networkidle');
@@ -44,9 +48,10 @@ test.describe('Script Decision Table Editor', () => {
         expect(childCount).toBeGreaterThan(0);
     });
 
-    // Given: User is on script decision table editor page
-    // When: User right-clicks on container
-    // Then: No error should occur
+    // ── BDD STUB: should handle right-click on container ──
+    // Given: A logged-in user is on the script decision table editor page
+    // When:  The user right-clicks on the #container
+    // Then:  No uncaught error should be thrown
     test('should handle right-click on container', async ({ page }) => {
         await page.goto('/html/script-decision-table-editor.html?file=/project/script-table.xml');
         await page.waitForLoadState('networkidle');
@@ -59,9 +64,10 @@ test.describe('Script Decision Table Editor', () => {
         await page.waitForTimeout(500);
     });
 
-    // Given: User is on script decision table editor page
-    // When: Page loads
-    // Then: Dialog container should be present
+    // ── BDD STUB: should render dialog container ──
+    // Given: A logged-in user is on the script decision table editor page
+    // When:  The React shell mounts the dialog provider
+    // Then:  The #dialogContainer element should be attached to the DOM
     test('should render dialog container', async ({ page }) => {
         await page.goto('/html/script-decision-table-editor.html?file=/project/script-table.xml');
         await page.waitForLoadState('networkidle');

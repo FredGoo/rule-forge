@@ -13,9 +13,11 @@ test.describe('Scorecard Editor', () => {
         await login(page);
     });
 
-    // Given: User navigates to scorecard editor with a file parameter
-    // When: Page loads
-    // Then: Scorecard editor should render
+    // ── BDD STUB: should load scorecard editor page ──
+    // Given: A logged-in user navigates to /html/score-card-editor.html?file=/project/scorecard.xml
+    // When:  The page finishes loading and the network is idle
+    // Then:  The browser title should contain "评分卡编辑器"
+    // And:   The #tableContainer element should be visible
     test('should load scorecard editor page', async ({ page }) => {
         await page.goto('/html/score-card-editor.html?file=/project/scorecard.xml');
         await page.waitForLoadState('networkidle');
@@ -28,9 +30,11 @@ test.describe('Scorecard Editor', () => {
         await expect(tableContainer).toBeVisible();
     });
 
-    // Given: User is on scorecard editor page
-    // When: Page loads
-    // Then: Toolbar with buttons should be visible
+    // ── BDD STUB: should display toolbar with buttons ──
+    // Given: A logged-in user is on the scorecard editor page
+    // When:  The EditorToolbar finishes mounting
+    // Then:  The #toolbarContainer should be visible
+    // And:   Buttons labeled "保存", "添加属性行", "添加自定义列", and "快速测试" should all be visible inside the toolbar
     test('should display toolbar with buttons', async ({ page }) => {
         await page.goto('/html/score-card-editor.html?file=/project/scorecard.xml');
         await page.waitForLoadState('networkidle');
@@ -56,9 +60,11 @@ test.describe('Scorecard Editor', () => {
         await expect(quickTestButton).toBeVisible();
     });
 
-    // Given: User is on scorecard editor page
-    // When: ScoreCardTable initializes
-    // Then: Table should render inside tableContainer
+    // ── BDD STUB: should render scorecard table ──
+    // Given: A logged-in user is on the scorecard editor page
+    // When:  The ScoreCardTable component has initialized
+    // Then:  The #tableContainer should be visible
+    // And:   The #tableContainer should have at least one child element (the scorecard grid)
     test('should render scorecard table', async ({ page }) => {
         await page.goto('/html/score-card-editor.html?file=/project/scorecard.xml');
         await page.waitForLoadState('networkidle');
@@ -73,9 +79,10 @@ test.describe('Scorecard Editor', () => {
         expect(childCount).toBeGreaterThan(0);
     });
 
-    // Given: User is on scorecard editor page
-    // When: User clicks "添加属性行" button
-    // Then: New attribute row should be added
+    // ── BDD STUB: should add attribute row when clicking button ──
+    // Given: A logged-in user is on the scorecard editor page with the toolbar rendered
+    // When:  The user clicks the "添加属性行" toolbar button
+    // Then:  A new attribute row should be added to the scorecard table inside #tableContainer
     test('should add attribute row when clicking button', async ({ page }) => {
         await page.goto('/html/score-card-editor.html?file=/project/scorecard.xml');
         await page.waitForLoadState('networkidle');
@@ -95,9 +102,10 @@ test.describe('Scorecard Editor', () => {
         await page.waitForTimeout(500);
     });
 
-    // Given: User is on scorecard editor page
-    // When: Page loads
-    // Then: Dialog container should be present for modal dialogs
+    // ── BDD STUB: should render dialog container ──
+    // Given: A logged-in user is on the scorecard editor page
+    // When:  The React shell mounts the dialog provider
+    // Then:  The #dialogContainer element should be attached to the DOM
     test('should render dialog container', async ({ page }) => {
         await page.goto('/html/score-card-editor.html?file=/project/scorecard.xml');
         await page.waitForLoadState('networkidle');
