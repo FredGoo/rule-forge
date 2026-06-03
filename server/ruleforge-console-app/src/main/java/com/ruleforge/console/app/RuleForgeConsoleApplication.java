@@ -2,25 +2,15 @@ package com.ruleforge.console.app;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Import;
-
-import com.ruleforge.console.config.RuleForgeConsoleAutoConfiguration;
-import com.ruleforge.console.storage.impl.DatabaseProjectStorageServiceImpl;
-import com.ruleforge.decision.config.RuleForgeDecisionAutoConfiguration;
 
 
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
-// Spring Boot 4 不深入扫 BOOT-INF/lib/*.jar 里的 @Component 类,
-// 只能显式 @Import 来强制加载规则 console / decision 模块的入口。
-// 内部 @ComponentScan 同样不会从 nested jar 拾取子包,需要按需逐个加。
-@ImportAutoConfiguration({
-        RuleForgeConsoleAutoConfiguration.class,
-        RuleForgeDecisionAutoConfiguration.class
-})
-@Import(DatabaseProjectStorageServiceImpl.class)
+// 把原 ruleforge-console 模块的 208 个文件全部合进 console-app,
+// 控制器/service/mapper/storage/repository 都在 com.ruleforge.console.* 包下,
+// @SpringBootApplication 默认从本类的 com.ruleforge.console.app 包开始扫,
+// 同时覆盖到 com.ruleforge.console 父包,所以不需要再 @Import 旁路。
+// 决策模块通过 spring-boot-maven-plugin 处理,见 META-INF/spring/...imports。
 public class RuleForgeConsoleApplication {
 
     public static void main(String[] main) {
