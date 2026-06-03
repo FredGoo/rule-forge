@@ -15,12 +15,15 @@ import org.springframework.context.annotation.*;
 @PropertySource("classpath:ruleforge-console-context.properties")
 @ImportResource("classpath:ruleforge-console-context.xml")
 @ComponentScan(basePackages = {
+        "com.ruleforge.console.config",
         "com.ruleforge.console.controller",
         "com.ruleforge.console.service",
         "com.ruleforge.console.service.impl",
         "com.ruleforge.console.repository",
         "com.ruleforge.console.storage",
-        "com.ruleforge.console.storage.impl"
+        "com.ruleforge.console.storage.impl",
+        "com.ruleforge.console.flow",
+        "com.ruleforge.console.model"
 })
 @MapperScan(basePackages = {
         "com.ruleforge.console.mapper"

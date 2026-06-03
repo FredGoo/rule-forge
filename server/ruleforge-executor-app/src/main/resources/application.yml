@@ -4,6 +4,10 @@ server:
 spring:
   main:
     allow-circular-references: true
+    # 启动加速:关掉 banner 解析打印 + JMX 注册,各省 ~100-300ms
+    banner-mode: off
+  jmx:
+    enabled: false
   application:
     name: ruleforge-executor
   datasource:
