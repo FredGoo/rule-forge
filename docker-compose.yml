@@ -1,7 +1,12 @@
 # RuleForge 全栈部署配置
 # 使用方式: docker compose up
 # 访问地址: http://localhost (Console UI)
-version: '3.8'
+#
+# 启动加速原则:
+# - JVM 解释执行优先(JIT 后台异步),首屏更快
+# - MySQL 关掉一切 dev 用不上的特性(perf schema / binlog / DNS 反解)
+# - 显式 depends_on + service_healthy,容器按"业务就绪"顺序起来,不等空进程
+# - init: true 让容器 PID 1 走 tini,信号处理正确,关闭更快
 
 services:
   # ================================
@@ -10,6 +15,7 @@ services:
   mysql:
     image: mysql:8.0
     container_name: ruleforge-mysql
+    init: true
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ruleforge}
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
@@ -21,13 +27,17 @@ services:
       - mysql_data:/var/lib/mysql
       - ./docker/init-sql:/docker-entrypoint-initdb.d
     # 启动加速:
-    #   --skip-name-resolve         关闭 client DNS 反向解析,容器连 MySQL 每次握手省 ~5-50ms
+    #   --skip-name-resolve         关 client DNS 反解,容器连 MySQL 每次握手省 ~5-50ms
     #   --innodb-buffer-pool-size   显式指定 buffer pool,免去启动期探测 host RAM
     #   --innodb-flush-log-at-trx-commit=2  dev 模式可接受的小延迟换吞吐;生产去掉
+    #   --skip-log-bin              dev 不需要 binlog,关掉省 init + 写入开销
+    #   --performance-schema=OFF    关 perf schema,启动期省 ~500ms(无监控诉求)
     command:
       - --skip-name-resolve
       - --innodb-buffer-pool-size=512M
       - --innodb-flush-log-at-trx-commit=2
+      - --skip-log-bin
+      - --performance-schema=OFF
     healthcheck:
       # mysqladmin ping 本身就快 (~50ms)。interval 2s 让 console 尽快能连上 mysql。
       # start_period 给 init SQL 跑完 30s 缓冲(冷启动 + 3 个数据库 init),
@@ -48,6 +58,7 @@ services:
       context: ./server
       dockerfile: Dockerfile.console
     container_name: ruleforge-console
+    init: true
     environment:
       CONSOLE_PORT: "8180"
       SERVER_PORT: "8180"
@@ -84,6 +95,7 @@ services:
       context: ./server
       dockerfile: Dockerfile.executor
     container_name: ruleforge-executor
+    init: true
     environment:
       EXECUTOR_PORT: "8280"
       SERVER_PORT: "8280"
@@ -112,6 +124,7 @@ services:
       context: ./model-service
       dockerfile: Dockerfile
     container_name: ruleforge-model-service
+    init: true
     environment:
       PORT: "8501"
       LOG_LEVEL: INFO
@@ -128,6 +141,7 @@ services:
       context: ./console-ui
       dockerfile: Dockerfile
     container_name: ruleforge-console-ui
+    init: true
     ports:
       - "${CONSOLE_UI_PORT:-80}:80"
     # 等 console-app 的 healthcheck(/actuator/health)通过再起 nginx,
