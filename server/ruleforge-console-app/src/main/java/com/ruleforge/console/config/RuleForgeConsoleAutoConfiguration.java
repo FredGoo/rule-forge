@@ -24,6 +24,8 @@ import org.springframework.context.annotation.*;
         "com.ruleforge.console.storage.impl",
         "com.ruleforge.console.flow",
         "com.ruleforge.console.model",
+        // V5.8.0: BatchTest 多态化的包(Subject / InputSource / Orchestrator / Controller)
+        "com.ruleforge.console.batchtest",
         // Spring Boot 4 不扫 nested jar 的 @Component,补齐决策模块的所有包:
         //   config     — FlowableConfig 等 @Configuration
         //   connector  — 5 个数据源连接器(AdvanceAi/Jdbc/Rest/Pkl + TokenManager)

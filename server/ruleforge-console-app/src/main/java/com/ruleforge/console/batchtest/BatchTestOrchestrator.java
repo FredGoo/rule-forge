@@ -51,24 +51,18 @@ public class BatchTestOrchestrator {
     /**
      * V5.8.0 现阶段支持的 (subject, inputSource) 组合:
      *   ✓ FLOW + FILE         — 复用 BatchTestServiceImpl.executeBatchAsync
-     *   ✗ FLOW + DATASOURCE   — DatasourceInputSource.fetchAndInsert 抛 UnsupportedOperationException
-     *   ✗ DATASOURCE + *      — DatasourceOnlyBatchTestSubject 未实现
+     *   ✓ FLOW + DATASOURCE   — V5.8.0 实现,走 executor HTTP /test/datasource/fetch
+     *   ✗ DATASOURCE + *      — DatasourceOnlyBatchTestSubject 未实现,留 V5.8.2+
      */
     private void validateModeSupported(String subjectType, String inputSourceType) {
         if (BatchTestSessionEntity.SUBJECT_FLOW.equals(subjectType)
-                && BatchTestSessionEntity.INPUT_FILE.equals(inputSourceType)) {
-            return;  // 唯一支持的模式
-        }
-        if (BatchTestSessionEntity.SUBJECT_FLOW.equals(subjectType)
-                && BatchTestSessionEntity.INPUT_DATASOURCE.equals(inputSourceType)) {
-            throw new UnsupportedOperationException(
-                    "subjectType=FLOW + inputSourceType=DATASOURCE 暂未实现 " +
-                    "(DatasourceInputSource 跨模块,留 V5.8.1+ 集成 executor-app 的 " +
-                    "DatasourceRoutingProvider)");
+                && (BatchTestSessionEntity.INPUT_FILE.equals(inputSourceType)
+                    || BatchTestSessionEntity.INPUT_DATASOURCE.equals(inputSourceType))) {
+            return;  // V5.8.0 支持 FLOW + {FILE, DATASOURCE}
         }
         throw new UnsupportedOperationException(
-                "subjectType=" + subjectType + " 暂未实现 " +
-                "(目前只支持 FLOW。DATASOURCE subject 留 V5.8.2+)");
+                "subjectType=" + subjectType + " + inputSourceType=" + inputSourceType
+                + " 暂未实现 (目前支持 FLOW+FILE / FLOW+DATASOURCE。DATASOURCE subject 留 V5.8.2+)");
     }
 
     private Map<String, BatchTestSubject> subjectMap;

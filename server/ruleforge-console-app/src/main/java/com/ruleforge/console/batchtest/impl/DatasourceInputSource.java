@@ -14,34 +14,31 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * DATASOURCE input source(V5.8.0 占位)— 调三方数据源取输入
+ * DATASOURCE input source(V5.8.0)— 调三方数据源取输入
  *
  * 这是 FLOW+DATASOURCE 模式(用真实三方数据测决策流,不是"测数据源本身")。
  *
  * 协议:
  *   config.config 必须包含:
  *     - "datasourceId"   Long,要调的数据源
+ *     - "clazz"          String,实体类名(给 connector 走字段映射)
  *     - "batchInputs"    List<Map<String,Object>> 一组 input key(如 100 个 ID)
  *   或(更简单,前端常用):
- *     - "datasourceId"   Long
  *     - "valueList"      List<Object> 一组主键值(只填一个字段)
  *     - "inputField"     String 主键字段名(默认 "id")
  *
- * fetchAndInsert 把每条 input 落到 nd_batch_test_row.input_data(JSON),
- * subject 跑的时候反序列化 → 调 flow → 拿 flow 输出。
+ * fetchAndInsert:
+ *   1. 解析 config → (datasourceId, clazz, entityIds, fieldNames)
+ *   2. 调 ExecutorDatasourceClient HTTP 拉数据(executor-app 内部路由 + TTL cache)
+ *   3. 把响应落到 nd_batch_test_row.input_data(JSON)
+ *   4. Flow 跑的时候反序列化 → 拿 flow 输出
  *
- * ── V5.8.0 状态:TODO ─────────────────────────────────────────────────
- * 真正的"调三方 API 取 N 个响应"在 DatasourceRoutingProvider 里(在 executor-app
- * 模块),console-app 不能直接调。V5.8.1+ 计划:
- *   方案 A:在 executor-app 暴露 POST /api/datasource/fetch HTTP 端点,
- *          console-app 的 DatasourceInputSource.fetchAndInsert 通过 HTTP 调它
- *   方案 B:把 DatasourceRoutingProvider 拆到独立 ruleforge-decision-runtime 子模块,
- *          console 和 executor 都依赖
- * V5.8.0 阶段 controller 会拒绝 inputSourceType=DATASOURCE,返回 501 Not Implemented。
+ * V5.8.0 状态:已实现,通过 HTTP 跨模块调 executor-app 的 /test/datasource/fetch
  */
 @Slf4j
 @Component
@@ -53,6 +50,7 @@ public class DatasourceInputSource implements InputSource {
     private final BatchTestRowMapper rowMapper;
     private final BatchTestSessionMapper sessionMapper;
     private final ObjectMapper objectMapper;
+    private final ExecutorDatasourceClient executorClient;
 
     @Override
     public String getType() {
@@ -61,14 +59,79 @@ public class DatasourceInputSource implements InputSource {
 
     @Override
     public int fetchAndInsert(InputSourceConfig config, Long sessionId) {
-        // V5.8.0:暂未实现 — 真正的三方 API 调用需要跨 console/executor 模块的集成
-        // (DatasourceRoutingProvider 在 executor-app),在 controller 层会拒绝
-        // inputSourceType=DATASOURCE。这里 stub 是为了接口和 BatchTestOrchestrator
-        // 能正常 register 这个 Bean,不影响 FLOW+FILE 模式。
-        throw new UnsupportedOperationException(
-                "DATASOURCE input source 暂未实现(V5.8.1+ 计划通过 HTTP 调 executor-app 的" +
-                        " DatasourceRoutingProvider)。当前 session=" + sessionId +
-                        " 应当改用 FILE input source 上传 Excel。");
+        Map<String, Object> cfg = config.config();
+        Long datasourceId = ((Number) cfg.get("datasourceId")).longValue();
+        String clazz = (String) cfg.getOrDefault("clazz", "");
+        List<Map<String, Object>> batchInputs = extractInputs(cfg);
+
+        if (batchInputs.isEmpty()) {
+            throw new IllegalArgumentException("DATASOURCE input source: batchInputs 不能为空");
+        }
+
+        // 决定 fieldNames:从 batchInputs 第一行 keys 取 + 排除 entityId/clazz/inputField
+        // 实际更简单:让 fieldNames 由 datasource 的 entityMapping 决定,这里传 entityIds 即可
+        List<String> entityIds = new ArrayList<>(batchInputs.size());
+        for (Map<String, Object> in : batchInputs) {
+            // entityId 字段约定:inputField 指定的字段值,默认 "id"
+            String idField = (String) cfg.getOrDefault("inputField", "id");
+            Object idVal = in.get(idField);
+            if (idVal == null) {
+                throw new IllegalArgumentException(
+                        "每条 input 必须有字段 '" + idField + "'(作为 entityId)");
+            }
+            entityIds.add(String.valueOf(idVal));
+        }
+
+        // 决定 fieldNames:从 batchInputs 第一行拿所有 key(排除 entityId 字段)
+        // 注:理想是从 datasource 的 entityMapping 拿,这里简化为"全部 input 字段"
+        String idField = (String) cfg.getOrDefault("inputField", "id");
+        List<String> fieldNames = new ArrayList<>(batchInputs.get(0).keySet());
+        fieldNames.remove(idField);  // entityId 不当作字段拉
+
+        log.info("DATASOURCE input source 调 executor 拉取: datasourceId={} clazz={} entities={} fields={}",
+                datasourceId, clazz, entityIds.size(), fieldNames.size());
+
+        // 调 executor HTTP
+        Map<String, Map<String, Object>> responses = executorClient.fetchFields(
+                datasourceId, clazz, entityIds, fieldNames);
+
+        // 把每行落库
+        List<BatchTestRowEntity> rows = new ArrayList<>(entityIds.size());
+        for (int i = 0; i < entityIds.size(); i++) {
+            String entityId = entityIds.get(i);
+            Map<String, Object> response = responses.getOrDefault(entityId, Map.of());
+
+            BatchTestRowEntity row = new BatchTestRowEntity();
+            row.setSessionId(sessionId);
+            row.setRowIndex(i);
+            row.setStatus(BatchTestRowEntity.STATUS_PENDING);
+            try {
+                // input_data 存"原 input + 数据源响应",subject 跑时反序列化
+                Map<String, Object> inputData = new HashMap<>();
+                inputData.put("request", batchInputs.get(i));
+                inputData.put("response", response);
+                row.setInputData(objectMapper.writeValueAsString(inputData));
+            } catch (Exception e) {
+                throw new RuntimeException("input 序列化失败", e);
+            }
+            rows.add(row);
+        }
+        for (BatchTestRowEntity row : rows) {
+            rowMapper.insert(row);
+        }
+
+        // 更新 session.input_source_id(冗余存一下,方便重放)
+        BatchTestSessionEntity session = sessionMapper.selectById(sessionId);
+        session.setInputSourceId(datasourceId);
+        try {
+            session.setInputPayload(objectMapper.writeValueAsString(batchInputs));
+        } catch (Exception e) {
+            log.warn("session.input_payload 序列化失败,忽略", e);
+        }
+        sessionMapper.updateById(session);
+
+        log.info("DATASOURCE input source 完成: session={} rows={}", sessionId, rows.size());
+        return rows.size();
     }
 
     @Override
@@ -79,8 +142,6 @@ public class DatasourceInputSource implements InputSource {
             throw new RuntimeException("行 " + rowEntity.getId() + " input_data 反序列化失败", e);
         }
     }
-
-    // ── V5.8.1+ 会用到的辅助方法(已写好,先不调用)─────────────────────
 
     /**
      * 从 config 提取 batchInputs,支持两种格式:
