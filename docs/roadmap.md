@@ -13,55 +13,51 @@ RuleForge 当前已具备的能力：
 
 ## 版本管理
 
-采用语义化版本 5.x 系列，Flyway 迁移版本与 POM 版本同步：
+**版本号不预先钉死**。规则:`x.y.z` 在 Phase 实际完成、发版时由 CHANGELOG 决定(看实际改动密度 + 是否含 breaking change)。roadmap 只列 Phase,版本号在 release 时回填。
 
-```
-5.0.0 = Phase 1-4（监控告警、数据源、版本发布、Agent 分析）
-5.1.0 = Phase 5 规则仿真
-5.2.0 = Phase 6 前端 UI 现代化
-5.3.0 = Phase 7 AgentScope 集成
-5.4.0 = Phase 8 ClickHouse 分析
-5.5.0 = Phase 9 数据源批量测试
-5.6.0 = Phase 10 文档与 Demo
-5.7.0 = Phase 11 PMML/PKL 模型
-5.8.0 = Phase 12 Rust 高性能引擎（远期）
-```
+参考已发版的版本:
 
-Flyway 版本规则：Phase 5 → `V5.1.0__xxx.sql`，Phase 6 → `V5.2.0__xxx.sql`，依此类推。
+| 版本 | Phase | 主要内容 |
+|------|-------|---------|
+| 5.0.0 | 1-4 | 监控告警、数据源、版本发布、Agent 分析(打包发版) |
+| 5.1.0 | 5 | 规则仿真 |
+| 5.2.0 | 6 | 前端 UI 现代化 |
+| 5.3.0 | 7 | AgentScope 集成 |
+| 5.6.0 | 10 | 文档与 Demo |
+| 5.7.0 | 11 | PMML/PKL 模型 |
+
+Phase 8 / 9 / 12 完成后,版本号按改动量决定是 patch bump 还是 minor bump。
+
+> Flyway 迁移脚本按实际完成的 Phase 编号,而不是 roadmap 上钉死的版本。例如 Phase 9 真做的时候如果项目当前是 5.7.0,就新建 `V5.8.0__xxx.sql` 或 `V5.7.1__xxx.sql`,看改动密度。
 
 ## 实施顺序
 
 ```
-Phase 1-7 ✅ 已完成 → Phase 8-12 📋 规划中
+Phase 1-7, 10, 11 ✅ 已完成 → Phase 8, 9, 12 📋 规划中
 ```
 
 ```
-Phase 5  规则仿真         P0  ─┐
-Phase 6  前端 UI 现代化   P0  ─┤── 先做
-Phase 7  AgentScope       P1  ─┤
-Phase 8  ClickHouse       P1  ─┤── 其次
-Phase 9  数据源批量测试   P1  ─┤
-Phase 10 文档 Demo        P2  ─┤── 锦上添花
-Phase 11 PMML/PKL         P2  ─┤
+Phase 8  ClickHouse       P1  ─┐
+Phase 9  数据源批量测试   P1  ─┼── 优先(从零 / 接 controller)
 Phase 12 Rust 引擎        P3  ─┘── 远期
 ```
 
 ## 路线图总览
 
-| 方向 | 目标 | 版本 | 优先级 | 状态 |
-|------|------|:----:|:------:|:----:|
-| 监控与告警 | 决策执行全链路可观测 | 5.0.0 | P1 | ✅ 已完成 |
-| 上游数据源管理 | 统一管理外部数据接入 | 5.0.0 | P0 | ✅ 已完成 |
-| 规则版本与发布管理 | 变更审批、灰度发布、回滚 | 5.0.0 | P0 | ✅ 已完成 |
-| 下游 Agent 分析 | AI 分析决策结果，优化规则 | 5.0.0 | P2 | ✅ 已完成 |
-| 规则仿真 | 批量回放历史流量，预知变更影响 | 5.1.0 | P0 | ✅ 已完成 |
-| 前端 UI 现代化 | TypeScript + Vite + Ant Design 5 | 5.2.0 | P0 | ✅ 已完成 |
-| AgentScope 集成 | Web 内置 AI 对话分析（LLM 工具调用） | 5.3.0 | P1 | ✅ 已完成 |
-| ClickHouse 分析 | 高性能分析数据库 | 5.4.0 | P1 | 📋 规划中 |
-| 数据源批量测试 | CSV/JSON 批量导入测试 | 5.5.0 | P1 | 📋 规划中 |
-| 文档与 Demo | GitHub Pages + VitePress | 5.6.0 | P2 | ✅ 已完成 |
-| PMML/PKL 模型 | Python 模型导入执行 | 5.7.0 | P2 | ✅ 已完成 |
-| Rust 执行引擎 | RETE 高性能重写 | 5.8.0 | P3 | 📋 远期规划 |
+| 方向 | 目标 | 优先级 | 状态 |
+|------|------|:------:|:----:|
+| 监控与告警 | 决策执行全链路可观测 | P1 | ✅ 已完成 |
+| 上游数据源管理 | 统一管理外部数据接入 | P0 | ✅ 已完成 |
+| 规则版本与发布管理 | 变更审批、灰度发布、回滚 | P0 | ✅ 已完成 |
+| 下游 Agent 分析 | AI 分析决策结果，优化规则 | P2 | ✅ 已完成 |
+| 规则仿真 | 批量回放历史流量，预知变更影响 | P0 | ✅ 已完成 |
+| 前端 UI 现代化 | TypeScript + Vite + Ant Design 5 | P0 | ✅ 已完成 |
+| AgentScope 集成 | Web 内置 AI 对话分析（LLM 工具调用） | P1 | ✅ 已完成 |
+| 文档与 Demo | GitHub Pages + VitePress | P2 | ✅ 已完成 |
+| PMML/PKL 模型 | Python 模型导入执行 | P2 | ✅ 已完成 |
+| ClickHouse 分析 | 高性能分析数据库 | P1 | 📋 规划中 |
+| 数据源批量测试 | CSV/JSON 批量导入测试 | P1 | 📋 60% 完成(等接 controller) |
+| Rust 执行引擎 | RETE 高性能重写 | P3 | 📋 远期规划 |
 
 ---
 
