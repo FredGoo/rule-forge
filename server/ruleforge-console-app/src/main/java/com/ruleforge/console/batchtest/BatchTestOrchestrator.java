@@ -6,6 +6,9 @@ import com.ruleforge.console.app.mapper.BatchTestSessionMapper;
 import com.ruleforge.console.batchtest.impl.DatasourceInputSource;
 import com.ruleforge.console.batchtest.impl.FileInputSource;
 import com.ruleforge.console.batchtest.impl.FlowBatchTestSubject;
+import com.ruleforge.console.model.BatchTestFlowMap;
+import com.ruleforge.console.service.BatchTestService;
+import com.ruleforge.runtime.KnowledgePackage;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
@@ -41,6 +45,31 @@ public class BatchTestOrchestrator {
     private final FlowBatchTestSubject flowSubject;     // 直接注入便于拿 KnowledgePackage
     private final FileInputSource fileInputSource;
     private final DatasourceInputSource datasourceInputSource;
+    private final BatchTestService batchTestService;   // 复用老异步执行器
+    private final Executor batchTestExecutor;          // @Qualifier("batchTestExecutor") 来自 BatchTestAsyncConfig
+
+    /**
+     * V5.8.0 现阶段支持的 (subject, inputSource) 组合:
+     *   ✓ FLOW + FILE         — 复用 BatchTestServiceImpl.executeBatchAsync
+     *   ✗ FLOW + DATASOURCE   — DatasourceInputSource.fetchAndInsert 抛 UnsupportedOperationException
+     *   ✗ DATASOURCE + *      — DatasourceOnlyBatchTestSubject 未实现
+     */
+    private void validateModeSupported(String subjectType, String inputSourceType) {
+        if (BatchTestSessionEntity.SUBJECT_FLOW.equals(subjectType)
+                && BatchTestSessionEntity.INPUT_FILE.equals(inputSourceType)) {
+            return;  // 唯一支持的模式
+        }
+        if (BatchTestSessionEntity.SUBJECT_FLOW.equals(subjectType)
+                && BatchTestSessionEntity.INPUT_DATASOURCE.equals(inputSourceType)) {
+            throw new UnsupportedOperationException(
+                    "subjectType=FLOW + inputSourceType=DATASOURCE 暂未实现 " +
+                    "(DatasourceInputSource 跨模块,留 V5.8.1+ 集成 executor-app 的 " +
+                    "DatasourceRoutingProvider)");
+        }
+        throw new UnsupportedOperationException(
+                "subjectType=" + subjectType + " 暂未实现 " +
+                "(目前只支持 FLOW。DATASOURCE subject 留 V5.8.2+)");
+    }
 
     private Map<String, BatchTestSubject> subjectMap;
     private Map<String, InputSource> inputSourceMap;
@@ -87,6 +116,9 @@ public class BatchTestOrchestrator {
      */
     @Transactional
     public Long startBatchTest(StartBatchTestRequest req) {
+        // V5.8.0 现阶段只支持 FLOW+FILE,其他组合先 validate 一下
+        validateModeSupported(req.subjectType(), req.inputSourceType());
+
         BatchTestSubject subject = resolveSubject(req.subjectType());
         InputSource inputSource = resolveInputSource(req.inputSourceType());
 
@@ -113,25 +145,35 @@ public class BatchTestOrchestrator {
                 new InputSourceConfig(req.inputSourceType(), req.inputConfig()),
                 sessionId);
 
-        // 3. 更新 session.totalRows
+        // 3. 更新 session.totalRows + status=RUNNING
         session.setTotalRows(rowCount);
         session.setStatus(BatchTestSessionEntity.STATUS_RUNNING);
         sessionMapper.updateById(session);
 
-        // 4. 异步执行每行
-        schedulePerRowExecution(sessionId, subject, req);
+        // 4. 异步执行每行(V5.8.0:FLOW+FILE 走老路径,V5.8.1+ 切到 subject.execute())
+        schedulePerRowExecution(sessionId, req);
 
         return sessionId;
     }
 
     /**
-     * 异步执行每行 — 由 BatchTestOrchestrator 内部 scheduleExecutor 触发。
-     * 每行:反序列化 input → 调 subject.execute() → 写 nd_batch_test_row
+     * 异步执行每行 — V5.8.0 复用 BatchTestServiceImpl.executeBatchAsync
+     * (老路径,内部 rowMapper.updateResult 已带 latencyMs / errorCode)
+     * V5.8.1+ 改成遍历行调 subject.execute(ctx),通过 FileInputSource.deserializeForFlow
+     * 反序列化 input。
      */
-    private void schedulePerRowExecution(Long sessionId, BatchTestSubject subject, StartBatchTestRequest req) {
-        // 实际异步调度在 BatchTestServiceImpl(原 executeBatchAsync)里
-        // 这里只是包装,真正的实现继续走老路径,跟老 UI 复用
-        // — 避免重复实现 rowMapper.updateResult + 进度计算
+    private void schedulePerRowExecution(Long sessionId, StartBatchTestRequest req) {
+        // 从 req.inputConfig 拿 FLOW 需要的参数(knowledgePackage / flowId / flowMap)
+        @SuppressWarnings("unchecked")
+        Map<String, Object> params = (Map<String, Object>) req.inputConfig().getOrDefault("flowParams", Map.of());
+        KnowledgePackage knowledgePackage = (KnowledgePackage) params.get("knowledgePackage");
+        String flowId = (String) params.get("flowId");
+        BatchTestFlowMap flowMap = (BatchTestFlowMap) params.getOrDefault("flowMap", new BatchTestFlowMap());
+        @SuppressWarnings("unchecked")
+        List<com.ruleforge.model.library.variable.VariableCategory> variableCategories =
+                (List<com.ruleforge.model.library.variable.VariableCategory>) params.getOrDefault("variableCategories", List.of());
+
+        batchTestService.executeBatchAsync(sessionId, knowledgePackage, flowId, variableCategories);
     }
 
     public Map<String, Object> getProgress(Long sessionId) {

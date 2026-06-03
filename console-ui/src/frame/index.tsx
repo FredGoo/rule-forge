@@ -23,6 +23,9 @@ import ReleasePanel from '@/release/index.tsx';
 import SimulationPanel from '@/simulation/index.tsx';
 import AgentPanel from '@/agent/index.tsx';
 import Loading from '@/components/loading/component/Loading.tsx';
+// V5.8.0: 挂在 frame 顶层而不是 PackageEditor 里,这样从任何 panel
+// (FlowEditor / DatasourcePanel / ...) 触发 OPEN_BATCH_TEST_DIALOG 都能开
+import BatchTestDialog from '@/package/components/BatchTestDialog.tsx';
 import * as event from '@/frame/event.js';
 import * as componentEvent from '@/components/componentEvent.js';
 import {connect} from 'react-redux';
@@ -91,6 +94,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
                     </Splitter>
                 </div>
+                {/* V5.8.0:全局 BatchTestDialog,任意 panel 触发 OPEN_BATCH_TEST_DIALOG 都能弹 */}
+                <BatchTestDialog/>
             </Provider>
         </div>,
     );

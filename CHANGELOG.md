@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+**Phase 9: BatchTest 多态化(分支 `feature/phase9-batch-test-controller`)**
+
+把之前散落在 BatchTestService 里的"批量测试"功能改造成 **Subject × InputSource 二维矩阵**架构,一个框架支持 3 种模式:
+- FLOW + FILE — 现有路径(决策流批量回归)
+- FLOW + DATASOURCE — V5.8.1+ 计划(用真实三方数据测决策流)
+- DATASOURCE + DATASOURCE — V5.8.2+ 计划(裸数据源 SLA 验证)
+
+具体:
+- `com.ruleforge.console.batchtest` 新包:`BatchTestSubject` / `InputSource` / `SubjectResult` / `SubjectExecutionContext` / `InputSourceConfig` / `StartBatchTestRequest` / `BatchTestOrchestrator` 7 个新类型
+- `FlowBatchTestSubject` — 跑 KnowledgeSession 的具体实现
+- `FileInputSource` — 沿用 Excel 导入路径
+- `DatasourceInputSource` — V5.8.0 占位(跨模块集成留 V5.8.1+)
+- `BatchTestController` 暴露 REST 端点(start / progress / results / list)
+- Flyway V5.8.0 schema 迁移:`nd_batch_test_session` 加 `subject_type` / `subject_id` / `input_source_type` / `input_source_id` / `input_payload`;`nd_batch_test_row` 加 `latency_ms` / `http_status` / `error_code`
+- 前端 `src/api/client.ts` 加 4 个方法 + 7 个类型常量
+- 前端 `BatchTestDialog` 挂载到 frame 顶层(原挂载在 PackageEditor,触发不到)
+
 **Spring Boot 4 兼容 + 启动加速(分支 `fix/spring-boot-4-compat`)**
 
 - **Spring Boot 4 nested-jar 自动扫描修复**
