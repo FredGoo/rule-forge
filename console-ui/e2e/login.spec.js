@@ -27,14 +27,16 @@ test.describe('Login Flow', () => {
     //  And:   user has typed "admin" in the username field
     //  And:   user has typed "admin" in the password field
     // When:   user clicks the submit button
-    // Then:   the browser should navigate to /index.html (within 10s)
+    // Then:   the browser should navigate to /html/frame.html (within 10s)
     //  And:   a JSESSIONID cookie should be set by the backend
+    //   (login.tsx redirects to `frame.html` by default; the legacy
+    //   /index.html path no longer exists in the new vite multi-page setup)
     test('should login successfully with valid credentials', async ({ page }) => {
         await page.locator('input[type="text"]').first().fill('admin');
         await page.locator('input[type="password"]').first().fill('admin');
         await page.locator('button[type="submit"]').first().click();
 
-        await expect(page).toHaveURL(/\/index\.html/, { timeout: 10000 });
+        await expect(page).toHaveURL(/\/frame\.html/, { timeout: 10000 });
     });
 
     // ── BDD STUB: should show error message with invalid credentials ──
@@ -42,8 +44,10 @@ test.describe('Login Flow', () => {
     //  And:   the /frame/login endpoint is intercepted to abort (network failure)
     //  And:   user has typed "admin" / "wrong" in the form
     // When:   user clicks the submit button
-    // Then:   a .alert-danger element should become visible
+    // Then:   a .login-error element should become visible
     //  And:   the URL should remain on /html/login.html
+    //  (the redesigned login page uses .login-error instead of bootstrap's
+    //   .alert-danger — the new login is a React component under #root)
     test('should show error message with invalid credentials', async ({ page }) => {
         // Backend accepts any credentials, so this tests the error handling path
         // by simulating a network failure scenario
@@ -52,7 +56,7 @@ test.describe('Login Flow', () => {
         await page.locator('input[type="password"]').first().fill('wrong');
         await page.locator('button[type="submit"]').first().click();
 
-        await expect(page.locator('.alert-danger')).toBeVisible();
+        await expect(page.locator('.login-error')).toBeVisible({ timeout: 10000 });
         await expect(page).toHaveURL(/\/html\/login\.html/);
     });
 
@@ -60,12 +64,12 @@ test.describe('Login Flow', () => {
     // Given:  user is on the login page
     //  And:   both username and password fields are empty
     // When:   user clicks the submit button
-    // Then:   the browser should navigate to /index.html (within 10s)
+    // Then:   the browser should navigate to /html/frame.html (within 10s)
     //  And:   the main frame should render (#container visible)
     test('should login with empty fields since backend accepts any input', async ({ page }) => {
         await page.locator('button[type="submit"]').first().click();
 
-        await expect(page).toHaveURL(/\/index\.html/, { timeout: 10000 });
+        await expect(page).toHaveURL(/\/frame\.html/, { timeout: 10000 });
     });
 
     // ── BDD STUB: should show loading state while logging in ──────────
