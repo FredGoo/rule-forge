@@ -241,6 +241,28 @@ a:hover { color: var(--rf-primary-hover); }
 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
 
+/* ========== V5.9.0 Antd 5 Modal 全局统一 ========== */
+/* Modal 垂直居中 (Antd 默认 top:100px,这里覆盖) */
+body .ant-modal-wrap.ant-modal-wrap {
+    top: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    display: flex !important;
+}
+body .ant-modal-wrap.ant-modal-wrap .ant-modal {
+    top: 0 !important;
+    padding-bottom: 0 !important;
+    margin: 0 auto !important;
+}
+body .ant-modal-content {
+    border-radius: 6px !important;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08), 0 3px 6px rgba(0,0,0,0.12), 0 9px 28px rgba(0,0,0,0.05) !important;
+}
+/* 遮罩加深: 0.45 → 0.65, 弹窗时背景更聚焦 */
+body .ant-modal-mask.ant-modal-mask {
+    background: rgba(0, 0, 0, 0.65) !important;
+}
+
 /* ========== RF Utility Classes ========== */
 .rf { color: rgba(0,0,0,0.65); transition: color 0.2s; }
 .rf:hover { color: #1677ff; }
