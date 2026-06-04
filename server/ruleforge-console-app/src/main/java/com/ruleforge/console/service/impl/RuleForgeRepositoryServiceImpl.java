@@ -1293,13 +1293,31 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
 
     @Override
     public PackageConfig loadPackageConfigs(String project) throws Exception {
+        if (project == null || project.trim().isEmpty()) {
+            log.warn("loadPackageConfigs called with empty project name, returning empty config");
+            return new PackageConfig();
+        }
         String filePath = processPath(project) + "/" + PACKAGE_CONFIG_FILE;
 
         InputStream inputStream = readFile(filePath);
+        if (inputStream == null) {
+            log.warn("loadPackageConfigs: package config file not found at {}, returning empty config", filePath);
+            return new PackageConfig();
+        }
         String content = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
         inputStream.close();
 
-        Document document = DocumentHelper.parseText(content);
+        if (content == null || content.trim().isEmpty()) {
+            log.warn("loadPackageConfigs: empty content for {}, returning empty config", filePath);
+            return new PackageConfig();
+        }
+        Document document;
+        try {
+            document = DocumentHelper.parseText(content);
+        } catch (org.dom4j.DocumentException e) {
+            log.warn("loadPackageConfigs: failed to parse {}: {}, returning empty config", filePath, e.getMessage());
+            return new PackageConfig();
+        }
         Element rootElement = document.getRootElement();
 
         PackageConfig packageConfig = new PackageConfig();

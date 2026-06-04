@@ -1,6 +1,8 @@
 package com.ruleforge.console.config;
 
 import com.ruleforge.exception.RuleException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -24,6 +26,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<String> handleResponseStatus(ResponseStatusException ex) {
         String body = ex.getReason() != null ? ex.getReason() : ex.getMessage();
@@ -40,5 +44,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .header("Content-Type", "text/plain;charset=UTF-8")
                 .body(ex.getMessage() != null ? ex.getMessage() : "RuleException");
+    }
+
+    /**
+     * 兜底:任何未声明的异常都走这里,返 500 + 纯文本 message,
+     *   避免 Spring 默认 {@code DefaultErrorAttributes} 返 {"timestamp":..,"error":..}
+     *   的 JSON 包装,被前端 bootbox 直接展示给用户。
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<String> handleGenericException(Exception ex) {
+        log.error("Unhandled exception in API: {}", ex.getMessage(), ex);
+        String body = ex.getMessage() != null && !ex.getMessage().isEmpty()
+                ? ex.getMessage()
+                : ex.getClass().getSimpleName();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .header("Content-Type", "text/plain;charset=UTF-8")
+                .body(body);
     }
 }
