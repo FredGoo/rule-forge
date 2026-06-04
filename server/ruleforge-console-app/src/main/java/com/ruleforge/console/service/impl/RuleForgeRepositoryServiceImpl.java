@@ -115,17 +115,27 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
         String[] projectArray = project.split(":");
         String version = null;
         ProjectEntity projectEntity = this.projectRepository.findByName(projectArray[0]);
+        if (projectEntity == null) {
+            log.warn("loadProjectResourcePackages: project [{}] not found, return empty list", projectArray[0]);
+            return new ArrayList<>();
+        }
 
         if (projectArray.length > 1) {
             project = projectArray[0];
             version = projectArray[1];
         } else if (org.springframework.util.StringUtils.hasText(env)) {
             ProjectRuntimeConfigEntity projectRuntime = this.runtimeRepository.findConfigByProjectIdAndEnv(projectEntity.getId(), env);
-            version = projectRuntime.getProjectVersion();
+            if (projectRuntime != null) {
+                version = projectRuntime.getProjectVersion();
+            }
         }
 
         String filePath = processPath(project) + "/" + RES_PACKAGE_FILE;
         InputStream inputStream = readFile(filePath, version);
+        if (inputStream == null) {
+            log.warn("loadProjectResourcePackages: res-package file [{}] version [{}] not found, return empty list", filePath, version);
+            return new ArrayList<>();
+        }
         String content = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
         inputStream.close();
 
@@ -136,7 +146,17 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
             packageRuntimeMap.put(projectRuntimeConfigEntity.getPackageId() + "_" + projectRuntimeConfigEntity.getExecEnv(), projectRuntimeConfigEntity.getProjectVersion());
         }
 
-        Document document = DocumentHelper.parseText(content);
+        if (content == null || content.trim().isEmpty()) {
+            log.warn("loadProjectResourcePackages: res-package file [{}] is empty, return empty list", filePath);
+            return new ArrayList<>();
+        }
+        Document document;
+        try {
+            document = DocumentHelper.parseText(content);
+        } catch (org.dom4j.DocumentException e) {
+            log.warn("loadProjectResourcePackages: failed to parse res-package file [{}]: {}, return empty list", filePath, e.getMessage());
+            return new ArrayList<>();
+        }
         Element rootElement = document.getRootElement();
         SimpleDateFormat sd = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         List<ResourcePackage> packages = new ArrayList<>();
