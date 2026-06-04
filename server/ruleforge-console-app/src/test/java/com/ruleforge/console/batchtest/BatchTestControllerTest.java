@@ -1,5 +1,6 @@
 package com.ruleforge.console.batchtest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruleforge.console.app.entity.BatchTestRowEntity;
 import com.ruleforge.console.app.entity.BatchTestSessionEntity;
 import com.ruleforge.console.app.mapper.BatchTestRowMapper;
@@ -10,10 +11,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -37,6 +42,7 @@ class BatchTestControllerTest {
     @Mock private BatchTestOrchestrator orchestrator;
     @Mock private BatchTestSessionMapper sessionMapper;
     @Mock private BatchTestRowMapper rowMapper;
+    @Spy private ObjectMapper objectMapper = new ObjectMapper();
     @InjectMocks private BatchTestController controller;
 
     @Nested
@@ -186,6 +192,91 @@ class BatchTestControllerTest {
             assertThat(resp.getStatusCode().value()).isEqualTo(200);
             assertThat(resp.getBody()).hasSize(1);
             assertThat(resp.getBody().get(0).getSubjectType()).isEqualTo("FLOW");
+        }
+    }
+
+    @Nested
+    @DisplayName("Scenario: /start-with-file multipart 端点 (v5.8.4)")
+    class StartWithFile {
+
+        // Given multipart 包含 file=合法 .xlsx + config=合法 JSON (subject=FLOW, inputSource=FILE)
+        // And orchestrator.startBatchTestFromExcel 返 123L
+        // When POST /start-with-file
+        // Then 返 200 + {sessionId: 123, status: RUNNING, subjectType, inputSourceType}
+        @Test
+        @DisplayName("合法 multipart + 合法 config → 200 + sessionId")
+        void shouldReturn200OnValidMultipart() throws Exception {
+            when(orchestrator.startBatchTestFromExcel(any(), any())).thenReturn(123L);
+
+            MultipartFile file = fakeExcel();
+            String config = configJson("DATASOURCE", "FILE");
+
+            ResponseEntity<Map<String, Object>> resp = controller.startWithFile(file, config);
+
+            assertThat(resp.getStatusCode().value()).isEqualTo(200);
+            assertThat(resp.getBody().get("sessionId")).isEqualTo(123L);
+            assertThat(resp.getBody().get("status")).isEqualTo("RUNNING");
+            assertThat(resp.getBody().get("subjectType")).isEqualTo("DATASOURCE");
+            assertThat(resp.getBody().get("inputSourceType")).isEqualTo("FILE");
+        }
+
+        // Given orchestrator 抛 IllegalArgumentException(Excel 缺必填列)
+        // When POST /start-with-file
+        // Then 返 400 + {error: msg}
+        @Test
+        @DisplayName("Excel 解析失败(IllegalArgumentException)→ 400")
+        void shouldReturn400OnInvalidExcel() throws Exception {
+            when(orchestrator.startBatchTestFromExcel(any(), any()))
+                    .thenThrow(new IllegalArgumentException("DATASOURCE+FILE Excel 必须含 'entityId' 列"));
+
+            ResponseEntity<Map<String, Object>> resp = controller.startWithFile(
+                    fakeExcel(), configJson("DATASOURCE", "FILE"));
+
+            assertThat(resp.getStatusCode().value()).isEqualTo(400);
+            assertThat(resp.getBody().get("error").toString()).contains("entityId");
+        }
+
+        // Given orchestrator 抛 UnsupportedOperationException(未实现 mode)
+        // When POST /start-with-file
+        // Then 返 501 + {error: msg}
+        @Test
+        @DisplayName("未实现 mode → 501")
+        void shouldReturn501OnUnsupportedMode() throws Exception {
+            when(orchestrator.startBatchTestFromExcel(any(), any()))
+                    .thenThrow(new UnsupportedOperationException("DATASOURCE + DATASOURCE 无意义"));
+
+            ResponseEntity<Map<String, Object>> resp = controller.startWithFile(
+                    fakeExcel(), configJson("DATASOURCE", "DATASOURCE"));
+
+            assertThat(resp.getStatusCode().value()).isEqualTo(501);
+            assertThat(resp.getBody().get("error").toString()).contains("DATASOURCE + DATASOURCE");
+        }
+
+        // Given config 字段不是合法 JSON
+        // When POST /start-with-file
+        // Then controller 显式 catch → 返 400 + {error: "config 解析失败: ..."}
+        @Test
+        @DisplayName("config JSON 解析失败 → 400 (显式 catch)")
+        void shouldFailOnInvalidConfigJson() {
+            ResponseEntity<Map<String, Object>> resp = controller.startWithFile(
+                    fakeExcel(), "{not valid json");
+
+            assertThat(resp.getStatusCode().value()).isEqualTo(400);
+            assertThat(resp.getBody().get("error").toString()).contains("config 解析失败");
+        }
+
+        // ── 工具 ──
+        private MultipartFile fakeExcel() {
+            return new MockMultipartFile(
+                    "file", "test.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "fake".getBytes(StandardCharsets.UTF_8));
+        }
+
+        private String configJson(String subjectType, String inputSourceType) {
+            return "{\"subjectType\":\"" + subjectType + "\","
+                    + "\"inputSourceType\":\"" + inputSourceType + "\","
+                    + "\"project\":\"p\",\"packageId\":\"pkg\",\"flowId\":\"f\"}";
         }
     }
 }

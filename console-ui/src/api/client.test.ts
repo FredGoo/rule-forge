@@ -183,6 +183,7 @@ describe('saveNewVersion', function () {
 
 import {
     startBatchTest,
+    startBatchTestWithFile,
     getBatchTestProgress,
     getBatchTestResults,
     listBatchTestSessions,
@@ -226,6 +227,61 @@ describe('startBatchTest', function () {
         expect(window.bootbox.alert).toHaveBeenCalledWith(
             expect.stringContaining('DATASOURCE subject'),
         );
+    });
+});
+
+describe('startBatchTestWithFile (v5.8.4)', function () {
+    it('should POST multipart to /batchtest/start-with-file with file + config', async function () {
+        const req: StartBatchTestRequest = {
+            subjectType: 'DATASOURCE',
+            subjectId: 42,
+            inputSourceType: 'FILE',
+            inputSourceId: null,
+            inputConfig: { datasourceId: 42 },
+            project: 'p',
+            packageId: 'pkg',
+            flowId: '',
+        };
+        // 伪造一个 File(实际是 Blob 子类,后端只读 isEmpty / getInputStream)
+        const file = new File(['fake-xlsx-bytes'], 'test.xlsx', {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+
+        let capturedUrl = '';
+        let capturedInit: any = null;
+        vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string, init: any) => {
+            capturedUrl = url;
+            capturedInit = init;
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    sessionId: 99, status: 'RUNNING',
+                    subjectType: 'DATASOURCE', inputSourceType: 'FILE',
+                }),
+            };
+        }));
+
+        const resp = await startBatchTestWithFile(req, file);
+        expect(resp.sessionId).toBe(99);
+        expect(capturedUrl).toContain('/batchtest/start-with-file');
+        // body 是 FormData,不能 JSON.parse,只能检查 form 字段
+        expect(capturedInit.method).toBe('POST');
+        const fd = capturedInit.body as FormData;
+        expect(fd.get('file')).toBe(file);
+        const configJson = fd.get('config');
+        expect(typeof configJson).toBe('string');
+        const parsed = JSON.parse(configJson as string);
+        expect(parsed.subjectType).toBe('DATASOURCE');
+        expect(parsed.inputConfig.datasourceId).toBe(42);
+    });
+
+    it('should throw on 400 with backend error message', async function () {
+        const file = new File(['x'], 'x.xlsx');
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: false, status: 400, text: async () => 'config 解析失败: bad json',
+        }));
+        await expect(startBatchTestWithFile({} as any, file)).rejects.toThrow(/config 解析失败/);
     });
 });
 

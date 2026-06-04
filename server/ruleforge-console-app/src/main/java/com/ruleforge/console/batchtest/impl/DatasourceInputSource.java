@@ -68,12 +68,26 @@ public class DatasourceInputSource implements InputSource {
             throw new IllegalArgumentException("DATASOURCE input source: batchInputs 不能为空");
         }
 
-        // 决定 fieldNames:从 batchInputs 第一行 keys 取 + 排除 entityId/clazz/inputField
-        // 实际更简单:让 fieldNames 由 datasource 的 entityMapping 决定,这里传 entityIds 即可
+        return fetchAndInsertRows(datasourceId, clazz, batchInputs, cfg, sessionId);
+    }
+
+    /**
+     * v5.8.4 refactor:把"调 executor + 插行"核心抽出来,让 orchestrator 在
+     * FLOW+DATASOURCE Excel 路径里复用(FLOW+DATASOURCE 的 batchInputs 是从 Excel
+     * 解出来的,跟 JSON 路径同形)。
+     */
+    public int fetchAndInsertRows(Long datasourceId, String clazz,
+                                  List<Map<String, Object>> batchInputs,
+                                  Map<String, Object> cfg, Long sessionId) {
+        if (batchInputs.isEmpty()) {
+            throw new IllegalArgumentException("DATASOURCE input source: batchInputs 不能为空");
+        }
+        // 决定 fieldNames:从 batchInputs 第一行拿所有 key(排除 entityId 字段)
+        // 注:理想是从 datasource 的 entityMapping 拿,这里简化为"全部 input 字段"
+        String idField = (String) cfg.getOrDefault("inputField", "id");
+
         List<String> entityIds = new ArrayList<>(batchInputs.size());
         for (Map<String, Object> in : batchInputs) {
-            // entityId 字段约定:inputField 指定的字段值,默认 "id"
-            String idField = (String) cfg.getOrDefault("inputField", "id");
             Object idVal = in.get(idField);
             if (idVal == null) {
                 throw new IllegalArgumentException(
@@ -82,9 +96,6 @@ public class DatasourceInputSource implements InputSource {
             entityIds.add(String.valueOf(idVal));
         }
 
-        // 决定 fieldNames:从 batchInputs 第一行拿所有 key(排除 entityId 字段)
-        // 注:理想是从 datasource 的 entityMapping 拿,这里简化为"全部 input 字段"
-        String idField = (String) cfg.getOrDefault("inputField", "id");
         List<String> fieldNames = new ArrayList<>(batchInputs.get(0).keySet());
         fieldNames.remove(idField);  // entityId 不当作字段拉
 

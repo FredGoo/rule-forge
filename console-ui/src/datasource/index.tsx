@@ -1,6 +1,6 @@
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
-import {Modal, Radio, Input, Form, Button, Space, Tag, Tooltip} from 'antd';
+import {Modal, Radio, Input, Form, Button, Space, Tag, Tooltip, Upload, message} from 'antd';
 import {
     loadDatasources, createDatasource, updateDatasource, deleteDatasource,
     testConnection, setSelectedDatasource, setTab,
@@ -8,6 +8,8 @@ import {
     loadFieldMappings, saveFieldMappings,
     DatasourceItem, EntityMapping, FieldMapping
 } from './action';
+import {startBatchTestWithFile} from '../api/client';
+import * as batchTestEvent from '../package/event';
 
 interface DatasourcePanelProps {
     dispatch: (action: unknown) => unknown;
@@ -31,6 +33,8 @@ interface DatasourcePanelState {
     mappingDatasourceId: string;
     mappingFieldClazz: string;
     availableModels: ModelListItem[];
+    // v5.8.4: Excel 上传批量测试的临时 state(modal 内绑定,onOk 读完即用)
+    excelUploadFile: File | null;
 }
 
 class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelState> {
@@ -42,7 +46,8 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
         mappingClazz: '',
         mappingDatasourceId: '',
         mappingFieldClazz: '',
-        availableModels: []
+        availableModels: [],
+        excelUploadFile: null
     };
 
     componentDidMount() {
@@ -76,14 +81,14 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
     };
 
     /**
-     * V5.8.2: 批量测试入口 — Antd Modal 支持两种模式:
-     *   - "测决策流" (FLOW + DATASOURCE):用三方数据调 Flow,验证集成
-     *   - "裸数据源测试" (DATASOURCE + FILE):只调数据源,测 SLA / 字段映射
-     *   两种模式都用一个 Modal,按 Radio 切换字段。
+     * V5.8.4: 批量测试入口 — Antd Modal 支持 3 种模式:
+     *   - "测决策流" (FLOW + DATASOURCE):用三方数据调 Flow,验证集成(手填 entityIds)
+     *   - "裸数据源测试" (DATASOURCE + FILE):只调数据源,测 SLA(手填 entityIds)
+     *   - "Excel 上传" (v5.8.4):上传 .xlsx,3 种 mode 都能走
      */
     handleBatchTest = async (ds: DatasourceItem) => {
-        const testMode = await new Promise<'FLOW' | 'DATASOURCE' | null>((resolve) => {
-            let selectedMode: 'FLOW' | 'DATASOURCE' = 'FLOW';
+        const testMode = await new Promise<'FLOW' | 'DATASOURCE' | 'EXCEL' | null>((resolve) => {
+            let selectedMode: 'FLOW' | 'DATASOURCE' | 'EXCEL' = 'FLOW';
             Modal.confirm({
                 title: (
                     <span>
@@ -92,12 +97,11 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
                     </span>
                 ),
                 icon: null,
-                width: 540,
+                width: 580,
                 content: (
                     <div>
                         <div style={{marginBottom: 16, color: '#666', fontSize: 13}}>
-                            选一种测试模式。两种都用数据源的真实接口调用,
-                            区别是后者不跑决策流。
+                            选一种测试模式。Excel 模式支持 1000+ 行(手填只适合小批量)。
                         </div>
                         <Radio.Group
                             defaultValue="FLOW"
@@ -126,6 +130,17 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
                                     </div>
                                 </div>
                             </Radio>
+                            <Radio value="EXCEL" style={{alignItems: 'flex-start'}}>
+                                <div>
+                                    <div style={{fontWeight: 500}}>
+                                        <Tag color="green">上传 Excel (v5.8.4)</Tag>
+                                        {' '}三种模式都支持
+                                    </div>
+                                    <div style={{fontSize: 12, color: '#999', marginTop: 4, marginLeft: 24}}>
+                                        上传 .xlsx,固定列 schema:entityId / fieldName(可选 clazz)
+                                    </div>
+                                </div>
+                            </Radio>
                         </Radio.Group>
                     </div>
                 ),
@@ -139,8 +154,10 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
 
         if (testMode === 'FLOW') {
             this.showFlowBatchModal(ds);
-        } else {
+        } else if (testMode === 'DATASOURCE') {
             this.showDatasourceOnlyBatchModal(ds);
+        } else {
+            this.showExcelUploadModal(ds);
         }
     };
 
@@ -303,7 +320,6 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
         extra: string,  // flowId or fieldName
     ) => {
         const ce = (window as any).parent?.componentEvent || (window as any).componentEvent;
-        const ev = (window as any).parent?.event || (window as any).event;
 
         try {
             let body: Record<string, unknown>;
@@ -351,7 +367,7 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
             const result = await resp.json();
 
             if (result.sessionId) {
-                ev.eventEmitter.emit(ev.OPEN_BATCH_TEST_DIALOG, {
+                batchTestEvent.eventEmitter.emit(batchTestEvent.OPEN_BATCH_TEST_DIALOG, {
                     sessionId: result.sessionId,
                     data: { subjectType, inputSourceType: 'DATASOURCE', skipStart: true }
                 });
@@ -361,6 +377,153 @@ class DatasourcePanel extends Component<DatasourcePanelProps, DatasourcePanelSta
             }
         } catch (e: any) {
             window.bootbox.alert('请求失败: ' + e.message);
+        }
+    };
+
+    /**
+     * v5.8.4 新:Excel 上传批量测试。
+     * 弹一个 Antd Modal,让用户选 subject(FLOW / DATASOURCE) + 拖 .xlsx。
+     * Excel schema:
+     *   - DATASOURCE+FILE:列 entityId, fieldName, clazz(可选)
+     *   - FLOW+DATASOURCE:列 entityId(主键)+ 其他要 fetch 的列
+     */
+    showExcelUploadModal = (ds: DatasourceItem) => {
+        let subjectType: 'FLOW' | 'DATASOURCE' = 'DATASOURCE';
+        let idField = 'entityId';
+        let flowId = '';
+        let uploadedFile: File | null = null;
+
+        Modal.confirm({
+            title: (
+                <span>
+                    <Tag color="green">上传 Excel (v5.8.4)</Tag>
+                    {' '}测 {ds.name}
+                </span>
+            ),
+            icon: null,
+            width: 560,
+            content: (
+                <Form layout="vertical" style={{marginTop: 8}}>
+                    <Form.Item label="测试模式" required>
+                        <Radio.Group
+                            defaultValue="DATASOURCE"
+                            onChange={(e) => { subjectType = e.target.value; }}
+                        >
+                            <Radio value="DATASOURCE">DATASOURCE + FILE</Radio>
+                            <Radio value="FLOW">FLOW + DATASOURCE</Radio>
+                        </Radio.Group>
+                    </Form.Item>
+                    <Form.Item label="Excel 文件" required
+                               help="DATASOURCE+FILE:entityId/fieldName/clazz 列;FLOW+DATASOURCE:entityId + 其他列">
+                        <Upload.Dragger
+                            accept=".xlsx,.xls"
+                            maxCount={1}
+                            beforeUpload={(file) => {
+                                uploadedFile = file;
+                                return false;  // 不自动上传
+                            }}
+                            onRemove={() => { uploadedFile = null; return true; }}
+                            fileList={uploadedFile ? [{
+                                uid: '1', name: uploadedFile.name, status: 'done',
+                            }] : []}
+                        >
+                            <p className="ant-upload-drag-icon">
+                                <i className="glyphicon glyphicon-folder-open" />
+                            </p>
+                            <p className="ant-upload-text">点击或拖拽 .xlsx 到这里</p>
+                            <p className="ant-upload-hint">单文件,最大 10000 行</p>
+                        </Upload.Dragger>
+                    </Form.Item>
+                    <Form.Item label="主键字段名" help="Excel 里 entityId 那一列的名字,默认 entityId">
+                        <Input
+                            defaultValue={idField}
+                            onChange={(e) => { idField = e.target.value || 'entityId'; }}
+                        />
+                    </Form.Item>
+                    <Form.Item label="待测决策流 ID(仅 FLOW 模式)" help="FLOW 模式必填,DATASOURCE 模式忽略">
+                        <Input
+                            defaultValue={flowId}
+                            placeholder="e.g. loan-approval"
+                            onChange={(e) => { flowId = e.target.value; }}
+                        />
+                    </Form.Item>
+                </Form>
+            ),
+            okText: '启动测试',
+            cancelText: '取消',
+            onOk: () => {
+                if (!uploadedFile) {
+                    message.error('请先选择 Excel 文件');
+                    return Promise.reject();
+                }
+                if (subjectType === 'FLOW' && !flowId) {
+                    message.error('FLOW 模式需要决策流 ID');
+                    return Promise.reject();
+                }
+                this.startBatchTestWithExcel(ds, subjectType, idField, flowId, uploadedFile);
+                return Promise.resolve();
+            },
+        });
+    };
+
+    /**
+     * v5.8.4 新:走 multipart /batchtest/start-with-file
+     */
+    startBatchTestWithExcel = async (
+        ds: DatasourceItem,
+        subjectType: 'FLOW' | 'DATASOURCE',
+        idField: string,
+        flowId: string,
+        file: File,
+    ) => {
+        const ce = (window as any).parent?.componentEvent || (window as any).componentEvent;
+
+        try {
+            let req: Record<string, unknown>;
+            if (subjectType === 'FLOW') {
+                req = {
+                    subjectType: 'FLOW',
+                    subjectId: null,
+                    inputSourceType: 'DATASOURCE',
+                    inputSourceId: ds.id,
+                    inputConfig: {
+                        datasourceId: ds.id,
+                        clazz: '',
+                        inputField: idField,
+                    },
+                    project: '',
+                    packageId: '',
+                    flowId,
+                };
+            } else {
+                req = {
+                    subjectType: 'DATASOURCE',
+                    subjectId: ds.id,
+                    inputSourceType: 'FILE',
+                    inputSourceId: null,
+                    inputConfig: {
+                        datasourceId: ds.id,
+                        // fieldName 暂存到 inputConfig,Excel 每行都得含 fieldName 列
+                        // (后端 parser 不读 inputConfig 里的 fieldName,以列名为准)
+                    },
+                    project: '',
+                    packageId: '',
+                    flowId: '',
+                };
+            }
+            const result = await startBatchTestWithFile(req as any, file);
+
+            if (result.sessionId) {
+                batchTestEvent.eventEmitter.emit(batchTestEvent.OPEN_BATCH_TEST_DIALOG, {
+                    sessionId: result.sessionId,
+                    data: { subjectType, inputSourceType: req.inputSourceType, skipStart: true }
+                });
+                if (ce) ce.eventEmitter.emit(ce.SHOW_LOADING);
+            } else {
+                message.error('启动失败: ' + JSON.stringify(result));
+            }
+        } catch (e: any) {
+            message.error('Excel 上传失败: ' + (e.message || e));
         }
     };
 

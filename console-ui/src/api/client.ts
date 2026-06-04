@@ -307,6 +307,34 @@ export function startBatchTest(
     return jsonPost<StartBatchTestResponse>('/batchtest/start', req, opts);
 }
 
+/**
+ * v5.8.4:multipart 启动批量测试,带 Excel 文件。
+ * 走 POST /batchtest/start-with-file,file 必填,config 是 StartBatchTestRequest JSON。
+ */
+export function startBatchTestWithFile(
+    req: StartBatchTestRequest,
+    file: File,
+    _opts?: RequestOptions,
+): Promise<StartBatchTestResponse> {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('config', JSON.stringify(req));
+    const base = (window as any)._server || '';
+    const url = base + '/batchtest/start-with-file';
+    return fetch(url, { method: 'POST', body: fd }).then(
+        (resp) => {
+            if (!resp.ok) {
+                return resp.text().then((text) => {
+                    throw new Error(
+                        'startBatchTestWithFile failed: ' + resp.status + ' ' + text,
+                    );
+                });
+            }
+            return resp.json() as Promise<StartBatchTestResponse>;
+        },
+    );
+}
+
 /** 轮询进度 */
 export function getBatchTestProgress(
     sessionId: number,
