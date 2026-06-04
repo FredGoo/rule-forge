@@ -7,7 +7,10 @@ export default defineConfig({
     timeout: 60_000,
     retries: 0,
     use: {
-        baseURL: 'http://localhost:3000',
+        // 默认 vite dev server (3000);走 docker stack 测试时用
+        //   PLAYWRIGHT_BASE_URL=http://localhost npx playwright test ...
+        // 覆盖到 80(console-ui nginx)。
+        baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
         headless: true,
         screenshot: 'only-on-failure',
         storageState: undefined,

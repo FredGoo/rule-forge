@@ -23,6 +23,9 @@ import ReleasePanel from '@/release/index.tsx';
 import SimulationPanel from '@/simulation/index.tsx';
 import AgentPanel from '@/agent/index.tsx';
 import Loading from '@/components/loading/component/Loading.tsx';
+// V5.8.0: 挂在 frame 顶层而不是 PackageEditor 里,这样从任何 panel
+// (FlowEditor / DatasourcePanel / ...) 触发 OPEN_BATCH_TEST_DIALOG 都能开
+import BatchTestDialog from '@/package/components/BatchTestDialog.tsx';
 import * as event from '@/frame/event.js';
 import * as componentEvent from '@/components/componentEvent.js';
 import {connect} from 'react-redux';
@@ -55,15 +58,52 @@ function SidePanelSwitcher({activePanel, store, eventObj}: SidePanelSwitcherProp
 
 const SidePanelConnected = connect((state: { ui?: { activePanel?: string } }) => ({activePanel: (state.ui && state.ui.activePanel) || 'rules'}))(SidePanelSwitcher);
 
+/**
+ * V5.8.4+ layout:当 activePanel != 'rules'(用户点了 ActivityBar 切到 DatasourcePanel /
+ * MonitoringPanel / ReleasePanel 等专用面板),直接把面板撑满整个 content 区,
+ * 不再保留右侧 FrameTab welcome 页(避免"panel + welcome"叠加的视觉混乱)。
+ *
+ * activePanel === 'rules' 时维持原 Splitter:SidePanelSwitcher 240px + app-content 右侧。
+ */
+function AppBody({activePanel, store, eventObj}: {activePanel: string; store: Store; eventObj: typeof event}) {
+    var contentTabBarRef: any = null;
+    var frameTabRef: any = null;
+
+    if (activePanel !== 'rules') {
+        // 专用面板激活:撑满 content,没有右侧 welcome
+        return <SidePanelConnected store={store} eventObj={eventObj}/>;
+    }
+
+    return (
+        <Splitter orientation='vertical' position='240px'>
+            <SidePanelConnected store={store} eventObj={eventObj}/>
+            <div className="app-content">
+                <ContentTabBar ref={(ref: any) => { contentTabBarRef = ref; }}
+                               getFrameTabRef={() => frameTabRef}/>
+                <div className="content-area">
+                    <ComponentContainer/>
+                    <FrameTab ref={(ref: any) => {
+                        frameTabRef = ref;
+                        if (contentTabBarRef) contentTabBarRef.frameTabRef = ref;
+                    }}
+                              welcomePage={window._welcomePage}
+                              onTabsChange={(tabs: unknown, activeTab: string) => {
+                                  if (contentTabBarRef) contentTabBarRef.setTabData(tabs, activeTab);
+                              }}/>
+                </div>
+            </div>
+        </Splitter>
+    );
+}
+
+const AppBodyConnected = connect((state: { ui?: { activePanel?: string } }) => ({activePanel: (state.ui && state.ui.activePanel) || 'rules'}))(AppBody);
+
 document.addEventListener('DOMContentLoaded', function () {
     window._types = null;
     window._projectName = null;
     window.componentEvent = componentEvent;
     const store = createStore(reducer, applyMiddleware(thunk));
     (store.dispatch as Function)(ACTIONS.loadData());
-
-    var contentTabBarRef: any = null;
-    var frameTabRef: any = null;
 
     createRoot(document.getElementById("container")!).render(
         <div className="app-layout">
@@ -72,25 +112,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 <TopBar/>
                 <div className="app-body">
                     <ActivityBar/>
-                    <Splitter orientation='vertical' position='240px'>
-                        <SidePanelConnected store={store} eventObj={event}/>
-                        <div className="app-content">
-                            <ContentTabBar ref={(ref: any) => { contentTabBarRef = ref; }}
-                                           getFrameTabRef={() => frameTabRef}/>
-                            <div className="content-area">
-                                <ComponentContainer/>
-                                <FrameTab ref={(ref: any) => {
-                                    frameTabRef = ref;
-                                    if (contentTabBarRef) contentTabBarRef.frameTabRef = ref;
-                                }}
-                                          welcomePage={window._welcomePage}
-                                          onTabsChange={(tabs: unknown, activeTab: string) => {
-                                              if (contentTabBarRef) contentTabBarRef.setTabData(tabs, activeTab);
-                                          }}/>
-                            </div>
-                        </div>
-                    </Splitter>
+                    <AppBodyConnected store={store} eventObj={event}/>
                 </div>
+                {/* V5.8.0:全局 BatchTestDialog,任意 panel 触发 OPEN_BATCH_TEST_DIALOG 都能弹 */}
+                <BatchTestDialog/>
             </Provider>
         </div>,
     );

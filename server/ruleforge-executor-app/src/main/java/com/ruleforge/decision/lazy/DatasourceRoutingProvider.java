@@ -76,6 +76,40 @@ public class DatasourceRoutingProvider implements DataSourceProvider {
         }
     }
 
+    /**
+     * 批量字段拉取(V5.8.0 给 console-app 的 BatchTest 用)
+     *
+     * 给定 N 个 entityId + M 个 fieldName,返回 entityId → {fieldName: value} 的 map。
+     * 内部就是循环 fetchFieldValue,共享 route 缓存 + TTL 缓存,避免 N×M 次
+     * connector 调度开销。
+     *
+     * @param datasourceId 数据源 id(从 req 拿,绕过 clazz 路由,直接锁定一个 datasource)
+     * @param clazz        实体类名(给 connector 决定走哪条字段映射规则)
+     * @param entityIds    主键值列表
+     * @param fieldNames   字段名列表
+     * @return key=entityId, value=fieldName→value map
+     */
+    public Map<String, Map<String, Object>> fetchFieldsForEntities(
+            Long datasourceId, String clazz, List<String> entityIds, List<String> fieldNames) {
+        log.info("BatchTest 数据源批量拉取: datasource={} clazz={} entities={} fields={}",
+                datasourceId, clazz, entityIds.size(), fieldNames.size());
+        Map<String, Map<String, Object>> result = new HashMap<>();
+        for (String entityId : entityIds) {
+            Map<String, Object> row = new HashMap<>();
+            for (String field : fieldNames) {
+                try {
+                    Object value = fetchFieldValue(entityId, clazz, field);
+                    row.put(field, value);
+                } catch (Exception e) {
+                    log.error("拉取字段异常 entityId={} field={}", entityId, field, e);
+                    row.put(field, null);
+                }
+            }
+            result.put(entityId, row);
+        }
+        return result;
+    }
+
     // ===== 路由解析 =====
 
     private ResolvedRoute resolveRoute(String clazz) {

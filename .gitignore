@@ -43,6 +43,8 @@ Thumbs.db
 
 # Test results
 test-results/
+# Playwright e2e 截图(脚本生成,不入库)
+console-ui/e2e/screenshots/
 
 # Env
 .env

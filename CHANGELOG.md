@@ -9,6 +9,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+**v5.8.4 BatchTest Excel upload(分支 `feature/phase9-batch-test-controller`)**
+
+把 V5.8.0 留的"V5.8.2 简化:用 inline inputConfig 走老路径"补完 — 一个 multipart
+端点 + 一个 Excel parser + DatasourcePanel Antd Upload 入口,让 3 种 BatchTest 模式
+都接 Excel 上传(1000+ 行也能跑):
+- `com.ruleforge.console.batchtest.impl.ExcelRowParser` — 按 (subject, inputSource)
+  选 schema:固定列 `entityId, fieldName, clazz?` (DATASOURCE+FILE) /
+  `entityId + 其他列` (FLOW+DATASOURCE) / 透传老 `ExcelUtils.readTestDataExcel`
+  (FLOW+FILE)
+- `BatchTestOrchestrator.startBatchTestFromExcel(MultipartFile, StartBatchTestRequest)`
+  — 三个模式都能走,FLOW+FILE 路径透传 `TestDataServiceImpl.importExcel`
+  (复用老 session + 异步执行)
+- `DatasourceInputSource.fetchAndInsertRows(...)` — refactor,把"调 executor + 插行"
+  抽出来,让 orchestrator 的 FLOW+DATASOURCE Excel 路径复用
+- `BatchTestController.startWithFile(file, configJson)` — 新端点
+  `POST /ruleforge/batchtest/start-with-file`,multipart/form-data,显式 catch JSON 解析
+  失败 → 400,mode 校验失败 → 501,Excel 解析失败 → 400
+- 前端 `console-ui/src/api/client.ts` 加 `startBatchTestWithFile(req, file)` —
+  FormData multipart,Promise 化
+- 前端 `DatasourcePanel` 第三个 Radio option "上传 Excel (v5.8.4)",触发
+  `showExcelUploadModal`,用 Antd `Upload.Dragger` 选文件,`message.error` 替 bootbox.alert
+
+测试覆盖: `ExcelRowParserTest` (9 cases)、`BatchTestOrchestratorTest` (5 cases)、
+`BatchTestControllerTest` 加 4 cases for `/start-with-file`、vitest `client.test.ts` 加 2 cases
+for `startBatchTestWithFile`。`mvn -pl ruleforge-console-app test` 全部 245 个 case 绿。
+
+**E2E 走真实 UI 流程(Playwright headless)**
+- `console-ui/e2e/batchtest-excel-upload.spec.js`(2 scenarios):
+  - mode picker 弹窗 + Excel upload modal 字段
+  - 完整流程:登录 → 批量测试 → 选 EXCEL → 下一步 → drop xlsx → 启动测试 →
+    `POST /api/batchtest/start-with-file` 200 + `BatchTestDialog` 显示 Session ID
+- `console-ui/e2e/fixtures/batchtest-datasource-file.xlsx`(3 行 DATASOURCE+FILE schema)
+- `playwright.config.js` 加 `PLAYWRIGHT_BASE_URL` env var(默认 vite 3000,
+  docker stack 测时用 `PLAYWRIGHT_BASE_URL=http://localhost` 指向 console-ui nginx 80)
+- 截图存到 `console-ui/e2e/screenshots/`(已 gitignore)
+
+**E2E 走查时发现的 v5.8.4 Bug + 修复**
+- `DatasourcePanel.startBatchTestDs` / `startBatchTestWithExcel` 用
+  `window.parent.event.OPEN_BATCH_TEST_DIALOG` 全局变量发事件,但这个变量从来
+  没被设过(没有挂到 `window.parent`)。`eventEmitter.emit(undefined, ...)` 静默
+  失败,导致 BatchTestDialog 永远不弹(`.modal` DOM 里有但 `aria-hidden=true`)。
+- 修复:import `../package/event` 模块,直接用 `batchTestEvent.eventEmitter.emit(
+  batchTestEvent.OPEN_BATCH_TEST_DIALOG, ...)`,跟 `FlowDialog.tsx` 模式一致。
+- Playwright spec 是这个 bug 的回归保护(没有它,纯靠手动很难发现
+  "DOM 里有 modal 但 aria-hidden=true")。
+
+**Phase 9: BatchTest 多态化(分支 `feature/phase9-batch-test-controller`)**
+
+把之前散落在 BatchTestService 里的"批量测试"功能改造成 **Subject × InputSource 二维矩阵**架构,一个框架支持 3 种模式:
+- FLOW + FILE — 现有路径(决策流批量回归)
+- FLOW + DATASOURCE — V5.8.1+ 计划(用真实三方数据测决策流)
+- DATASOURCE + DATASOURCE — V5.8.2+ 计划(裸数据源 SLA 验证)
+
+具体:
+- `com.ruleforge.console.batchtest` 新包:`BatchTestSubject` / `InputSource` / `SubjectResult` / `SubjectExecutionContext` / `InputSourceConfig` / `StartBatchTestRequest` / `BatchTestOrchestrator` 7 个新类型
+- `FlowBatchTestSubject` — 跑 KnowledgeSession 的具体实现
+- `FileInputSource` — 沿用 Excel 导入路径
+- `DatasourceInputSource` — V5.8.0 占位(跨模块集成留 V5.8.1+)
+- `BatchTestController` 暴露 REST 端点(start / progress / results / list)
+- Flyway V5.8.0 schema 迁移:`nd_batch_test_session` 加 `subject_type` / `subject_id` / `input_source_type` / `input_source_id` / `input_payload`;`nd_batch_test_row` 加 `latency_ms` / `http_status` / `error_code`
+- 前端 `src/api/client.ts` 加 4 个方法 + 7 个类型常量
+- 前端 `BatchTestDialog` 挂载到 frame 顶层(原挂载在 PackageEditor,触发不到)
+
 **Spring Boot 4 兼容 + 启动加速(分支 `fix/spring-boot-4-compat`)**
 
 - **Spring Boot 4 nested-jar 自动扫描修复**

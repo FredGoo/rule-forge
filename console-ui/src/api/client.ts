@@ -230,3 +230,158 @@ export function saveNewVersion(
             });
         });
 }
+
+// ════════════════════════════════════════════════════════════════════════
+// BatchTest V5.8.0 批量测试 API(Subject × InputSource 多态)
+// ════════════════════════════════════════════════════════════════════════
+
+/** Subject type 常量 */
+export const BATCH_TEST_SUBJECT_FLOW = 'FLOW';
+export const BATCH_TEST_SUBJECT_DATASOURCE = 'DATASOURCE';
+
+/** Input source type 常量 */
+export const BATCH_TEST_INPUT_FILE = 'FILE';
+export const BATCH_TEST_INPUT_DATASOURCE = 'DATASOURCE';
+
+/** 行状态常量(后端 BatchTestRowEntity.STATUS_*) */
+export const ROW_STATUS_PENDING = 'PENDING';
+export const ROW_STATUS_SUCCESS = 'SUCCESS';
+export const ROW_STATUS_ERROR = 'ERROR';
+
+/** 会话状态常量(后端 BatchTestSessionEntity.STATUS_*) */
+export const SESSION_STATUS_UPLOADED = 'UPLOADED';
+export const SESSION_STATUS_RUNNING = 'RUNNING';
+export const SESSION_STATUS_COMPLETED = 'COMPLETED';
+export const SESSION_STATUS_FAILED = 'FAILED';
+
+/** Start 请求体 */
+export interface StartBatchTestRequest {
+    subjectType: string;       // FLOW | DATASOURCE
+    subjectId: number | null;  // flowId 或 datasourceId
+    inputSourceType: string;   // FILE | DATASOURCE
+    inputSourceId: number | null;
+    inputConfig: Record<string, unknown>;
+    project: string | null;
+    packageId: string | null;
+    flowId: string | null;
+}
+
+/** Start 响应 */
+export interface StartBatchTestResponse {
+    sessionId: number;
+    status: string;
+    subjectType: string;
+    inputSourceType: string;
+}
+
+/** 进度响应 */
+export interface BatchTestProgress {
+    sessionId: number;
+    status: string;
+    totalRows: number;
+    progress: number;
+    errorCount: number;
+    subjectType: string;
+    inputSourceType: string;
+}
+
+/** 行结果(V5.8.0 起多 latency / httpStatus / errorCode 字段) */
+export interface BatchTestRow {
+    id: number;
+    sessionId: number;
+    rowIndex: number;
+    inputData: string | null;
+    outputData: string | null;
+    errorMessage: string | null;
+    status: string;
+    latencyMs: number | null;
+    httpStatus: number | null;
+    errorCode: string | null;
+}
+
+/** 启动一次批量测试 */
+export function startBatchTest(
+    req: StartBatchTestRequest,
+    opts?: RequestOptions,
+): Promise<StartBatchTestResponse> {
+    return jsonPost<StartBatchTestResponse>('/batchtest/start', req, opts);
+}
+
+/**
+ * v5.8.4:multipart 启动批量测试,带 Excel 文件。
+ * 走 POST /batchtest/start-with-file,file 必填,config 是 StartBatchTestRequest JSON。
+ */
+export function startBatchTestWithFile(
+    req: StartBatchTestRequest,
+    file: File,
+    _opts?: RequestOptions,
+): Promise<StartBatchTestResponse> {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('config', JSON.stringify(req));
+    const base = (window as any)._server || '';
+    const url = base + '/batchtest/start-with-file';
+    return fetch(url, { method: 'POST', body: fd }).then(
+        (resp) => {
+            if (!resp.ok) {
+                return resp.text().then((text) => {
+                    throw new Error(
+                        'startBatchTestWithFile failed: ' + resp.status + ' ' + text,
+                    );
+                });
+            }
+            return resp.json() as Promise<StartBatchTestResponse>;
+        },
+    );
+}
+
+/** 轮询进度 */
+export function getBatchTestProgress(
+    sessionId: number,
+    opts?: RequestOptions,
+): Promise<BatchTestProgress> {
+    return httpGet<BatchTestProgress>(
+        '/batchtest/sessions/' + sessionId + '/progress',
+        opts,
+    );
+}
+
+/** 拉行结果(分页) */
+export function getBatchTestResults(
+    sessionId: number,
+    page: number,
+    size: number,
+    opts?: RequestOptions,
+): Promise<{ rows: BatchTestRow[]; page: number; size: number; total: number }> {
+    return httpGet<{ rows: BatchTestRow[]; page: number; size: number; total: number }>(
+        '/batchtest/sessions/' + sessionId + '/results?page=' + page + '&size=' + size,
+        opts,
+    );
+}
+
+/** 列历史 session(给 dashboard 用) */
+export function listBatchTestSessions(
+    subjectType?: string,
+    limit = 20,
+    opts?: RequestOptions,
+): Promise<BatchTestSession[]> {
+    let path = '/batchtest/sessions?limit=' + limit;
+    if (subjectType) path += '&subjectType=' + subjectType;
+    return httpGet<BatchTestSession[]>(path, opts);
+}
+
+/** 简化版:Session 列表响应 */
+export interface BatchTestSession {
+    id: number;
+    project: string | null;
+    packageId: string | null;
+    flowId: string | null;
+    status: string;
+    totalRows: number | null;
+    errorCount: number | null;
+    progress: number | null;
+    subjectType: string;
+    subjectId: number | null;
+    inputSourceType: string;
+    inputSourceId: number | null;
+}
