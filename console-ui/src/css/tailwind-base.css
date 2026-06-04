@@ -95,12 +95,15 @@ a:hover { color: var(--rf-primary-hover); }
 
 /* ========== Tables ========== */
 .table { width: 100%; border-collapse: collapse; }
-.table th, .table td { padding: 8px 12px; text-align: left; font-size: 13px; line-height: 1.5; }
+.table th, .table td { padding: 10px 12px; text-align: left; font-size: 13px; line-height: 1.5; }
 .table-bordered { border: 1px solid #e5e7eb; }
 .table-bordered th, .table-bordered td { border: 1px solid #e5e7eb; }
 .table-condensed th, .table-condensed td { padding: 4px 8px; }
-.table thead tr { background: #f9fafb; }
-.table th { font-weight: 600; color: rgba(0,0,0,0.65); font-size: 12px; }
+.table thead tr { background: #fafafa; }
+.table th { font-weight: 600; color: rgba(0,0,0,0.65); font-size: 12px; border-bottom: 1px solid #f0f0f0; }
+.table tbody tr { transition: background 0.15s; }
+.table tbody tr:hover { background: #f5f5f5; }
+.table tbody tr td { border-bottom: 1px solid #f5f5f5; }
 
 /* ========== Forms ========== */
 .form-control {
@@ -131,7 +134,7 @@ a:hover { color: var(--rf-primary-hover); }
 /* ========== Modal (bootbox) ========== */
 .modal { display: none; position: fixed; inset: 0; z-index: 1050; overflow: auto; -webkit-overflow-scrolling: touch; outline: 0; }
 .modal.in { display: block; }
-.modal-backdrop { position: fixed; inset: 0; z-index: 1040; background: rgba(0,0,0,0.45); }
+.modal-backdrop { position: fixed; inset: 0; z-index: 1040; background: rgba(0,0,0,0.65); }
 .modal-backdrop.in { opacity: 1; }
 .modal-dialog { position: relative; width: auto; max-width: 500px; margin: 30px auto; background: #fff; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.08), 0 9px 28px rgba(0,0,0,0.05); }
 .modal-lg { max-width: 700px; }
@@ -144,6 +147,11 @@ a:hover { color: var(--rf-primary-hover); }
 .modal-footer .btn { min-width: 72px; }
 .close { font-size: 18px; font-weight: 400; color: rgba(0,0,0,0.45); background: none; border: none; cursor: pointer; opacity: 1; }
 .close:hover { color: rgba(0,0,0,0.88); }
+
+/* V5.9.0: Bootstrap modal 也垂直居中 (跟 Antd modal 一致) */
+.modal.in .modal-dialog { margin-top: 0; margin-bottom: 0; }
+.modal.in { display: flex !important; align-items: center; justify-content: center; }
+.modal.fade .modal-dialog { transition: transform 0.2s ease-out; }
 
 /* ========== Well ========== */
 .well { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; min-height: 20px; }
