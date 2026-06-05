@@ -1178,12 +1178,11 @@ public class RuleForgeRepositoryServiceImpl implements RuleForgeRepositoryServic
     /**
      * Extract project name from a path like "/projectName/folder/file.xml".
      * Returns the first path segment.
+     *
+     * V5.11: 委托给 GitPathUtils.extractProjectName,与 FrameController 共用.
      */
     private String extractProjectName(String path) {
-        if (path == null || path.isEmpty()) return null;
-        String cleaned = path.startsWith("/") ? path.substring(1) : path;
-        int slash = cleaned.indexOf('/');
-        return slash > 0 ? cleaned.substring(0, slash) : cleaned;
+        return com.ruleforge.console.util.GitPathUtils.extractProjectName(path);
     }
 
     /**

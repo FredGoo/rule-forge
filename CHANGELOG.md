@@ -91,6 +91,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (mock `getGitStatusSummary`/`getGitStatusRecent` + 真 `frame/reducer`)
 - `npm run typecheck` 0 error
 - `npm test` 321 / 321 全绿
+
+**v5.11 清理已知债(分支 `feature/5.10-git-storage`)**
+
+5.10 系列在多个 commit 里埋了两个小债,5.11 收尾:
+
+- `.gitignore` 误伤源文件夹:
+  原 `data/` 会匹配任何名为 `data` 的目录,误伤
+  `src/main/java/.../repository/data/`、`util/data/` 等源文件夹。
+  改为 `/data/`(只忽略仓库根目录的 `data/`,即 `gitConfig.base` 路径),
+  5.10-B 时 `git add -f` 强加 `FileRepository` 的临时补丁不再需要
+
+- `extractProjectName` 重复实现去重:
+  原 `RuleForgeRepositoryServiceImpl:1182` 和 `FrameController:857`
+  是一模一样的 6 行实现。新建 `com.ruleforge.console.util.GitPathUtils.extractProjectName(String)`,
+  2 处改用。新增边角: `"/"` → `null`(原实现返 `""`,等同 falsy,行为兼容)
+- `MigrationService` 之前以为也有重复,审后发现它直接接 `projectName`
+  入参,**不**需要 extract,故无需改
+- `GitPathUtilsTest` 8 case(null / 空 / `/` / 单段 / 嵌套 / 无前导斜杠 /
+  无斜杠单段 / 真实路径)
+- 整模块 `mvn -pl ruleforge-console-app test` 288 / 288 全绿
 - 已知重复: `extractProjectName` 现在 3 处(`RuleForgeRepositoryServiceImpl:1173`、
   `FrameController:857`、迁移服务内)— 留 5.11 refactor
 
