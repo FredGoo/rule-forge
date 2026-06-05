@@ -84,6 +84,9 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    # 本地 Playwright E2E 用 — vite dev proxy 走 127.0.0.1:8180
+    ports:
+      - "${CONSOLE_PORT:-8180}:8180"
     networks:
       - ruleforge
 
@@ -113,6 +116,9 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    # 本地 Playwright E2E 用
+    ports:
+      - "${EXECUTOR_PORT:-8280}:8280"
     networks:
       - ruleforge
 
