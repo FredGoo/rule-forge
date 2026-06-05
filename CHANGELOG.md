@@ -38,6 +38,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   multi-version-order)+ `MigrationControllerAdminGateTest` 1 case。
   `mvn -pl ruleforge-console-app test -Dtest='Migration*,RuleForge*Git*'`
   16 个 case 全绿。
+
+**v5.10-C dualWrite 失败可观测(分支 `feature/5.10-git-storage`)**
+
+5.10-A/B 把 dualWriteToGit 跑通了,但失败时 DB 写成功 + Git 写失败会静默
+(仅打 `log.error`,sha 返 null),运维侧无可观测。5.10-C 补足:
+
+- 新表 `gr_git_dualwrite_failure` — `file_path / project_id / file_id /
+  error_type / error_message / branch / occurred_at`,Flyway
+  `V5.10.0__git_dualwrite_failure.sql`
+- `GitDualwriteFailureEntity` / `Mapper` / `Repository` / `RepositoryImpl`
+  — `insert / countAll / countSince(Date) / findRecent(int) / deleteOlderThan(Date)`
+- `RuleForgeRepositoryServiceImpl.dualWriteToGit` / `dualDeleteFromGit` 接入:
+  - Micrometer `Counter` `ruleforge_git_dualwrite_total{op, result, error_type}`
+    + `ruleforge_git_dualdelete_total{result, error_type}`,可在 `/actuator/prometheus` 抓
+  - 失败时 `dualwriteFailureRepository.insert(...)` 落审计行
+    (errorMessage 截到 2048 字符,含 cause chain)
+  - DB 写失败行也**不**抛(防 audit-log 故障引发 dualWrite 行为变化)
+- `resolveBranch(author)` 提到方法级,save/delete/failure-record 共享同一分支解析
+  (避免 `BranchContext.forUser(null)` 产生 "user/null" 死值)
+- `GitObservabilityController` — `GET /ruleforge/git/observability/summary`
+  (总数 + 1h/24h + counter 快照) + `GET /ruleforge/git/observability/recent?limit=50`
+  (默认 50,最大 500 防滥用),admin 门控
+  (`permissionService.isAdmin()`,与 `RuleForgeRepositoryServiceImpl:216` 同款)
+- `RuleForgeConsoleAutoConfiguration` `@ComponentScan` 加 `"com.ruleforge.console.observability"`
+- BDD 覆盖: `DualWriteObservabilityBddTest` 6 scenarios
+  (happy / fail-and-record / multi-fail-accumulate / skip-no-repo / error-type-tagging /
+  failure-row-fields) + `GitObservabilityControllerTest` 5 cases
+  (admin-gate-summary / admin-gate-recent / happy-summary / happy-recent /
+  limit-clamp-to-500)
+- 5.10-A 集成测试 `RuleForgeRepositoryServiceImplGitStorageIntegrationTest` 同步加
+  `dualwriteFailureRepository` + `meterRegistry` 构造参数
+- 整模块 `mvn -pl ruleforge-console-app test` 280 / 280 全绿
 - 已知重复: `extractProjectName` 现在 3 处(`RuleForgeRepositoryServiceImpl:1173`、
   `FrameController:857`、迁移服务内)— 留 5.11 refactor
 

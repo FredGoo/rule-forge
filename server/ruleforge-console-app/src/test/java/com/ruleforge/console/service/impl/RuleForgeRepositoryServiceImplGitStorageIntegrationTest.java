@@ -7,6 +7,7 @@ import com.ruleforge.console.entity.ProjectEntity;
 import com.ruleforge.console.model.DefaultUser;
 import com.ruleforge.console.model.User;
 import com.ruleforge.console.repository.data.FileRepository;
+import com.ruleforge.console.repository.data.GitDualwriteFailureRepository;
 import com.ruleforge.console.repository.data.LockRepository;
 import com.ruleforge.console.repository.data.PackageRepository;
 import com.ruleforge.console.repository.data.ProjectRepository;
@@ -19,6 +20,8 @@ import com.ruleforge.console.storage.ProjectStorageService;
 import com.ruleforge.console.storage.XmlCanonicalizer;
 import com.ruleforge.console.storage.impl.GitStorageServiceImpl;
 import com.ruleforge.console.storage.model.GitOperationException;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -85,8 +88,10 @@ class RuleForgeRepositoryServiceImplGitStorageIntegrationTest {
     @Mock private ProjectStorageService projectStorageService;
     @Mock private RepositoryInterceptor repositoryInterceptor;
     @Mock private XmlCanonicalizer xmlCanonicalizer;
+    @Mock private GitDualwriteFailureRepository dualwriteFailureRepository;
 
     private RuleForgeRepositoryServiceImpl service;
+    private MeterRegistry meterRegistry;
     /** 单 test 用的 project 名,scenario 各自指定 → test 间隔离 */
     private String project;
     private String filePath;
@@ -106,6 +111,7 @@ class RuleForgeRepositoryServiceImplGitStorageIntegrationTest {
         this.filePath = "/" + this.project + "/rules.xml";
 
         // 2. 装真 GitStorageService,DB 全 mock
+        meterRegistry = new SimpleMeterRegistry();
         service = new RuleForgeRepositoryServiceImpl(
                 permissionService,
                 projectRepository,
@@ -117,7 +123,9 @@ class RuleForgeRepositoryServiceImplGitStorageIntegrationTest {
                 repositoryInterceptor,
                 realGitStorage,
                 realGitConfig,
-                xmlCanonicalizer
+                xmlCanonicalizer,
+                dualwriteFailureRepository,
+                meterRegistry
         );
 
         // 3. 通用 stub
