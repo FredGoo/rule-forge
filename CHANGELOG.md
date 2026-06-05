@@ -114,6 +114,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 已知重复: `extractProjectName` 现在 3 处(`RuleForgeRepositoryServiceImpl:1173`、
   `FrameController:857`、迁移服务内)— 留 5.11 refactor
 
+**v5.12 dualWrite 失败 audit log 定时清理(分支 `feature/5.10-git-storage`)**
+
+5.10-C 留的最后一个债 — `gr_git_dualwrite_failure` 表无界增长,补 TTL:
+
+- `com.ruleforge.console.observability.DualwriteFailureCleanupJob` —
+  `@Component` + `@Scheduled(cron = "0 0 3 * * *")`(每天凌晨 3 点)
+  调 `dualwriteFailureRepository.deleteOlderThan(now - 30d)`,
+  返回删除条数,异常吞掉 + `log.error` — 清理任务挂不能影响业务
+- `@Scheduled` 入口和 `purgeOldFailures()` 解耦:测试 `new` 出来直接调核心方法,
+  绕开 Spring AOP 代理,无 @MockBean
+- `DualwriteFailureCleanupJobTest` 4 scenario:
+  1. `deleteOlderThan` 接到的 `Date` 落在 `[now-30d-1s, now-30d+1s]` 区间
+  2. 仓库返 N 时,作业返 N
+  3. 仓库抛异常时,`assertThatCode` 验证不向上抛
+  4. 多次调用 → 每次各 1 次 `deleteOlderThan`(无 retry loop)
+- `@EnableScheduling` 已在 `com.ruleforge.console.app.config.SchedulingConfig` 里,
+  沿用 `monitoring-` 线程池
+- 整模块 `mvn -pl ruleforge-console-app test` 292 / 292 全绿(原 288 + 4)
+
 **v5.8.4 BatchTest Excel upload(分支 `feature/phase9-batch-test-controller`)**
 
 把 V5.8.0 留的"V5.8.2 简化:用 inline inputConfig 走老路径"补完 — 一个 multipart
