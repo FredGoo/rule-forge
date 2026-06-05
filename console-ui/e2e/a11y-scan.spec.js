@@ -70,6 +70,15 @@ function logViolations(pageName, results) {
         byImpact[v.impact] = (byImpact[v.impact] || 0) + 1;
         console.log(`  [${v.impact}] ${v.id}: ${v.description}`);
         console.log(`     nodes: ${v.nodes.length}, help: ${v.helpUrl}`);
+        // print first 3 nodes' selector + summary
+        for (const node of v.nodes.slice(0, 3)) {
+            const sel = node.target && node.target[0] ? node.target[0] : '?';
+            const msg = node.failureSummary ? node.failureSummary.replace(/\n/g, ' | ') : '';
+            console.log(`     - ${sel} :: ${msg}`);
+        }
+        if (v.nodes.length > 3) {
+            console.log(`     ... and ${v.nodes.length - 3} more`);
+        }
     }
     console.log(`  ${pageName}: ${violations.length} violations total,`,
         JSON.stringify(byImpact));
