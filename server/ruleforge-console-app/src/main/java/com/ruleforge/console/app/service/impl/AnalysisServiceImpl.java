@@ -2,10 +2,15 @@ package com.ruleforge.console.app.service.impl;
 
 import com.ruleforge.console.app.mapper.DecisionAnalysisMapper;
 import com.ruleforge.console.app.mapper.RuleCoverageMapper;
+import com.ruleforge.console.app.mapper.clickhouse.ChDecisionAnalysisMapper;
+import com.ruleforge.console.app.mapper.clickhouse.ChRuleCoverageMapper;
 import com.ruleforge.console.app.service.IAnalysisService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import java.util.function.Supplier;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -17,22 +22,38 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AnalysisServiceImpl implements IAnalysisService {
 
     private final DecisionAnalysisMapper decisionAnalysisMapper;
     private final RuleCoverageMapper ruleCoverageMapper;
 
+    @Autowired(required = false)
+    private ChDecisionAnalysisMapper chAnalysisMapper;
+
+    @Autowired(required = false)
+    private ChRuleCoverageMapper chRuleCoverageMapper;
+
+    @Value("${clickhouse.analytics.enabled:true}")
+    private boolean chEnabled;
+
     private static final String DATE_FORMAT_HOURLY = "%Y-%m-%d %H:00";
     private static final String DATE_FORMAT_DAILY = "%Y-%m-%d";
+
+    public AnalysisServiceImpl(DecisionAnalysisMapper decisionAnalysisMapper,
+                                RuleCoverageMapper ruleCoverageMapper) {
+        this.decisionAnalysisMapper = decisionAnalysisMapper;
+        this.ruleCoverageMapper = ruleCoverageMapper;
+    }
 
     @Override
     public Map<String, Object> getFlowLogTimeSeries(Date startTime, Date endTime,
                                                      String rulePackagePath, String flowId,
                                                      Boolean isGray, String granularity) {
         String dateFormat = "daily".equalsIgnoreCase(granularity) ? DATE_FORMAT_DAILY : DATE_FORMAT_HOURLY;
-        List<Map<String, Object>> rows = decisionAnalysisMapper.aggregateFlowLogTimeSeries(
-                startTime, endTime, rulePackagePath, flowId, isGray, dateFormat);
+        List<Map<String, Object>> rows = queryWithFallback(
+                ch -> ch.aggregateFlowLogTimeSeries(startTime, endTime, rulePackagePath, flowId, isGray, dateFormat),
+                () -> decisionAnalysisMapper.aggregateFlowLogTimeSeries(startTime, endTime, rulePackagePath, flowId, isGray, dateFormat),
+                "aggregateFlowLogTimeSeries");
 
         List<String> timestamps = new ArrayList<>();
         List<Number> volume = new ArrayList<>();
@@ -64,7 +85,10 @@ public class AnalysisServiceImpl implements IAnalysisService {
 
     @Override
     public List<Map<String, Object>> getPackageFlowSummary(Date startTime, Date endTime) {
-        List<Map<String, Object>> rows = decisionAnalysisMapper.aggregateFlowLogByPackage(startTime, endTime);
+        List<Map<String, Object>> rows = queryWithFallback(
+                ch -> ch.aggregateFlowLogByPackage(startTime, endTime),
+                () -> decisionAnalysisMapper.aggregateFlowLogByPackage(startTime, endTime),
+                "aggregateFlowLogByPackage");
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (Map<String, Object> row : rows) {
@@ -91,8 +115,10 @@ public class AnalysisServiceImpl implements IAnalysisService {
     @Override
     public List<Map<String, Object>> getRejectDistribution(Date startTime, Date endTime,
                                                             String rulePackagePath, int limit) {
-        List<Map<String, Object>> rows = decisionAnalysisMapper.aggregateRejectDistribution(
-                startTime, endTime, rulePackagePath, limit);
+        List<Map<String, Object>> rows = queryWithFallback(
+                ch -> ch.aggregateRejectDistribution(startTime, endTime, rulePackagePath, limit),
+                () -> decisionAnalysisMapper.aggregateRejectDistribution(startTime, endTime, rulePackagePath, limit),
+                "aggregateRejectDistribution");
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (Map<String, Object> row : rows) {
@@ -109,14 +135,19 @@ public class AnalysisServiceImpl implements IAnalysisService {
     public Map<String, Object> getRuleCoverageAnalysis(String rulePackagePath,
                                                         Date startTime, Date endTime) {
         // 时间窗口内触发的规则
-        List<Map<String, Object>> firedRows = ruleCoverageMapper.aggregateRuleFireFrequency(
-                startTime, endTime, rulePackagePath);
+        List<Map<String, Object>> firedRows = queryRuleCoverageWithFallback(
+                ch -> ch.aggregateRuleFireFrequency(startTime, endTime, rulePackagePath),
+                () -> ruleCoverageMapper.aggregateRuleFireFrequency(startTime, endTime, rulePackagePath),
+                "aggregateRuleFireFrequency");
         Set<String> firedInWindow = firedRows.stream()
                 .map(r -> String.valueOf(r.get("rule_name")))
                 .collect(Collectors.toSet());
 
         // 全量曾触发的规则名
-        List<String> allFiredNames = ruleCoverageMapper.findAllFiredRuleNames();
+        List<String> allFiredNames = queryRuleCoverageWithFallback(
+                ch -> ch.findAllFiredRuleNames(),
+                () -> ruleCoverageMapper.findAllFiredRuleNames(),
+                "findAllFiredRuleNames");
         Set<String> allFiredSet = new HashSet<>(allFiredNames);
 
         // 分类
@@ -163,8 +194,10 @@ public class AnalysisServiceImpl implements IAnalysisService {
     @Override
     public List<Map<String, Object>> getRuleFireFrequency(Date startTime, Date endTime,
                                                            String rulePackagePath) {
-        List<Map<String, Object>> rows = ruleCoverageMapper.aggregateRuleFireFrequency(
-                startTime, endTime, rulePackagePath);
+        List<Map<String, Object>> rows = queryRuleCoverageWithFallback(
+                ch -> ch.aggregateRuleFireFrequency(startTime, endTime, rulePackagePath),
+                () -> ruleCoverageMapper.aggregateRuleFireFrequency(startTime, endTime, rulePackagePath),
+                "aggregateRuleFireFrequency");
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (Map<String, Object> row : rows) {
@@ -182,34 +215,36 @@ public class AnalysisServiceImpl implements IAnalysisService {
     }
 
     @Override
-    public List<Map<String, Object>> detectAnomalies(Date currentTime, int baselineDays,
+    public List<Map<String, Object>> detectAnomalies(Date currentTimeParam, int baselineDays,
                                                       double sigmaThreshold, String rulePackagePath) {
-        if (currentTime == null) {
-            currentTime = new Date();
-        }
+        Date currentTime = currentTimeParam != null ? currentTimeParam : new Date();
 
         // 当前窗口：过去 1 小时
         Calendar cal = Calendar.getInstance();
         cal.setTime(currentTime);
         cal.add(Calendar.HOUR_OF_DAY, -1);
-        Date currentStart = cal.getTime();
+        final Date currentStart = cal.getTime();
 
         // 基线窗口：baselineDays 天前到当前窗口开始
         cal.setTime(currentStart);
         cal.add(Calendar.DAY_OF_MONTH, -baselineDays);
-        Date baselineStart = cal.getTime();
+        final Date baselineStart = cal.getTime();
 
         // 获取基线统计
-        Map<String, Object> baseline = decisionAnalysisMapper.computeAnomalyBaseline(
-                baselineStart, currentStart, rulePackagePath);
+        Map<String, Object> baseline = queryWithFallback(
+                ch -> ch.computeAnomalyBaseline(baselineStart, currentStart, rulePackagePath),
+                () -> decisionAnalysisMapper.computeAnomalyBaseline(baselineStart, currentStart, rulePackagePath),
+                "computeAnomalyBaseline");
         if (baseline == null || baseline.get("avg_reject_rate") == null) {
             log.info("历史数据不足，跳过偏差检测");
             return Collections.emptyList();
         }
 
         // 获取当前窗口统计
-        Map<String, Object> current = decisionAnalysisMapper.computeCurrentWindowStats(
-                currentStart, currentTime, rulePackagePath);
+        Map<String, Object> current = queryWithFallback(
+                ch -> ch.computeCurrentWindowStats(currentStart, currentTime, rulePackagePath),
+                () -> decisionAnalysisMapper.computeCurrentWindowStats(currentStart, currentTime, rulePackagePath),
+                "computeCurrentWindowStats");
         if (current == null || current.get("total_count") == null) {
             return Collections.emptyList();
         }
@@ -274,7 +309,44 @@ public class AnalysisServiceImpl implements IAnalysisService {
 
     @Override
     public List<String> listPackagePaths() {
-        return decisionAnalysisMapper.findAllPackagePaths();
+        return queryWithFallback(
+                ch -> ch.findAllPackagePaths(),
+                () -> decisionAnalysisMapper.findAllPackagePaths(),
+                "findAllPackagePaths");
+    }
+
+    // === ClickHouse 查询路由 + fallback ===
+
+    @FunctionalInterface
+    private interface ChAnalysisQuery<T> {
+        T execute(ChDecisionAnalysisMapper mapper);
+    }
+
+    @FunctionalInterface
+    private interface ChRuleCoverageQuery<T> {
+        T execute(ChRuleCoverageMapper mapper);
+    }
+
+    private <T> T queryWithFallback(ChAnalysisQuery<T> chQuery, java.util.function.Supplier<T> mysqlQuery, String opName) {
+        if (chEnabled && chAnalysisMapper != null) {
+            try {
+                return chQuery.execute(chAnalysisMapper);
+            } catch (Exception e) {
+                log.warn("ClickHouse query [{}] failed, fallback to MySQL: {}", opName, e.getMessage());
+            }
+        }
+        return mysqlQuery.get();
+    }
+
+    private <T> T queryRuleCoverageWithFallback(ChRuleCoverageQuery<T> chQuery, java.util.function.Supplier<T> mysqlQuery, String opName) {
+        if (chEnabled && chRuleCoverageMapper != null) {
+            try {
+                return chQuery.execute(chRuleCoverageMapper);
+            } catch (Exception e) {
+                log.warn("ClickHouse query [{}] failed, fallback to MySQL: {}", opName, e.getMessage());
+            }
+        }
+        return mysqlQuery.get();
     }
 
     // === 工具方法 ===

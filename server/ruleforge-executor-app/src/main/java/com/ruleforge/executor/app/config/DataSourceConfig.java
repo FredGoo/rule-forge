@@ -36,6 +36,15 @@ public class DataSourceConfig {
     @Value("${FLOWABLE_DB_PASSWORD:}")
     private String flowableDbPassword;
 
+    @Value("${CH_DB_URL:jdbc:clickhouse://192.168.3.36:8123/ruleforge_analytics}")
+    private String chDbUrl;
+
+    @Value("${CH_DB_USERNAME:default}")
+    private String chDbUsername;
+
+    @Value("${CH_DB_PASSWORD:changeme}")
+    private String chDbPassword;
+
     @Primary
     @Bean
     public DataSource ruleforgeDataSource() {
@@ -45,6 +54,22 @@ public class DataSourceConfig {
     @Bean("flowable")
     public DataSource flowableDataSource() {
         return buildPool("ExecutorFlowableSqlCP", flowableDbUrl, flowableDbUsername, flowableDbPassword, 5);
+    }
+
+    @Bean("clickhouseDataSource")
+    public DataSource clickhouseDataSource() {
+        HikariDataSource ds = new HikariDataSource();
+        ds.setPoolName("ClickHouseCP");
+        ds.setJdbcUrl(chDbUrl);
+        ds.setUsername(chDbUsername);
+        ds.setPassword(chDbPassword);
+        ds.setDriverClassName("com.clickhouse.jdbc.ClickHouseDriver");
+        ds.setMaximumPoolSize(5);
+        ds.setMinimumIdle(1);
+        ds.setConnectionTimeout(10_000);
+        ds.setIdleTimeout(300_000);
+        ds.setMaxLifetime(600_000);
+        return ds;
     }
 
     private HikariDataSource buildPool(String name, String jdbcUrl, String user, String pwd, int maxPool) {
