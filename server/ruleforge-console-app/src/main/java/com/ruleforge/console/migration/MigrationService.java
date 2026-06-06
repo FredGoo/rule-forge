@@ -44,6 +44,8 @@ public class MigrationService {
     private static final String BRANCH = "main";
     private static final String AUTHOR = "migration-tool";
     private static final int MAX_ERROR_MESSAGE_LEN = 200;
+    /** 内容最短字节数 — trim 后少于此值视为空壳行,跳过以免产生空 commit 污染 Git 历史. */
+    private static final int MIN_CONTENT_LENGTH = 2;
 
     private final ProjectRepository projectRepository;
     private final FileRepository fileRepository;
@@ -133,8 +135,11 @@ public class MigrationService {
 
     private void processOneVersion(String projectName, FileVersionEntity v,
                                    MigrationReport report, ProjectResult pr) {
-        // skip 1: 无内容
-        if (v.getFileContent() == null) {
+        // skip 1: 无内容或内容太短(空壳行)
+        if (v.getFileContent() == null || v.getFileContent().trim().length() < MIN_CONTENT_LENGTH) {
+            log.debug("Migration skip (content too short): project={} path={} v={} len={}",
+                    projectName, v.getFilePath(), v.getVersionNum(),
+                    v.getFileContent() == null ? 0 : v.getFileContent().length());
             report.setVersionsSkippedNullContent(report.getVersionsSkippedNullContent() + 1);
             pr.setVersionsSkipped(pr.getVersionsSkipped() + 1);
             return;
