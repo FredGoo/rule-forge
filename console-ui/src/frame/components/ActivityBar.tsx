@@ -21,6 +21,7 @@ const PANELS: PanelItem[] = [
     {id: 'simulation', icon: 'glyphicon glyphicon-play-circle', title: '规则仿真'},
     {id: 'ai', icon: 'glyphicon glyphicon-education', title: '智能分析'},
     {id: 'gitStatus', icon: 'glyphicon glyphicon-heartbeat', title: 'Git 健康'},
+    {id: 'userMgmt', icon: 'glyphicon glyphicon-user', title: '用户管理'},
 ];
 
 const BOTTOM_PANELS: PanelItem[] = [
