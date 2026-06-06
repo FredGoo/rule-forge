@@ -133,6 +133,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   沿用 `monitoring-` 线程池
 - 整模块 `mvn -pl ruleforge-console-app test` 292 / 292 全绿(原 288 + 4)
 
+**v5.13 migration 空 commit guard(分支 `feature/5.13-migration-empty-guard`)**
+
+migration tool 加 content 长度 guard,避免空白/极短内容产生空 commit 污染 Git 历史:
+
+- `MigrationService.processOneVersion` skip 规则扩展:
+  原只检查 `fileContent == null`,现增加 `trim().length() < 2` 判定,
+  空白行和单字符行一并跳过,计入 `versionsSkippedNullContent`
+- `MIN_CONTENT_LENGTH = 2`(保留 `<r/>` 等 4+ 字符的合法极简 XML)
+- `MigrationServiceBddTest` 新增 Scenario 9:blank + 1-char + healthy 三行,
+  验证只有 healthy 被 commit,其余计入 skip
+- 整模块 `mvn -pl ruleforge-console-app test` 293 / 293 全绿(原 292 + 1)
+
 **v5.8.4 BatchTest Excel upload(分支 `feature/phase9-batch-test-controller`)**
 
 把 V5.8.0 留的"V5.8.2 简化:用 inline inputConfig 走老路径"补完 — 一个 multipart

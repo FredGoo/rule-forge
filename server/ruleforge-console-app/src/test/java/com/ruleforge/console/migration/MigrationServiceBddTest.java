@@ -444,6 +444,50 @@ class MigrationServiceBddTest {
     }
 
     // ==========================================================================
+    // Scenario 9: skip blank / too-short content
+    // ==========================================================================
+    @Nested
+    @DisplayName("Scenario 9: skip blank / too-short content")
+    class SkipBlankContent {
+
+        @Test
+        @DisplayName("Given 1 project with blank + short + healthy versions, "
+                + "When migrate, Then only healthy is committed, blanks counted as skippedNullContent")
+        void blankAndShortContentSkipped() throws Exception {
+            // Given
+            ProjectEntity proj = mkProject(1L, "proj");
+            when(projectRepository.findAll()).thenReturn(List.of(proj));
+
+            FileVersionEntity blank = mkVersion(1L, "/proj/a.xml", "1", 1L, "   \n\t  ", null);
+            FileVersionEntity shorty = mkVersion(1L, "/proj/b.xml", "2", 2L, ".", null);        // 1 char < 2
+            FileVersionEntity healthy = mkVersion(1L, "/proj/c.xml", "3", 3L,
+                    "<rules><r id='1'>hello</r></rules>", null);                                  // 30 chars
+            when(fileRepository.findVersionsByProjectId(1L))
+                    .thenReturn(List.of(blank, shorty, healthy));
+
+            // When
+            MigrationReport report = service.migrate(new MigrationRequest(null, false));
+
+            // Then — only healthy migrated
+            assertThat(report.getVersionsMigrated()).isEqualTo(1);
+            assertThat(report.getVersionsSkippedNullContent()).isEqualTo(2);
+            assertThat(report.getTotalVersionsSeen()).isEqualTo(3);
+
+            // Then — no commit for blank or short
+            verify(realGitStorage, times(1))
+                    .commit(eq("proj"), eq("main"), contains("v3"), eq("migration-tool"));
+            verify(realGitStorage, never())
+                    .commit(eq("proj"), eq("main"), contains("v1"), eq("migration-tool"));
+            verify(realGitStorage, never())
+                    .commit(eq("proj"), eq("main"), contains("v2"), eq("migration-tool"));
+
+            // Then — only 1 SHA update
+            verify(fileRepository, times(1))
+                    .updateGitCommitSha(anyString(), anyString(), anyString());
+        }
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
     private ProjectEntity mkProject(Long id, String name) {
