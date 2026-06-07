@@ -1,12 +1,8 @@
 package com.ruleforge.console.app.runner;
 
-import com.ruleforge.console.app.mapper.clickhouse.ChDecisionAnalysisMapper;
-import com.ruleforge.decision.entity.DecisionFlowLog;
-import com.ruleforge.decision.entity.DecisionRuleLog;
-import com.ruleforge.decision.mapper.clickhouse.ChDecisionFlowLogMapper;
-import com.ruleforge.decision.mapper.clickhouse.ChDecisionRuleLogMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -15,6 +11,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,8 +20,18 @@ import java.util.List;
  *
  * <p>用法: {@code java -jar ruleforge-console-app.jar --spring.profiles.active=backfill}
  *
- * <p>按 id 批量读 MySQL nd_decision_flow_log,写入 ClickHouse。
- * ReplacingMergeTree 天然去重,重跑安全。
+ * <p>按 id 批量读 MySQL {@code nd_decision_flow_log} (在 app_db),写入 ClickHouse。
+ * ClickHouse 用 {@code ReplacingMergeTree} 按 id 去重,重跑安全。
+ *
+ * <p><b>架构说明(为何 raw JDBC,不用 mapper):</b>
+ * <ul>
+ *   <li>{@code DecisionFlowLog} entity 在 executor-app,console-app 不应跨模块借实体</li>
+ *   <li>这是<b>一次性批处理</b>工具,MyBatis-Plus 抽象无价值,raw JDBC 更直白</li>
+ *   <li>自包含 = 改 schema 只动这一个文件,不动共享 entity</li>
+ * </ul>
+ *
+ * <p><b>范围:</b>只 backfill {@code nd_decision_flow_log}。
+ *  {@code nd_decision_rule_log} 当前不 backfill(需要先评估数据量 + 重新设计分页策略)。
  */
 @Slf4j
 @Component
@@ -34,35 +41,38 @@ public class ClickHouseBackfillRunner implements CommandLineRunner {
 
     private static final int BATCH_SIZE = 1000;
 
-    private final DataSource ruleforgeDataSource;
-    private final ChDecisionFlowLogMapper chFlowLogMapper;
-    private final ChDecisionRuleLogMapper chRuleLogMapper;
+    // nd_decision_flow_log 在 app_db(V5.16 migration-app 创建),不是 ruleforge_db
+    private final DataSource appDataSource;
+    // ClickHouse 数据源(DataSourceConfig.@Bean("clickhouseDataSource"))
+    @Qualifier("clickhouseDataSource")
+    private final DataSource clickhouseDataSource;
 
     @Override
     public void run(String... args) {
         log.info("=== ClickHouse backfill start ===");
         long totalFlow = 0;
-        long totalRule = 0;
         long lastId = 0;
 
-        try {
+        try (Connection ch = clickhouseDataSource.getConnection();
+             PreparedStatement insertPs = ch.prepareStatement(FLOW_LOG_INSERT_SQL)) {
+
             while (true) {
-                List<DecisionFlowLog> batch = readFlowLogBatch(lastId);
+                List<FlowLogRow> batch = readFlowLogBatch(lastId);
                 if (batch.isEmpty()) {
                     break;
                 }
                 int flowCount = 0;
-                int ruleCount = 0;
-                for (DecisionFlowLog flowLog : batch) {
+                for (FlowLogRow row : batch) {
                     try {
-                        chFlowLogMapper.insert(flowLog);
+                        bindFlowLog(insertPs, row);
+                        insertPs.executeUpdate();
                         flowCount++;
                     } catch (Exception e) {
-                        log.warn("Backfill flow_log failed: id={}: {}", flowLog.getId(), e.getMessage());
+                        log.warn("Backfill flow_log failed: id={}: {}", row.id, e.getMessage());
                     }
                 }
                 totalFlow += flowCount;
-                lastId = batch.get(batch.size() - 1).getId();
+                lastId = batch.get(batch.size() - 1).id;
                 log.info("Backfill progress: synced {} flow logs (lastId={})", totalFlow, lastId);
             }
             log.info("=== ClickHouse backfill done: {} flow logs ===", totalFlow);
@@ -71,9 +81,9 @@ public class ClickHouseBackfillRunner implements CommandLineRunner {
         }
     }
 
-    private List<DecisionFlowLog> readFlowLogBatch(long lastId) throws Exception {
-        List<DecisionFlowLog> result = new ArrayList<>();
-        try (Connection conn = ruleforgeDataSource.getConnection();
+    private List<FlowLogRow> readFlowLogBatch(long lastId) throws Exception {
+        List<FlowLogRow> result = new ArrayList<>();
+        try (Connection conn = appDataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "SELECT id, user_id, order_no, flow_id, flow_version, " +
                      "  rule_package_path, rule_package_version, execution_status, " +
@@ -86,35 +96,125 @@ public class ClickHouseBackfillRunner implements CommandLineRunner {
             ps.setLong(1, lastId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    DecisionFlowLog log = new DecisionFlowLog();
-                    log.setId(rs.getLong("id"));
-                    log.setUserId(rs.getString("user_id"));
-                    log.setOrderNo(rs.getString("order_no"));
-                    log.setFlowId(rs.getString("flow_id"));
-                    log.setFlowVersion(rs.getString("flow_version"));
-                    log.setRulePackagePath(rs.getString("rule_package_path"));
-                    log.setRulePackageVersion(rs.getString("rule_package_version"));
-                    log.setExecutionStatus(rs.getString("execution_status"));
-                    log.setRejectReason(rs.getString("reject_reason"));
-                    log.setRejectCode(rs.getString("reject_code"));
-                    log.setNodeNames(rs.getString("node_names"));
-                    log.setExecutionTimeMs(rs.getObject("execution_time_ms", Long.class));
-                    log.setTotalTimeMs(rs.getObject("total_time_ms", Long.class));
-                    log.setLoadKnowledgeTimeMs(rs.getObject("load_knowledge_time_ms", Long.class));
-                    log.setFlowExecutionTimeMs(rs.getObject("flow_execution_time_ms", Long.class));
-                    log.setTotalMatchedRules(rs.getObject("total_matched_rules", Integer.class));
-                    log.setTotalFiredRules(rs.getObject("total_fired_rules", Integer.class));
-                    log.setTotalLoadedFields(rs.getObject("total_loaded_fields", Integer.class));
-                    log.setErrorMessage(rs.getString("error_message"));
-                    log.setErrorStackTrace(rs.getString("error_stack_trace"));
-                    log.setIsGray(rs.getBoolean("is_gray"));
-                    log.setGrayStrategyId(rs.getObject("gray_strategy_id", Long.class));
-                    log.setGrayGitTag(rs.getString("gray_git_tag"));
-                    log.setCreatedAt(rs.getTimestamp("created_at"));
-                    result.add(log);
+                    result.add(new FlowLogRow(
+                            rs.getLong("id"),
+                            rs.getString("user_id"),
+                            rs.getString("order_no"),
+                            rs.getString("flow_id"),
+                            rs.getString("flow_version"),
+                            rs.getString("rule_package_path"),
+                            rs.getString("rule_package_version"),
+                            rs.getString("execution_status"),
+                            rs.getString("reject_reason"),
+                            rs.getString("reject_code"),
+                            rs.getString("node_names"),
+                            rs.getObject("execution_time_ms", Long.class),
+                            rs.getObject("total_time_ms", Long.class),
+                            rs.getObject("load_knowledge_time_ms", Long.class),
+                            rs.getObject("flow_execution_time_ms", Long.class),
+                            rs.getObject("total_matched_rules", Integer.class),
+                            rs.getObject("total_fired_rules", Integer.class),
+                            rs.getObject("total_loaded_fields", Integer.class),
+                            rs.getString("error_message"),
+                            rs.getString("error_stack_trace"),
+                            rs.getBoolean("is_gray"),
+                            rs.getObject("gray_strategy_id", Long.class),
+                            rs.getString("gray_git_tag"),
+                            rs.getTimestamp("created_at")
+                    ));
                 }
             }
         }
         return result;
+    }
+
+    private void bindFlowLog(PreparedStatement ps, FlowLogRow r) throws Exception {
+        ps.setLong(1, r.id);
+        ps.setString(2, r.userId);
+        ps.setString(3, r.orderNo);
+        ps.setString(4, r.flowId);
+        ps.setString(5, r.flowVersion);
+        ps.setString(6, r.rulePackagePath);
+        ps.setString(7, r.rulePackageVersion);
+        ps.setString(8, r.executionStatus);
+        ps.setString(9, r.rejectReason);
+        ps.setString(10, r.rejectCode);
+        ps.setString(11, r.nodeNames);
+        setNullableLong(ps, 12, r.executionTimeMs);
+        setNullableLong(ps, 13, r.totalTimeMs);
+        setNullableLong(ps, 14, r.loadKnowledgeTimeMs);
+        setNullableLong(ps, 15, r.flowExecutionTimeMs);
+        setNullableInt(ps, 16, r.totalMatchedRules);
+        setNullableInt(ps, 17, r.totalFiredRules);
+        setNullableInt(ps, 18, r.totalLoadedFields);
+        ps.setString(19, r.errorMessage);
+        ps.setString(20, r.errorStackTrace);
+        ps.setBoolean(21, r.isGray);
+        setNullableLong(ps, 22, r.grayStrategyId);
+        ps.setString(23, r.grayGitTag);
+        ps.setTimestamp(24, r.createdAt);
+    }
+
+    private static void setNullableLong(PreparedStatement ps, int idx, Long value) throws Exception {
+        if (value == null) {
+            ps.setNull(idx, java.sql.Types.BIGINT);
+        } else {
+            ps.setLong(idx, value);
+        }
+    }
+
+    private static void setNullableInt(PreparedStatement ps, int idx, Integer value) throws Exception {
+        if (value == null) {
+            ps.setNull(idx, java.sql.Types.INTEGER);
+        } else {
+            ps.setInt(idx, value);
+        }
+    }
+
+    /**
+     * ClickHouse INSERT — 24 列必须和 CH DDL ({@code scripts/clickhouse-init.sql}) 完全一致。
+     * 改 schema 时同时改这里。
+     */
+    private static final String FLOW_LOG_INSERT_SQL =
+            "INSERT INTO nd_decision_flow_log " +
+                    "(id, user_id, order_no, flow_id, flow_version, rule_package_path, rule_package_version, " +
+                    " execution_status, reject_reason, reject_code, node_names, " +
+                    " execution_time_ms, total_time_ms, load_knowledge_time_ms, flow_execution_time_ms, " +
+                    " total_matched_rules, total_fired_rules, total_loaded_fields, " +
+                    " error_message, error_stack_trace, " +
+                    " is_gray, gray_strategy_id, gray_git_tag, created_at) " +
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+    /**
+     * 本地 DTO — 镜像 {@code nd_decision_flow_log} 行的子集。
+     * 不复用 executor-app 的 {@code DecisionFlowLog} entity:跨模块借实体 = 隐式契约。
+     * schema 变了改这里 + {@link #FLOW_LOG_INSERT_SQL} 两处即可。
+     */
+    private record FlowLogRow(
+            long id,
+            String userId,
+            String orderNo,
+            String flowId,
+            String flowVersion,
+            String rulePackagePath,
+            String rulePackageVersion,
+            String executionStatus,
+            String rejectReason,
+            String rejectCode,
+            String nodeNames,
+            Long executionTimeMs,
+            Long totalTimeMs,
+            Long loadKnowledgeTimeMs,
+            Long flowExecutionTimeMs,
+            Integer totalMatchedRules,
+            Integer totalFiredRules,
+            Integer totalLoadedFields,
+            String errorMessage,
+            String errorStackTrace,
+            boolean isGray,
+            Long grayStrategyId,
+            String grayGitTag,
+            Timestamp createdAt
+    ) {
     }
 }
