@@ -22,6 +22,7 @@ import PlaceholderPanel from '@/frame/panels/PlaceholderPanel.jsx';
 import ReleasePanel from '@/release/index.tsx';
 import SimulationPanel from '@/simulation/index.tsx';
 import AgentPanel from '@/agent/index.tsx';
+import UserManagementPanel from '@/admin/UserManagementPanel.tsx';
 import Loading from '@/components/loading/component/Loading.tsx';
 // V5.8.0: 挂在 frame 顶层而不是 PackageEditor 里,这样从任何 panel
 // (FlowEditor / DatasourcePanel / ...) 触发 OPEN_BATCH_TEST_DIALOG 都能开
@@ -51,6 +52,8 @@ function SidePanelSwitcher({activePanel, store, eventObj}: SidePanelSwitcherProp
             return <AgentPanel/>;
         case 'gitStatus':
             return <GitStatusPanel/>;
+        case 'userMgmt':
+            return <UserManagementPanel/>;
         case 'settings':
             return <PlaceholderPanel panelId="settings"/>;
         default:

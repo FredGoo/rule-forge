@@ -424,3 +424,136 @@ export function getGitStatusRecent(
         opts,
     );
 }
+
+// ---- V5.15 用户管理 API ----
+
+/** 用户列表行 */
+export interface UserItem {
+    id: number;
+    username: string;
+    companyId: string;
+    isAdmin: boolean;
+    isEnabled: boolean;
+    canImport: boolean;
+    canExport: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** 用户项目权限行 */
+export interface UserProjectPermission {
+    id: number;
+    userId: number;
+    project: string;
+    readProject: boolean;
+    readPackage: boolean;
+    writePackage: boolean;
+    readVariableFile: boolean;
+    writeVariableFile: boolean;
+    readParameterFile: boolean;
+    writeParameterFile: boolean;
+    readConstantFile: boolean;
+    writeConstantFile: boolean;
+    readActionFile: boolean;
+    writeActionFile: boolean;
+    readRuleFile: boolean;
+    writeRuleFile: boolean;
+    readDecisionTableFile: boolean;
+    writeDecisionTableFile: boolean;
+    readDecisionTreeFile: boolean;
+    writeDecisionTreeFile: boolean;
+    readScorecardFile: boolean;
+    writeScorecardFile: boolean;
+    readFlowFile: boolean;
+    writeFlowFile: boolean;
+}
+
+/** 列出所有用户 (admin-only) */
+export function listUsers(opts?: RequestOptions): Promise<UserItem[]> {
+    return httpGet<UserItem[]>('/permission/users', opts);
+}
+
+/** 创建用户 (admin-only) */
+export function createUser(
+    username: string,
+    password: string,
+    isAdmin: boolean,
+    canExport: boolean,
+    opts?: RequestOptions,
+): Promise<{ status: boolean; id: number; username: string; error?: string }> {
+    return formPost('/permission/users', {
+        username,
+        password,
+        isAdmin: String(isAdmin),
+        canExport: String(canExport),
+    }, opts);
+}
+
+/** 修改用户 (admin-only) */
+export function updateUser(
+    id: number,
+    params: Record<string, string>,
+    opts?: RequestOptions,
+): Promise<{ status: boolean; username: string; error?: string }> {
+    const base = (window as any)._server || '';
+    const url = base + '/permission/users/' + id;
+    const body = new URLSearchParams(params).toString();
+    return fetch(url, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body,
+        credentials: 'same-origin',
+    }).then(function (response: Response) {
+        if (!response.ok) return handleError(response, opts);
+        return response.json();
+    });
+}
+
+/** 启用/禁用用户 (admin-only) */
+export function toggleUserEnabled(
+    id: number,
+    enabled: boolean,
+    opts?: RequestOptions,
+): Promise<{ status: boolean }> {
+    const base = (window as any)._server || '';
+    const url = base + '/permission/users/' + id + '/enabled?enabled=' + enabled;
+    return fetch(url, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+    }).then(function (response: Response) {
+        if (!response.ok) return handleError(response, opts);
+        return response.json();
+    });
+}
+
+/** 重置密码 (admin-only) */
+export function resetPassword(
+    id: number,
+    newPassword: string,
+    opts?: RequestOptions,
+): Promise<{ status: boolean }> {
+    return formPost('/permission/users/' + id + '/reset-password', {
+        newPassword,
+    }, opts);
+}
+
+/** 获取某用户的项目权限 (admin-only) */
+export function getUserPermissions(
+    userId: number,
+    opts?: RequestOptions,
+): Promise<UserProjectPermission[]> {
+    return httpGet<UserProjectPermission[]>('/permission/users/' + userId + '/permissions', opts);
+}
+
+/** 保存某用户的项目权限 (admin-only) */
+export function saveUserPermissions(
+    userId: number,
+    permissions: UserProjectPermission[],
+    opts?: RequestOptions,
+): Promise<{ status: boolean; count: number }> {
+    return jsonPut<{ status: boolean; count: number }>(
+        '/permission/users/' + userId + '/permissions',
+        permissions,
+        opts,
+    );
+}

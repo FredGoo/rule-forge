@@ -16,7 +16,7 @@ export async function login(page) {
         const response = await fetch('/api/frame/login', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({username: 'admin', password: 'admin'}).toString()
+            body: new URLSearchParams({username: 'admin', password: 'admin123'}).toString()
         });
         const result = await response.json();
         if (!result.status) {
