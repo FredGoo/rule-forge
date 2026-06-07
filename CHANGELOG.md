@@ -77,6 +77,41 @@ package` 直接失败,生产 jar 打不出来:
 - 表在哪 DB 就注入哪个 DataSource bean:`nd_*` 在 `app_db` 用
   `appDataSource`,engine 表在 `ruleforge_db` 用 `ruleforgeDataSource`
 
+**Phase 8 ClickHouseBackfillRunner schema mismatch fail-fast (分支
+`fix/phase8-clickhouse-backfill-schema-failfast`)**
+
+继续 Phase 8 修复:PR #31 修了跨模块依赖 + 错 DataSource,本轮又发现
+**第 3 个 bug** — schema 不匹配:
+
+- runner 假设 MySQL `nd_decision_flow_log` 是 24 列富版(含
+  `rule_package_path` / `order_no` / `total_matched_rules` /
+  `execution_time_ms` / `node_names` 等性能分析字段)
+- 实际 V5.16 schema 是 15 列简版(`project_id` / `package_id` /
+  `request_data` / `response_data` / `status` / `exec_ms` 等)
+- 两套 schema 字段名 + 数量都对不上,即使 PR #31 修了编译/DB,runtime
+  SQL 仍会 "Unknown column 'rule_package_path' in 'field list'"
+
+**修复策略:启动时主动校验,schema 不匹配就 fail-fast。** 不写半成品
+SQL 让 operator 调试,而是在日志里明确说"schema 不匹配,等 nd_decision_flow_log
+富化(SLA P3),CH analytics 当前由 executor-app 写入时双写产生,
+不走 backfill"。
+
+- `checkMysqlSchemaCompatible()` — probe SELECT 富版标志性字段,
+  抛 SQLException 就 false
+- `run()` 启动第一件事调它,失败直接 log.error + return,**不打开
+  ClickHouse 连接**(测试用 `AssertionError` 验证 ch.getConnection()
+  不会被调)
+- `ClickHouseBackfillRunnerTest` 新增 2 scenarios:
+  - 检测到缺列时 `checkMysqlSchemaCompatible()` 返 false
+  - `run()` schema 不匹配时 ClickHouse 连接**不**被打开
+- 整模块 `mvn -pl ruleforge-console-app test` 334/334 全绿
+  (原 332 + 本轮 2 新增)
+
+**当前 CH `nd_decision_flow_log` 数据来源**:
+
+- ✅ executor-app 热路径双写 (`DecisionLogServiceImpl` → `ClickHouseAnalyticsWriter`)
+- ❌ backfill runner (schema mismatch,本轮 fail-fast 显式拒绝)
+
 ### Added
 
 **V5.17 用户/权限操作审计日志 (分支 `feature/5.17-user-audit-log`,合入 `feature/5.15-permission-auth`)**

@@ -50,6 +50,24 @@ public class ClickHouseBackfillRunner implements CommandLineRunner {
     @Override
     public void run(String... args) {
         log.info("=== ClickHouse backfill start ===");
+
+        // V5.16+ 防御:V5.16 创建的 MySQL nd_decision_flow_log schema 是简版
+        // (15 列: project_id / package_id / status / exec_ms / ...),
+        // 而本 runner 假设的是 24 列的富版(包含 rule_package_path /
+        // total_matched_rules 等性能分析字段)。
+        // 当前 V5.16 schema 不满足 backfill 前提,启动时主动 fail-fast,
+        // operator 看到明确日志不会浪费时间在 SQL 调试上。
+        // 真正能 backfill 要等 nd_decision_flow_log 富化(SLA P3)。
+        if (!checkMysqlSchemaCompatible()) {
+            log.error("=== ClickHouse backfill ABORTED: MySQL nd_decision_flow_log schema 不匹配 ===");
+            log.error("本 runner 假设 24 列富版 schema(rule_package_path / order_no / total_matched_rules 等),");
+            log.error("实际 V5.16 schema 是 15 列简版(project_id / package_id / status / exec_ms 等)。");
+            log.error("两套 schema 字段名/数量都对不上,本 runner 无法做有意义的数据搬运。");
+            log.error("解决方案: 等 nd_decision_flow_log 富化(预计 V5.18+),或单独写一个 schema mapping runner。");
+            log.error("当前 CH analytics 数据由 executor-app 写入时双写产生(DecisionLogServiceImpl),不走 backfill。");
+            return;
+        }
+
         long totalFlow = 0;
         long lastId = 0;
 
@@ -180,6 +198,24 @@ public class ClickHouseBackfillRunner implements CommandLineRunner {
             ps.setNull(idx, java.sql.Types.INTEGER);
         } else {
             ps.setInt(idx, value);
+        }
+    }
+
+    /**
+     * 启动时校验 MySQL nd_decision_flow_log schema。
+     * 期望:含 "rule_package_path" "total_matched_rules" "execution_time_ms" 等 24 列富版字段。
+     * V5.16 简版 schema 不含这些字段,直接 false。
+     */
+    private boolean checkMysqlSchemaCompatible() {
+        // 至少查 3 个标志性字段,够用就行
+        String probe = "SELECT rule_package_path, total_matched_rules, execution_time_ms " +
+                "FROM nd_decision_flow_log LIMIT 0";
+        try (Connection conn = appDataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(probe)) {
+            ps.executeQuery();
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
