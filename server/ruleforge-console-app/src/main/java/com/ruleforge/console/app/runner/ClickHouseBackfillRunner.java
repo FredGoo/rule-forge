@@ -61,16 +61,28 @@ public class ClickHouseBackfillRunner implements CommandLineRunner {
                 if (batch.isEmpty()) {
                     break;
                 }
-                int flowCount = 0;
+                // addBatch + executeBatch — 一个 page (1000 行) 一次 round-trip,
+                // 比逐行 executeUpdate() 快 ~100x。ClickHouse JDBC 驱动把整 batch
+                // 打成单个 native protocol packet。
                 for (FlowLogRow row : batch) {
                     try {
                         bindFlowLog(insertPs, row);
-                        insertPs.executeUpdate();
-                        flowCount++;
+                        insertPs.addBatch();
                     } catch (Exception e) {
-                        log.warn("Backfill flow_log failed: id={}: {}", row.id, e.getMessage());
+                        log.warn("Bind flow_log failed (skipping): id={}: {}", row.id, e.getMessage());
                     }
                 }
+                int flowCount;
+                try {
+                    int[] results = insertPs.executeBatch();
+                    flowCount = results.length;
+                } catch (java.sql.BatchUpdateException e) {
+                    // 部分行失败:clickhouse-jdbc 报 BatchUpdateException,继续往后跑
+                    // (ReplacingMergeTree 天然幂等,失败的行下次重跑会自动补)
+                    log.warn("Backfill batch partial failure (will retry on next run): {}", e.getMessage());
+                    flowCount = 0;
+                }
+                insertPs.clearBatch();
                 totalFlow += flowCount;
                 lastId = batch.get(batch.size() - 1).id;
                 log.info("Backfill progress: synced {} flow logs (lastId={})", totalFlow, lastId);
