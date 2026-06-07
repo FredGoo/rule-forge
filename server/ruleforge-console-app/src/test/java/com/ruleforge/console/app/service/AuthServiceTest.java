@@ -1,6 +1,7 @@
 package com.ruleforge.console.app.service;
 
 import com.ruleforge.console.app.entity.UserEntity;
+import com.ruleforge.console.audit.service.AuditService;
 import com.ruleforge.console.mapper.UserMapper;
 import com.ruleforge.console.app.service.impl.AuthServiceImpl;
 import com.ruleforge.console.app.util.PasswordUtil;
@@ -44,6 +45,10 @@ class AuthServiceTest {
 
     @Mock
     private UserMapper userMapper;
+
+    /** V5.17:AuthServiceImpl 构造里加的 AuditService — 这里 mock 掉,login 测试不验证 audit */
+    @Mock
+    private AuditService auditService;
 
     @InjectMocks
     private AuthServiceImpl authService;

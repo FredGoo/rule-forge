@@ -2,6 +2,8 @@ package com.ruleforge.console.controller;
 
 import com.ruleforge.console.app.entity.UserEntity;
 import com.ruleforge.console.app.entity.UserProjectPermissionEntity;
+import com.ruleforge.console.audit.entity.AuditLogEntity;
+import com.ruleforge.console.audit.service.AuditService;
 import com.ruleforge.console.mapper.UserMapper;
 import com.ruleforge.console.mapper.UserProjectPermissionMapper;
 import com.ruleforge.console.app.service.AuthService;
@@ -41,6 +43,8 @@ public class PermissionController {
     private final AuthService authService;
     private final UserMapper userMapper;
     private final UserProjectPermissionMapper permissionMapper;
+    /** V5.17 user/permission audit log 服务;user-mgmt 操作都走它落 audit。 */
+    private final AuditService auditService;
 
     // ── 既有端点 (保留兼容,admin-only) ──
 
@@ -119,7 +123,8 @@ public class PermissionController {
                                            @RequestParam(defaultValue = "false") boolean canExport) {
         assertAdmin();
         try {
-            UserEntity user = authService.createUser(username, password, isAdmin, canExport);
+            String actor = currentAdminUsername();
+            UserEntity user = authService.createUser(actor, username, password, isAdmin, canExport);
             return Map.of("status", true, "id", user.getId(), "username", user.getUsername());
         } catch (IllegalArgumentException e) {
             return Map.of("status", false, "error", e.getMessage());
@@ -137,7 +142,8 @@ public class PermissionController {
                                            @RequestParam(required = false) Boolean canExport) {
         assertAdmin();
         try {
-            UserEntity user = authService.updateUser(id, password, isAdmin, canImport, canExport);
+            String actor = currentAdminUsername();
+            UserEntity user = authService.updateUser(actor, id, password, isAdmin, canImport, canExport);
             return Map.of("status", true, "username", user.getUsername());
         } catch (IllegalArgumentException e) {
             return Map.of("status", false, "error", e.getMessage());
@@ -151,7 +157,8 @@ public class PermissionController {
     public Map<String, Object> toggleEnabled(@PathVariable Long id,
                                               @RequestParam boolean enabled) {
         assertAdmin();
-        authService.toggleEnabled(id, enabled);
+        String actor = currentAdminUsername();
+        authService.toggleEnabled(actor, id, enabled);
         return Map.of("status", true);
     }
 
@@ -162,7 +169,8 @@ public class PermissionController {
     public Map<String, Object> resetPassword(@PathVariable Long id,
                                               @RequestParam String newPassword) {
         assertAdmin();
-        authService.resetPassword(id, newPassword);
+        String actor = currentAdminUsername();
+        authService.resetPassword(actor, id, newPassword);
         return Map.of("status", true);
     }
 
@@ -192,7 +200,33 @@ public class PermissionController {
             UserProjectPermissionEntity entity = toEntity(id, pc);
             permissionMapper.insert(entity);
         }
+        // V5.17:落 audit(V5.17 只记 count;per-project 行留 V5.18)
+        String actor = currentAdminUsername();
+        if (actor != null) {
+            auditService.logSavePermissions(actor, user, configs.size());
+        }
         return Map.of("status", true, "count", configs.size());
+    }
+
+    // ── V5.17 新增:audit log 查询端点 (admin-only) ──
+
+    /**
+     * 查询 audit log(分页 + 过滤)。size 上限 500,跟 V5.10-C GitObservabilityController
+     * 同款防滥用。
+     */
+    @GetMapping("/audit")
+    public List<AuditLogEntity> listAuditLogs(@RequestParam(required = false) String actor,
+                                              @RequestParam(required = false) String action,
+                                              @RequestParam(defaultValue = "20") int size) {
+        assertAdmin();
+        int limit = Math.min(Math.max(size, 1), 500);
+        return auditService.listAuditLogs(actor, action, limit);
+    }
+
+    /** 当前 admin 用户名(给 audit 当 actor);非 admin 不调(走 assertAdmin 兜底) */
+    private String currentAdminUsername() {
+        User u = EnvironmentUtils.getLoginUser(null);
+        return u != null ? u.getUsername() : null;
     }
 
     // ── 内部 helper ──

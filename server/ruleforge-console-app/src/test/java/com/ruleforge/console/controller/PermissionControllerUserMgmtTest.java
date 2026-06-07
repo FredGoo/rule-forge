@@ -2,6 +2,7 @@ package com.ruleforge.console.controller;
 
 import com.ruleforge.console.app.entity.UserEntity;
 import com.ruleforge.console.app.entity.UserProjectPermissionEntity;
+import com.ruleforge.console.audit.service.AuditService;
 import com.ruleforge.console.mapper.UserMapper;
 import com.ruleforge.console.mapper.UserProjectPermissionMapper;
 import com.ruleforge.console.app.service.AuthService;
@@ -44,6 +45,8 @@ class PermissionControllerUserMgmtTest {
     @Mock private AuthService authService;
     @Mock private UserMapper userMapper;
     @Mock private UserProjectPermissionMapper permissionMapper;
+    /** V5.17:audit log 服务,user-mgmt 操作都走它 */
+    @Mock private AuditService auditService;
 
     @InjectMocks
     private PermissionController controller;
@@ -77,20 +80,20 @@ class PermissionControllerUserMgmtTest {
             created.setId(99L);
             created.setUsername("testuser");
             created.setAdmin(false);
-            when(authService.createUser("testuser", "pass123", false, false)).thenReturn(created);
+            when(authService.createUser("admin", "testuser", "pass123", false, false)).thenReturn(created);
 
             Map<String, Object> result = controller.createUser("testuser", "pass123", false, false);
 
             assertThat(result.get("status")).isEqualTo(true);
             assertThat(result.get("id")).isEqualTo(99L);
             assertThat(result.get("username")).isEqualTo("testuser");
-            verify(authService).createUser("testuser", "pass123", false, false);
+            verify(authService).createUser("admin", "testuser", "pass123", false, false);
         }
 
         @Test
         @DisplayName("创建重复用户名 → error")
         void shouldRejectDuplicateUsername() {
-            when(authService.createUser("testuser", "pass", false, false))
+            when(authService.createUser("admin", "testuser", "pass", false, false))
                     .thenThrow(new IllegalArgumentException("用户名 'testuser' 已存在"));
 
             Map<String, Object> result = controller.createUser("testuser", "pass", false, false);

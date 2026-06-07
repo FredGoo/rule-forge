@@ -17,6 +17,7 @@ import ActivityBar from '@/frame/components/ActivityBar.tsx';
 import RuleEditorPanel from '@/frame/panels/RuleEditorPanel.jsx';
 import MonitoringPanel from '@/frame/panels/MonitoringPanel.jsx';
 import GitStatusPanel from '@/frame/panels/GitStatusPanel.tsx';
+import AuditLogPanel from '@/frame/panels/AuditLogPanel.tsx';
 import DatasourcePanel from '@/datasource/index.tsx';
 import PlaceholderPanel from '@/frame/panels/PlaceholderPanel.jsx';
 import ReleasePanel from '@/release/index.tsx';
@@ -54,6 +55,8 @@ function SidePanelSwitcher({activePanel, store, eventObj}: SidePanelSwitcherProp
             return <GitStatusPanel/>;
         case 'userMgmt':
             return <UserManagementPanel/>;
+        case 'auditLog':
+            return <AuditLogPanel/>;
         case 'settings':
             return <PlaceholderPanel panelId="settings"/>;
         default:

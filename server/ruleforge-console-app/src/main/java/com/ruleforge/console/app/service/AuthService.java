@@ -36,22 +36,26 @@ public interface AuthService {
 
     /**
      * 创建新用户(BCrypt hash 密码)
+     * @param actor 操作人(V5.17 audit 用),admin 用户名
      * @throws IllegalArgumentException username 已存在
      */
-    UserEntity createUser(String username, String password, boolean isAdmin, boolean canExport);
+    UserEntity createUser(String actor, String username, String password, boolean isAdmin, boolean canExport);
 
     /**
      * 修改用户信息(密码为空则不修改)
+     * @param actor 操作人(V5.17 audit 用)
      */
-    UserEntity updateUser(Long id, String newPassword, Boolean isAdmin, Boolean canImport, Boolean canExport);
+    UserEntity updateUser(String actor, Long id, String newPassword, Boolean isAdmin, Boolean canImport, Boolean canExport);
 
     /**
      * 启用/禁用用户(不物理删)
+     * @param actor 操作人(V5.17 audit 用)
      */
-    void toggleEnabled(Long id, boolean enabled);
+    void toggleEnabled(String actor, Long id, boolean enabled);
 
     /**
      * 重置密码
+     * @param actor 操作人(V5.17 audit 用)
      */
-    void resetPassword(Long id, String newPassword);
+    void resetPassword(String actor, Long id, String newPassword);
 }
