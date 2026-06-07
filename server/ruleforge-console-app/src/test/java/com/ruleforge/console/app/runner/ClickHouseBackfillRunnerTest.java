@@ -109,4 +109,49 @@ class ClickHouseBackfillRunnerTest {
                     .contains("is_gray, gray_strategy_id, gray_git_tag, created_at");
         }
     }
+
+    @Nested
+    @DisplayName("Given MySQL nd_decision_flow_log schema 不匹配 (V5.16 简版 vs 24 列富版)")
+    class SchemaMismatch {
+
+        @Test
+        @DisplayName("Then checkMysqlSchemaCompatible() 返 false (probe SELECT 抛 SQLException)")
+        void detectsMissingColumns() throws Exception {
+            // 模拟 V5.16 简版 schema: probe SELECT 里的 rule_package_path 列不存在
+            DataSource app = org.mockito.Mockito.mock(DataSource.class);
+            java.sql.Connection conn = org.mockito.Mockito.mock(java.sql.Connection.class);
+            org.mockito.Mockito.when(app.getConnection()).thenReturn(conn);
+            org.mockito.Mockito.when(conn.prepareStatement(org.mockito.ArgumentMatchers.anyString()))
+                    .thenThrow(new java.sql.SQLException("Unknown column 'rule_package_path' in 'field list'"));
+
+            java.lang.reflect.Method m = ClickHouseBackfillRunner.class.getDeclaredMethod("checkMysqlSchemaCompatible");
+            m.setAccessible(true);
+            ClickHouseBackfillRunner runner = new ClickHouseBackfillRunner(app, mock(DataSource.class));
+            boolean compatible = (boolean) m.invoke(runner);
+            assertThat(compatible)
+                    .as("V5.16 简版 schema 不含 rule_package_path,probe 应该失败")
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("Then run() 检测到 schema 不匹配后 fail-fast,不再尝试 CH 写入")
+        void runAbortsOnSchemaMismatch() throws Exception {
+            // 构造一个 appDataSource — probe 一定失败
+            DataSource app = org.mockito.Mockito.mock(DataSource.class);
+            java.sql.Connection conn = org.mockito.Mockito.mock(java.sql.Connection.class);
+            org.mockito.Mockito.when(app.getConnection()).thenReturn(conn);
+            org.mockito.Mockito.when(conn.prepareStatement(org.mockito.ArgumentMatchers.anyString()))
+                    .thenThrow(new java.sql.SQLException("Unknown column 'rule_package_path' in 'field list'"));
+
+            // clickhouseDataSource 不能被调 — 如果 runner 不 fail-fast 它会被打开
+            DataSource ch = org.mockito.Mockito.mock(DataSource.class);
+            org.mockito.Mockito.when(ch.getConnection())
+                    .thenThrow(new AssertionError("schema 不匹配时不应打开 ClickHouse 连接"));
+
+            ClickHouseBackfillRunner runner = new ClickHouseBackfillRunner(app, ch);
+            // 不抛异常 = fail-fast 成功(ch mock 没被访问)
+            runner.run();
+            // 如果 ch.getConnection() 被调,上面的 AssertionError 会让这里抛
+        }
+    }
 }
