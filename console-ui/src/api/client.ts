@@ -557,3 +557,45 @@ export function saveUserPermissions(
         opts,
     );
 }
+
+// ---- 5.17: 用户/权限操作审计日志 (admin 门控) ----
+
+/** /ruleforge/permission/audit 列表行 */
+export interface AuditLogRow {
+    id: number;
+    occurredAt: string;        // ISO 8601 (DATETIME(3) → "2026-06-07T12:00:00.000")
+    actor: string;
+    action: string;            // CREATE_USER / UPDATE_USER / TOGGLE_ENABLED / RESET_PASSWORD / SAVE_PERMISSIONS / LOGIN_SUCCESS / LOGIN_FAIL
+    targetUserId: number | null;
+    targetUsername: string | null;
+    fieldName: string | null;
+    oldValue: string | null;
+    newValue: string | null;
+    project: string | null;
+    note: string | null;
+}
+
+/**
+ * 抓取 audit log 列表 (admin 门控,后端上限 500)。
+ *  - actor: 可选,过滤执行人
+ *  - action: 可选,过滤动作类型
+ *  - size: 默认 50,后端 clamp 到 [1, 500]
+ *
+ * 注意:路径不带 /ruleforge 前缀 — nginx 的 /api/ 代理会自动加上
+ * (见 nginx.conf: proxy_pass http://console-app:8180/ruleforge/;)
+ */
+export function getAuditLogs(
+    actor: string | null = null,
+    action: string | null = null,
+    size = 50,
+    opts?: RequestOptions,
+): Promise<AuditLogRow[]> {
+    const params = new URLSearchParams();
+    if (actor) params.set('actor', actor);
+    if (action) params.set('action', action);
+    params.set('size', String(size));
+    return httpGet<AuditLogRow[]>(
+        '/permission/audit?' + params.toString(),
+        opts,
+    );
+}

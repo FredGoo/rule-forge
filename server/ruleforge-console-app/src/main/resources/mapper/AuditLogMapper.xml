@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruleforge.console.audit.mapper.AuditLogMapper">
+
+    <!--
+        V5.17 audit log 查询 — 按 actor / action 过滤(NULL = 不过滤),
+        按 occurred_at 倒序,限 limit 条。
+    -->
+    <select id="selectListByFilters" resultType="com.ruleforge.console.audit.entity.AuditLogEntity">
+        SELECT
+            id,
+            occurred_at   AS occurredAt,
+            actor_username AS actor,
+            action,
+            target_user_id  AS targetUserId,
+            target_username AS targetUsername,
+            field_name      AS fieldName,
+            old_value       AS oldValue,
+            new_value       AS newValue,
+            project,
+            note
+        FROM rf_user_audit_log
+        <where>
+            <if test="actor != null and actor != ''">
+                AND actor_username = #{actor}
+            </if>
+            <if test="action != null and action != ''">
+                AND action = #{action}
+            </if>
+        </where>
+        ORDER BY occurred_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

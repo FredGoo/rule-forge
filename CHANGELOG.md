@@ -28,6 +28,56 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+**V5.17 用户/权限操作审计日志 (分支 `feature/5.17-user-audit-log`,合入 `feature/5.15-permission-auth`)**
+
+把 V5.15 用户/权限改造成果落库 + 可查询,审计谁在何时对哪个用户/权限做了什么操作:
+
+- Flyway `V5.17.0__user_audit_log.sql` — 新表 `rf_user_audit_log`
+  (occurred_at DATETIME(3) / actor / action / target_user_id / target_username /
+   field_name / old_value / new_value / project / note) + 3 复合索引
+  (actor_time / target_time / action_time)
+- `com.ruleforge.console.audit` 包 — `AuditLogEntity` (MyBatis-Plus 实体,@Builder)
+  + `AuditLogMapper` (BaseMapper + 自定义 `selectListByFilters` XML 查询)
+  + `AuditService` (7 类动作: CREATE_USER / UPDATE_USER / TOGGLE_ENABLED /
+   RESET_PASSWORD / SAVE_PERMISSIONS / LOGIN_SUCCESS / LOGIN_FAIL) + 实现
+- `MybatisPlusConfig` 改造 — 显式 `setMapperLocations("classpath*:mapper/**/*.xml")`
+  确保自定义 mapper XML 被加载(避免 MyBatis-Plus 默认 pattern 漏掉 audit XML
+  导致 `Invalid bound statement (not found)` 错误)
+- `AuthService` / `AuthServiceImpl` 改造 — 全部 user-mgmt 方法 (createUser / updateUser /
+  toggleEnabled / resetPassword) + login 加 `actor` 参数 + 每次调对应 auditService.log*;
+  audit 写入走 fire-and-forget (catch + log.warn,不抛 — 跟 V5.10-C dualWriteFailure
+  同款设计,audit 故障不能阻塞 user-mgmt 主路径)
+- `PermissionController` 新增 `GET /permission/audit?actor=&action=&size=`
+  (admin 门控,size 上限 500 防滥用);saveUserPermissions 调 auditService.logSavePermissions
+- 前端 `AuditLogPanel` (Antd Table + Input actor 过滤 + Select action 过滤 +
+  详情 Drawer) + ActivityBar 注册 "审计日志" 图标 + `getAuditLogs` API client
+- 端到端验证: docker compose 起 5 服务 → admin 登录 → CREATE_USER / TOGGLE_ENABLED /
+  RESET_PASSWORD → audit 行落库 + 前端面板实时显示 + Drawer 详情正确
+- BDD 覆盖: AuditServiceTest(10) + AuditControllerTest(4) + AuditLogPanel Vitest(7)
+  + audit-log-panel Playwright(2) = 23 scenarios 全绿;后端 321/321,前端 328/328
+
+**V5.15 权限改造 (分支 `feature/5.15-permission-auth`)**
+
+把用户/权限从"文件+硬编码"迁移到 MySQL,实现 BCrypt 密码认证 + 项目级权限控制:
+
+- Flyway `V5.15.0__user_and_permission.sql` — `rf_user` (BCrypt 密码) + `rf_user_project_permission`
+  (项目级权限 12 种文件类型 × 读/写) + seed admin/admin123
+- `PasswordUtil` — BCryptPasswordEncoder 包装 (`encode` / `matches`)
+- `UserEntity` / `UserProjectPermissionEntity` — MyBatis-Plus 实体 + `toSessionUser()` / `toProjectConfig()` 转换
+- `UserMapper` / `UserProjectPermissionMapper` — 按 username / userId / userId+project 查询
+- `AuthService` + `AuthServiceImpl` — login(BCrypt 验证) / createUser / updateUser / toggleEnabled / resetPassword
+- `LoginController` 改造 — 不再硬编码 `setAdmin(true)`,调 AuthService 做 BCrypt 验证,
+  失败返 `{status: false, error: "用户名或密码错误"}`,session 写入 DB 实体转换的 DefaultUser
+- `PermissionServiceImpl` 改造 — 从 `rf_user_project_permission` 表读权限,
+  不再从仓库文件 `___resource__security__config__` 读;switch expression 覆盖全部 FileType 枚举;
+  构造器注入替代 setter 注入
+- `PermissionController` 新增用户 CRUD 端点 — GET/POST/PUT/PATCH `/permission/users`,
+  GET/POST `/permission/users/{id}/permissions`;admin-only 门控走 `assertAdmin()`
+- `EnvironmentProviderImpl` 改造 — `getUsers()` 从 `rf_user` 表读替代硬编码
+- `GlobalExceptionHandler` — `NoPermissionException` → 401 + 纯文本 (前端 client.ts 已对 401 alert)
+- BDD 覆盖: AuthServiceTest(4) + PasswordUtilTest(3) + LoginControllerAuthTest(4) +
+  PermissionControllerUserMgmtTest(4) = 15 scenarios 全绿;全模块 307/307 全绿
+
 **v5.16 app_db Flyway 管理(分支 `feature/5.16-app-db-flyway`)**
 
 把 app_db(11 张 `nd_*` 表:V5.1.x batchtest / V5.3.x agent / V5.6.x
@@ -114,6 +164,8 @@ ClickHouse 作为分析存储,MySQL 保持事务写入不变:
 - **docker-compose.yml** — 加 ClickHouse 26.5 service + env vars
 - 整模块 `mvn -pl ruleforge-console-app test` 292 / 292 全绿
 - 整模块 `mvn -pl ruleforge-executor-app test` 45 / 45 全绿
+
+**V5.8.4 BatchTest Excel upload(分支 `feature/phase9-batch-test-controller`)**
 
 **v5.10-B 老项目 DB→Git migration tool(分支 `feature/5.10-git-storage`)**
 
