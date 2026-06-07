@@ -112,6 +112,57 @@ SQL 让 operator 调试,而是在日志里明确说"schema 不匹配,等 nd_deci
 - ✅ executor-app 热路径双写 (`DecisionLogServiceImpl` → `ClickHouseAnalyticsWriter`)
 - ❌ backfill runner (schema mismatch,本轮 fail-fast 显式拒绝)
 
+**V5.18 决策热路径 P0 修复 — executor→console RestTemplate 缺 baseUrl
+(分支 `fix/5.18-executor-console-baseurl`)**
+
+跑决策流 E2E 时发现 — 写好 rule + package,`POST /test/do?path=e2e_test/pkg01`
+直接 500。executor 日志报 `IllegalArgumentException: URI is not absolute`,
+定位在 `KnowledgePackageServiceImpl.sendRequest`:
+
+```java
+String url = "/ruleforge/packageeditor/loadPackages";  // ← 相对路径!
+this.consoleRestTemplate.exchange(url, ...);  // ← 裸 RestTemplate 没 baseUrl
+```
+
+`consoleRestTemplate` 是 `RestTemplateConfig` 裸 `new RestTemplate()`,**没**设
+`baseUrl`,所以相对路径直接抛异常。`ExecResourceProvider` (`/ruleforge/frame/fileSource`)
+也是同款 bug。
+
+**根因:** 这是 initial commit (`a01d0d1`) 就埋下的 latent bug — 当时可能假设
+有 Spring 自动给 RestTemplate 配 baseUrl,实际没有。**整整两个版本没人在
+真实环境跑过决策热路径**,本地单测 + 单元集成绕过了。PR #27 (V5.15 权限) /
+PR #29 (V5.16 app_db) / Phase 8 双写 都没人触发。
+
+**修复:**
+
+- `KnowledgePackageServiceImpl` 构造注入 `@Value("${ruleforge.console.url}")`,
+  `sendRequest` 拼 `consoleUrl + "/ruleforge/packageeditor/loadPackages"`
+  (尾部 `/` 剥掉避免拼出 `//ruleforge`)
+- `ExecResourceProvider` 同样模式
+- BDD 测试 3 + 2 scenarios:
+  - URL 必须以 `http://` 开头(相对路径必拒)
+  - consoleUrl 尾部 `/` 正确处理
+  - 不出现以 `/ruleforge` 开头的相对路径
+- 端到端验证: docker compose up → admin 登录 → 创建 rule + package → 
+  `POST /test/do?path=e2e_test/pkg01` 成功(原本 500),规则 `adult-check` 
+  被 matched + fired
+
+**V5.18 启动修复 — executor-app 缺 @Primary SqlSessionFactory
+(同分支)**
+
+修完 baseUrl 重启 executor-app 失败 — `APPLICATION FAILED TO START`,
+"expected single matching bean but found 2:
+clickhouseSqlSessionFactory, ruleforgeSqlSessionFactory"。
+executor-app 有 2 个 SqlSessionFactory bean(Phase 8 引入 ClickHouse 那个 + 老的),
+MyBatis-Plus auto-config 注入默认 `sqlSessionTemplate` 时无法二选一。
+
+console-app 的同款配置 (`RuleForgeProdConsoleMybatisPlusConfig.appSqlSessionFactory`)
+早就加过 `@Primary`,executor-app 漏了。照搬:
+
+- `MybatisPlusConfig.ruleforgeSqlSessionFactory` 加 `@Primary`
+- 整模块 `mvn -pl ruleforge-executor-app test` 50/50 全绿(原 45 + 5 新增)
+- docker compose up -d executor-app 健康启动
+
 ### Added
 
 **V5.17 用户/权限操作审计日志 (分支 `feature/5.17-user-audit-log`,合入 `feature/5.15-permission-auth`)**

@@ -2,8 +2,8 @@ package com.ruleforge.executor.service.impl;
 
 import com.ruleforge.builder.resource.Resource;
 import com.ruleforge.builder.resource.ResourceProvider;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
@@ -14,12 +14,24 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
 
+/**
+ * V5.18 修复 — 拼绝对 URL 调 console 的 {@code /ruleforge/frame/fileSource}。
+ * 见 {@link KnowledgePackageServiceImpl} 的注释,同 bug。
+ */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ExecResourceProvider implements ResourceProvider {
 
     private final RestTemplate consoleRestTemplate;
+    private final String consoleUrl;
+
+    public ExecResourceProvider(RestTemplate consoleRestTemplate,
+                                @Value("${ruleforge.console.url}") String consoleUrl) {
+        this.consoleRestTemplate = consoleRestTemplate;
+        this.consoleUrl = consoleUrl.endsWith("/")
+                ? consoleUrl.substring(0, consoleUrl.length() - 1)
+                : consoleUrl;
+    }
 
     @Override
     public Resource provide(String path, String version, String projectVersion, boolean containSnapshot) {
@@ -37,7 +49,8 @@ public class ExecResourceProvider implements ResourceProvider {
     }
 
     private String sendRequest(String path, String projectVersion) {
-        String url = "/ruleforge/frame/fileSource";
+        // 拼绝对 URL — 见类注释
+        String url = consoleUrl + "/ruleforge/frame/fileSource";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         MultiValueMap<String, String> map = new LinkedMultiValueMap<>();

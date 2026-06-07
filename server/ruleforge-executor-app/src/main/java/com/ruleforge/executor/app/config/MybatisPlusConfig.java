@@ -22,6 +22,7 @@ import javax.sql.DataSource;
 public class MybatisPlusConfig {
 
     @Bean
+    @org.springframework.context.annotation.Primary
     public SqlSessionFactory ruleforgeSqlSessionFactory(
             @Qualifier("ruleforgeDataSource") DataSource ruleforgeDataSource) throws Exception {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
