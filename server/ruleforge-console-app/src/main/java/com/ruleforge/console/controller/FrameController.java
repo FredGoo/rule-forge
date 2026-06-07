@@ -400,8 +400,13 @@ public class FrameController extends BaseController {
 
         // 判断权限
         if (!user.isExport()) {
-//            Map<String, Object> result = new HashMap<>();
-//            result.put("content", "无权限");
+            // V5.18 修复 — 之前是直接 return,前端看到 200 + 空 body,
+            // 浏览器既不弹下载也不报错,用户不知道为啥没下载。
+            // 现在返 403 + JSON 错误体,前端至少能 log 出来。
+            log.warn("exportProjectBackupFile denied: user={} no export permission", user.getUsername());
+            resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"error\":\"No export permission\"}");
             return;
         }
 
@@ -445,9 +450,17 @@ public class FrameController extends BaseController {
             tOut.closeArchiveEntry();
 
             // 保存包配置文件
+            // V5.18 修复 — 之前 readFile() 返 null(新项目没 packageConfig.xml)时
+            // IOUtils.toByteArray(null) NPE → 整个导出 500,前面的 tar entries 都白写了。
+            // 现在 null 时写空字符串(import 端 IOUtils.toString 处理空串 ok)。
             String packageConfigPath = "/" + projectName + "/" + PACKAGE_CONFIG_FILE;
             InputStream packageConfig = this.ruleforgeRepositoryService.readFile(packageConfigPath);
-            bytes = IOUtils.toByteArray(packageConfig);
+            if (packageConfig != null) {
+                bytes = IOUtils.toByteArray(packageConfig);
+            } else {
+                log.warn("exportProjectBackupFile: packageConfig.xml not found at {}, 写空串占位(项目可能没有知识包配置)", packageConfigPath);
+                bytes = new byte[0];
+            }
             tarEntry = new TarArchiveEntry("packageConfig.xml");
             tarEntry.setSize(bytes.length);
             tOut.putArchiveEntry(tarEntry);
@@ -455,7 +468,12 @@ public class FrameController extends BaseController {
             tOut.closeArchiveEntry();
             // todo
             ProjectEntity projectEntity = this.projectRepository.findByName(projectName);
-            List<ProjectVersionEntity> projectVersionEntityList = this.projectRepository.findVersionsByProjectId(projectEntity.getId(), null, false);
+            // V5.18 修复 — findByName 可能返 null(项目不在 DB,但 git 仓库里还有)。
+            // 之前直接 projectEntity.getId() NPE。现在找不到就写空数组,import 端 batchInsertVersions
+            // 处理空集合 ok,不会 NPE。
+            List<ProjectVersionEntity> projectVersionEntityList = projectEntity != null
+                    ? this.projectRepository.findVersionsByProjectId(projectEntity.getId(), null, false)
+                    : java.util.Collections.emptyList();
             bytes = JSON.toJSONString(projectVersionEntityList).getBytes();
             tarEntry = new TarArchiveEntry("projectVersion.json");
             tarEntry.setSize(bytes.length);
@@ -532,7 +550,23 @@ public class FrameController extends BaseController {
         String packageConfigJson = (String) zipMap.get("packageConfigJson");
         String projectVersionConfigJson = (String) zipMap.get("projectVersionConfigJson");
         Map<String, ExportProject> exportProjectMap = (Map<String, ExportProject>) zipMap.get("exportProjectMap");
+
+        // V5.18 修复 — tar.gz 损坏 / 不是有效备份文件时 extraImportGzip 返 null
+        // repositoryFile(找不到 systemView.json),下面 .getName() 直接 NPE → 500
+        // 带 stacktrace 泄给前端。现在直接 status=false + 友好提示。
+        if (repositoryFile == null) {
+            log.error("importProject failed: extraImportGzip 没解析出 systemView.json,文件可能损坏或不是有效备份: {}",
+                    file.getOriginalFilename());
+            result.put("content", "备份文件解析失败,请确认是 exportProjectBackupFile 导出的 tar.gz");
+            return result;
+        }
+
         String projectName = repositoryFile.getName();
+        if (StringUtils.isEmpty(projectName)) {
+            log.error("importProject failed: systemView.json 解析成功但 projectName 为空");
+            result.put("content", "备份文件 systemView.json 缺项目名,文件可能损坏");
+            return result;
+        }
 
         Long lockVersion = this.ruleforgeRepositoryService.lockPath(projectName, user);
         if (lockVersion == null) {
@@ -540,6 +574,14 @@ public class FrameController extends BaseController {
             return result;
         }
 
+        // V5.18 修复 — 用"成功标记"位跟踪 import 主流程是否跑完。
+        // 之前 status=true 在 try{} 末尾,即使内部 try-catch 吞掉 delete/import 异常,
+        // 也会无条件覆盖 status=true → 前端 ImportProjectDialog 永远弹"导入成功",
+        // 真出错查不到(用户不知道)。
+        // 现在只有 deleteProject + importFromZip + createFile + batchInsertVersions
+        // 都成功才置 true,任何一步抛异常 → 留在 false + content 写具体错误。
+        boolean importSucceeded = false;
+        String importError = null;
         try {
             // 删除旧版本
             try {
@@ -547,6 +589,8 @@ public class FrameController extends BaseController {
                 log.info("{} 删除成功 {}秒", projectName, (System.currentTimeMillis() - start.getTime()) / 1000D);
             } catch (Exception e) {
                 log.error("deleteFile {}秒", (System.currentTimeMillis() - start.getTime()) / 1000D, e);
+                // deleteProject 失败不应该 block import — 可能是新项目本来就不存在。
+                // 但记录下来让 operator 看日志。
             }
 
             try {
@@ -567,19 +611,32 @@ public class FrameController extends BaseController {
                     this.projectRepository.batchInsertVersions(projectVersionEntityList);
                 }
 
+                // 所有步骤成功才置 true
+                importSucceeded = true;
             } catch (Exception e) {
                 log.error("extraImportZipJcr", e);
+                importError = "导入数据失败: " + e.getMessage();
             }
 
-            // 清理缓存
+            // 清理缓存(无关 import 成功失败,缓存总是要清)
             CacheUtils.getKnowledgeCache().removeKnowledgeByProjectName(projectName);
 
             double processTime = (System.currentTimeMillis() - start.getTime()) / 1000D;
-            log.info("{} 导入成功 {}", projectName, (req.getContextPath() + "/ruleforge/frame " + processTime + "秒"));
-
-            result.put("status", true);
+            if (importSucceeded) {
+                log.info("{} 导入成功 {}", projectName, (req.getContextPath() + "/ruleforge/frame " + processTime + "秒"));
+                result.put("status", true);
+            } else {
+                log.error("{} 导入失败 {}", projectName, processTime + "秒,原因: " + importError);
+                result.put("status", false);
+                result.put("content", importError != null ? importError : "导入失败,请查看服务器日志");
+            }
         } catch (Exception e) {
+            // 外层 catch(lock/unlock 路径上的意外异常),不影响 importSucceeded 状态
             log.error("importProject {}", projectName, e);
+            result.put("status", importSucceeded);
+            if (!importSucceeded) {
+                result.put("content", "导入失败: " + e.getMessage());
+            }
         } finally {
             this.ruleforgeRepositoryService.unlockPath(projectName, user, lockVersion);
         }

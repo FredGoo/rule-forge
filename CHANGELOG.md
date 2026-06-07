@@ -163,6 +163,52 @@ console-app 的同款配置 (`RuleForgeProdConsoleMybatisPlusConfig.appSqlSessio
 - 整模块 `mvn -pl ruleforge-executor-app test` 50/50 全绿(原 45 + 5 新增)
 - docker compose up -d executor-app 健康启动
 
+**V5.18 规则包导入/导出 P0 修复 (分支 `fix/5.18-import-export-robust`)**
+
+跑决策流 E2E 时顺手审计 `FrameController.importProject` / 
+`exportProjectBackupFile`,发现 4 个 production-affecting bug:
+
+1. **importProject status 永远 true (P0)**
+   `result.put("status", true)` 在 try{} 末尾无条件执行,即使内部 try-catch
+   吞掉 deleteProject / importFromZip 异常,status 也被覆盖成 true。
+   **最阴险的失败模式** — 用户导入失败时前端 ImportProjectDialog 永远弹
+   "导入成功",真出错查不到。
+
+2. **损坏 tar.gz 触发 NPE 500 (P0)**
+   `extraImportGzip` 找不到 `systemView.json` 时返 null,上层
+   `repositoryFile.getName()` NPE,带 stacktrace 泄给前端。
+
+3. **exportProjectBackupFile 静默失败 (P1)**
+   `!user.isExport()` 时直接 `return;`,前端 200 + 空 body,浏览器既不弹
+   下载也不报错,用户不知道为啥没下载。
+
+4. **exportProjectBackupFile readFile NPE (P1)**
+   `readFile(packageConfigPath)` 返 null(新项目没 packageConfig.xml)时
+   `IOUtils.toByteArray(null)` 抛 NPE,前面写的 tar entries 全白写。
+   `projectRepository.findByName` 返 null 也会 NPE。
+
+**修复:**
+
+- importProject — 用 `boolean importSucceeded` 跟踪主流程是否跑完,
+  只有 deleteProject + importFromZip + createFile + batchInsertVersions
+  全部成功才置 status=true;任何一步抛异常 → 留 status=false +
+  content 写具体错误
+- extraImportGzip 返 null repositoryFile → 立即 status=false + 
+  友好提示 "备份文件解析失败",不让 NPE 冒到 controller
+- 同步补 projectName 空字符串校验(防御性)
+- exportProjectBackupFile — 权限拒绝时返 403 + JSON `{"error":"..."}`
+  而不是空 return
+- readFile 返 null 时写空串占位(import 端 IOUtils.toString 处理空串 ok)
+- projectRepository.findByName 返 null 时写空 list,不 NPE
+
+**端到端验证(docker compose):**
+
+| 场景 | V5.18 之前 | V5.18 之后 |
+|---|---|---|
+| 损坏 tar.gz 导入 | HTTP 500 + NPE stacktrace | `{"status":false,"content":"备份文件解析失败..."}` |
+| 无 export 权限用户 | HTTP 200 + 空 body(不下载) | HTTP 403 + `{"error":"No export permission"}` |
+| 正常导入/导出 | status=true | status=true(不变) |
+
 ### Added
 
 **V5.17 用户/权限操作审计日志 (分支 `feature/5.17-user-audit-log`,合入 `feature/5.15-permission-auth`)**
