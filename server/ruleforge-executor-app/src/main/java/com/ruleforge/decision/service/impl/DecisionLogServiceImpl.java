@@ -15,6 +15,7 @@ import com.ruleforge.runtime.response.ExecutionResponseImpl;
 import com.ruleforge.runtime.response.RuleExecutionResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruleforge.decision.analytics.ClickHouseAnalyticsEvent;
 import com.ruleforge.decision.dto.GrayResolution;
 import com.ruleforge.decision.entity.DecisionFlowLog;
 import com.ruleforge.decision.entity.DecisionFlowParams;
@@ -23,8 +24,8 @@ import com.ruleforge.decision.entity.DecisionNodeLog;
 import com.ruleforge.decision.entity.DecisionRuleLog;
 import com.ruleforge.decision.repository.DecisionLogRepository;
 import com.ruleforge.decision.service.IDecisionLogService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,11 +40,20 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class DecisionLogServiceImpl implements IDecisionLogService {
 
     private final DecisionLogRepository decisionLogRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @org.springframework.beans.factory.annotation.Value("${clickhouse.analytics.enabled:true}")
+    private boolean chEnabled;
+
+    public DecisionLogServiceImpl(DecisionLogRepository decisionLogRepository,
+                                   ApplicationEventPublisher eventPublisher) {
+        this.decisionLogRepository = decisionLogRepository;
+        this.eventPublisher = eventPublisher;
+    }
 
     /**
      * 异步保存决策流执行日志
@@ -237,6 +247,16 @@ public class DecisionLogServiceImpl implements IDecisionLogService {
 
         log.info("决策流日志保存成功: flowLogId={}, userId={}, flowId={}, ruleLogs={}, msgLogs={}",
                 flowLogId, userId, flowId, allRuleLogs.size(), allMsgLogs.size());
+
+        // Phase 8: 异步双写到 ClickHouse (失败不影响主路径)
+        if (chEnabled) {
+            try {
+                eventPublisher.publishEvent(new ClickHouseAnalyticsEvent(flowLog, allRuleLogs));
+            } catch (Exception e) {
+                log.debug("ClickHouse event publish failed (non-fatal): {}", e.getMessage());
+            }
+        }
+
         return flowLogId;
     }
 

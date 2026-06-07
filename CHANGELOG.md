@@ -24,6 +24,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+**Phase 8 ClickHouse 高性能分析存储(分支 `feature/phase8-clickhouse`)**
+
+决策日志每天可能几十万条,MySQL 聚合查询在大数据量下性能不足。Phase 8 引入
+ClickHouse 作为分析存储,MySQL 保持事务写入不变:
+
+- **Maven**: 两个 app 加 `com.clickhouse:clickhouse-jdbc:0.7.1`
+- **ClickHouse DDL** (`scripts/clickhouse-init.sql`):
+  - `ruleforge_analytics.nd_decision_flow_log` — ReplacingMergeTree,
+    ORDER BY (rule_package_path, flow_id, created_at, id),
+    月级分区 + TTL 365 天
+  - `ruleforge_analytics.nd_decision_rule_log` — 同模式,
+    ORDER BY (rule_name, rule_type, created_at, id)
+- **双写** (executor-app):
+  - `DecisionLogServiceImpl` MySQL 写入成功后发
+    `ClickHouseAnalyticsEvent` → `ClickHouseAnalyticsWriter` 异步写 CH
+  - `@Async("clickhouseWriteExecutor")` 线程池(core=1, max=3, queue=500)
+  - 失败吞掉 + log.warn,不影响 MySQL 主路径
+- **查询路由** (console-app):
+  - `AnalysisServiceImpl` 注入 `@Autowired(required=false)` CH mappers
+  - 每个查询方法先试 CH,失败自动回退 MySQL
+  - `clickhouse.analytics.enabled=false` 时完全不创建 CH beans
+- **CH Mapper 接口**:
+  - `ChDecisionAnalysisMapper` — 6 方法,ClickHouse SQL 方言
+    (`formatDateTime`/`toDate`/`stdDevSamp` 替代 MySQL 的
+    `DATE_FORMAT`/`DATE`/`STDDEV`)
+  - `ChRuleCoverageMapper` — 2 方法,表引用加 `final` 触发去重
+  - `ChDecisionFlowLogMapper` / `ChDecisionRuleLogMapper` — executor 写入
+- **DataSourceConfig** — 两个 app 各加 `clickhouseDataSource` bean
+  (HikariCP + ClickHouseDriver)
+- **ClickHouseMybatisPlusConfig** — `@ConditionalOnProperty` 控制,
+  禁用时不创建任何 CH bean,analytics 回退 MySQL
+- **BackfillRunner** — `@Profile("backfill")` CommandLineRunner,
+  按 id 批量读 MySQL 写 CH,ReplacingMergeTree 天然去重
+- **docker-compose.yml** — 加 ClickHouse 26.5 service + env vars
+- 整模块 `mvn -pl ruleforge-console-app test` 292 / 292 全绿
+- 整模块 `mvn -pl ruleforge-executor-app test` 45 / 45 全绿
+
 **v5.10-B 老项目 DB→Git migration tool(分支 `feature/5.10-git-storage`)**
 
 把 V5.10-A 之前创建的项目(`gr_file_version.fileContent` 有内容但

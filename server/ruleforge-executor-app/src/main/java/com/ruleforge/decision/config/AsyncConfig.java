@@ -48,4 +48,20 @@ public class AsyncConfig {
         log.info("陪跑执行异步执行器初始化完成");
         return executor;
     }
+
+    /**
+     * Phase 8: ClickHouse 双写异步执行器
+     */
+    @Bean("clickhouseWriteExecutor")
+    public Executor clickhouseWriteExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(3);
+        executor.setQueueCapacity(500);
+        executor.setThreadNamePrefix("ch-write-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+        log.info("ClickHouse 双写异步执行器初始化完成");
+        return executor;
+    }
 }

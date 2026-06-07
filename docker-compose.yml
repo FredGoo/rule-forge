@@ -77,6 +77,11 @@ services:
       # V5.9.x: Git-first 存储 — 注入 GitConfig.base 路径。容器里用 /app/data/git
       # (跟 repository.dir 同根,走 console_data volume 持久化)
       GIT_BASE: /app/data/git
+      # Phase 8: ClickHouse 分析存储
+      CH_DB_URL: jdbc:clickhouse://clickhouse:8123/ruleforge_analytics
+      CH_DB_USERNAME: default
+      CH_DB_PASSWORD: changeme
+      CH_ANALYTICS_ENABLED: "true"
       # JVM 启动加速:
       #   -XX:TieredStopAtLevel=1        跳过 C2 JIT,首次请求走解释执行,JIT 后台异步发生(冷启动省 1-3s)
       #   -XX:+ExitOnOutOfMemoryError    OOM 时容器立即退出而非苟活,配合 restart policy 起新实例
@@ -86,6 +91,8 @@ services:
       - console_logs:/app/logs
     depends_on:
       mysql:
+        condition: service_healthy
+      clickhouse:
         condition: service_healthy
     # 本地 Playwright E2E 用 — vite dev proxy 走 127.0.0.1:8180
     ports:
@@ -113,6 +120,11 @@ services:
       FLOWABLE_DB_USERNAME: root
       FLOWABLE_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ruleforge}
       CONSOLE_URL: http://console-app:8180
+      # Phase 8: ClickHouse 分析存储 (双写)
+      CH_DB_URL: jdbc:clickhouse://clickhouse:8123/ruleforge_analytics
+      CH_DB_USERNAME: default
+      CH_DB_PASSWORD: changeme
+      CH_ANALYTICS_ENABLED: "true"
       JAVA_OPTS: "-Xmx1024m -Xms256m -XX:+UseG1GC -XX:+UseContainerSupport -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError"
     volumes:
       - executor_logs:/app/logs
@@ -124,6 +136,30 @@ services:
       - "${EXECUTOR_PORT:-8280}:8280"
     networks:
       - ruleforge
+
+  # ================================
+  # ClickHouse — OLAP 分析存储 (端口 8123)
+  # ================================
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.5
+    container_name: ruleforge-clickhouse
+    init: true
+    environment:
+      CLICKHOUSE_DB: ruleforge_analytics
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: changeme
+    ports:
+      - "${CH_PORT:-8123}:8123"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks:
+      - ruleforge
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--user", "default", "--password", "changeme", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   # ================================
   # Model Service — ML 模型推理服务 (端口 8501)
@@ -175,6 +211,8 @@ volumes:
   executor_logs:
     driver: local
   model_data:
+    driver: local
+  clickhouse_data:
     driver: local
 
 # ================================
