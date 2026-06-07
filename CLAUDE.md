@@ -117,6 +117,37 @@ Deployable executor with RestTemplate config for console communication.
 
 **硬规则:已发布在 dev / 生产 DB 上的版本号不允许改写**(改了 Flyway checksum 校验失败);要"修"已发布的版本只能再发一个 `V{同号}.{+1}__*.sql`。
 
+### Module Boundaries — 禁止"借实体"
+
+**核心规则:`ruleforge-console-app` 和 `ruleforge-executor-app` 是平行的可部署 Spring Boot app,互不依赖。** 共享的只有 `ruleforge-core` / `ruleforge-decision` / `ruleforge-console` / `ruleforge-executor` 库模块。
+
+**禁止的反模式**:
+- ❌ console-app 里 `import com.ruleforge.decision.entity.*`(这些 entity 在 executor-app 里)
+- ❌ console-app 里 `import com.ruleforge.decision.mapper.clickhouse.*`(同理)
+- ❌ 任何"在 A app 里 import B app 的类"的操作 — 看起来能编(因为 IDE 把整 monorepo 都 index 了),**实际上 pom.xml 没声明依赖,`mvn -pl <app> package` 一定失败**
+
+**判断当前表/Entity 该归谁**:
+| 表/Entity | 所属模块 | 注入的 DataSource |
+|---|---|---|
+| `rf_*` (V5.15 起的权限/用户/审计) | `ruleforge-console-app` 专属 | `ruleforgeDataSource` (`ruleforge_db`) |
+| `nd_*` (V5.1~V5.13 的批测/agent/监控/决策日志) | `ruleforge-console-app` 专属 | `appDataSource` (`app_db`) |
+| `act_*` / `flw_*` (Flowable 引擎) | `ruleforge-console-app` + executor-app 共用 | `flowable` (`flowable_db`) |
+
+**"我的表/Entity 在哪个 module / DataSource 怎么选" 速查**:
+- `com.ruleforge.console.app.entity.*`  → console-app / 看 entity 注释指明 DataSource
+- `com.ruleforge.decision.entity.*`    → executor-app / `ruleforgeDataSource` 在 executor 侧
+- `com.ruleforge.console.*` (storage / flow / batchtest / migration / observability) → console 模块,可在 console-app 直接用
+
+**一次性批处理工具(回填 / 迁移 / dual-write 补偿)的实现准则**:
+- **优先 raw JDBC + `PreparedStatement`**,不要套 MyBatis-Plus `@Mapper` + `Entity`
+- 抽象成本 ≥ 实际收益:这类工具跑一次就完事,以后改 schema 改 1-2 个文件比维护一套 mapper 注解省事
+- 不要借其他 app 的 entity(强制规则同 Module Boundaries)— 用本地 `record` DTO 镜像行结构
+- `BATCH_SIZE` + lastId 分页是 MySQL 大表标准打法
+- 单行失败 catch + `log.warn` 跳过,不要让一条脏数据中断整个 batch
+- 写测试锁边界:构造器签名 = 期望的 DataSource 类型 + 字段不出现跨模块 import — 防止以后 PR 又把跨模块引用塞回来
+
+**反面教材**:`ClickHouseBackfillRunner` (Phase 8) 同时违反上面三条 — console 借 executor 的 entity、注入错的 DataSource、用 mapper 而不是 JDBC。结果 main 合并后 `mvn package` 直接失败,生产 jar 一直打不出来。修法见 CHANGELOG `fix/phase8-clickhouse-backfill-self-contained`。
+
 ## Rule Types
 
 向导式规则集, 脚本式规则集 (UL), 决策表, 脚本决策表, 决策树, 评分卡, 决策流

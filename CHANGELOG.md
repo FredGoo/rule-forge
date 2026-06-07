@@ -26,6 +26,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+**Phase 8 ClickHouseBackfillRunner 跨模块依赖 + 错 DataSource (分支 `fix/phase8-clickhouse-backfill-self-contained`)**
+
+Phase 8 引入的 `ClickHouseBackfillRunner` (`ruleforge-console-app`) 有两个
+预存 bug,合并进 main 后卡住整模块构建 — `mvn -pl ruleforge-console-app
+package` 直接失败,生产 jar 打不出来:
+
+- **跨模块依赖** (compile 失败): runner import 了
+  `com.ruleforge.decision.entity.DecisionFlowLog` /
+  `com.ruleforge.decision.entity.DecisionRuleLog` /
+  `com.ruleforge.decision.mapper.clickhouse.ChDecisionFlowLogMapper` /
+  `com.ruleforge.decision.mapper.clickhouse.ChDecisionRuleLogMapper`,
+  这些都在 `ruleforge-executor-app` 里。console-app 的 pom **没**声明对
+  executor-app 的依赖,所以编译期就找不到类
+- **错 DataSource** (即使编译过,运行时也会失败): runner 注入
+  `ruleforgeDataSource` 读 `nd_decision_flow_log`,但这张表在 `app_db`
+  (V5.16 `migration-app` 创建)。`ruleforgeDataSource` 指向 `ruleforge_db`
+  (engine DB),表根本不在,SQL 报 `Table 'ruleforge_db.nd_decision_flow_log'
+  doesn't exist`
+
+**修复方案 — runner 自包含,raw JDBC:**
+
+- 删 `com.ruleforge.decision.*` 全部 import,不再借 executor-app 的
+  entity / mapper
+- DataSource 改对:`ruleforgeDataSource` → `appDataSource` (修第二个 bug)
+- ClickHouse 写入用 `PreparedStatement` + 内联 SQL 字符串(原 mapper 的
+  24 列 INSERT,逐列 `setXxx` 绑值,nullable 列用 `setNull` 显式标 SQL type)
+- 引入 `private record FlowLogRow(...)` 当本地 DTO — 镜像
+  `nd_decision_flow_log` 行结构,只属于这个 runner,跨模块不共享
+- 删 unused `chRuleLogMapper` 字段 (declared but never called,dead code
+  留下的残骸) — rule log 的 backfill **不**做,CHANGELOG 诚实标注范围
+- 单条 row 失败只 `log.warn` 跳过,不影响 batch
+- `ClickHouseBackfillRunnerTest` 锁住边界:
+  - 构造器签名 = 2 个 `DataSource` 参数 (无跨模块 mapper/entity)
+  - 所有 declared 字段类型 `doesNotStartWith("com.ruleforge.decision.")`
+  - INSERT SQL 24 个 `?` 占位符 + 关键列名存在
+- 整模块 `mvn -pl ruleforge-console-app test` 332/332 全绿 (原 328 + 4 新增)
+- `mvn -pl ruleforge-console-app package -DskipTests` **从失败变 SUCCESS**,
+  Spring Boot fat jar (`ruleforge-console-app.jar`) 正常出包
+
+**架构教训 — 写进 CLAUDE.md:**
+
+- console-app / executor-app 是平行部署单元,**互不依赖**。任何"借实体"
+  ("在 console 里 import executor 的 entity")都是隐式契约,一旦改 schema
+  两边失同步,且编译/打包会过不了
+- 一次性批处理工具(回填/迁移/dual-write 补偿)优先 raw JDBC,不要套
+  MyBatis-Plus 抽象 — abstraction 成本 ≥ 实际收益
+- 表在哪 DB 就注入哪个 DataSource bean:`nd_*` 在 `app_db` 用
+  `appDataSource`,engine 表在 `ruleforge_db` 用 `ruleforgeDataSource`
+
 ### Added
 
 **V5.17 用户/权限操作审计日志 (分支 `feature/5.17-user-audit-log`,合入 `feature/5.15-permission-auth`)**
