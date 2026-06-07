@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+**V5.17 用户/权限操作审计日志 (分支 `feature/5.17-user-audit-log`,合入 `feature/5.15-permission-auth`)**
+
+把 V5.15 用户/权限改造成果落库 + 可查询,审计谁在何时对哪个用户/权限做了什么操作:
+
+- Flyway `V5.17.0__user_audit_log.sql` — 新表 `rf_user_audit_log`
+  (occurred_at DATETIME(3) / actor / action / target_user_id / target_username /
+   field_name / old_value / new_value / project / note) + 3 复合索引
+  (actor_time / target_time / action_time)
+- `com.ruleforge.console.audit` 包 — `AuditLogEntity` (MyBatis-Plus 实体,@Builder)
+  + `AuditLogMapper` (BaseMapper + 自定义 `selectListByFilters` XML 查询)
+  + `AuditService` (7 类动作: CREATE_USER / UPDATE_USER / TOGGLE_ENABLED /
+   RESET_PASSWORD / SAVE_PERMISSIONS / LOGIN_SUCCESS / LOGIN_FAIL) + 实现
+- `MybatisPlusConfig` 改造 — 显式 `setMapperLocations("classpath*:mapper/**/*.xml")`
+  确保自定义 mapper XML 被加载(避免 MyBatis-Plus 默认 pattern 漏掉 audit XML
+  导致 `Invalid bound statement (not found)` 错误)
+- `AuthService` / `AuthServiceImpl` 改造 — 全部 user-mgmt 方法 (createUser / updateUser /
+  toggleEnabled / resetPassword) + login 加 `actor` 参数 + 每次调对应 auditService.log*;
+  audit 写入走 fire-and-forget (catch + log.warn,不抛 — 跟 V5.10-C dualWriteFailure
+  同款设计,audit 故障不能阻塞 user-mgmt 主路径)
+- `PermissionController` 新增 `GET /permission/audit?actor=&action=&size=`
+  (admin 门控,size 上限 500 防滥用);saveUserPermissions 调 auditService.logSavePermissions
+- 前端 `AuditLogPanel` (Antd Table + Input actor 过滤 + Select action 过滤 +
+  详情 Drawer) + ActivityBar 注册 "审计日志" 图标 + `getAuditLogs` API client
+- 端到端验证: docker compose 起 5 服务 → admin 登录 → CREATE_USER / TOGGLE_ENABLED /
+  RESET_PASSWORD → audit 行落库 + 前端面板实时显示 + Drawer 详情正确
+- BDD 覆盖: AuditServiceTest(10) + AuditControllerTest(4) + AuditLogPanel Vitest(7)
+  + audit-log-panel Playwright(2) = 23 scenarios 全绿;后端 321/321,前端 328/328
+
 **V5.15 权限改造 (分支 `feature/5.15-permission-auth`)**
 
 把用户/权限从"文件+硬编码"迁移到 MySQL,实现 BCrypt 密码认证 + 项目级权限控制:

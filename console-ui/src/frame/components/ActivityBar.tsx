@@ -21,6 +21,8 @@ const PANELS: PanelItem[] = [
     {id: 'simulation', icon: 'glyphicon glyphicon-play-circle', title: '规则仿真'},
     {id: 'ai', icon: 'glyphicon glyphicon-education', title: '智能分析'},
     {id: 'gitStatus', icon: 'glyphicon glyphicon-heartbeat', title: 'Git 健康'},
+    // V5.17: 用户/权限审计日志(admin 门控由后端控制,前端不重复)
+    {id: 'auditLog', icon: 'glyphicon glyphicon-list-alt', title: '审计日志'},
 ];
 
 const BOTTOM_PANELS: PanelItem[] = [

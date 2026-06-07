@@ -2,7 +2,6 @@ package com.ruleforge.console.config;
 
 import com.ruleforge.console.service.RepositoryInterceptor;
 import com.ruleforge.console.service.impl.DefaultRepositoryInterceptor;
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.*;
 
@@ -30,6 +29,8 @@ import org.springframework.context.annotation.*;
         "com.ruleforge.console.migration",
         // V5.10-C: dualWrite 失败可观测 (Controller / RepositoryImpl)
         "com.ruleforge.console.observability",
+        // V5.17: user/permission audit log (Entity / Mapper / Service / Controller)
+        "com.ruleforge.console.audit",
         // Spring Boot 4 不扫 nested jar 的 @Component,补齐决策模块的所有包:
         //   config     — FlowableConfig 等 @Configuration
         //   connector  — 5 个数据源连接器(AdvanceAi/Jdbc/Rest/Pkl + TokenManager)
@@ -40,9 +41,8 @@ import org.springframework.context.annotation.*;
         "com.ruleforge.decision.connector",
         "com.ruleforge.decision.repository"
 })
-@MapperScan(basePackages = {
-        "com.ruleforge.console.mapper"
-})
+// V5.14 cleanup: 移除重复 @MapperScan — 由 MybatisPlusConfig 统一扫
+// (com.ruleforge.console.mapper + com.ruleforge.console.audit.mapper)
 public class RuleForgeConsoleAutoConfiguration {
 
     @Bean
