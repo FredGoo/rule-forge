@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+**v5.16 app_db Flyway 管理(分支 `feature/5.16-app-db-flyway`)**
+
+把 app_db(11 张 `nd_*` 表:V5.1.x batchtest / V5.3.x agent / V5.6.x
+monitoring / V5.9.x simulation / V5.13.x decisionflowlog 等)接入 Flyway,
+跟 `ruleforge_db`(21 个 V3~V5.15 迁移)和 `flowable_db`(FlowableFlywayConfig)
+保持一致:
+
+- 新增 `AppFlywayConfig`(`com.ruleforge.console.app.config`)— 独立 Flyway
+  实例绑 `appDataSource`(@Primary),`@PostConstruct migrateAppSchema()` 早于
+  MyBatis-Plus mapper 初始化,避免 mapper 找不到表
+- 隔离三套 Flyway,绝不互踩:
+  - `appDataSource`  → `classpath:db/migration-app`  + `flyway_app_schema_history`
+  - `ruleforgeDataSource` → `classpath:db/migration` + `flyway_schema_history`
+  - `flowableDataSource` → `classpath:db/migration-flowable` + `flowable_flyway_history`
+- `db/migration-app/V5.16.0__init_app_schema.sql` — 11 张 `nd_*` 表 DDL
+  全部用 `CREATE TABLE IF NOT EXISTS`,**新环境从 0 跑起建表,老环境
+  (已存在 11 张表但没 history)幂等跳过**
+- `baselineOnMigrate=true` + `baselineVersion="0"` — 让 V5.16.0 跑(老
+  环境在 0 建立 baseline 后,V5.16.0 仍是 > 0 所以会被检查,IF NOT EXISTS
+  保证 DDL 幂等)
+- `AppFlywayConfigTest` — 6 个 BDD 场景:DataSource 选择 / migration
+  location / `baselineOnMigrate` / history 表名 / baseline 版本
+- 端到端验证(本地 Docker compose 全栈):
+  - 首次启动:`Schema history table does not exist yet` → `Creating Schema
+    History table with baseline` → `Migrating schema 'app_db' to version
+    "5.16.0 - init app schema"` → `Successfully applied 1 migration to
+    schema 'app_db', now at version v5.16.0`
+  - 重启:`Current version of schema 'app_db': 5.16.0` → `Schema 'app_db'
+    is up to date. No migration necessary.`
+  - 数据无损:`nd_batch_test_session=27` / `nd_batch_test_row=81` /
+    `nd_metrics_snapshot=344,323` 全部保留
+- 整模块 `mvn -pl ruleforge-console-app test` 299 / 299 全绿(原 293 + V5.16 新增 6)
+
 ### Changed
 
 **v5.14 mapper duplicate registration 清理(分支 `feature/5.14-mapper-warning-cleanup`)**
