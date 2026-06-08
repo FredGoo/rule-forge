@@ -31,9 +31,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.flowable.engine.RuntimeService;
-import org.flowable.engine.runtime.ProcessInstance;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.PrintWriter;
@@ -59,13 +56,10 @@ public class DecisionServiceImpl implements IDecisionService {
     private final IShadowConfigService shadowConfigService;
     private final IShadowExecutionService shadowExecutionService;
     private final IGrayStrategyService grayStrategyService;
-    private final RuntimeService flowableRuntimeService;
     private final MeterRegistry meterRegistry;
-    // V5.20+ 自建决策流执行器(Flowable 替代品)
+    // V5.20+ 自建决策流执行器(V5.21 起为唯一执行路径)
     private final FlowEngine flowEngine;
     private final FlowDefinitionRepo flowDefinitionRepo;
-    @Value("${ruleforge.flow.executor-engine:legacy}")
-    private String executorEngine;
 
     @Override
     public DecisionResponse evaluate(DecisionRequest request) {
@@ -311,31 +305,25 @@ public class DecisionServiceImpl implements IDecisionService {
     }
 
     /**
-     * 构造 Flowable 流程变量 map — {@code executeDecisionFlow()} 启动 BPMN 流程时
-     * 把它当 {@code startProcessInstanceByKey(flowId, vars)} 的 vars 参数。
+     * 构造 {@link FlowContext} 的初始 vars — V5.20+ 自建决策流执行器用。
      *
-     * <p>BPMN 流程跑到 {@code <serviceTask flowable:delegateExpression="${ruleServiceTaskDelegate}">}
-     * 时,delegate({@code RuleServiceTaskDelegate})会遍历
-     * {@code execution.getVariables()} 找 facts:
+     * <p>vars 流转:
      * <ul>
-     *   <li>值是 {@link com.ruleforge.model.GeneralEntity} → {@code session.insert(value)}</li>
-     *   <li>值是 Map → 当 {@code fireRules(parameters)} 的入参</li>
-     *   <li>其它非 null → {@code session.insert(value)}</li>
+     *   <li>loanZone / orbitCode 透传(原行为,RestDataSourceProvider 路由用)</li>
+     *   <li>applicant / order 以 {@code Map<String, Object>} 形式塞,自建引擎收到后
+     *       调 {@code LazyEntityFactory} 转成 {@link LazyGeneralEntity} 塞进 session
+     *       (规则 DSL 写 {@code applicant.age} 就走这个 entity)</li>
+     *   <li>applicant / order 为 null/空 → 不塞对应 key(走 nd_rule_variable_def
+     *       自动发现 clazz + lazy 兜底,字段规则读时按需 DataSourceProvider 查)</li>
      * </ul>
-     * 业务想被规则 DSL 引用(写 {@code applicant.age}),必须以 entity 形式传过来 —
-     * 这就是本方法把 {@code request.applicant} / {@code request.order} 转成
-     * {@link LazyGeneralEntity} 的原因。
-     *
-     * <p>applicant/order 没传或空 map → 不塞对应 key(delegate 走 lazy 兜底,
-     * nd_rule_variable_def 自动发现 clazz,entity 不传参创建,字段规则读时按需 lazy 查)。
      *
      * <p>Package-private 是为了让 {@code DecisionServiceImplFlowVariablesTest}
-     * 直接覆盖(避免 mock 整个 Flowable 启动路径)。
+     * 直接覆盖(避免 mock 整个 FlowEngine 启动路径)。
      */
     Map<String, Object> buildProcessVariables(DecisionRequest request) {
         Map<String, Object> params = new HashMap<>();
 
-        // loanZone / orbitCode 透传(原行为,delegate 内部 RestDataSourceProvider 路由用)
+        // loanZone / orbitCode 透传(原行为,RestDataSourceProvider 路由用)
         if (request.getLoanZone() != null) {
             params.put("loanZone", request.getLoanZone());
         }
@@ -343,11 +331,10 @@ public class DecisionServiceImpl implements IDecisionService {
             params.put("orbitCode", request.getOrbitCode());
         }
 
-        // applicant / order 直接以 Map 形式塞 params — Flowable 启动流程时会
-        // 把所有 params 序列化到 act_ru_variable(BLOB 列),要求值是 Serializable。
-        // 如果塞 LazyGeneralEntity 会失败:`NotSerializableException:
-        // DatasourceRoutingProvider`(entity 持有 Spring bean 引用)。
-        // Map<String,Object> 是 Serializable,delegate 收到后转成 entity 再 insert session。
+        // applicant / order 以 Map 形式塞进 FlowContext.vars — 自建引擎不要求
+        // Serializable(跟 V5.x Flowable 路径不同,后者要把 vars 序列化到 act_ru_variable
+        // BLOB 列)。Map<String, Object> 足够,Facts 注入由 FlowEngine 内部
+        // LazyEntityFactory 转 entity 后 insert session。
         if (request.getApplicant() != null && !request.getApplicant().isEmpty()) {
             params.put("applicant", new HashMap<>(request.getApplicant()));
         }
@@ -358,25 +345,21 @@ public class DecisionServiceImpl implements IDecisionService {
         return params;
     }
 
-    private void executeDecisionFlow(ExecutionContext ctx) {
-        if ("custom".equalsIgnoreCase(executorEngine)) {
-            executeDecisionFlowCustom(ctx);
-        } else {
-            executeDecisionFlowLegacy(ctx);
-        }
-    }
-
     /**
-     * V5.20+: 自建决策流执行器。直接调 FlowEngine.start,不走 Flowable 引擎。
-     * <p>
-     * 关键差异 vs legacy:
-     * - 不再调 flowableRuntimeService.startProcessInstanceByKey
-     * - RuleNodeExecutor 内部已经做 OutputModel var-assign(V5.18 wrapOutputModelAsEntity +
-     *   BeanUtils.populate 修法搬到 RuleNodeExecutor),所以 insertEntities 末尾的 workaround
-     *   块对 custom 路径不重复
-     * - 抛 DecisionAsyncPendingException → DecisionServiceImpl catch 后走 asyncPending
+     * V5.20+: 自建决策流执行器(V5.21 起为唯一执行路径)。直接调 {@code FlowEngine.start},
+     * 不再走 Flowable 引擎。
+     *
+     * <p>关键设计:
+     * <ul>
+     *   <li>不再调 {@code flowableRuntimeService.startProcessInstanceByKey}</li>
+     *   <li>RuleNodeExecutor 内部已经做 OutputModel var-assign(V5.18 wrapOutputModelAsEntity +
+     *       BeanUtils.populate 修法搬到 RuleNodeExecutor),所以 insertEntities 末尾的
+     *       workaround 块对 custom 路径不重复</li>
+     *   <li>抛 {@link DecisionAsyncPendingException} → DecisionServiceImpl catch 后走
+     *       asyncPending 响应(USER_TASK 二元决策挂起)</li>
+     * </ul>
      */
-    private void executeDecisionFlowCustom(ExecutionContext ctx) {
+    private void executeDecisionFlow(ExecutionContext ctx) {
         Map<String, Object> params = buildProcessVariables(ctx.request);
 
         ctx.inputParams = new HashMap<>(ctx.session.getParameters());
@@ -410,40 +393,10 @@ public class DecisionServiceImpl implements IDecisionService {
         } catch (FlowExecutionException e) {
             throw e;
         } catch (Exception e) {
-            throw new FlowExecutionException("Custom flow execution failed: " + e.getMessage(), e);
+            throw new FlowExecutionException("Flow execution failed: " + e.getMessage(), e);
         } finally {
             ctx.flowExecutionTime = System.currentTimeMillis() - stepStartTime;
         }
-    }
-
-    /**
-     * V5.x 老 Flowable 路径。保留以供回滚,Step 7 拆 Flowable 时整体删除。
-     */
-    private void executeDecisionFlowLegacy(ExecutionContext ctx) {
-        // 把 loanZone/orbitCode 加上 applicant/order facts 一起作为决策流输入参数传入
-        Map<String, Object> params = buildProcessVariables(ctx.request);
-
-        ctx.inputParams = new HashMap<>(ctx.session.getParameters());
-        ctx.inputParams.putAll(params);
-        log.info("决策流执行前参数: {}", ctx.inputParams);
-
-        long stepStartTime = System.currentTimeMillis();
-        ProcessInstance processInstance = flowableRuntimeService.startProcessInstanceByKey(ctx.request.getFlowId(), params);
-        // async-executor-activate=false 同步跑,start 返回时 process 已到 endEvent,
-        // runtime execution 被 Flowable 清掉,runtimeService.getVariables() 会抛
-        // "execution XXX doesn't exist"。RuleServiceTaskDelegate 内部已经把规则结果
-        // 写到 process variables,真正要拿规则结果走 session.getParameters() / outputModel。
-        // 这里 getVariables 只为给日志记一下"流程跑完的 final vars",跑完读不到就跳过。
-        Map<String, Object> resultVars = new HashMap<>();
-        try {
-            resultVars = flowableRuntimeService.getVariables(processInstance.getId());
-        } catch (org.flowable.common.engine.api.FlowableObjectNotFoundException e) {
-            log.debug("Process already completed, runtime variables not available: {}", e.getMessage());
-        }
-        ctx.response = new ExecutionResponseImpl();
-        ctx.flowExecutionTime = System.currentTimeMillis() - stepStartTime;
-
-        ctx.execMessageItems = ctx.session.getExecMessageItems();
     }
 
     private void collectResults(ExecutionContext ctx) {

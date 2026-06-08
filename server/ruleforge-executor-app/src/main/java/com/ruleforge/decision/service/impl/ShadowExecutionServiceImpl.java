@@ -22,9 +22,6 @@ import com.ruleforge.decision.service.IShadowDecisionLogService;
 import com.ruleforge.decision.service.IShadowExecutionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.flowable.engine.RuntimeService;
-import org.flowable.engine.runtime.ProcessInstance;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -48,11 +45,8 @@ public class ShadowExecutionServiceImpl implements IShadowExecutionService {
     private final IRuleVariableDefService ruleVariableDefService;
     private final IShadowDecisionLogService shadowDecisionLogService;
     private final IShadowComparisonService shadowComparisonService;
-    private final RuntimeService flowableRuntimeService;
-    // V5.20+ 自建决策流执行器
+    // V5.20+ 自建决策流执行器(V5.21 起为唯一执行路径)
     private final FlowEngine flowEngine;
-    @Value("${ruleforge.flow.executor-engine:legacy}")
-    private String executorEngine;
 
     @Override
     @Async("shadowExecutor")
@@ -123,30 +117,24 @@ public class ShadowExecutionServiceImpl implements IShadowExecutionService {
             inputParams = session.getParameters();
 
             stepStartTime = System.currentTimeMillis();
-            if ("custom".equalsIgnoreCase(executorEngine)) {
-                // V5.20+: 自建 FlowEngine
-                FlowContext flowCtx = new FlowContext();
-                flowCtx.setFlowRunId(UUID.randomUUID().toString());
-                flowCtx.setVars(new HashMap<>());
-                flowCtx.setSession(session);
-                flowCtx.setOutputModel(outputModel);
-                DecisionFlowState state = flowEngine.start(shadowFlowId, flowCtx);
-                if (DecisionFlowState.STATUS_FAILED.equals(state.getStatus())) {
-                    throw new FlowExecutionException("Shadow flow failed: " + state.getErrorMessage());
-                }
-                if (DecisionFlowState.STATUS_WAITING_CALLBACK.equals(state.getStatus())
-                    || DecisionFlowState.STATUS_PENDING_ASYNC.equals(state.getStatus())) {
-                    // Shadow 路径遇 USER_TASK: 视为 FAIL(陪跑不挂起,直接跳过)
-                    log.warn("[SHADOW-CUSTOM] flow hit USER_TASK, recording as FAILED: shadowFlowId={} waitRef={}",
-                        shadowFlowId, state.getWaitRef());
-                    throw new FlowExecutionException("Shadow flow suspended (USER_TASK) — not supported in shadow path");
-                }
-                log.info("[SHADOW-CUSTOM] completed: shadowFlowId={} status={}", shadowFlowId, state.getStatus());
-            } else {
-                // V5.x Flowable 老路径
-                ProcessInstance processInstance = flowableRuntimeService.startProcessInstanceByKey(shadowFlowId);
-                Map<String, Object> resultVars = flowableRuntimeService.getVariables(processInstance.getId());
+            // V5.20+ 自建 FlowEngine(V5.21 起为唯一执行路径)
+            FlowContext flowCtx = new FlowContext();
+            flowCtx.setFlowRunId(UUID.randomUUID().toString());
+            flowCtx.setVars(new HashMap<>());
+            flowCtx.setSession(session);
+            flowCtx.setOutputModel(outputModel);
+            DecisionFlowState state = flowEngine.start(shadowFlowId, flowCtx);
+            if (DecisionFlowState.STATUS_FAILED.equals(state.getStatus())) {
+                throw new FlowExecutionException("Shadow flow failed: " + state.getErrorMessage());
             }
+            if (DecisionFlowState.STATUS_WAITING_CALLBACK.equals(state.getStatus())
+                || DecisionFlowState.STATUS_PENDING_ASYNC.equals(state.getStatus())) {
+                // Shadow 路径遇 USER_TASK: 视为 FAIL(陪跑不挂起,直接跳过)
+                log.warn("[SHADOW-CUSTOM] flow hit USER_TASK, recording as FAILED: shadowFlowId={} waitRef={}",
+                    shadowFlowId, state.getWaitRef());
+                throw new FlowExecutionException("Shadow flow suspended (USER_TASK) — not supported in shadow path");
+            }
+            log.info("[SHADOW-CUSTOM] completed: shadowFlowId={} status={}", shadowFlowId, state.getStatus());
             response = new ExecutionResponseImpl();
             flowExecutionTime = System.currentTimeMillis() - stepStartTime;
 
