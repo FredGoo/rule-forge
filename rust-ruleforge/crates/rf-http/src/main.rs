@@ -1,6 +1,6 @@
 //! `rf-http` binary entry point.
 //!
-//! Phase 5 surface:
+//! Phase 6 surface (Phase 5 routes + pg-backed state):
 //! - `POST /ruleforge/evaluate`        run a flow synchronously
 //! - `POST /ruleforge/flow/decision`   resume a suspended flow
 //! - `POST /ruleforge/flow/invalidate` drop a flow_id from the cache
@@ -12,21 +12,26 @@
 //!   hitting the Java console on miss.
 //! - `ExecutorRegistry` wires `MockRuleEngine` for v0 (Phase 7+ could
 //!   swap in a real engine).
-//! - `InflightStore` keeps suspended flow contexts in memory (Phase 6
-//!   swaps this out for pg `rust_decision_flow_state`).
+//! - If `PG_URL` is set, builds a `PgInflightStore` and a recovery
+//!   loop. Otherwise falls back to the in-memory `MemInflightStore`.
 
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 
-use anyhow::Context;
+use anyhow::{Context, Result};
 use clap::Parser;
 use rf_executor::dispatch::ExecutorRegistry;
 use rf_http::flow_def_repo::{FlowDefinitionRepo, HttpFlowLoader};
+use rf_http::inflight::{InflightStore, PgInflightStore};
 use rf_http::routes::{decision, evaluate, health, invalidate, load};
 use rf_http::state::AppState;
 use rf_rule::mock::MockRuleEngine;
-use tracing::info;
+use rf_state::persistence::PgStateStore;
+use rf_state::recovery::RecoveryLoop;
+use rf_state::Recover;
+use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Parser)]
@@ -49,10 +54,15 @@ struct Cli {
     /// Worker ID for recovery loop logging.
     #[arg(long, env = "WORKER_ID", default_value = "rust-flow-1")]
     worker_id: String,
+
+    /// Recovery sweep interval (seconds). Default 30s, mirrors the
+    /// Java `@Scheduled(fixedRate = 30_000)`.
+    #[arg(long, env = "RECOVERY_INTERVAL_SECS", default_value = "30")]
+    recovery_interval_secs: u64,
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     // tracing — respect RUST_LOG, default to info for our crates
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -71,9 +81,43 @@ async fn main() -> anyhow::Result<()> {
     });
     let repo = Arc::new(FlowDefinitionRepo::new(loader));
     let registry = Arc::new(ExecutorRegistry::with_rule_engine(Arc::new(MockRuleEngine)));
-    let state = AppState::new(
+
+    // Pick the in-flight store: pg-backed if `pg_url` is set, else
+    // in-memory (dev fallback).
+    let inflight: Arc<dyn InflightStore> = if cli.pg_url.is_empty() {
+        warn!("PG_URL is empty — using in-memory inflight store; state lost on restart");
+        Arc::new(rf_http::inflight::MemInflightStore::new())
+    } else {
+        let state = Arc::new(
+            PgStateStore::connect(&cli.pg_url)
+                .await
+                .context("connect pg")?,
+        );
+        rf_state::migrate(state.pool())
+            .await
+            .context("run migrations")?;
+        info!(pg_url = %cli.pg_url, "pg-backed inflight store ready");
+
+        // Recovery loop — re-drives WAITING_CALLBACK / PENDING_ASYNC
+        // rows. The HTTP layer implements `Recover` so the loop
+        // can call back into the same wiring.
+        let recover = Arc::new(HttpRecover {
+            repo: Arc::clone(&repo),
+        });
+        RecoveryLoop::new(
+            Arc::clone(&state),
+            recover as Arc<dyn Recover>,
+            cli.worker_id.clone(),
+            Duration::from_secs(cli.recovery_interval_secs),
+        )
+        .start();
+        Arc::new(PgInflightStore::new(state, Arc::clone(&repo)))
+    };
+
+    let state = AppState::with_inflight(
         repo,
         registry,
+        inflight,
         cli.worker_id.clone(),
         cli.console_url.clone(),
         cli.pg_url.clone(),
@@ -106,4 +150,34 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app).await.context("axum::serve")?;
 
     Ok(())
+}
+
+/// `Recover` impl that re-fetches the def via the console on cold
+/// start and then asks the executor to resume. The real
+/// implementation re-uses the same wiring as `/ruleforge/evaluate`
+/// minus the request body (the row carries everything we need).
+#[allow(dead_code)] // repo is for Phase 7
+struct HttpRecover {
+    repo: Arc<FlowDefinitionRepo>,
+}
+
+#[async_trait::async_trait]
+impl Recover for HttpRecover {
+    async fn recover(
+        &self,
+        _flow_run_id: &str,
+        _flow_xml_version: Option<&str>,
+    ) -> anyhow::Result<bool> {
+        // Phase 6 stub. Phase 7 will: (a) load the def by row's
+        // flow_id (cache miss → HttpFlowLoader), (b) re-hydrate
+        // ctx from row_vars, (c) re-build the FlowContext, (d)
+        // call traverse(), (e) write back the outcome. For now
+        // the row stays in WAITING_CALLBACK and a future sweep
+        // will retry.
+        tracing::warn!(
+            flow_run_id = %_flow_run_id,
+            "RecoveryLoop picked a row but the resume path is a Phase 7 concern"
+        );
+        Ok(false)
+    }
 }

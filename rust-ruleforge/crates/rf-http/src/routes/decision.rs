@@ -52,7 +52,7 @@ pub async fn decide(
 ) -> impl IntoResponse {
     debug!(flow_run_id = %q.flow_run_id, decision = %q.decision, "decide");
 
-    let Some(inflight) = state.inflight.get(&q.flow_run_id) else {
+    let Some(inflight) = state.inflight.get(&q.flow_run_id).await else {
         return (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({
@@ -78,7 +78,7 @@ pub async fn decide(
 
     match outcome {
         TraverseOutcome::Completed(t) => {
-            state.inflight.remove(&q.flow_run_id);
+            state.inflight.remove(&q.flow_run_id).await;
             let ctx = t.ctx;
             let map: serde_json::Map<String, Value> = ctx.vars.into_inner().into_iter().collect();
             Json(EvaluateResponse::Completed {
@@ -91,14 +91,17 @@ pub async fn decide(
         TraverseOutcome::Suspended(t, info) => {
             // Multi-step userTask chain (rare but possible). Update
             // the inflight entry to point at the new suspension.
-            state.inflight.update(
-                &q.flow_run_id,
-                InflightFlow {
-                    def: inflight.def,
-                    ctx: t.ctx,
-                    suspend_info: Some(info.clone()),
-                },
-            );
+            state
+                .inflight
+                .update(
+                    &q.flow_run_id,
+                    InflightFlow {
+                        def: inflight.def,
+                        ctx: t.ctx,
+                        suspend_info: Some(info.clone()),
+                    },
+                )
+                .await;
             Json(EvaluateResponse::Pending {
                 flow_run_id: q.flow_run_id,
                 wait_ref: info.wait_ref,
@@ -107,7 +110,7 @@ pub async fn decide(
             .into_response()
         }
         TraverseOutcome::Failed(t, err) => {
-            state.inflight.remove(&q.flow_run_id);
+            state.inflight.remove(&q.flow_run_id).await;
             let ctx = t.ctx;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,

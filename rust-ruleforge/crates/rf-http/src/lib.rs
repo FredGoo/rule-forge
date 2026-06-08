@@ -14,3 +14,6 @@ pub mod flow_def_repo;
 pub mod inflight;
 pub mod routes;
 pub mod state;
+
+// Re-export so route handlers / tests can `use rf_http::InflightStore`.
+pub use inflight::{InflightFlow, InflightStore, MemInflightStore, PgInflightStore};

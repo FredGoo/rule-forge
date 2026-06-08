@@ -19,17 +19,19 @@ use crate::inflight::InflightStore;
 pub struct AppState {
     pub repo: Arc<FlowDefinitionRepo>,
     pub registry: Arc<ExecutorRegistry>,
-    pub inflight: Arc<InflightStore>,
+    pub inflight: Arc<dyn InflightStore>,
     pub worker_id: String,
     /// Base URL of the Java console. `/flow/load` proxy and the
     /// `HttpFlowLoader` use this.
     pub console_url: String,
-    /// Phase 6 placeholder: empty = no DB. Kept here so route handlers
-    /// don't need to change when Phase 6 wires sqlx.
+    /// pg URL (if set, the production main binary builds a
+    /// `PgInflightStore`; empty = in-memory). Phase 6.
     pub pg_url: String,
 }
 
 impl AppState {
+    /// Build an `AppState` with the in-memory `MemInflightStore`.
+    /// Used by tests and the dev fallback path.
     pub fn new(
         repo: Arc<FlowDefinitionRepo>,
         registry: Arc<ExecutorRegistry>,
@@ -40,7 +42,27 @@ impl AppState {
         Self {
             repo,
             registry,
-            inflight: Arc::new(InflightStore::new()),
+            inflight: Arc::new(crate::inflight::MemInflightStore::new()),
+            worker_id: worker_id.into(),
+            console_url: console_url.into(),
+            pg_url: pg_url.into(),
+        }
+    }
+
+    /// Build an `AppState` with an explicit in-flight store. Used by
+    /// `main.rs` to pick the pg-backed impl.
+    pub fn with_inflight(
+        repo: Arc<FlowDefinitionRepo>,
+        registry: Arc<ExecutorRegistry>,
+        inflight: Arc<dyn InflightStore>,
+        worker_id: impl Into<String>,
+        console_url: impl Into<String>,
+        pg_url: impl Into<String>,
+    ) -> Self {
+        Self {
+            repo,
+            registry,
+            inflight,
             worker_id: worker_id.into(),
             console_url: console_url.into(),
             pg_url: pg_url.into(),

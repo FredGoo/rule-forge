@@ -27,7 +27,7 @@ use axum::routing::post;
 use axum::Router;
 use rf_executor::dispatch::ExecutorRegistry;
 use rf_http::flow_def_repo::{FlowDefinitionRepo, StubFlowLoader};
-use rf_http::inflight::{InflightFlow, InflightStore};
+use rf_http::inflight::{InflightFlow, InflightStore, MemInflightStore};
 use rf_http::routes::decision::decide;
 use rf_http::routes::evaluate::evaluate;
 use rf_http::state::AppState;
@@ -121,7 +121,7 @@ async fn given_suspended_flow_when_decide_yes_then_completed() {
     assert_eq!(body["result"], "COMPLETED");
     assert_eq!(body["vars"]["approve"], json!("yes"));
     // inflight should be cleared on completion
-    assert_eq!(state.inflight.len(), 0);
+    assert_eq!(state.inflight.len().await, 0);
 }
 
 #[tokio::test]
@@ -170,16 +170,17 @@ async fn given_unknown_flow_run_id_when_decide_then_404() {
 // Exercise the InflightStore API directly (the HTTP /decision path
 // exercises it too, but a unit test on the API is cheap insurance
 // against future refactors).
-#[test]
-fn inflight_store_put_get_remove() {
-    let store = InflightStore::new();
-    assert_eq!(store.len(), 0);
-    store.put(
-        "r".to_string(),
-        InflightFlow {
-            def: Arc::new(
-                rf_parse::bpmn_parser::BpmnXmlParser::parse(
-                    r#"<?xml version="1.0"?>
+#[tokio::test]
+async fn inflight_store_put_get_remove() {
+    let store = MemInflightStore::new();
+    assert_eq!(store.len().await, 0);
+    store
+        .put(
+            "r".to_string(),
+            InflightFlow {
+                def: Arc::new(
+                    rf_parse::bpmn_parser::BpmnXmlParser::parse(
+                        r#"<?xml version="1.0"?>
                     <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
                                       targetNamespace="http://x">
                       <bpmn:process id="p">
@@ -187,15 +188,16 @@ fn inflight_store_put_get_remove() {
                         <bpmn:endEvent id="e"/>
                       </bpmn:process>
                     </bpmn:definitions>"#,
-                )
-                .unwrap(),
-            ),
-            ctx: rf_executor::flow_context::FlowContext::new("r"),
-            suspend_info: None,
-        },
-    );
-    assert_eq!(store.len(), 1);
-    assert!(store.get("r").is_some());
-    assert!(store.remove("r").is_some());
-    assert_eq!(store.len(), 0);
+                    )
+                    .unwrap(),
+                ),
+                ctx: rf_executor::flow_context::FlowContext::new("r"),
+                suspend_info: None,
+            },
+        )
+        .await;
+    assert_eq!(store.len().await, 1);
+    assert!(store.get("r").await.is_some());
+    assert!(store.remove("r").await.is_some());
+    assert_eq!(store.len().await, 0);
 }

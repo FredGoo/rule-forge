@@ -133,16 +133,20 @@ pub async fn evaluate(
             .into_response()
         }
         TraverseOutcome::Suspended(t, info) => {
-            // Stash for `/flow/decision` to find. Phase 6 replaces
-            // this with a pg write.
-            state.inflight.put(
-                flow_run_id.clone(),
-                InflightFlow {
-                    def,
-                    ctx: t.ctx,
-                    suspend_info: Some(info.clone()),
-                },
-            );
+            // Stash for `/flow/decision` to find. Phase 6: this
+            // dispatches to the in-memory or pg-backed store based
+            // on the AppState's choice.
+            state
+                .inflight
+                .put(
+                    flow_run_id.clone(),
+                    InflightFlow {
+                        def,
+                        ctx: t.ctx,
+                        suspend_info: Some(info.clone()),
+                    },
+                )
+                .await;
             let payload = info.payload.clone();
             let wait_ref = info.wait_ref.clone();
             Json(EvaluateResponse::Pending {

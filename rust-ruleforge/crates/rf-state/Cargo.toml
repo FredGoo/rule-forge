@@ -16,3 +16,5 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true }
+async-trait = "0.1"
+anyhow = { workspace = true }
