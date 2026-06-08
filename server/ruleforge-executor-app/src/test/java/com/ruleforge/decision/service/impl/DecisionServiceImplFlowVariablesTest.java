@@ -1,7 +1,6 @@
 package com.ruleforge.decision.service.impl;
 
 import com.ruleforge.decision.dto.DecisionRequest;
-import org.flowable.engine.RuntimeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -54,6 +53,7 @@ class DecisionServiceImplFlowVariablesTest {
     @BeforeEach
     void setUp() {
         // buildProcessVariables() 不依赖任何外部 bean,直接 new 出即可
+        // V5.21+: 删 mock(RuntimeService.class) — evaluate path 走自建 FlowEngine
         service = new DecisionServiceImpl(
                 mock(com.ruleforge.decision.lazy.LazyEntityFactory.class),
                 mock(com.ruleforge.decision.service.IRuleVariableDefService.class),
@@ -61,9 +61,8 @@ class DecisionServiceImplFlowVariablesTest {
                 mock(com.ruleforge.decision.service.IShadowConfigService.class),
                 mock(com.ruleforge.decision.service.IShadowExecutionService.class),
                 mock(com.ruleforge.decision.service.IGrayStrategyService.class),
-                mock(RuntimeService.class),
                 new io.micrometer.core.instrument.simple.SimpleMeterRegistry(),
-                // V5.20+: 自建决策流执行器 — buildProcessVariables 测不到这些,但构造器要
+                // V5.20+ 自建决策流执行器 — buildProcessVariables 测不到这些,但构造器要
                 mock(com.ruleforge.decision.flow.engine.FlowEngine.class),
                 mock(com.ruleforge.decision.flow.engine.FlowDefinitionRepo.class)
         );

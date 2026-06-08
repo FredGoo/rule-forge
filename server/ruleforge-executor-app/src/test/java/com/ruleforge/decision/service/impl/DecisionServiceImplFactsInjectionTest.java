@@ -55,6 +55,8 @@ class DecisionServiceImplFactsInjectionTest {
     @BeforeEach
     void setUp() {
         // injectFacts() 不依赖其它服务,只需要 lazyEntityFactory
+        // V5.21+: 删 mock(org.flowable.engine.RuntimeService.class) — evaluate path
+        // 走自建 FlowEngine,不再持有 Flowable RuntimeService 引用
         service = new DecisionServiceImpl(
                 lazyEntityFactory,
                 mock(com.ruleforge.decision.service.IRuleVariableDefService.class),
@@ -62,9 +64,8 @@ class DecisionServiceImplFactsInjectionTest {
                 mock(com.ruleforge.decision.service.IShadowConfigService.class),
                 mock(com.ruleforge.decision.service.IShadowExecutionService.class),
                 mock(com.ruleforge.decision.service.IGrayStrategyService.class),
-                mock(org.flowable.engine.RuntimeService.class),
                 new io.micrometer.core.instrument.simple.SimpleMeterRegistry(),
-                // V5.20+: 自建决策流执行器 — injectFacts 测不到这些,但构造器要
+                // V5.20+ 自建决策流执行器 — injectFacts 测不到这些,但构造器要
                 mock(com.ruleforge.decision.flow.engine.FlowEngine.class),
                 mock(com.ruleforge.decision.flow.engine.FlowDefinitionRepo.class)
         );
