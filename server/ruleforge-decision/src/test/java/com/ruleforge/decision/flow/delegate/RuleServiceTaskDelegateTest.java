@@ -1,4 +1,4 @@
-package com.ruleforge.console.flow.delegate;
+package com.ruleforge.decision.flow.delegate;
 
 import com.ruleforge.Utils;
 import com.ruleforge.builder.KnowledgeBase;
@@ -286,6 +286,136 @@ class RuleServiceTaskDelegateTest {
             // Then 应通过 buildFromFile 构建知识包（不通过 KnowledgeService）
             verify(knowledgeBuilder).newResourceBase();
             verify(knowledgeService, never()).getKnowledge(anyString());
+        }
+    }
+
+    /**
+     * Feature: hybrid facts 注入(V5.18 续) — applicant / order 是 Map,
+     * delegate 收到后转 GeneralEntity 再 session.insert(),让规则 DSL 写
+     * {@code applicant.age} 命中。
+     *
+     * <p>为什么是 Map 不是 entity?Flowable 把 process variables 序列化到
+     * {@code act_ru_variable} BLOB 列,要求 Serializable。LazyGeneralEntity 持有
+     * Spring bean 引用(DatasourceRoutingProvider),不可序列化 — 所以
+     * DecisionServiceImpl 这边以 Map 形式塞 params,delegate 这边做 Map→entity
+     * 转换。
+     */
+    @Nested
+    @DisplayName("hybrid facts: applicant / order Map 转 entity")
+    class HybridFacts {
+
+        @Test
+        @DisplayName("applicant Map 应作为 entity insert 到 session,字段保留")
+        void shouldInsertApplicantAsEntity() throws Exception {
+            // Given
+            KnowledgePackage pkg = mock(KnowledgePackage.class);
+            when(knowledgeService.getKnowledge("demo/rule.xml")).thenReturn(pkg);
+
+            KnowledgeSession session = mock(KnowledgeSession.class);
+            factoryMock.when(() -> KnowledgeSessionFactory.newKnowledgeSession(any(KnowledgePackage.class)))
+                .thenReturn(session);
+            ExecutionResponseImpl response = new ExecutionResponseImpl();
+            response.setFiredRules(new ArrayList<>());
+            when(session.fireRules()).thenReturn(response);
+
+            Map<String, Object> applicant = new HashMap<>();
+            applicant.put("age", 25);
+            applicant.put("income", 8000.0);
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("applicant", applicant);
+            DelegateExecution execution = createExecution("rule.xml", "demo", variables);
+
+            // When
+            delegate.execute(execution);
+
+            // Then applicant Map 被包成 GeneralEntity insert session,
+            // 规则 DSL 写 applicant.age 就能命中
+            verify(session).insert(argThat(fact ->
+                    fact instanceof com.ruleforge.model.GeneralEntity
+                            && Integer.valueOf(25).equals(((com.ruleforge.model.GeneralEntity) fact).get("age"))
+                            && Double.valueOf(8000.0).equals(((com.ruleforge.model.GeneralEntity) fact).get("income"))));
+        }
+
+        @Test
+        @DisplayName("order Map 同样转 entity insert session")
+        void shouldInsertOrderAsEntity() throws Exception {
+            // Given
+            KnowledgePackage pkg = mock(KnowledgePackage.class);
+            when(knowledgeService.getKnowledge("demo/rule.xml")).thenReturn(pkg);
+
+            KnowledgeSession session = mock(KnowledgeSession.class);
+            factoryMock.when(() -> KnowledgeSessionFactory.newKnowledgeSession(any(KnowledgePackage.class)))
+                .thenReturn(session);
+            ExecutionResponseImpl response = new ExecutionResponseImpl();
+            response.setFiredRules(new ArrayList<>());
+            when(session.fireRules()).thenReturn(response);
+
+            Map<String, Object> order = new HashMap<>();
+            order.put("amount", 5000.0);
+            order.put("product", "PERSONAL_LOAN");
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("order", order);
+            DelegateExecution execution = createExecution("rule.xml", "demo", variables);
+
+            // When
+            delegate.execute(execution);
+
+            // Then
+            verify(session).insert(argThat(fact ->
+                    fact instanceof com.ruleforge.model.GeneralEntity
+                            && Double.valueOf(5000.0).equals(((com.ruleforge.model.GeneralEntity) fact).get("amount"))));
+        }
+
+        @Test
+        @DisplayName("applicant + order 都传时,两个都转 entity insert")
+        void shouldInsertBothApplicantAndOrderAsEntities() throws Exception {
+            // Given
+            KnowledgePackage pkg = mock(KnowledgePackage.class);
+            when(knowledgeService.getKnowledge("demo/rule.xml")).thenReturn(pkg);
+
+            KnowledgeSession session = mock(KnowledgeSession.class);
+            factoryMock.when(() -> KnowledgeSessionFactory.newKnowledgeSession(any(KnowledgePackage.class)))
+                .thenReturn(session);
+            ExecutionResponseImpl response = new ExecutionResponseImpl();
+            response.setFiredRules(new ArrayList<>());
+            when(session.fireRules()).thenReturn(response);
+
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("applicant", Map.of("age", 25));
+            variables.put("order", Map.of("amount", 5000.0));
+            DelegateExecution execution = createExecution("rule.xml", "demo", variables);
+
+            // When
+            delegate.execute(execution);
+
+            // Then session.insert 被调 ≥ 2 次(applicant + order 都成了 entity)
+            verify(session, atLeast(2)).insert(any(com.ruleforge.model.GeneralEntity.class));
+        }
+
+        @Test
+        @DisplayName("其它 key 的 Map 仍按 parameters 走(原行为兼容)")
+        void shouldStillTreatOtherMapsAsParameters() throws Exception {
+            // Given
+            KnowledgePackage pkg = mock(KnowledgePackage.class);
+            when(knowledgeService.getKnowledge("demo/rule.xml")).thenReturn(pkg);
+
+            KnowledgeSession session = mock(KnowledgeSession.class);
+            factoryMock.when(() -> KnowledgeSessionFactory.newKnowledgeSession(any(KnowledgePackage.class)))
+                .thenReturn(session);
+            ExecutionResponseImpl response = new ExecutionResponseImpl();
+            response.setFiredRules(new ArrayList<>());
+            when(session.fireRules(any(Map.class))).thenReturn(response);
+
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("params", Map.of("input", "test"));
+            DelegateExecution execution = createExecution("rule.xml", "demo", variables);
+
+            // When
+            delegate.execute(execution);
+
+            // Then params Map 走 fireRules(parameters),不 insert session
+            verify(session).fireRules(any(Map.class));
+            verify(session, never()).insert(any(com.ruleforge.model.GeneralEntity.class));
         }
     }
 }

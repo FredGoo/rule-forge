@@ -65,7 +65,7 @@ class FlowExecutionIntegrationTest {
 
         // Register delegate beans in Flowable engine (must be before buildProcessEngine)
         Map<Object, Object> delegateBeans = new HashMap<>();
-        delegateBeans.put("ruleServiceTaskDelegate", new com.ruleforge.console.flow.delegate.RuleServiceTaskDelegate(knowledgeBuilder));
+        delegateBeans.put("ruleServiceTaskDelegate", new com.ruleforge.decision.flow.delegate.RuleServiceTaskDelegate(knowledgeBuilder));
         delegateBeans.put("packageServiceTaskDelegate", new com.ruleforge.console.flow.delegate.PackageServiceTaskDelegate());
         config.setBeans(delegateBeans);
 
