@@ -18,8 +18,8 @@ pub enum FlowError {
     #[error("max steps ({0}) exceeded — possible infinite loop")]
     MaxStepsExceeded(usize),
 
-    #[error("unsupported node kind: {0}")]
-    Unsupported(&'static str),
+    #[error("unsupported: {0}")]
+    Unsupported(String),
 
     #[error("no rule engine configured for service task")]
     NoRuleEngine,

@@ -38,7 +38,9 @@ struct Cli {
 async fn main() -> anyhow::Result<()> {
     // tracing — respect RUST_LOG, default to info for our crates
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,rf_http=debug,rf_executor=debug,rf_state=debug")))
+        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+            EnvFilter::new("info,rf_http=debug,rf_executor=debug,rf_state=debug")
+        }))
         .init();
 
     let cli = Cli::parse();
@@ -53,9 +55,7 @@ async fn main() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .with_context(|| format!("bind {}", addr))?;
-    axum::serve(listener, app)
-        .await
-        .context("axum::serve")?;
+    axum::serve(listener, app).await.context("axum::serve")?;
 
     Ok(())
 }

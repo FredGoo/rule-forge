@@ -23,7 +23,7 @@ use std::sync::Arc;
 
 use rf_ir::flow_definition::FlowDefinition;
 
-use crate::dispatch::dispatch;
+use crate::dispatch::{dispatch, ExecutorRegistry};
 use crate::error::FlowError;
 use crate::flow_context::FlowContext;
 use crate::next_node::next_node;
@@ -34,8 +34,12 @@ const MAX_STEPS: usize = 1000;
 /// Public entry — single-call traversal. Loops `step()` until done,
 /// suspended, or failed. Wraps the type-state for callers that don't
 /// want to drive the state machine by hand.
-pub fn traverse(def: Arc<FlowDefinition>, ctx: FlowContext) -> TraverseOutcome {
-    let mut t = Traverser::<Running>::begin(def, ctx);
+pub fn traverse(
+    def: Arc<FlowDefinition>,
+    ctx: FlowContext,
+    reg: Arc<ExecutorRegistry>,
+) -> TraverseOutcome {
+    let mut t = Traverser::<Running>::begin(def, ctx, reg);
     loop {
         match t.step() {
             Ok(StepOutcome::Continue(next)) => t = next,
@@ -89,6 +93,7 @@ pub struct Failed;
 pub struct Traverser<State> {
     pub def: Arc<FlowDefinition>,
     pub ctx: FlowContext,
+    pub reg: Arc<ExecutorRegistry>,
     /// Next node id to visit. `None` means traversal finished.
     pub next: Option<String>,
     /// Tracks which node ids have been stepped on this run, for loop
@@ -113,11 +118,12 @@ impl<S> Traverser<S> {
 }
 
 impl Traverser<Running> {
-    pub fn begin(def: Arc<FlowDefinition>, ctx: FlowContext) -> Self {
+    pub fn begin(def: Arc<FlowDefinition>, ctx: FlowContext, reg: Arc<ExecutorRegistry>) -> Self {
         let start = def.start.clone();
         Self {
             def,
             ctx,
+            reg,
             next: Some(start),
             visited: HashSet::new(),
             _state: PhantomData,
@@ -139,23 +145,14 @@ impl Traverser<Running> {
         };
 
         if self.visited.len() > MAX_STEPS {
-            return Err((
-                self.into_failed(),
-                FlowError::MaxStepsExceeded(MAX_STEPS),
-            ));
+            return Err((self.into_failed(), FlowError::MaxStepsExceeded(MAX_STEPS)));
         }
         if !self.visited.insert(node_id.clone()) {
-            return Err((
-                self.into_failed(),
-                FlowError::LoopDetected(node_id),
-            ));
+            return Err((self.into_failed(), FlowError::LoopDetected(node_id)));
         }
 
         let Some(node) = self.def.nodes.get(&node_id).cloned() else {
-            return Err((
-                self.into_failed(),
-                FlowError::NodeNotFound(node_id),
-            ));
+            return Err((self.into_failed(), FlowError::NodeNotFound(node_id)));
         };
 
         self.ctx.current_node_id = Some(node_id.clone());
@@ -163,22 +160,20 @@ impl Traverser<Running> {
         // The dispatch call is async — wrap in block_in_place for the
         // Phase 3 sync executor so we don't have to pull in tokio::task
         // for the test runtime.
-        let result = match pollster::block_on(dispatch(&node, &mut self.ctx)) {
+        let result = match pollster::block_on(dispatch(&node, &mut self.ctx, &self.reg)) {
             Ok(r) => r,
             Err(e) => return Err((self.into_failed(), e)),
         };
 
         match result {
-            NodeResult::Continue => {
-                match next_node(&self.def, &node, &self.ctx) {
-                    Ok(Some(next_id)) => {
-                        self.next = Some(next_id);
-                        Ok(StepOutcome::Continue(self))
-                    }
-                    Ok(None) => Ok(StepOutcome::Done(self.into_completed())),
-                    Err(e) => Err((self.into_failed(), e)),
+            NodeResult::Continue => match next_node(&self.def, &node, &self.ctx) {
+                Ok(Some(next_id)) => {
+                    self.next = Some(next_id);
+                    Ok(StepOutcome::Continue(self))
                 }
-            }
+                Ok(None) => Ok(StepOutcome::Done(self.into_completed())),
+                Err(e) => Err((self.into_failed(), e)),
+            },
             NodeResult::Branch(target) => {
                 self.next = Some(target);
                 Ok(StepOutcome::Continue(self))
@@ -194,6 +189,7 @@ impl Traverser<Running> {
         Traverser {
             def: self.def,
             ctx: self.ctx,
+            reg: self.reg,
             next: self.next,
             visited: self.visited,
             _state: PhantomData,
@@ -204,6 +200,7 @@ impl Traverser<Running> {
         Traverser {
             def: self.def,
             ctx: self.ctx,
+            reg: self.reg,
             next: None,
             visited: self.visited,
             _state: PhantomData,
@@ -214,6 +211,7 @@ impl Traverser<Running> {
         Traverser {
             def: self.def,
             ctx: self.ctx,
+            reg: self.reg,
             next: None,
             visited: self.visited,
             _state: PhantomData,
@@ -229,6 +227,7 @@ impl Traverser<Suspended> {
         Traverser {
             def: self.def,
             ctx: self.ctx,
+            reg: self.reg,
             next: self.next,
             visited: self.visited,
             _state: PhantomData,

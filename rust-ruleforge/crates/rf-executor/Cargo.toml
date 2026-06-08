@@ -22,3 +22,4 @@ chrono = { workspace = true }
 
 [dev-dependencies]
 rf-parse = { path = "../rf-parse" }
+rf-rule = { path = "../rf-rule" }

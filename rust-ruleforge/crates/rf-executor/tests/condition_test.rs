@@ -41,12 +41,10 @@ fn var_path_resolves() {
 
 #[test]
 fn dotted_path_walks_object() {
-    let v = vars_with(&[
-        (
-            "applicant",
-            serde_json::json!({ "age": 25, "income": 12000 }),
-        ),
-    ]);
+    let v = vars_with(&[(
+        "applicant",
+        serde_json::json!({ "age": 25, "income": 12000 }),
+    )]);
     assert!(ConditionEvaluator::evaluate("${applicant.age >= 18}", &v).unwrap());
     assert!(ConditionEvaluator::evaluate("${applicant.income > 10000}", &v).unwrap());
 }

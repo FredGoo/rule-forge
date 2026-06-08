@@ -1,11 +1,18 @@
 //! 5-node fixture tests — exercises the 4-segment routing via traverse().
 //!
-//! All nodes are stubs in Phase 3 (dispatch returns `Continue` for every
-//! kind), so this validates **routing** end-to-end, not executor logic.
-//! Phase 4 tests cover Rule/Action/Script/UserTask behaviour.
+//! `serviceTask ruleforge:taskType="rule"` nodes are wired to
+//! `MockRuleEngine` (handles missing applicant gracefully — sets
+//! `approved=false, creditLimit=0` and returns Ok). The
+//! `userTask` suspension path is covered separately in
+//! `user_task_suspend_test.rs`.
+//!
+//! `useTask` routing-on-resume was tested here in Phase 3 (when dispatch
+//! was a Continue stub); the real Suspend path is in
+//! `user_task_suspend_test.rs`.
 
 use std::sync::Arc;
 
+use rf_executor::dispatch::ExecutorRegistry;
 use rf_executor::flow_context::FlowContext;
 use rf_executor::traverser::{traverse, TraverseOutcome};
 use rf_ir::flow_definition::FlowDefinition;
@@ -29,6 +36,15 @@ fn parse(xml: &str) -> Arc<FlowDefinition> {
     Arc::new(BpmnXmlParser::parse(xml).expect("parse ok"))
 }
 
+/// Registry that wires `MockRuleEngine` into the rule slot. The other
+/// four executors use their defaults (Action/Action: empty registry,
+/// Script: rhai no-op, Gateway: Continue, UserTask: real Suspend).
+fn test_registry() -> Arc<ExecutorRegistry> {
+    Arc::new(ExecutorRegistry::with_rule_engine(Arc::new(
+        rf_rule::mock::MockRuleEngine,
+    )))
+}
+
 #[test]
 fn trivial_start_end_completes() {
     let def = parse(&bpmn(
@@ -37,7 +53,7 @@ fn trivial_start_end_completes() {
            <bpmn:sequenceFlow id="e" sourceRef="s" targetRef="end"/>
            <bpmn:endEvent id="end"/>"#,
     ));
-    let outcome = traverse(def, FlowContext::new("r1"));
+    let outcome = traverse(def, FlowContext::new("r1"), test_registry());
     assert!(matches!(outcome, TraverseOutcome::Completed(_)));
 }
 
@@ -52,7 +68,7 @@ fn single_outgoing_skips_routing() {
            <bpmn:sequenceFlow id="e2" sourceRef="g" targetRef="end"/>
            <bpmn:endEvent id="end"/>"#,
     ));
-    let outcome = traverse(def, FlowContext::new("r1"));
+    let outcome = traverse(def, FlowContext::new("r1"), test_registry());
     assert!(matches!(outcome, TraverseOutcome::Completed(_)));
 }
 
@@ -78,7 +94,7 @@ fn condition_true_routes_to_yes() {
     ));
     let mut ctx = FlowContext::new("r1");
     ctx.vars.insert("age", json!(20));
-    let outcome = traverse(def, ctx);
+    let outcome = traverse(def, ctx, test_registry());
     let ctx = outcome.into_context();
     assert_eq!(ctx.current_node_id.as_deref(), Some("end_yes"));
 }
@@ -104,7 +120,7 @@ fn condition_false_falls_through_to_default() {
     ));
     let mut ctx = FlowContext::new("r1");
     ctx.vars.insert("age", json!(15));
-    let outcome = traverse(def, ctx);
+    let outcome = traverse(def, ctx, test_registry());
     let ctx = outcome.into_context();
     assert_eq!(ctx.current_node_id.as_deref(), Some("end_no"));
 }
@@ -129,10 +145,11 @@ fn percent_routing_distributes_correctly() {
            <bpmn:endEvent id="end_a"/>
            <bpmn:endEvent id="end_b"/>"#,
     ));
+    let reg = test_registry();
     let mut a_count = 0;
     let mut b_count = 0;
     for _ in 0..1000 {
-        let outcome = traverse(def.clone(), FlowContext::new("r"));
+        let outcome = traverse(def.clone(), FlowContext::new("r"), reg.clone());
         let node = outcome.into_context().current_node_id.unwrap();
         if node == "end_a" {
             a_count += 1;
@@ -168,45 +185,10 @@ fn loop_is_detected() {
            <bpmn:sequenceFlow id="e_end" sourceRef="a" targetRef="end"/>
            <bpmn:endEvent id="end"/>"#,
     ));
-    let outcome = traverse(def, FlowContext::new("r"));
+    let outcome = traverse(def, FlowContext::new("r"), test_registry());
     // e_back always picks itself (no condition, no percent), so we re-visit
     // "a" → LoopDetected → Failed outcome.
     assert!(matches!(outcome, TraverseOutcome::Failed(_, _)));
-}
-
-#[test]
-fn user_task_binary_decision_routes_via_decision_value() {
-    // userTask with `ruleforge:decisionField=approve` and outgoing edges
-    // with `ruleforge:decisionValue="yes"` / `"no"`. After the userTask
-    // step, ctx.current_awaiting_field is "approve" and
-    // ctx.current_awaiting_value is the decision the caller wrote into vars.
-    // Phase 3 stub: dispatch returns Continue, so we pre-set the awaiting
-    // state to simulate a resumed userTask (Phase 4 will do this for real
-    // via the suspend → resume mechanism).
-    let def = parse(&bpmn(
-        "p",
-        r#"<bpmn:startEvent id="s">
-             <bpmn:outgoing>e1</bpmn:outgoing>
-           </bpmn:startEvent>
-           <bpmn:userTask id="u1" ruleforge:decisionField="approve">
-             <bpmn:outgoing>e_yes</bpmn:outgoing>
-             <bpmn:outgoing>e_no</bpmn:outgoing>
-           </bpmn:userTask>
-           <bpmn:sequenceFlow id="e1" sourceRef="s" targetRef="u1"/>
-           <bpmn:sequenceFlow id="e_yes" sourceRef="u1" targetRef="end_yes"
-                              ruleforge:decisionValue="yes"/>
-           <bpmn:sequenceFlow id="e_no" sourceRef="u1" targetRef="end_no"
-                              ruleforge:decisionValue="no"/>
-           <bpmn:endEvent id="end_yes"/>
-           <bpmn:endEvent id="end_no"/>"#,
-    ));
-    let mut ctx = FlowContext::new("r1");
-    ctx.vars.insert("approve", json!("yes"));
-    ctx.current_awaiting_field = Some("approve".to_string());
-    ctx.current_awaiting_value = Some(json!("yes"));
-    let outcome = traverse(def, ctx);
-    let ctx = outcome.into_context();
-    assert_eq!(ctx.current_node_id.as_deref(), Some("end_yes"));
 }
 
 #[test]
@@ -244,6 +226,6 @@ fn max_steps_triggers_on_pure_linear_run() {
         ));
     }
     let def = parse(&bpmn("p", &body));
-    let outcome = traverse(def, FlowContext::new("r"));
+    let outcome = traverse(def, FlowContext::new("r"), test_registry());
     assert!(matches!(outcome, TraverseOutcome::Failed(_, _)));
 }

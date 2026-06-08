@@ -255,9 +255,15 @@ fn extract_extension_attrs(el: &roxmltree::Node) -> Attrs {
     for attr in el.attributes() {
         let ns = attr.namespace().map(|n| n.to_string());
         if ns.as_deref() == Some(NS_RULEFORGE) {
-            map.insert(format!("ruleforge:{}", attr.name()), attr.value().to_string());
+            map.insert(
+                format!("ruleforge:{}", attr.name()),
+                attr.value().to_string(),
+            );
         } else if ns.as_deref() == Some(NS_FLOWABLE) {
-            map.insert(format!("flowable:{}", attr.name()), attr.value().to_string());
+            map.insert(
+                format!("flowable:{}", attr.name()),
+                attr.value().to_string(),
+            );
         }
     }
     Attrs(map)

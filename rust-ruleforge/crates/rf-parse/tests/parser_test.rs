@@ -390,20 +390,14 @@ fn full_5_node_fixture() {
     assert_eq!(def.nodes.len(), 5);
     assert_eq!(def.edges.len(), 3);
     let e_yes = def.edges.iter().find(|e| e.id == "e_yes").unwrap();
-    assert_eq!(
-        e_yes.attrs.ruleforge("decisionValue"),
-        Some("approved")
-    );
+    assert_eq!(e_yes.attrs.ruleforge("decisionValue"), Some("approved"));
 }
 
 // ─── error paths ───────────────────────────────────────────────────────────
 
 #[test]
 fn rejects_empty_xml() {
-    assert!(matches!(
-        BpmnXmlParser::parse(""),
-        Err(IrError::Empty)
-    ));
+    assert!(matches!(BpmnXmlParser::parse(""), Err(IrError::Empty)));
 }
 
 #[test]

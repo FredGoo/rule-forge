@@ -17,6 +17,7 @@ use rand::Rng;
 use rf_ir::flow_definition::FlowDefinition;
 use rf_ir::flow_node::FlowNode;
 use rf_ir::node_kind::NodeKind;
+use serde_json::Value;
 
 use crate::condition::ConditionEvaluator;
 use crate::error::FlowError;
@@ -49,7 +50,7 @@ pub fn next_node(
             // The decision field is set on the userTask; we compare the
             // value stored in vars by the `decision` route. The awaiting
             // value is already extracted from vars into ctx.
-            if let Some(target) = match_decision_value(def, node, &value.to_string()) {
+            if let Some(target) = match_decision_value(def, node, value) {
                 tracing::debug!(node_id = %node.node_id, field, value = %value, "routed via userTask decisionValue");
                 return Ok(Some(target));
             }
@@ -90,14 +91,19 @@ fn find_edge<'a>(
         .ok_or_else(|| FlowError::EdgeNotFound(edge_id.to_string()))
 }
 
-fn match_decision_value(
-    def: &FlowDefinition,
-    node: &FlowNode,
-    value: &str,
-) -> Option<String> {
+fn match_decision_value(def: &FlowDefinition, node: &FlowNode, value: &Value) -> Option<String> {
+    // `serde_json::Value::String("no").to_string()` is `"\"no\""` (with
+    // the JSON quotes), but `ruleforge:decisionValue` attr is the
+    // plain string `no`. Unwrap strings explicitly; fall back to the
+    // JSON form for non-string decisions (numbers, bools).
+    let needle: String = if let Some(s) = value.as_str() {
+        s.to_string()
+    } else {
+        value.to_string()
+    };
     for out_id in &node.outgoing_ids {
         if let Some(e) = def.edges.iter().find(|e| &e.id == out_id) {
-            if e.attrs.ruleforge("decisionValue") == Some(value) {
+            if e.attrs.ruleforge("decisionValue") == Some(&needle) {
                 return Some(e.target.clone());
             }
         }

@@ -35,9 +35,7 @@ use crate::vars::{resolve_path, Vars};
 static UEL: OnceLock<Regex> = OnceLock::new();
 
 fn uel_regex() -> &'static Regex {
-    UEL.get_or_init(|| {
-        Regex::new(r"^([\w]+(?:\.[\w]+)*)\s*(>=|<=|!=|==|>|<)\s*(.+)$").unwrap()
-    })
+    UEL.get_or_init(|| Regex::new(r"^([\w]+(?:\.[\w]+)*)\s*(>=|<=|!=|==|>|<)\s*(.+)$").unwrap())
 }
 
 pub struct ConditionEvaluator;
