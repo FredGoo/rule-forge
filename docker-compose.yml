@@ -190,6 +190,31 @@ services:
     networks:
       - ruleforge
 
+  # ================================
+  # Rust 状态库 (Phase 6) — Postgres for rust-ruleforge
+  # 跟 Java mysql 平行,Rust 自己的 rust_decision_flow_state 表;
+  # 5433 端口留给 dev 直连 (避开 Java 将来可能迁 pg 的 5432)
+  # ================================
+  postgres-rust:
+    image: postgres:16-alpine
+    container_name: ruleforge-postgres-rust
+    environment:
+      POSTGRES_USER: ruleforge
+      POSTGRES_PASSWORD: ruleforge
+      POSTGRES_DB: ruleforge_rust
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_rust_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ruleforge -d ruleforge_rust"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ruleforge
+
 # ================================
 # 持久化卷
 # ================================
@@ -205,6 +230,8 @@ volumes:
   model_data:
     driver: local
   clickhouse_data:
+    driver: local
+  postgres_rust_data:
     driver: local
 
 # ================================
