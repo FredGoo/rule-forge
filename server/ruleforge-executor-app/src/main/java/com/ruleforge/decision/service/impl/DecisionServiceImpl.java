@@ -17,6 +17,8 @@ import com.ruleforge.decision.exception.AsyncDataSourcePendingException;
 import com.ruleforge.decision.lazy.DecisionContext;
 import com.ruleforge.decision.lazy.LazyEntityFactory;
 import com.ruleforge.decision.lazy.LazyGeneralEntity;
+import com.ruleforge.model.GeneralEntity;
+import org.apache.commons.beanutils.BeanUtils;
 import com.ruleforge.decision.service.*;
 import com.ruleforge.executor.service.impl.GrayVersionContext;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -180,26 +182,161 @@ public class DecisionServiceImpl implements IDecisionService {
         ctx.session.insert(ctx.outputModel);
         log.debug("已插入 OutputModel 到 session");
 
+        // Hybrid facts 注入(V5.18 续):
+        //   request.applicant → ApplicantModel(class=com.ruleforge.decision.model.ApplicantModel)
+        //   request.order     → OrderModel(class=com.ruleforge.decision.model.OrderModel)
+        //   其它 clazz(决策引擎按 nd_rule_variable_def 自动发现)→ 走 lazy 全权,
+        //   业务系统没传对应 facts 就靠 DataSourceProvider.fetchFieldValue() 查
+        Map<String, Map<String, Object>> factsByClazz = resolveFactsByClazz(ctx.request);
+
         // 创建并插入其他实体
         for (Map.Entry<String, List<RuleVariableDef>> entry : ctx.groupedByClazz.entrySet()) {
             String clazz = entry.getKey();
-            LazyGeneralEntity entity = lazyEntityFactory.createLazyEntity(clazz, ctx.request.getUserId());
+            Map<String, Object> facts = factsByClazz.getOrDefault(clazz, null);
+            LazyGeneralEntity entity = injectFacts(clazz, ctx.request.getUserId(), facts);
             ctx.session.insert(entity);
             ctx.insertedEntities.put(clazz, entity);
+        }
+
+        // 任务 #213:把 OutputModel 包成 GeneralEntity 塞进 session,让规则引擎
+        // 能 var-assign OutputModel.ruleResult 等字段。规则引擎的 ObjectTypeActivity
+        // 字符串模式只识别 GeneralEntity(用 targetClass 字符串匹配),不识别普通 Java
+        // POJO(那个要走 Class<?> typeClass 构造器,从 XML 走不到)。所以要走"包成
+        // GeneralEntity + session.fireRules() + 字段回流"的路。Flowable 路径下的
+        // 规则执行(delegete 那条)是另一条线,会跑自己的 session(只有 applicant/order,
+        // 没有 OutputModel),跟这里互不干扰。
+        try {
+            GeneralEntity outputEntity = wrapOutputModelAsEntity(ctx.outputModel);
+            ctx.session.insert(outputEntity);
+            ctx.session.fireRules();
+            syncOutputModelFromEntity(ctx.outputModel, outputEntity);
+        } catch (Exception e) {
+            log.warn("OutputModel 规则执行失败(非致命,继续走 Flowable 路径): {}", e.getMessage());
         }
 
         ctx.insertEntityTime = System.currentTimeMillis() - stepStartTime;
     }
 
-    private void executeDecisionFlow(ExecutionContext ctx) {
-        // 将 loanZone/orbitCode 作为决策流输入参数传入
+    /**
+     * 把 OutputModel 的字段拷到 GeneralEntity — Apache Commons BeanUtils.describe
+     * 会反射读所有 getter,把 (字段名, 值) 放进 Map,GeneralEntity 继承 HashMap,
+     * 直接 putAll 即可。规则 var-assign OutputModel.ruleResult 会改写 entity 里的
+     * "ruleResult" key。
+     */
+    @SuppressWarnings("unchecked")
+    private GeneralEntity wrapOutputModelAsEntity(OutputModel outputModel) throws Exception {
+        GeneralEntity entity = new GeneralEntity(OutputModel.class.getName());
+        java.util.Map<String, String> snapshot = BeanUtils.describe(outputModel);
+        for (java.util.Map.Entry<String, String> e : snapshot.entrySet()) {
+            // BeanUtils.describe 会包含 "class" 这个 key,跳过(GeneralEntity 不该有)
+            if ("class".equals(e.getKey())) {
+                continue;
+            }
+            entity.put(e.getKey(), e.getValue());
+        }
+        return entity;
+    }
+
+    /**
+     * 把 GeneralEntity 里被规则改写的字段同步回 OutputModel POJO。
+     * BeanUtils.populate(pojo, map) 通过 setter 写回。
+     */
+    private void syncOutputModelFromEntity(OutputModel outputModel, GeneralEntity entity) throws Exception {
+        BeanUtils.populate(outputModel, entity);
+    }
+
+    /**
+     * 把 facts 注入 entity — 决策引擎 hybrid 数据注入的入口。
+     *
+     * <p>facts 非空时:走 {@link LazyEntityFactory#createLazyEntity(String, String, Map)}
+     * 3 参 overload,factories 内部对每个 fact 调 {@code entity.put(k, v)},
+     * 标记为 {@code loadedProperties},后续规则读同名字段不查 DataSource。
+     *
+     * <p>facts 为 null/空时:走 2 参 overload,entity 全空,规则读字段全 lazy。
+     *
+     * <p>本方法是 package-private(无 modifier)以支持单测,生产代码走
+     * {@link #insertEntities(ExecutionContext)} 路径。
+     *
+     * @param clazz 实体类全限定名(规则侧 {@code nd_rule_variable_def.clazz})
+     * @param userId 实体主键({@code DataSourceProvider} 用它查 lazy 字段)
+     * @param facts eager 要注入的字段;null/空 → 走 lazy
+     * @return 创建好的 entity(已 insert 到 session 前的中间产物)
+     */
+    LazyGeneralEntity injectFacts(String clazz, String userId, Map<String, Object> facts) {
+        if (facts == null || facts.isEmpty()) {
+            return lazyEntityFactory.createLazyEntity(clazz, userId);
+        }
+        return lazyEntityFactory.createLazyEntity(clazz, userId, facts);
+    }
+
+    /**
+     * 把 {@link DecisionRequest} 里的 facts 字段映射到 entity clazz。
+     * 业务系统传 {@code request.applicant} → {@code ApplicantModel};
+     * 传 {@code request.order} → {@code OrderModel}。
+     * 其它 clazz 没 facts(lazy 兜底)。
+     */
+    private Map<String, Map<String, Object>> resolveFactsByClazz(DecisionRequest request) {
+        Map<String, Map<String, Object>> result = new HashMap<>();
+        if (request.getApplicant() != null && !request.getApplicant().isEmpty()) {
+            result.put("com.ruleforge.decision.model.ApplicantModel", request.getApplicant());
+        }
+        if (request.getOrder() != null && !request.getOrder().isEmpty()) {
+            result.put("com.ruleforge.decision.model.OrderModel", request.getOrder());
+        }
+        return result;
+    }
+
+    /**
+     * 构造 Flowable 流程变量 map — {@code executeDecisionFlow()} 启动 BPMN 流程时
+     * 把它当 {@code startProcessInstanceByKey(flowId, vars)} 的 vars 参数。
+     *
+     * <p>BPMN 流程跑到 {@code <serviceTask flowable:delegateExpression="${ruleServiceTaskDelegate}">}
+     * 时,delegate({@code RuleServiceTaskDelegate})会遍历
+     * {@code execution.getVariables()} 找 facts:
+     * <ul>
+     *   <li>值是 {@link com.ruleforge.model.GeneralEntity} → {@code session.insert(value)}</li>
+     *   <li>值是 Map → 当 {@code fireRules(parameters)} 的入参</li>
+     *   <li>其它非 null → {@code session.insert(value)}</li>
+     * </ul>
+     * 业务想被规则 DSL 引用(写 {@code applicant.age}),必须以 entity 形式传过来 —
+     * 这就是本方法把 {@code request.applicant} / {@code request.order} 转成
+     * {@link LazyGeneralEntity} 的原因。
+     *
+     * <p>applicant/order 没传或空 map → 不塞对应 key(delegate 走 lazy 兜底,
+     * nd_rule_variable_def 自动发现 clazz,entity 不传参创建,字段规则读时按需 lazy 查)。
+     *
+     * <p>Package-private 是为了让 {@code DecisionServiceImplFlowVariablesTest}
+     * 直接覆盖(避免 mock 整个 Flowable 启动路径)。
+     */
+    Map<String, Object> buildProcessVariables(DecisionRequest request) {
         Map<String, Object> params = new HashMap<>();
-        if (ctx.request.getLoanZone() != null) {
-            params.put("loanZone", ctx.request.getLoanZone());
+
+        // loanZone / orbitCode 透传(原行为,delegate 内部 RestDataSourceProvider 路由用)
+        if (request.getLoanZone() != null) {
+            params.put("loanZone", request.getLoanZone());
         }
-        if (ctx.request.getOrbitCode() != null) {
-            params.put("orbitCode", ctx.request.getOrbitCode());
+        if (request.getOrbitCode() != null) {
+            params.put("orbitCode", request.getOrbitCode());
         }
+
+        // applicant / order 直接以 Map 形式塞 params — Flowable 启动流程时会
+        // 把所有 params 序列化到 act_ru_variable(BLOB 列),要求值是 Serializable。
+        // 如果塞 LazyGeneralEntity 会失败:`NotSerializableException:
+        // DatasourceRoutingProvider`(entity 持有 Spring bean 引用)。
+        // Map<String,Object> 是 Serializable,delegate 收到后转成 entity 再 insert session。
+        if (request.getApplicant() != null && !request.getApplicant().isEmpty()) {
+            params.put("applicant", new HashMap<>(request.getApplicant()));
+        }
+        if (request.getOrder() != null && !request.getOrder().isEmpty()) {
+            params.put("order", new HashMap<>(request.getOrder()));
+        }
+
+        return params;
+    }
+
+    private void executeDecisionFlow(ExecutionContext ctx) {
+        // 把 loanZone/orbitCode 加上 applicant/order facts 一起作为决策流输入参数传入
+        Map<String, Object> params = buildProcessVariables(ctx.request);
 
         ctx.inputParams = new HashMap<>(ctx.session.getParameters());
         ctx.inputParams.putAll(params);
@@ -207,7 +344,17 @@ public class DecisionServiceImpl implements IDecisionService {
 
         long stepStartTime = System.currentTimeMillis();
         ProcessInstance processInstance = flowableRuntimeService.startProcessInstanceByKey(ctx.request.getFlowId(), params);
-        Map<String, Object> resultVars = flowableRuntimeService.getVariables(processInstance.getId());
+        // async-executor-activate=false 同步跑,start 返回时 process 已到 endEvent,
+        // runtime execution 被 Flowable 清掉,runtimeService.getVariables() 会抛
+        // "execution XXX doesn't exist"。RuleServiceTaskDelegate 内部已经把规则结果
+        // 写到 process variables,真正要拿规则结果走 session.getParameters() / outputModel。
+        // 这里 getVariables 只为给日志记一下"流程跑完的 final vars",跑完读不到就跳过。
+        Map<String, Object> resultVars = new HashMap<>();
+        try {
+            resultVars = flowableRuntimeService.getVariables(processInstance.getId());
+        } catch (org.flowable.common.engine.api.FlowableObjectNotFoundException e) {
+            log.debug("Process already completed, runtime variables not available: {}", e.getMessage());
+        }
         ctx.response = new ExecutionResponseImpl();
         ctx.flowExecutionTime = System.currentTimeMillis() - stepStartTime;
 

@@ -209,6 +209,47 @@ console-app 的同款配置 (`RuleForgeProdConsoleMybatisPlusConfig.appSqlSessio
 | 无 export 权限用户 | HTTP 200 + 空 body(不下载) | HTTP 403 + `{"error":"No export permission"}` |
 | 正常导入/导出 | status=true | status=true(不变) |
 
+**决策流全链路 E2E 修复 (V5.18 续 — 5 个 P0,生产决策路径 100% 跑不通)**
+
+`POST /api/loan/evaluate` 是生产决策主路径,executor-app 跑 BPMN + 写 `nd_decision_flow_log`。
+从 e2e_test 项目创建 → 规则包部署 → `/test/do` 单测通过 → `/api/loan/evaluate`
+第一次调用,**5 个独立 P0 bug 全部暴露**,逐个修完端到端绿:
+
+| # | 报错 | 根因 | 修复 |
+|---|---|---|---|
+| 1 | `Table 'ruleforge_db.nd_rule_variable_def' doesn't exist` | entity 在代码、schema 只在 dev 手工建过,没进 Flyway | 新增 `V5.18.0__nd_rule_variable_def.sql` |
+| 2 | `Unknown property ${ruleServiceTaskDelegate}` | delegate 在 `com.ruleforge.console.flow.delegate`(console-app),executor-app 跑 BPMN 找不到 — **违反 console↛executor 模块边界** | 把 `RuleServiceTaskDelegate` 移到 `ruleforge-decision` (共享 lib,decision 已依赖),`@ComponentScan` 加 `com.ruleforge.decision.flow.delegate` |
+| 3 | `Invalid 'engine' for process definition : v7/v8` | `ENGINE_VERSION_` 必须为 NULL(老 v5 兼容标志,Flowable 8 主流是 NULL),不能是 `v7`/`v8` | 部署 BPMN 时 `ENGINE_VERSION_` 留 NULL |
+| 4 | `Unknown column 'SUB_SCOPE_ID_'/'LONG_'/'META_INFO_' in 'field list'` (×2 张表) | V1 flowable migration 抄的 jar 里老 engine.sql,**缺 flowable-variable-service-8.0.0 必加的 scope/long/meta 列** | 新增 `migration-flowable/V4__flowable_variable_scope_columns.sql` 同时补 `ACT_RU_VARIABLE` + `ACT_HI_VARINST` |
+| 5 | `Unknown column 'order_no'/'flow_version'/... in 'field list'` + `Field 'project_id' doesn't have a default value` | V3.12.5 建表 13 列,entity 24 列;`project_id`/`package_id` 老 schema 是 NOT NULL,新 entity 不带 | 新增 `V5.18.1__extend_decision_flow_log_columns.sql`(18 列 IF NOT EXISTS + 老字段改 NULL)+ `V5.18.2__nd_decision_flow_params.sql`(补建整张 entity 表) |
+| 6 | `execution XXX doesn't exist` 拿不到 rule 输出 | `async-executor-activate=false` 同步跑,start 返回时 process 已到 endEvent,runtime execution 被清,`runtimeService.getVariables` 抛 | `DecisionServiceImpl.executeDecisionFlow` try/catch `FlowableObjectNotFoundException`,跑完读不到就跳过,delegate 内部已经把规则结果写到 process variables,真正结果走 `outputModel` |
+
+**端到端验证(docker compose):**
+
+```bash
+# 部署一个测试 BPMN
+docker exec ruleforge-mysql mysql -uroot -pruleforge flowable_db -e "
+INSERT INTO ACT_RE_DEPLOYMENT (ID_, NAME_, DEPLOY_TIME_, ENGINE_VERSION_) VALUES (..., 'loan-approval', NOW(3), NULL);
+INSERT INTO ACT_GE_BYTEARRAY (ID_, DEPLOYMENT_ID_, NAME_, BYTES_) VALUES (..., ..., 'loan-approval.bpmn20.xml', UNHEX('...'));
+INSERT INTO ACT_RE_PROCDEF (ID_, KEY_, NAME_, DEPLOYMENT_ID_, ...) VALUES (..., 'loan-approval', 'Loan Approval', ..., 1);"
+
+# 调用决策
+curl -X POST http://localhost:8280/api/loan/evaluate \
+  -H 'Content-Type: application/json' \
+  -d '{"userId":"u001","orderNo":"ORD001","rulePackagePath":"e2e_test/pkg01","flowId":"loan-approval"}'
+
+# 验证日志落库
+SELECT id, user_id, order_no, flow_id, execution_status, total_time_ms FROM nd_decision_flow_log ORDER BY id DESC LIMIT 1;
+# → id=4, user_id=u001, order_no=ORD001, flow_id=loan-approval, execution_status=SUCCESS, total_time_ms=195
+```
+
+**架构层发现(顺手记下,不入这次 commit):** Flyway `migration/V1__flowable_engine_mysql.sql`
+声称是 "Flowable 8.0.0 schema bootstrapping",但 `ACT_RU_VARIABLE` /
+`ACT_HI_VARINST` 实际是 6.x 时代的列(没 scope/long/meta),导致 Flowable 8.0.0
+variable service mapper 一查就 "Unknown column"。V1 应该用 Flowable 8.0.0 jar 里的
+`org/flowable/db/create/flowable.mysql.create.engine.sql` 而不是手抄老 schema。**后续要做的:
+重写 V1 整张表清单**(但 V1 已发布,不能改 — 必须发 V5+ 增量,所以这次走 V4 补列)。
+
 ### Added
 
 **V5.17 用户/权限操作审计日志 (分支 `feature/5.17-user-audit-log`,合入 `feature/5.15-permission-auth`)**

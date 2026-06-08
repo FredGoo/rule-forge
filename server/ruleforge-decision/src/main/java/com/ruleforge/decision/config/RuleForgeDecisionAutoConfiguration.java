@@ -22,7 +22,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ComponentScan(basePackages = {
         "com.ruleforge.decision.service.impl",
-        "com.ruleforge.decision.connector"
+        "com.ruleforge.decision.connector",
+        // BPMN JavaDelegates — 共享给 console-app 和 executor-app
+        // (executor-app 跑 /api/loan/evaluate 启动 BPMN,delegate 必须在那里)
+        "com.ruleforge.decision.flow.delegate"
 })
 @MapperScan(basePackages = {
         "com.ruleforge.decision.mapper"

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<variable-library>
+    <category name="ApplicantModel" type="Clazz" clazz="com.ruleforge.decision.model.ApplicantModel">
+        <var name="age" label="年龄" type="Integer" act="In"/>
+        <var name="approved" label="是否通过" type="Boolean" act="InOut"/>
+    </category>
+    <category name="OutputModel" type="Clazz" clazz="com.ruleforge.decision.model.OutputModel">
+        <var name="ruleResult" label="规则结果" type="String" act="InOut"/>
+    </category>
+</variable-library>
