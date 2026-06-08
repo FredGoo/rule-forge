@@ -1,14 +1,18 @@
 //! Decision flow executor.
 //!
-//! Phase 1 placeholder. Real Traverser + NodeExecutors land in Phase 3-4.
-//! Holds the `RuleEngine` trait so `rf-rule` impls can satisfy it without a
-//! cyclic dep (the trait needs `FlowContext` which lives here).
+//! Phase 3 — type-state traverser, routing, condition evaluator, dispatch
+//! stub. Phase 4 fills in the 5 NodeExecutors; Phase 5 wires HTTP;
+//! Phase 6 adds pg persistence.
 
 #![allow(dead_code)]
 
+pub mod condition;
+pub mod dispatch;
 pub mod error;
 pub mod flow_context;
+pub mod next_node;
 pub mod node_executor;
 pub mod node_result;
 pub mod rule_engine;
+pub mod traverser;
 pub mod vars;

@@ -44,6 +44,15 @@ chrono = { version = "0.4", features = ["serde"] }
 dashmap = "6"
 # script engine (rf-executor script task executor — Phase 4)
 rhai = { version = "1", features = ["sync", "std"] }
+# regex for UEL condition evaluator
+regex = "1"
+# pollster: synchronous block_on for the test runtime (Phase 3 step() is
+# async-flavoured so Phase 4 can plug in real async executors, but the
+# dispatcher is still CPU-bound so we don't need a real Tokio runtime in
+# the test harness)
+pollster = "0.3"
+# rand for percent routing
+rand = "0.8"
 
 [profile.release]
 opt-level = 3
