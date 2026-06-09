@@ -1,0 +1,68 @@
+{
+  "_comment": "Rule schema 索引 — 列出所有支持的 rule type,供 list-types 端点使用",
+  "types": [
+    {
+      "type": "decision_table",
+      "name": "决策表",
+      "v522Supported": true,
+      "priority": 1,
+      "description": "行=规则,列=条件/动作。BA 首选,LLM 擅长。"
+    },
+    {
+      "type": "ul",
+      "name": "脚本式规则集",
+      "v522Supported": true,
+      "priority": 2,
+      "description": "UEL 脚本,适合复杂逻辑。"
+    },
+    {
+      "type": "script_decision_table",
+      "name": "脚本决策表",
+      "v522Supported": "experimental",
+      "priority": 3,
+      "description": "决策表 + 脚本表达式。"
+    },
+    {
+      "type": "decision_tree",
+      "name": "决策树",
+      "v522Supported": true,
+      "priority": 4,
+      "description": "节点-分支结构,适合决策路径明确场景。"
+    },
+    {
+      "type": "scorecard",
+      "name": "评分卡",
+      "v522Supported": "experimental",
+      "priority": 5,
+      "description": "条件打分,适合信用评分。"
+    },
+    {
+      "type": "complex_scorecard",
+      "name": "复杂评分卡",
+      "v522Supported": "experimental",
+      "priority": 6,
+      "description": "评分卡 + 分组加权。"
+    },
+    {
+      "type": "decision_flow",
+      "name": "决策流",
+      "v522Supported": "experimental",
+      "priority": 7,
+      "description": "BPMN 流程,深度支持推 V5.23。"
+    },
+    {
+      "type": "ruleforge",
+      "name": "向导式规则集",
+      "v522Supported": false,
+      "priority": 8,
+      "description": "V5.22 占位,建议用 decision_table 替代。"
+    },
+    {
+      "type": "crosstab",
+      "name": "交叉表",
+      "v522Supported": false,
+      "priority": 9,
+      "description": "V5.22 不支持 LLM 生成。"
+    }
+  ]
+}

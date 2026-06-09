@@ -1,0 +1,53 @@
+{
+  "type": "ul",
+  "name": "脚本式规则集 (UL)",
+  "description": "UL 规则集是用 UEL 脚本语法写的规则集合,适合复杂逻辑。V5.22 LLM 支持完整 UEL 生成。",
+  "version": "1.0.0",
+  "jsonStructure": {
+    "topLevel": {
+      "name": "String, required — 规则集名",
+      "remark": "String, optional — 备注",
+      "libraries": "List<Library> — 引入库",
+      "rules": "List<Rule>, required — 规则列表,每条 rule 是 UEL 脚本"
+    },
+    "rule": {
+      "name": "String, required — 规则名",
+      "salience": "Integer, optional — 优先级",
+      "remark": "String, optional",
+      "when": "String, required — UEL 条件,如 customer.age < 18",
+      "then": "String, required — UEL 动作,如 decision.status = 'REJECTED'"
+    }
+  },
+  "uelSyntax": {
+    "comparison": [">", "<", ">=", "<=", "==", "!=", "in", "not in", "matches", "between x and y"],
+    "logical": ["&&", "||", "!"],
+    "arithmetic": ["+", "-", "*", "/", "%"],
+    "stringOps": ["+ 拼接", ".length()", ".contains()", ".startsWith()", ".endsWith()"]
+  },
+  "example": {
+    "_comment": "UL 规则集示例:小微信贷准入",
+    "name": "loan-eligibility",
+    "remark": "小微信贷准入规则",
+    "libraries": [],
+    "rules": [
+      {
+        "name": "reject-under-18",
+        "salience": 100,
+        "when": "customer.age < 18",
+        "then": "decision.status = 'REJECTED'; decision.rejectReason = 'AGE_TOO_YOUNG';",
+        "remark": "未满 18 岁拒贷"
+      },
+      {
+        "name": "reject-low-income",
+        "salience": 90,
+        "when": "customer.monthlyIncome < 3000",
+        "then": "decision.status = 'REJECTED'; decision.rejectReason = 'INCOME_TOO_LOW';"
+      }
+    ]
+  },
+  "commonPatterns": [
+    {"name": "早返回", "template": "高 salience 规则先判,命中就设 status=REJECTED,后面的规则不再跑"},
+    {"name": "复合条件", "template": "when: customer.age >= 18 && customer.monthlyIncome >= 3000 && !customer.hasBadRecord"},
+    {"name": "列表遍历", "template": "for(item : customer.documents) { if(item.expired) decision.missingDocs += item.name; }"}
+  ]
+}

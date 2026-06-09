@@ -1,0 +1,21 @@
+{
+  "type": "script_decision_table",
+  "name": "脚本决策表",
+  "description": "脚本决策表 = 决策表结构 + 脚本表达式。条件列和动作列的 value 可以是 UEL 脚本片段(不只字面值)。V5.22 实验性支持。",
+  "version": "1.0.0",
+  "jsonStructure": {
+    "_comment": "结构与 decision_table 相同,唯一区别是 cellMap.value 可以是 UEL 表达式",
+    "extends": "decision_table"
+  },
+  "example": {
+    "rows": [{"rowId": "r1", "salience": 100}],
+    "columns": [
+      {"colId": "c1", "type": "condition", "variable": "customer.age", "operator": "matches", "datatype": "string"},
+      {"colId": "c2", "type": "action", "variable": "decision.riskScore", "operator": "assign", "datatype": "number"}
+    ],
+    "cellMap": {
+      "r1,c1": "'1[3-9]\\d{9}'  // 手机号正则",
+      "r1,c2": "100 * customer.age / customer.monthlyIncome  // 风险评分公式"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "type": "crosstab",
+  "name": "交叉表",
+  "description": "交叉表用于多维度分类展示(类似 Excel 透视表),不直接做决策。V5.22 占位支持。",
+  "version": "1.0.0",
+  "jsonStructure": {
+    "_comment": "V5.22 不支持 LLM 直接生成 crosstab。需要时人工编辑。",
+    "placeholder": true
+  }
+}

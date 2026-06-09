@@ -1,0 +1,10 @@
+{
+  "type": "ruleforge",
+  "name": "向导式规则集",
+  "description": "向导式规则集是 RuleForge 经典的低代码规则类型,通过表单填条件/动作,适合无代码背景的 BA。V5.22 优先用决策表(更结构化,LLM 更擅长),向导式规则集作为 fallback。",
+  "version": "1.0.0",
+  "jsonStructure": {
+    "_comment": "向导式规则集结构复杂(嵌套 condition tree),建议 V5.22 LLM 优先输出 decision_table 类型而非 ruleforge 类型",
+    "placeholder": true
+  }
+}

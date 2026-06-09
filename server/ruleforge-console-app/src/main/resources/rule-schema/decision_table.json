@@ -1,0 +1,102 @@
+{
+  "type": "decision_table",
+  "name": "决策表",
+  "description": "决策表是 RuleForge 最常用的规则类型。行表示规则,列表示条件或动作,cell 是具体值。RuleForge 按行从上到下求值,行 salience 越大越优先。",
+  "version": "1.0.0",
+  "jsonStructure": {
+    "topLevel": {
+      "salience": "Integer, optional — 整体优先级,默认 0",
+      "enabled": "Boolean, optional — 是否启用,默认 true",
+      "debug": "Boolean, optional — 是否调试模式,默认 false",
+      "remark": "String, optional — 备注",
+      "effectiveDate": "ISO date, optional — 生效时间",
+      "expiresDate": "ISO date, optional — 失效时间",
+      "rows": "List<Row>, required — 规则行,至少 1 行",
+      "columns": "List<Column>, required — 列定义,先条件后动作",
+      "cellMap": "Map<\"<rowId>,<colId>\", value>, required — 单元格值",
+      "libraries": "List<Library>, optional — 引入的库(变量/常量/方法)"
+    },
+    "row": {
+      "rowId": "String, required — 唯一 ID,通常 r1, r2, r3",
+      "salience": "Integer, optional — 行级优先级,默认 0",
+      "remark": "String, optional — 行备注,说明规则意图"
+    },
+    "column": {
+      "colId": "String, required — 唯一 ID,通常 c1, c2, c3",
+      "type": "String, required — 'condition' 或 'action'",
+      "variable": "String, required — 变量路径,如 customer.age",
+      "operator": "String, required — 条件用 eq/lt/gt/lte/gte/ne/in/not_in/matches/between,动作用 assign/add/remove/call",
+      "datatype": "String, required — string/number/boolean/list/date",
+      "defaultValue": "String, optional — 默认值(条件列才用)"
+    },
+    "cell": {
+      "key": "\"<rowId>,<colId>\" 格式",
+      "value": "条件列:比较值(如 18 / 'PENDING');动作列:赋值(数字裸值,字符串加单引号如 'REJECTED')"
+    },
+    "library": {
+      "type": "String — 'variable' / 'constant' / 'action'",
+      "name": "String — 库名",
+      "path": "String — 库路径,如 library.variable.Application"
+    }
+  },
+  "operators": {
+    "condition": {
+      "eq": "等于",
+      "neq": "不等于",
+      "lt": "小于",
+      "lte": "小于等于",
+      "gt": "大于",
+      "gte": "大于等于",
+      "in": "在列表中,value 写 ['A','B','C']",
+      "not_in": "不在列表中",
+      "matches": "正则匹配",
+      "between": "区间,value 写 [10,20]"
+    },
+    "action": {
+      "assign": "赋值 — 'REJECTED' / 0 / true",
+      "add": "加 — 数字用 +n,列表用 +item",
+      "remove": "删 — 列表用 -item",
+      "call": "调用方法 — 方法名(args)"
+    }
+  },
+  "example": {
+    "_comment": "完整决策表示例:客户年龄<18 拒贷,且月收入<3000 拒贷",
+    "salience": 0,
+    "enabled": true,
+    "debug": false,
+    "remark": "小微信贷准入规则",
+    "rows": [
+      {"rowId": "r1", "salience": 100, "remark": "年龄<18 拒贷"},
+      {"rowId": "r2", "salience": 90, "remark": "月收入<3000 拒贷"},
+      {"rowId": "r3", "salience": 0, "remark": "默认通过"}
+    ],
+    "columns": [
+      {"colId": "c1", "type": "condition", "variable": "customer.age", "operator": "lt", "datatype": "number"},
+      {"colId": "c2", "type": "condition", "variable": "customer.monthlyIncome", "operator": "lt", "datatype": "number"},
+      {"colId": "c3", "type": "action", "variable": "decision.status", "operator": "assign", "datatype": "string"},
+      {"colId": "c4", "type": "action", "variable": "decision.rejectReason", "operator": "assign", "datatype": "string"}
+    ],
+    "cellMap": {
+      "r1,c1": "18",
+      "r1,c3": "'REJECTED'",
+      "r1,c4": "'AGE_TOO_YOUNG'",
+      "r2,c2": "3000",
+      "r2,c3": "'REJECTED'",
+      "r2,c4": "'INCOME_TOO_LOW'",
+      "r3,c3": "'APPROVED'"
+    },
+    "libraries": []
+  },
+  "commonPatterns": [
+    {"name": "阈值拦截", "template": "condition: {var} {op} {value}, action: decision.status = 'REJECTED'"},
+    {"name": "白名单", "template": "condition: {var} in {list}, action: decision.status = 'APPROVED'"},
+    {"name": "区间匹配", "template": "condition: {var} between [{min},{max}], action: ..."},
+    {"name": "级联决策", "template": "rows 按 salience 降序,前一行命中后跳过;最后一行是默认 fallback"}
+  ],
+  "tips": [
+    "cellMap 里的 value 写**字面值**,不要写表达式:数字 18,字符串 'REJECTED'(带单引号),boolean true/false",
+    "行顺序 = 优先级,前面的行优先匹配。建议加一行 salience=0 的默认 fallback",
+    "变量路径用点分: customer.age 表示 customer 对象的 age 字段",
+    "libraries 数组通常留空,除非表内用到了未在全局变量库里的字段"
+  ]
+}

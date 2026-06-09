@@ -22,7 +22,9 @@ import javax.sql.DataSource;
 @MapperScan(value = {
         "com.ruleforge.console.mapper",
         // V5.17: audit log mapper(走 ruleforgeSqlSessionFactory 跟 rf_user / rf_user_audit_log 同源)
-        "com.ruleforge.console.audit.mapper"
+        "com.ruleforge.console.audit.mapper",
+        // V5.22: AI 规则草稿 mapper(rf_draft)
+        "com.ruleforge.console.app.draft"
 }, sqlSessionFactoryRef = "ruleforgeSqlSessionFactory")
 public class MybatisPlusConfig {
 
