@@ -1,7 +1,13 @@
 package com.ruleforge.console.app.agent.tool;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruleforge.console.app.draft.DraftApplyService;
+import com.ruleforge.console.app.draft.DraftEntity;
+import com.ruleforge.console.app.draft.DraftService;
 import com.ruleforge.console.app.service.IAnalysisService;
 import com.ruleforge.console.repository.model.ResourceItem;
 import com.ruleforge.console.repository.model.ResourcePackage;
@@ -32,6 +38,8 @@ public class ToolExecutor {
     private final IAnalysisService analysisService;
     private final RuleForgeRepositoryServiceImpl repoService;
     private final ObjectMapper objectMapper;
+    private final DraftService draftService;
+    private final DraftApplyService draftApplyService;
 
     /**
      * 执行工具调用
@@ -58,6 +66,18 @@ public class ToolExecutor {
                 case ToolRegistry.QUERY_METRICS -> executeQueryMetrics(args);
                 case ToolRegistry.LIST_ALERTS -> executeListAlerts();
                 case ToolRegistry.QUERY_SIMULATION_STATS -> executeQuerySimulationStats();
+
+                // V5.22 — AI Rule Authoring
+                case ToolRegistry.DRAFT_RULE -> executeDraftRule(args);
+                case ToolRegistry.LIST_DRAFTS -> executeListDrafts(args);
+                case ToolRegistry.GET_DRAFT -> executeGetDraft(args);
+                case ToolRegistry.SUBMIT_DRAFT -> executeSubmitDraft(args);
+                case ToolRegistry.REJECT_DRAFT -> executeRejectDraft(args);
+                case ToolRegistry.APPROVE_DRAFT -> executeApproveDraft(args);
+                case ToolRegistry.APPLY_DRAFT -> executeApplyDraft(args);
+                case ToolRegistry.GENERATE_TEST_CASES -> executeGenerateTestCases(args);
+                case ToolRegistry.RUN_TEST -> executeRunTest(args);
+
                 default -> "{\"error\": \"Unknown tool: " + toolName + "\"}";
             };
         } catch (Exception e) {
@@ -228,6 +248,359 @@ public class ToolExecutor {
         return objectMapper.writeValueAsString(Map.of(
                 "period", "last 30 days",
                 "packageSummary", summary));
+    }
+
+    // ===== V5.22 AI Rule Authoring 工具实现 =====
+
+    private String executeDraftRule(JsonNode args) throws Exception {
+        String ruleType = args.path("ruleType").asText("");
+        String project = args.path("project").asText("");
+        String content = args.path("content").asText("");
+        String createdBy = args.path("createdBy").asText("anonymous");
+        String title = args.path("title").asText(null);
+        String sessionId = args.path("sessionId").asText(null);
+        String messageId = args.path("messageId").asText(null);
+
+        if (ruleType.isEmpty() || project.isEmpty() || content.isEmpty()) {
+            return "{\"error\": \"ruleType, project, content 参数必填\"}";
+        }
+
+        // 校验 content
+        try {
+            draftService.validateContent(ruleType, content);
+        } catch (IllegalArgumentException e) {
+            return objectMapper.writeValueAsString(Map.of(
+                    "error", "content_validation_failed",
+                    "message", e.getMessage()
+            ));
+        }
+
+        DraftEntity draft = draftService.createDraft(ruleType, project, content, createdBy, title, "LLM", sessionId, messageId);
+        ObjectNode out = objectMapper.createObjectNode();
+        out.put("draftId", draft.getDraftId());
+        out.put("status", draft.getStatus());
+        out.put("ruleType", draft.getRuleType());
+        out.put("project", draft.getProject());
+        out.put("title", draft.getTitle());
+        out.put("createdAt", draft.getCreatedAt() != null ? draft.getCreatedAt().toInstant().toString() : null);
+        out.put("message", "草稿已创建。下一步:BA 在 UI 中查看 / 编辑 / 提交审批");
+        return objectMapper.writeValueAsString(out);
+    }
+
+    private String executeListDrafts(JsonNode args) throws Exception {
+        String project = args.path("project").asText(null);
+        String status = args.path("status").asText(null);
+        int limit = args.path("limit").asInt(50);
+
+        List<DraftEntity> drafts;
+        if (project != null && !project.isEmpty()) {
+            drafts = draftService.listByProject(project, limit);
+        } else if (status != null && !status.isEmpty()) {
+            drafts = draftService.listByStatus(status, limit);
+        } else {
+            // 两者都空:返最近 50(简单实现,生产应该用分页)
+            drafts = draftService.listByProject("default", limit);
+            if (drafts.isEmpty()) {
+                drafts = draftService.listByStatus(DraftEntity.STATUS_DRAFT, limit);
+            }
+        }
+
+        ArrayNode arr = objectMapper.createArrayNode();
+        for (DraftEntity d : drafts) {
+            arr.add(draftService.toDto(d));
+        }
+        return objectMapper.writeValueAsString(Map.of("drafts", arr, "count", arr.size()));
+    }
+
+    private String executeGetDraft(JsonNode args) throws Exception {
+        String draftId = args.path("draftId").asText("");
+        if (draftId.isEmpty()) {
+            return "{\"error\": \"draftId 参数必填\"}";
+        }
+        return draftService.get(draftId)
+                .<String>map(d -> {
+                    try {
+                        return objectMapper.writeValueAsString(draftService.toDto(d));
+                    } catch (JsonProcessingException e) {
+                        return "{\"error\": \"serialize_failed: " + e.getMessage().replace("\"", "'") + "\"}";
+                    }
+                })
+                .orElse("{\"error\": \"draft_not_found\", \"draftId\": \"" + draftId + "\"}");
+    }
+
+    private String executeSubmitDraft(JsonNode args) throws Exception {
+        String draftId = args.path("draftId").asText("");
+        String submittedBy = args.path("submittedBy").asText("anonymous");
+        if (draftId.isEmpty()) {
+            return "{\"error\": \"draftId 参数必填\"}";
+        }
+        try {
+            DraftEntity d = draftService.submitForReview(draftId, submittedBy);
+            return objectMapper.writeValueAsString(draftService.toDto(d));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return objectMapper.writeValueAsString(Map.of("error", "submit_failed", "message", e.getMessage()));
+        }
+    }
+
+    private String executeRejectDraft(JsonNode args) throws Exception {
+        String draftId = args.path("draftId").asText("");
+        String reviewer = args.path("reviewer").asText("anonymous");
+        String reason = args.path("reason").asText("");
+        if (draftId.isEmpty()) {
+            return "{\"error\": \"draftId 参数必填\"}";
+        }
+        try {
+            DraftEntity d = draftService.reject(draftId, reviewer, reason);
+            return objectMapper.writeValueAsString(draftService.toDto(d));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return objectMapper.writeValueAsString(Map.of("error", "reject_failed", "message", e.getMessage()));
+        }
+    }
+
+    private String executeApproveDraft(JsonNode args) throws Exception {
+        String draftId = args.path("draftId").asText("");
+        String reviewer = args.path("reviewer").asText("anonymous");
+        String comment = args.path("comment").asText("");
+        if (draftId.isEmpty()) {
+            return "{\"error\": \"draftId 参数必填\"}";
+        }
+        try {
+            DraftEntity d = draftService.approve(draftId, reviewer, comment);
+            return objectMapper.writeValueAsString(draftService.toDto(d));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return objectMapper.writeValueAsString(Map.of("error", "approve_failed", "message", e.getMessage()));
+        }
+    }
+
+    private String executeApplyDraft(JsonNode args) throws Exception {
+        String draftId = args.path("draftId").asText("");
+        String packagePath = args.path("packagePath").asText("");
+        String fileName = args.path("fileName").asText(null);
+        String reviewer = args.path("reviewer").asText("anonymous");
+        String versionComment = args.path("versionComment").asText(null);
+
+        if (draftId.isEmpty() || packagePath.isEmpty()) {
+            return "{\"error\": \"draftId 和 packagePath 必填\"}";
+        }
+        try {
+            ObjectNode out = draftApplyService.applyToPackage(draftId, packagePath, fileName, reviewer, versionComment);
+            return objectMapper.writeValueAsString(out);
+        } catch (Exception e) {
+            log.error("apply_draft failed: draftId={}", draftId, e);
+            return objectMapper.writeValueAsString(Map.of("error", "apply_failed", "message", e.getMessage()));
+        }
+    }
+
+    private String executeGenerateTestCases(JsonNode args) throws Exception {
+        String draftId = args.path("draftId").asText("");
+        int count = args.path("count").asInt(5);
+        if (draftId.isEmpty()) {
+            return "{\"error\": \"draftId 必填\"}";
+        }
+        DraftEntity draft = draftService.get(draftId).orElse(null);
+        if (draft == null) {
+            return objectMapper.writeValueAsString(Map.of("error", "draft_not_found", "draftId", draftId));
+        }
+        JsonNode content = objectMapper.readTree(draft.getContent());
+
+        // 简单的"按行反推"生成:
+        //   对每 row,取它的条件列 cellMap value 作 expected inputs
+        //   生成 expectedAction 列表
+        //   给变量名随机化值
+        ArrayNode tests = objectMapper.createArrayNode();
+        JsonNode rows = content.path("rows");
+        JsonNode columns = content.path("columns");
+        JsonNode cellMap = content.path("cellMap");
+
+        if (!rows.isArray() || rows.size() == 0) {
+            return objectMapper.writeValueAsString(Map.of(
+                    "error", "no_rows",
+                    "message", "草稿没有 rows,无法生成测试用例"
+            ));
+        }
+
+        int generated = 0;
+        for (JsonNode row : rows) {
+            if (generated >= count) break;
+            String rowId = row.path("rowId").asText("r" + generated);
+            ObjectNode test = objectMapper.createObjectNode();
+            test.put("name", "auto_" + rowId + "_" + draft.getRuleType());
+            test.put("rowId", rowId);
+            test.put("remark", row.path("remark").asText(""));
+
+            // 收集 inputs(从 cellMap 里所有 condition 列)
+            ObjectNode inputs = objectMapper.createObjectNode();
+            ObjectNode expected = objectMapper.createObjectNode();
+            if (columns.isArray()) {
+                for (JsonNode col : columns) {
+                    String type = col.path("type").asText("");
+                    String variable = col.path("variable").asText("");
+                    if (variable.isEmpty()) continue;
+                    String key = rowId + "," + col.path("colId").asText("");
+                    JsonNode cell = cellMap.path(key);
+                    if (type.equals("condition") && !cell.isMissingNode()) {
+                        inputs.set(variable, cell);
+                    } else if (type.equals("action") && !cell.isMissingNode()) {
+                        expected.set(variable, cell);
+                    }
+                }
+            }
+            test.set("inputs", inputs);
+            test.set("expectedAction", expected);
+            tests.add(test);
+            generated++;
+        }
+
+        return objectMapper.writeValueAsString(Map.of(
+                "draftId", draftId,
+                "ruleType", draft.getRuleType(),
+                "testCases", tests,
+                "count", tests.size()
+        ));
+    }
+
+    private String executeRunTest(JsonNode args) throws Exception {
+        String draftId = args.path("draftId").asText("");
+        if (draftId.isEmpty()) {
+            return "{\"error\": \"draftId 必填\"}";
+        }
+        DraftEntity draft = draftService.get(draftId).orElse(null);
+        if (draft == null) {
+            return objectMapper.writeValueAsString(Map.of("error", "draft_not_found", "draftId", draftId));
+        }
+        JsonNode content = objectMapper.readTree(draft.getContent());
+        // testCases 可能是 array 也可能是 string(向后兼容老调用)
+        JsonNode testCasesNode = args.path("testCases");
+        JsonNode testCases;
+        if (testCasesNode.isArray()) {
+            testCases = testCasesNode;
+        } else {
+            String testCasesJson = testCasesNode.asText("[]");
+            testCases = objectMapper.readTree(testCasesJson);
+        }
+
+        ArrayNode results = objectMapper.createArrayNode();
+        int passed = 0, failed = 0;
+        for (JsonNode tc : testCases) {
+            ObjectNode result = objectMapper.createObjectNode();
+            result.put("name", tc.path("name").asText(""));
+            result.put("rowId", tc.path("rowId").asText(""));
+
+            String matchedRowId = matchRow(content, tc.path("inputs"));
+            if (matchedRowId != null) {
+                result.put("matchedRowId", matchedRowId);
+                result.put("status", "PASS");
+                passed++;
+            } else {
+                result.put("matchedRowId", (String) null);
+                result.put("status", "NO_MATCH");
+                failed++;
+            }
+            results.add(result);
+        }
+
+        ObjectNode out = objectMapper.createObjectNode();
+        out.put("draftId", draftId);
+        out.put("passed", passed);
+        out.put("failed", failed);
+        out.set("results", results);
+        return objectMapper.writeValueAsString(out);
+    }
+
+    /**
+     * 简单行匹配:对 content.rows 的每 row,看它的所有 condition cells 是否都满足
+     * V5.22 v0 — 支持 eq/neq/lt/lte/gt/gte (string 去引号)
+     */
+    private String matchRow(JsonNode content, JsonNode inputs) {
+        JsonNode rows = content.path("rows");
+        JsonNode columns = content.path("columns");
+        JsonNode cellMap = content.path("cellMap");
+        if (!rows.isArray()) return null;
+
+        for (JsonNode row : rows) {
+            String rowId = row.path("rowId").asText("");
+            if (rowId.isEmpty()) continue;
+            boolean allMatch = true;
+            if (columns.isArray()) {
+                for (JsonNode col : columns) {
+                    if (!col.path("type").asText("").equals("condition")) continue;
+                    String variable = col.path("variable").asText("");
+                    String op = col.path("operator").asText("eq");
+                    String key = rowId + "," + col.path("colId").asText("");
+                    JsonNode expected = cellMap.path(key);
+                    if (expected.isMissingNode()) continue;
+                    JsonNode actual = inputs.path(variable);
+                    if (actual.isMissingNode() || !compareValues(op, expected, actual)) {
+                        allMatch = false;
+                        break;
+                    }
+                }
+            }
+            if (allMatch) return rowId;
+        }
+        return null;
+    }
+
+    private boolean compareValues(String op, JsonNode expected, JsonNode actual) {
+        // string 值的引号剥掉:'REJECTED' -> REJECTED
+        JsonNode exp = stripQuotes(expected);
+
+        switch (op) {
+            case "eq", "":
+                return valuesEqual(exp, actual);
+            case "neq":
+                return !valuesEqual(exp, actual);
+            case "lt":
+                return numbers(actual, exp) < 0;   // actual < expected
+            case "lte":
+                return numbers(actual, exp) <= 0;  // actual ≤ expected
+            case "gt":
+                return numbers(actual, exp) > 0;   // actual > expected
+            case "gte":
+                return numbers(actual, exp) >= 0;  // actual ≥ expected
+            default:
+                return valuesEqual(exp, actual);
+        }
+    }
+
+    private JsonNode stripQuotes(JsonNode n) {
+        if (n != null && n.isTextual()) {
+            String s = n.asText();
+            if (s.length() >= 2 && s.startsWith("'") && s.endsWith("'")) {
+                return objectMapper.getNodeFactory().textNode(s.substring(1, s.length() - 1));
+            }
+        }
+        return n;
+    }
+
+    private int numbers(JsonNode a, JsonNode b) {
+        double x = parseAsDouble(a);
+        double y = parseAsDouble(b);
+        if (Double.isNaN(x) || Double.isNaN(y)) return 1; // 不可比,返 1 表示不匹配
+        return Double.compare(x, y);
+    }
+
+    private double parseAsDouble(JsonNode n) {
+        if (n == null || n.isNull()) return Double.NaN;
+        if (n.isNumber()) return n.asDouble();
+        if (n.isTextual()) {
+            try { return Double.parseDouble(n.asText()); }
+            catch (NumberFormatException e) { return Double.NaN; }
+        }
+        return Double.NaN;
+    }
+
+    private boolean valuesEqual(JsonNode a, JsonNode b) {
+        if (a.isNumber() && b.isNumber()) {
+            return Double.compare(a.asDouble(), b.asDouble()) == 0;
+        }
+        if (a.isTextual() && b.isTextual()) {
+            return a.asText().equals(b.asText());
+        }
+        if (a.isBoolean() && b.isBoolean()) {
+            return a.asBoolean() == b.asBoolean();
+        }
+        return a.equals(b);
     }
 
     // ===== 辅助方法 =====
