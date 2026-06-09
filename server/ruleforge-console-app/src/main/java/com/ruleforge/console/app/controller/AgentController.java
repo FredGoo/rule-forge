@@ -1,9 +1,11 @@
 package com.ruleforge.console.app.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruleforge.console.app.agent.AgentConfigService;
 import com.ruleforge.console.app.agent.AgentService;
 import com.ruleforge.console.app.agent.config.VendorPresets;
 import com.ruleforge.console.app.agent.model.AgentModels.*;
+import com.ruleforge.console.app.agent.tool.ToolExecutor;
 import com.ruleforge.console.app.agent.tool.ToolRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +29,8 @@ public class AgentController {
     private final AgentService agentService;
     private final AgentConfigService configService;
     private final ToolRegistry toolRegistry;
+    private final ToolExecutor toolExecutor;
+    private final ObjectMapper objectMapper;
 
     // ========== 对话 ==========
 
@@ -148,6 +152,40 @@ public class AgentController {
     @GetMapping("/tools")
     public ResponseEntity<?> listTools() {
         return ResponseEntity.ok(toolRegistry.getAllTools());
+    }
+
+    /**
+     * V5.22 — 直接调用 agent 工具(LLM agent / CLI 走这里,不走 chat 流)
+     *
+     * POST /ruleforge/agent/tools/{name}
+     * body: 工具参数(JSON 对象)
+     * 返: 工具执行结果(JSON 字符串)
+     */
+    @PostMapping("/tools/{name}")
+    public ResponseEntity<?> invokeTool(@PathVariable String name, @RequestBody(required = false) Map<String, Object> args) {
+        if (toolRegistry.getTool(name) == null) {
+            return ResponseEntity.status(404).body(Map.of(
+                    "error", "tool_not_found",
+                    "name", name
+            ));
+        }
+        try {
+            String argsJson = args == null ? "{}" : objectMapper.writeValueAsString(args);
+            String result = toolExecutor.execute(name, argsJson);
+            // 工具返的可能是 JSON 字符串,尝试 parse 后返;不能 parse 就当 string
+            try {
+                return ResponseEntity.ok(objectMapper.readTree(result));
+            } catch (Exception e) {
+                return ResponseEntity.ok(Map.of("raw", result));
+            }
+        } catch (Exception e) {
+            log.error("Tool invocation failed: {}", name, e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "error", "tool_execution_failed",
+                    "name", name,
+                    "message", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()
+            ));
+        }
     }
 
     @GetMapping("/status")

@@ -40,6 +40,41 @@ export async function apiGet(
     return resp.json();
 }
 
+/**
+ * POST JSON to a backend endpoint
+ *
+ * @param pathStr  e.g. "/rule-schema/types"
+ * @param body     JSON-serializable body
+ * @param serverUrl override server (default = config.server)
+ * @param fetchFn  override fetch (for tests)
+ */
+export async function apiPost(
+    pathStr: string,
+    body?: unknown,
+    serverUrl?: string,
+    fetchFn?: typeof fetch
+) {
+    const url = (serverUrl || getServer()) + pathStr;
+    const fn = fetchFn || fetch;
+    const resp = await fn(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body === undefined ? '' : JSON.stringify(body),
+    });
+    if (!resp.ok) {
+        const text = await resp.text().catch(() => '');
+        throw new Error(`HTTP ${resp.status}: ${resp.statusText}${text ? ' — ' + text : ''}`);
+    }
+    // Try JSON; if empty body, return null
+    const text = await resp.text();
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch {
+        return text;
+    }
+}
+
 export function parseDate(str?: string | null) {
     if (!str) return new Date().toISOString();
     // Support relative: 1h, 6h, 24h, 7d, 30d

@@ -1,7 +1,8 @@
 #!/usr/bin/env -S npx tsx
 
 import { Command } from 'commander';
-import { loadConfig, saveConfig, apiGet, parseDate, output } from '../lib/utils.js';
+import fs from 'fs';
+import { loadConfig, saveConfig, apiGet, apiPost, parseDate, output } from '../lib/utils.js';
 
 const program = new Command();
 program
@@ -147,6 +148,155 @@ rule.command('get-schema')
     .option('--format <fmt>', 'Output format: json', 'json')
     .action(async (opts) => {
         const data = await apiGet(`/rule-schema/${encodeURIComponent(opts.type)}`);
+        output(data, opts.format);
+    });
+
+// V5.22 — 草稿生命周期 CLI (LLM agent 用)
+rule.command('draft')
+    .description('Create an AI rule draft (LLM agent). Pass content via --content or --content-file')
+    .requiredOption('--rule-type <type>', 'Rule type, e.g. decision_table, ul')
+    .requiredOption('--project <name>', 'Project name')
+    .option('--content <json>', 'Rule JSON content (inline string)')
+    .option('--content-file <path>', 'Read rule JSON from file (recommended for big rules)')
+    .option('--title <title>', 'Draft title')
+    .option('--created-by <name>', 'Created by (defaults to LLM)', 'LLM')
+    .option('--session-id <id>', 'Optional LLM session id for audit')
+    .option('--message-id <id>', 'Optional LLM message id for audit')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const content = opts.contentFile
+            ? fs.readFileSync(opts.contentFile, 'utf8')
+            : opts.content;
+        if (!content) {
+            console.error('ERROR: --content or --content-file is required');
+            process.exit(1);
+        }
+        const data = await apiPost('/agent/tools/draft_rule', {
+            ruleType: opts.ruleType,
+            project: opts.project,
+            content,
+            createdBy: opts.createdBy,
+            title: opts.title,
+            sessionId: opts.sessionId,
+            messageId: opts.messageId,
+        });
+        output(data, opts.format);
+    });
+
+rule.command('list-drafts')
+    .description('List AI rule drafts (filtered by project or status)')
+    .option('--project <name>', 'Project name')
+    .option('--status <status>', 'Status: DRAFT / PENDING_REVIEW / APPROVED / REJECTED / EXPIRED')
+    .option('--limit <n>', 'Max results', '50')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const params: Record<string, any> = { limit: parseInt(opts.limit, 10) };
+        if (opts.project) params.project = opts.project;
+        if (opts.status) params.status = opts.status;
+        const data = await apiPost('/agent/tools/list_drafts', params);
+        output(data, opts.format);
+    });
+
+rule.command('get-draft')
+    .description('Get full draft detail (incl. content)')
+    .requiredOption('--draft-id <id>', 'Draft id')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const data = await apiPost('/agent/tools/get_draft', { draftId: opts.draftId });
+        output(data, opts.format);
+    });
+
+rule.command('submit')
+    .description('Submit draft for review (DRAFT → PENDING_REVIEW)')
+    .requiredOption('--draft-id <id>', 'Draft id')
+    .option('--submitted-by <name>', 'Submitter', 'LLM')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const data = await apiPost('/agent/tools/submit_draft', {
+            draftId: opts.draftId,
+            submittedBy: opts.submittedBy,
+        });
+        output(data, opts.format);
+    });
+
+rule.command('approve')
+    .description('Approve a pending draft (PENDING_REVIEW → APPROVED)')
+    .requiredOption('--draft-id <id>', 'Draft id')
+    .requiredOption('--reviewer <name>', 'Reviewer name')
+    .option('--comment <text>', 'Approval comment')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const data = await apiPost('/agent/tools/approve_draft', {
+            draftId: opts.draftId,
+            reviewer: opts.reviewer,
+            comment: opts.comment,
+        });
+        output(data, opts.format);
+    });
+
+rule.command('reject')
+    .description('Reject a pending draft (PENDING_REVIEW → REJECTED)')
+    .requiredOption('--draft-id <id>', 'Draft id')
+    .requiredOption('--reviewer <name>', 'Reviewer name')
+    .requiredOption('--reason <text>', 'Rejection reason')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const data = await apiPost('/agent/tools/reject_draft', {
+            draftId: opts.draftId,
+            reviewer: opts.reviewer,
+            reason: opts.reason,
+        });
+        output(data, opts.format);
+    });
+
+rule.command('apply')
+    .description('Apply approved draft to a target package (write new file version)')
+    .requiredOption('--draft-id <id>', 'Draft id')
+    .requiredOption('--package-path <path>', 'Target package path')
+    .option('--file-name <name>', 'Output file name (default: rule_<type>_<id>.json)')
+    .option('--reviewer <name>', 'Reviewer (for one-shot approve+apply)', 'LLM')
+    .option('--version-comment <text>', 'Version comment (goes to git commit message)')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const data = await apiPost('/agent/tools/apply_draft', {
+            draftId: opts.draftId,
+            packagePath: opts.packagePath,
+            fileName: opts.fileName,
+            reviewer: opts.reviewer,
+            versionComment: opts.versionComment,
+        });
+        output(data, opts.format);
+    });
+
+rule.command('test-gen')
+    .description('Generate test case templates for a draft (one per row)')
+    .requiredOption('--draft-id <id>', 'Draft id')
+    .option('--count <n>', 'Max test cases to generate', '5')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const data = await apiPost('/agent/tools/generate_test_cases', {
+            draftId: opts.draftId,
+            count: parseInt(opts.count, 10),
+        });
+        output(data, opts.format);
+    });
+
+rule.command('test-run')
+    .description('Run test cases against a draft (local mock execution)')
+    .requiredOption('--draft-id <id>', 'Draft id')
+    .option('--test-cases <json>', 'Inline JSON array of test cases')
+    .option('--test-cases-file <path>', 'Read test cases from file')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const testCasesJson = opts.testCasesFile
+            ? fs.readFileSync(opts.testCasesFile, 'utf8')
+            : opts.testCases || '[]';
+        // 后端接受 array 或 string;这里直接传 array 更干净
+        const testCases = JSON.parse(testCasesJson);
+        const data = await apiPost('/agent/tools/run_test', {
+            draftId: opts.draftId,
+            testCases,
+        });
         output(data, opts.format);
     });
 
