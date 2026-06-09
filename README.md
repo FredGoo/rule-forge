@@ -106,33 +106,42 @@ graph TB
 ## 📦 模块结构
 
 ```
-⚙️  ruleforge-core            规则引擎核心（RETE 算法、规则解析、知识库）
-📦  ruleforge-decision        共享决策模块（数据源、灰度策略、陪跑配置）
-🌐  ruleforge-console-app     可部署的编辑器应用 → 端口 8180
-⚡  ruleforge-executor-app    可部署的执行器应用 → 端口 8280
+server/
+├── lib/                                       共享库(被 app 依赖)
+│   ├── ⚙️  ruleforge-core                     规则引擎核心（RETE 算法、规则解析、知识库）
+│   ├── 📦  ruleforge-decision                 决策流引擎(V5.18 自建 FlowEngine)
+│   └── 🔌  ruleforge-datasource               数据源抽象 + 编译/加载基础设施(V5.23+)
+└── app/                                       可部署 Spring Boot app
+    ├── 🌐  ruleforge-console-app              编辑器应用 → 端口 8180
+    └── ⚡  ruleforge-executor-app             执行器应用 → 端口 8280
 🎨  console-ui                React + Vite + Ant Design 5 可视化设计器
 🖥️  cli                       RuleForge CLI（Agent 命令行接口）
 🐍  model-service             Python FastAPI 微服务（PKL 模型推理）
 ```
 
 > 历史说明:原 `ruleforge-console` / `ruleforge-executor` 子模块已合入 `console-app` / `executor-app`(commits `5f01ebe5` / `f963fd5`);原 `frontend/` 目录已重命名为 `console-ui/`(commit `06c59925`)。
+>
+> V5.23 起 lib / app 拆目录管理(libs/ 装库模块,app/ 装可部署应用);模块名保持稳定。
 
 依赖链：
 
 ```mermaid
 graph LR
-    core["ruleforge-core<br/>RETE / 解析 / 知识库"]
-    decision["ruleforge-decision<br/>数据源 / 灰度 / 陪跑"]
-    console["ruleforge-console-app<br/>编辑器应用 :8180"]
-    executor["ruleforge-executor-app<br/>执行器应用 :8280"]
+    core["lib/ruleforge-core<br/>RETE / 解析 / 知识库"]
+    datasource["lib/ruleforge-datasource<br/>数据源抽象 / 编译 / 加载"]
+    decision["lib/ruleforge-decision<br/>决策流引擎 / 9 NodeExecutor"]
+    console["app/ruleforge-console-app<br/>编辑器 :8180"]
+    executor["app/ruleforge-executor-app<br/>执行器 :8280"]
 
-    core --> decision
+    core --> datasource
+    datasource --> decision
+    datasource --> console
+    datasource --> executor
     decision --> console
-    core --> executor
     decision --> executor
 
     classDef module fill:#e8f5e9,stroke:#388e3c,color:#1b5e20
-    class core,decision,console,executor module
+    class core,datasource,decision,console,executor module
 ```
 
 ## 🚀 快速开始

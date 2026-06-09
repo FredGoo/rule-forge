@@ -23,7 +23,7 @@ set -e
 cd "$(dirname "$0")/.."
 ROOT=$(pwd)
 SERVER_DIR="$ROOT/server"
-TARGETS="ruleforge-console-app ruleforge-executor-app"
+TARGETS="app/ruleforge-console-app app/ruleforge-executor-app"
 SKIP_TESTS=true
 DO_CLEAN=false
 
@@ -31,10 +31,10 @@ DO_CLEAN=false
 for arg in "$@"; do
     case "$arg" in
         console)
-            TARGETS="ruleforge-console-app"
+            TARGETS="app/ruleforge-console-app"
             ;;
         executor)
-            TARGETS="ruleforge-executor-app"
+            TARGETS="app/ruleforge-executor-app"
             ;;
         --no-tests)
             SKIP_TESTS=true
@@ -78,12 +78,12 @@ echo "Step 2/2: Docker build"
 echo "=========================================="
 cd "$ROOT"
 
-# 把 TARGETS (ruleforge-console-app/ruleforge-executor-app) 转成对应的 docker service
+# 把 TARGETS (app/ruleforge-console-app/app/ruleforge-executor-app) 转成对应的 docker service
 DOCKER_TARGETS=""
 for tgt in $TARGETS; do
     case "$tgt" in
-        ruleforge-console-app) DOCKER_TARGETS="$DOCKER_TARGETS console-app" ;;
-        ruleforge-executor-app) DOCKER_TARGETS="$DOCKER_TARGETS executor-app" ;;
+        app/ruleforge-console-app) DOCKER_TARGETS="$DOCKER_TARGETS console-app" ;;
+        app/ruleforge-executor-app) DOCKER_TARGETS="$DOCKER_TARGETS executor-app" ;;
     esac
 done
 

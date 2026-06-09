@@ -7,9 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Maven-based Java 17 project, Spring Boot 4.0.6. Run from `server/`:
 
 ```bash
-mvn compile                       # Compile all modules
-mvn compile -pl ruleforge-core    # Compile single module with deps (-am)
-mvn clean package -DskipTests     # Package without tests
+mvn compile                                          # Compile all modules
+mvn compile -pl lib/ruleforge-core -am               # Compile single module with deps
+mvn clean package -DskipTests                        # Package without tests
 ```
 
 Frontend is in `console-ui/`, check its package.json for npm commands.
@@ -33,24 +33,27 @@ docker compose logs -f console-app # View logs
 ## Project Architecture
 
 ```
-ruleforge-parent        Maven parent POM, Spring Boot BOM, Java 17
-ruleforge-core          RETE rule engine (parsing, execution, knowledge base)
-ruleforge-console       Web console business logic (controllers, services, DB)
-ruleforge-executor      Rule execution engine (test endpoints, knowledge package)
-ruleforge-console-app   Deployable Spring Boot app — editor (port 8081)
-ruleforge-executor-app  Deployable Spring Boot app — executor (port 8082)
+server/
+├── ruleforge-parent/        Maven parent POM, Spring Boot BOM, Java 17
+├── lib/                     共享库模块(被 app 依赖,无 Spring Boot 启动类)
+│   ├── ruleforge-core       RETE rule engine (parsing, execution, knowledge base)
+│   ├── ruleforge-decision   决策流引擎 + 数据源注册 (V5.18 self-built FlowEngine)
+│   └── ruleforge-datasource 数据源抽象基类 + 编译/加载基础设施 (V5.23+)
+└── app/                     可部署 Spring Boot 应用(平级,互不依赖)
+    ├── ruleforge-console-app   Editor (port 8081)
+    └── ruleforge-executor-app  Executor (port 8082)
 frontend                React-based visual rule designer
 ```
 
 Dependency chain:
 ```
-core ← console ← console-app
-core ← executor ← executor-app
+core ← datasource ← decision ← console-app
+                          ←  executor-app
 ```
 
 ## Module Details
 
-### ruleforge-core (`com.ruleforge.*`)
+### lib/ruleforge-core (`com.ruleforge.*`)
 Pure engine, no Spring Boot dependency:
 - `model/` — rule models (rule, table, tree, scorecard, library)
 - `model.rete/` — RETE algorithm implementation
@@ -58,28 +61,26 @@ Pure engine, no Spring Boot dependency:
 - `parse/` — XML/DSL rule parsers (ANTLR4)
 - `controller/` — KnowledgePackageReceiverServlet
 
-### ruleforge-console (`com.ruleforge.console.*`)
-Web editor backend:
-- `controller/` — REST controllers (frame, common, package)
-- `flow/` — Flowable 8 integration (delegates, controller, converter)
-- `service/` — repository, permission, test services
-- `storage/` — project storage (DB-backed)
-- `mapper/` — MyBatis-Plus mappers
-- `repository/` — model classes (RepositoryFile, VersionFile, ResourcePackage, etc.)
-- `servlet/` — utilities (RequestContext, ErrorInfo, ScriptType)
-- `config/` — MybatisPlusConfig, FlywayConfig
+### lib/ruleforge-decision (`com.ruleforge.decision.*`)
+Self-built decision flow engine (V5.18, replaced Flowable 8):
+- `flow/` — FlowEngine + 9 NodeExecutors (Rule / Action / Script / Gateway / UserTask / ...)
+- `flow.persistence/` — nd_decision_flow_state CRUD + recovery job
+- `flow.executor/` — ScriptNodeExecutor (JSR-223, optional Groovy)
 
-### ruleforge-executor (`com.ruleforge.executor.*`)
-Rule execution:
-- `controller/TestController` — `/test/do`, `/test/knowledge`
-- `service/` — RuleForgeService, KnowledgePackageServiceImpl
-- `service/impl/ExecResourceProvider` — fetches resources from console via HTTP
+### lib/ruleforge-datasource (`com.ruleforge.datasource.*`) — V5.23+ NEW
+Data source abstraction, shared by console-app and executor-app:
+- `BaseApiDataSource` — LLM-generated subclasses extend this (calls third-party HTTP APIs)
+- `DataSourceRegistry` — Spring bean registry; decision engine calls `fetch(name, vars)`
+- `JavaSourceCompiler` — pure function `compile(javaCode) -> byte[]` (forkJavac, no AWS/S3/SQS)
+- `ClassLoaderPool` — load .class bytes into isolated URLClassLoader
+- `DataSourceAuditLog` — interface; each app implements to write its own audit table
+- **No DB deps** — lib never connects to MySQL/Postgres, persistence is each app's responsibility
 
-### ruleforge-console-app (`com.ruleforge.console.app.*`)
-Deployable editor with datasource config, environment provider, and business-specific code (loan decision, shadow execution, decision logging).
+### app/ruleforge-console-app (`com.ruleforge.console.app.*`)
+Deployable editor: BA UI backend, agent tools, draft flow, git storage, dual datasource (app_db + ruleforge_db).
 
-### ruleforge-executor-app (`com.ruleforge.executor.app.*`)
-Deployable executor with RestTemplate config for console communication.
+### app/ruleforge-executor-app (`com.ruleforge.executor.app.*`)
+Deployable executor: loads compiled data sources from git on startup, runs decision flows.
 
 ## Key Technologies
 
@@ -119,24 +120,25 @@ Deployable executor with RestTemplate config for console communication.
 
 ### Module Boundaries — 禁止"借实体"
 
-**核心规则:`ruleforge-console-app` 和 `ruleforge-executor-app` 是平行的可部署 Spring Boot app,互不依赖。** 共享的只有 `ruleforge-core` / `ruleforge-decision` / `ruleforge-console` / `ruleforge-executor` 库模块。
+**核心规则:`app/ruleforge-console-app` 和 `app/ruleforge-executor-app` 是平行的可部署 Spring Boot app,互不依赖。** 共享的只有 `lib/ruleforge-core` / `lib/ruleforge-decision` / `lib/ruleforge-datasource` 库模块。
 
 **禁止的反模式**:
-- ❌ console-app 里 `import com.ruleforge.decision.entity.*`(这些 entity 在 executor-app 里)
+- ❌ console-app 里 `import com.ruleforge.decision.entity.*`(这些 entity 在 lib/ruleforge-decision,executor-app 是其下游消费者)
 - ❌ console-app 里 `import com.ruleforge.decision.mapper.clickhouse.*`(同理)
 - ❌ 任何"在 A app 里 import B app 的类"的操作 — 看起来能编(因为 IDE 把整 monorepo 都 index 了),**实际上 pom.xml 没声明依赖,`mvn -pl <app> package` 一定失败**
 
 **判断当前表/Entity 该归谁**:
 | 表/Entity | 所属模块 | 注入的 DataSource |
 |---|---|---|
-| `rf_*` (V5.15 起的权限/用户/审计) | `ruleforge-console-app` 专属 | `ruleforgeDataSource` (`ruleforge_db`) |
-| `nd_*` (V5.1~V5.13 的批测/agent/监控/决策日志) | `ruleforge-console-app` 专属 | `appDataSource` (`app_db`) |
-| `act_*` / `flw_*` (Flowable 引擎) | `ruleforge-console-app` + executor-app 共用 | `flowable` (`flowable_db`) |
+| `rf_*` (V5.15 起的权限/用户/审计) | `app/ruleforge-console-app` 专属 | `ruleforgeDataSource` (`ruleforge_db`) |
+| `nd_*` (V5.1~V5.13 的批测/agent/监控/决策日志) | `app/ruleforge-console-app` 专属 | `appDataSource` (`app_db`) |
+| `act_*` / `flw_*` (Flowable 引擎) | `app/ruleforge-console-app` + executor-app 共用 | `flowable` (`flowable_db`) |
+| `nd_decision_flow_state` (V5.19+) | `lib/ruleforge-decision` 共用 | 各自 app 注入(`appDataSource` 或独立 ds) |
 
 **"我的表/Entity 在哪个 module / DataSource 怎么选" 速查**:
-- `com.ruleforge.console.app.entity.*`  → console-app / 看 entity 注释指明 DataSource
-- `com.ruleforge.decision.entity.*`    → executor-app / `ruleforgeDataSource` 在 executor 侧
-- `com.ruleforge.console.*` (storage / flow / batchtest / migration / observability) → console 模块,可在 console-app 直接用
+- `com.ruleforge.console.app.entity.*`  → `app/ruleforge-console-app` / 看 entity 注释指明 DataSource
+- `com.ruleforge.decision.entity.*`    → `lib/ruleforge-decision` / 各 app 注入
+- `com.ruleforge.datasource.*`         → `lib/ruleforge-datasource` / **不连 DB**(持久化由 app 决定)
 
 **一次性批处理工具(回填 / 迁移 / dual-write 补偿)的实现准则**:
 - **优先 raw JDBC + `PreparedStatement`**,不要套 MyBatis-Plus `@Mapper` + `Entity`
