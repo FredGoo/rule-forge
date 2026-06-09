@@ -3,6 +3,9 @@ package com.ruleforge.console.app.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruleforge.console.app.agent.AgentConfigService;
 import com.ruleforge.console.app.agent.AgentService;
+import com.ruleforge.console.app.agent.audit.AgentAuditEntity;
+import com.ruleforge.console.app.agent.audit.AgentAuditService;
+import com.ruleforge.console.app.agent.audit.AgentRateLimiter;
 import com.ruleforge.console.app.agent.config.VendorPresets;
 import com.ruleforge.console.app.agent.model.AgentModels.*;
 import com.ruleforge.console.app.agent.tool.ToolExecutor;
@@ -31,6 +34,8 @@ public class AgentController {
     private final ToolRegistry toolRegistry;
     private final ToolExecutor toolExecutor;
     private final ObjectMapper objectMapper;
+    private final AgentAuditService agentAuditService;     // V5.22.2
+    private final AgentRateLimiter agentRateLimiter;        // V5.22.2
 
     // ========== 对话 ==========
 
@@ -156,6 +161,7 @@ public class AgentController {
 
     /**
      * V5.22 — 直接调用 agent 工具(LLM agent / CLI 走这里,不走 chat 流)
+     * V5.22.2 — 加 rate limit (100/小时 per user + per session) + audit
      *
      * POST /ruleforge/agent/tools/{name}
      * body: 工具参数(JSON 对象)
@@ -169,9 +175,47 @@ public class AgentController {
                     "name", name
             ));
         }
+        long start = System.currentTimeMillis();
+        String argsJson = "{}";
         try {
-            String argsJson = args == null ? "{}" : objectMapper.writeValueAsString(args);
+            argsJson = args == null ? "{}" : objectMapper.writeValueAsString(args);
+        } catch (Exception e) {
+            argsJson = "{}";
+        }
+
+        // V5.22.2 — 限流(100 calls / hour per user + per session)
+        String userId = null;
+        String sessionId = null;
+        String messageId = null;
+        if (args != null) {
+            userId = (String) args.get("createdBy");
+            if (userId == null || userId.isEmpty()) userId = (String) args.get("submittedBy");
+            if (userId == null || userId.isEmpty()) userId = (String) args.get("reviewer");
+            if (userId == null || userId.isEmpty()) userId = "anonymous";
+            sessionId = (String) args.get("sessionId");
+            messageId = (String) args.get("messageId");
+        } else {
+            userId = "anonymous";
+        }
+        try {
+            agentRateLimiter.check(userId, sessionId);
+        } catch (AgentRateLimiter.RateLimitExceededException e) {
+            // 审计一次限流事件
+            agentAuditService.record(sessionId, messageId, userId, name, argsJson, null,
+                    AgentAuditEntity.STATUS_RATE_LIMITED, "rate_limit_exceeded", e.getMessage(), 0);
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "rate_limit_exceeded",
+                    "message", e.getMessage(),
+                    "maxPerHour", agentRateLimiter.getMaxPerHour()
+            ));
+        }
+
+        try {
             String result = toolExecutor.execute(name, argsJson);
+            long durationMs = System.currentTimeMillis() - start;
+            // 审计一次成功
+            agentAuditService.record(sessionId, messageId, userId, name, argsJson, result,
+                    AgentAuditEntity.STATUS_OK, null, null, durationMs);
             // 工具返的可能是 JSON 字符串,尝试 parse 后返;不能 parse 就当 string
             try {
                 return ResponseEntity.ok(objectMapper.readTree(result));
@@ -179,11 +223,16 @@ public class AgentController {
                 return ResponseEntity.ok(Map.of("raw", result));
             }
         } catch (Exception e) {
+            long durationMs = System.currentTimeMillis() - start;
             log.error("Tool invocation failed: {}", name, e);
+            String errMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            // 审计一次错误
+            agentAuditService.record(sessionId, messageId, userId, name, argsJson, null,
+                    AgentAuditEntity.STATUS_ERROR, "tool_execution_failed", errMsg, durationMs);
             return ResponseEntity.status(500).body(Map.of(
                     "error", "tool_execution_failed",
                     "name", name,
-                    "message", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()
+                    "message", errMsg
             ));
         }
     }

@@ -3,6 +3,8 @@ package com.ruleforge.console.app.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruleforge.console.app.agent.AgentConfigService;
 import com.ruleforge.console.app.agent.AgentService;
+import com.ruleforge.console.app.agent.audit.AgentAuditService;
+import com.ruleforge.console.app.agent.audit.AgentRateLimiter;
 import com.ruleforge.console.app.agent.tool.ToolExecutor;
 import com.ruleforge.console.app.agent.tool.ToolRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,8 +23,11 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 /**
@@ -44,6 +49,10 @@ class AgentControllerInvokeToolTest {
     private ToolExecutor toolExecutor;
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
+    @Mock
+    private AgentAuditService agentAuditService;   // V5.22.2
+    @Mock
+    private AgentRateLimiter agentRateLimiter;      // V5.22.2
 
     @InjectMocks
     private AgentController controller;
@@ -108,6 +117,30 @@ class AgentControllerInvokeToolTest {
             // Then
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
             assertThat(resp.getBody().toString()).contains("tool_not_found");
+        }
+    }
+
+    // ========== V5.22.2 — Rate Limit ==========
+
+    @Nested
+    @DisplayName("Scenario: Rate limit (100 calls / hour per user)")
+    class RateLimit {
+
+        @Test
+        @DisplayName("Given 限流器抛 RateLimitExceeded When 调 invokeTool Then 返 429 + 写审计 RATE_LIMITED")
+        void shouldReturn429() {
+            // Given
+            doThrow(new AgentRateLimiter.RateLimitExceededException("user1 超过每小时 100 次"))
+                    .when(agentRateLimiter).check(any(), any());
+            when(agentRateLimiter.getMaxPerHour()).thenReturn(100);
+
+            // When
+            ResponseEntity<?> resp = controller.invokeTool("draft_rule", Map.of("createdBy", "u1", "project", "demo"));
+
+            // Then
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+            assertThat(resp.getBody().toString()).contains("rate_limit_exceeded");
+            assertThat(resp.getBody().toString()).contains("100");
         }
     }
 }
