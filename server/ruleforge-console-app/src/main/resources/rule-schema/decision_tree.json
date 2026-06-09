@@ -1,0 +1,34 @@
+{
+  "type": "decision_tree",
+  "name": "决策树",
+  "description": "决策树用节点和分支表示决策路径。每个内部节点是一个条件,叶子节点是动作。适合决策路径明确、规则较少的场景。",
+  "version": "1.0.0",
+  "jsonStructure": {
+    "topLevel": {
+      "name": "String, required",
+      "rootNodeId": "String, required — 根节点 ID",
+      "nodes": "Map<nodeId, Node>, required",
+      "remark": "String, optional"
+    },
+    "node": {
+      "id": "String",
+      "type": "String — 'condition' / 'action' / 'variable'",
+      "variable": "String — 节点引用的变量",
+      "operator": "String — 条件节点的比较操作符",
+      "value": "String — 条件节点比较值 / 动作节点赋值",
+      "trueChildId": "String — 条件为真时跳转的子节点(condition 节点)",
+      "falseChildId": "String — 条件为假时跳转的子节点(condition 节点)",
+      "remark": "String, optional"
+    }
+  },
+  "example": {
+    "name": "loan-tree",
+    "rootNodeId": "n1",
+    "nodes": {
+      "n1": {"id": "n1", "type": "condition", "variable": "customer.age", "operator": "lt", "value": "18", "trueChildId": "n3", "falseChildId": "n2"},
+      "n2": {"id": "n2", "type": "condition", "variable": "customer.monthlyIncome", "operator": "lt", "value": "3000", "trueChildId": "n3", "falseChildId": "n4"},
+      "n3": {"id": "n3", "type": "action", "variable": "decision.status", "value": "'REJECTED'"},
+      "n4": {"id": "n4", "type": "action", "variable": "decision.status", "value": "'APPROVED'"}
+    }
+  }
+}

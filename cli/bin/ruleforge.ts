@@ -130,6 +130,26 @@ analysis.command('packages')
         output(data);
     });
 
+// === rule (V5.22 — AI Rule Authoring) ===
+const rule = program.command('rule').description('Rule authoring — list types, fetch schema, draft rules (V5.22)');
+
+rule.command('list-types')
+    .description('List all rule types supported by V5.22 AI authoring (decision_table, ul, ...)')
+    .option('--format <fmt>', 'Output format: json or table', 'json')
+    .action(async (opts) => {
+        const data = await apiGet('/rule-schema/types');
+        output(data, opts.format);
+    });
+
+rule.command('get-schema')
+    .description('Get full JSON schema for a rule type (structure, operators, example, tips)')
+    .requiredOption('--type <type>', 'Rule type, e.g. decision_table, ul, decision_tree')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const data = await apiGet(`/rule-schema/${encodeURIComponent(opts.type)}`);
+        output(data, opts.format);
+    });
+
 // === export ===
 const exp = program.command('export').description('Export rule content');
 

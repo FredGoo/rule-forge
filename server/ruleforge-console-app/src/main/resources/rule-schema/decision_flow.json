@@ -1,0 +1,54 @@
+{
+  "type": "decision_flow",
+  "name": "决策流",
+  "description": "决策流是 BPMN 流程图,适合多步骤、多分支、需要异步挂起的复杂决策(USER_TASK 等待人审等)。V5.22 简化支持,深度支持推 V5.23。",
+  "version": "1.0.0",
+  "jsonStructure": {
+    "topLevel": {
+      "name": "String, required",
+      "processId": "String, required — 流程 ID,通常 'proc-' 前缀",
+      "nodes": "List<Node>, required — BPMN 节点",
+      "edges": "List<Edge>, required — 连线",
+      "remark": "String, optional"
+    },
+    "node": {
+      "id": "String",
+      "type": "String — 'start' / 'end' / 'serviceTask' / 'userTask' / 'exclusiveGateway' / 'parallelGateway' / 'intermediateEvent'",
+      "name": "String, optional",
+      "attrs": "Map<String,String> — 节点属性,type-specific"
+    },
+    "edge": {
+      "id": "String",
+      "source": "String — 源节点 ID",
+      "target": "String — 目标节点 ID",
+      "condition": "String, optional — UEL 条件,如 customer.age < 18",
+      "isDefault": "Boolean, optional — 是否默认分支"
+    }
+  },
+  "example": {
+    "name": "loan-flow",
+    "processId": "proc-loan-v1",
+    "nodes": [
+      {"id": "start", "type": "start", "name": "开始"},
+      {"id": "checkAge", "type": "exclusiveGateway", "name": "年龄判断"},
+      {"id": "userReview", "type": "userTask", "name": "人工审核", "attrs": {"decisionField": "reviewResult"}},
+      {"id": "approved", "type": "end", "name": "通过"},
+      {"id": "rejected", "type": "end", "name": "拒绝"}
+    ],
+    "edges": [
+      {"id": "e1", "source": "start", "target": "checkAge"},
+      {"id": "e2", "source": "checkAge", "target": "userReview", "condition": "customer.age >= 18 && customer.monthlyIncome < 10000"},
+      {"id": "e3", "source": "checkAge", "target": "rejected", "isDefault": true},
+      {"id": "e4", "source": "userReview", "target": "approved", "condition": "reviewResult == '1'"},
+      {"id": "e5", "source": "userReview", "target": "rejected", "isDefault": true}
+    ]
+  },
+  "nodeTypes": {
+    "start": "流程入口,每个 flow 1 个",
+    "end": "流程出口,可多个",
+    "serviceTask": "系统任务,调规则/方法/包,同步执行",
+    "userTask": "人工任务,挂起流程等回调,decisionField 决定回调变量",
+    "exclusiveGateway": "排他网关,根据条件走不同分支",
+    "parallelGateway": "并行网关,V5.22 实验性"
+  }
+}

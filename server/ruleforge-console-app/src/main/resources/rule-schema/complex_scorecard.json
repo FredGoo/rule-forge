@@ -1,0 +1,32 @@
+{
+  "type": "complex_scorecard",
+  "name": "复杂评分卡",
+  "description": "复杂评分卡 = 评分卡 + 分组 + 权重 + 复合条件。V5.22 实验性支持。",
+  "version": "1.0.0",
+  "jsonStructure": {
+    "_comment": "结构比 scorecard 复杂,支持多组加权平均。LLM 生成时建议先用 scorecard 再升级。",
+    "extends": "scorecard"
+  },
+  "example": {
+    "name": "complex-credit",
+    "threshold": 60,
+    "groups": [
+      {
+        "name": "demographics",
+        "weight": 0.3,
+        "conditions": [
+          {"id": "d1", "variable": "customer.age", "operator": "between", "value": "[25,55]", "score": 30}
+        ]
+      },
+      {
+        "name": "income",
+        "weight": 0.5,
+        "conditions": [
+          {"id": "i1", "variable": "customer.monthlyIncome", "operator": "gte", "value": "5000", "score": 30}
+        ]
+      }
+    ],
+    "actionOnPass": "decision.status = 'APPROVED'",
+    "actionOnFail": "decision.status = 'REJECTED'"
+  }
+}

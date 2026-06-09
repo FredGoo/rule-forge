@@ -1,0 +1,34 @@
+{
+  "type": "scorecard",
+  "name": "评分卡",
+  "description": "评分卡给每个条件打分,总分超过阈值则触发动作。适合信用评分、风险评估。V5.22 简化支持。",
+  "version": "1.0.0",
+  "jsonStructure": {
+    "topLevel": {
+      "name": "String, required",
+      "threshold": "Number, required — 触发动作的分数阈值",
+      "conditions": "List<Condition>, required",
+      "actionOnPass": "String, required — 超过阈值时执行的动作",
+      "actionOnFail": "String, required — 未超过时执行的动作",
+      "remark": "String, optional"
+    },
+    "condition": {
+      "id": "String",
+      "variable": "String",
+      "operator": "String",
+      "value": "String",
+      "score": "Number — 满足此条件加多少分"
+    }
+  },
+  "example": {
+    "name": "credit-score",
+    "threshold": 60,
+    "conditions": [
+      {"id": "s1", "variable": "customer.age", "operator": "between", "value": "[25,55]", "score": 30},
+      {"id": "s2", "variable": "customer.monthlyIncome", "operator": "gte", "value": "5000", "score": 30},
+      {"id": "s3", "variable": "customer.hasBadRecord", "operator": "eq", "value": "true", "score": -100}
+    ],
+    "actionOnPass": "decision.status = 'APPROVED'",
+    "actionOnFail": "decision.status = 'REJECTED'"
+  }
+}
