@@ -52,6 +52,9 @@ public class ToolRegistry {
     public static final String DELETE_TEST_CASE = "delete_test_case";
     public static final String RUN_SAVED_TESTS = "run_saved_tests";
 
+    // V5.22.2 — 规则健康仪表盘(给 BA 看:死规则 / 热规则 / 滞留草稿 / 异常)
+    public static final String GET_RULE_HEALTH = "get_rule_health";
+
     /**
      * 初始化时注册所有工具
      */
@@ -154,6 +157,11 @@ public class ToolRegistry {
                 List.of(prop("testCaseId", "string", "testCaseId - 用例 ID")));
         register(RUN_SAVED_TESTS, "跑草稿下所有保存的测试用例(从 rf_draft_test_case 拉,逐个 matchRow)",
                 List.of(prop("draftId", "string", "draftId - 草稿 ID")));
+
+        // V5.22.2 — 规则健康仪表盘
+        register(GET_RULE_HEALTH, "给 BA 看规则健康总览:死规则 / 热规则 / 滞留草稿 / 异常事件 / Top 拒绝原因",
+                List.of(prop("project", "string", "project - 可选,只看某个项目"),
+                        prop("days", "number", "days - 时间窗口(默认 30 天)")));
 
         log.info("Registered {} agent tools", toolDefs.size());
     }

@@ -339,4 +339,58 @@ describe('V5.22 draft CLI commands (LLM agent)', () => {
             expect(mockFetch).toHaveBeenCalledTimes(2);
         });
     });
+
+    // ========== V5.22.2 规则健康仪表盘 ==========
+
+    describe('rule health dashboard (V5.22.2)', () => {
+        it('rule health → POST get_rule_health with project/days', async () => {
+            const mockFetch = vi.fn().mockResolvedValue({
+                ok: true, status: 200,
+                text: async () => JSON.stringify({
+                    project: 'demo', days: 30,
+                    coverage: {totalRules: 50, activeRules: 35, deadRules: 15},
+                    hotRules: [{ruleId: 'r1', fireCount: 1000}],
+                    recentAnomalies: [],
+                    topRejectReasons: [{reason: 'AGE_TOO_LOW', count: 100}],
+                    staleDrafts: [], staleDraftCount: 0,
+                })
+            });
+            const data = await apiPost('/agent/tools/get_rule_health', {project: 'demo', days: 30}, 'http://fake', mockFetch);
+            expect(data.project).toBe('demo');
+            expect(data.coverage.totalRules).toBe(50);
+            expect(data.coverage.deadRules).toBe(15);
+            expect(data.hotRules[0].ruleId).toBe('r1');
+            expect(data.staleDraftCount).toBe(0);
+        });
+
+        it('rule health 无 project 参数时返 all', async () => {
+            const mockFetch = vi.fn().mockResolvedValue({
+                ok: true, status: 200,
+                text: async () => JSON.stringify({project: 'all', days: 7, coverage: {}})
+            });
+            const data = await apiPost('/agent/tools/get_rule_health', {days: 7}, 'http://fake', mockFetch);
+            expect(data.project).toBe('all');
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            expect(body.project).toBeUndefined();
+        });
+
+        it('rule health 包含滞留草稿', async () => {
+            const mockFetch = vi.fn().mockResolvedValue({
+                ok: true, status: 200,
+                text: async () => JSON.stringify({
+                    project: 'demo', days: 30,
+                    coverage: {}, hotRules: [], recentAnomalies: [],
+                    topRejectReasons: [],
+                    staleDrafts: [
+                        {draftId: 'drf_old', status: 'PENDING_REVIEW', daysOld: 7, title: 'review中...'}
+                    ],
+                    staleDraftCount: 1
+                })
+            });
+            const data = await apiPost('/agent/tools/get_rule_health', {project: 'demo'}, 'http://fake', mockFetch);
+            expect(data.staleDraftCount).toBe(1);
+            expect(data.staleDrafts[0].status).toBe('PENDING_REVIEW');
+            expect(data.staleDrafts[0].daysOld).toBe(7);
+        });
+    });
 });

@@ -7,6 +7,7 @@ import {
 import ChatPanel from './components/ChatPanel.tsx';
 import ConfigPanel from './components/ConfigPanel.tsx';
 import DraftsView from './components/DraftsView.tsx';
+import RuleHealthView from './components/RuleHealthView.tsx';
 import type {AgentSession, AgentMessage} from './action';
 import type {AgentState} from './reducer';
 
@@ -24,7 +25,7 @@ interface AgentPanelProps {
 
 interface AgentPanelState {
     showConfig: boolean;
-    activeTab: 'chat' | 'drafts';  // V5.22 — 新增 drafts tab
+    activeTab: 'chat' | 'drafts' | 'health';  // V5.22 — chat / drafts / health tabs
 }
 
 class AgentPanel extends Component<AgentPanelProps, AgentPanelState> {
@@ -84,6 +85,19 @@ class AgentPanel extends Component<AgentPanelProps, AgentPanelState> {
                 >
                     <i className="glyphicon glyphicon-list-alt" style={{marginRight: 4}}/>草稿
                 </div>
+                <div
+                    onClick={() => this.setState({activeTab: 'health'})}
+                    style={{
+                        padding: '6px 12px',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        fontWeight: this.state.activeTab === 'health' ? 600 : 400,
+                        color: this.state.activeTab === 'health' ? '#1677ff' : '#666',
+                        borderBottom: this.state.activeTab === 'health' ? '2px solid #1677ff' : '2px solid transparent',
+                    }}
+                >
+                    <i className="glyphicon glyphicon-stats" style={{marginRight: 4}}/>健康
+                </div>
             </div>
         );
     }
@@ -139,7 +153,9 @@ class AgentPanel extends Component<AgentPanelProps, AgentPanelState> {
 
                 {/* Main content — V5.22 多 tab 切换 */}
                 <div style={{flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column'}}>
-                    {activeTab === 'drafts' ? (
+                    {activeTab === 'health' ? (
+                        <RuleHealthView project={this.props.project} />
+                    ) : activeTab === 'drafts' ? (
                         <DraftsView
                             project={this.props.project}
                             username={this.props.username}

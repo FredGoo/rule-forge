@@ -87,6 +87,9 @@ public class ToolExecutor {
                 case ToolRegistry.DELETE_TEST_CASE -> executeDeleteTestCase(args);
                 case ToolRegistry.RUN_SAVED_TESTS -> executeRunSavedTests(args);
 
+                // V5.22.2 — 规则健康仪表盘
+                case ToolRegistry.GET_RULE_HEALTH -> executeGetRuleHealth(args);
+
                 default -> "{\"error\": \"Unknown tool: " + toolName + "\"}";
             };
         } catch (Exception e) {
@@ -620,6 +623,133 @@ public class ToolExecutor {
         out.put("failed", failed);
         out.put("total", cases.size());
         out.set("results", results);
+        return objectMapper.writeValueAsString(out);
+    }
+
+    // ===== V5.22.2 规则健康仪表盘 =====
+
+    /**
+     * 给 BA 看的规则健康总览。聚合多个数据源:
+     * <ul>
+     *   <li>staleDrafts — 草稿滞留(DRAFT/PENDING_REVIEW 超过 3 天)</li>
+     *   <li>deadRules — 死规则(过去 N 天内从未触发)</li>
+     *   <li>hotRules — 热规则 Top 5(触发频率最高)</li>
+     *   <li>recentAnomalies — 最近异常事件</li>
+     *   <li>topRejectReasons — Top 5 拒绝原因</li>
+     * </ul>
+     */
+    private String executeGetRuleHealth(JsonNode args) throws Exception {
+        String project = args.path("project").asText(null);
+        int days = args.path("days").asInt(30);
+
+        // 时间窗口
+        Date endTime = new Date();
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DAY_OF_MONTH, -days);
+        Date startTime = cal.getTime();
+
+        // stale draft 阈值(DRAFT/PENDING_REVIEW > 3 天未动)
+        long staleThresholdMs = 3L * 24 * 3600 * 1000;
+        Date staleBefore = new Date(System.currentTimeMillis() - staleThresholdMs);
+
+        ObjectNode out = objectMapper.createObjectNode();
+        out.put("project", project != null ? project : "all");
+        out.put("days", days);
+        out.put("generatedAt", new Date().toInstant().toString());
+
+        // 1) 死规则(从覆盖率分析里)
+        try {
+            Map<String, Object> coverage = analysisService.getRuleCoverageAnalysis(project, startTime, endTime);
+            // coverage 是 Map,可能含 deadRules / hotRules / totalRules / activeRules 等
+            ObjectNode coverageNode = objectMapper.valueToTree(coverage);
+            out.set("coverage", coverageNode);
+        } catch (Exception e) {
+            log.warn("getRuleCoverageAnalysis 失败: {}", e.getMessage());
+            out.set("coverage", objectMapper.createObjectNode());
+        }
+
+        // 2) 热规则 Top 5
+        try {
+            List<Map<String, Object>> freq = analysisService.getRuleFireFrequency(startTime, endTime, project);
+            ArrayNode hot = objectMapper.createArrayNode();
+            int limit = Math.min(5, freq.size());
+            for (int i = 0; i < limit; i++) {
+                hot.add(objectMapper.valueToTree(freq.get(i)));
+            }
+            out.set("hotRules", hot);
+        } catch (Exception e) {
+            log.warn("getRuleFireFrequency 失败: {}", e.getMessage());
+            out.set("hotRules", objectMapper.createArrayNode());
+        }
+
+        // 3) 最近异常
+        try {
+            List<Map<String, Object>> anomalies = analysisService.detectAnomalies(endTime, days, 2.0, project);
+            ArrayNode arr = objectMapper.createArrayNode();
+            int limit = Math.min(10, anomalies.size());
+            for (int i = 0; i < limit; i++) {
+                arr.add(objectMapper.valueToTree(anomalies.get(i)));
+            }
+            out.set("recentAnomalies", arr);
+        } catch (Exception e) {
+            log.warn("detectAnomalies 失败: {}", e.getMessage());
+            out.set("recentAnomalies", objectMapper.createArrayNode());
+        }
+
+        // 4) Top 拒绝原因
+        try {
+            List<Map<String, Object>> reject = analysisService.getRejectDistribution(startTime, endTime, project, 5);
+            out.set("topRejectReasons", objectMapper.valueToTree(reject));
+        } catch (Exception e) {
+            log.warn("getRejectDistribution 失败: {}", e.getMessage());
+            out.set("topRejectReasons", objectMapper.createArrayNode());
+        }
+
+        // 5) 滞留草稿
+        ArrayNode staleDrafts = objectMapper.createArrayNode();
+        try {
+            // DRAFT 滞留:创建超过 3 天还没提交审批
+            List<DraftEntity> drafts = draftService.listByStatus(DraftEntity.STATUS_DRAFT, 200);
+            for (DraftEntity d : drafts) {
+                if (project != null && !project.isEmpty() && !project.equals(d.getProject())) continue;
+                Date createdAt = d.getCreatedAt();
+                if (createdAt != null && createdAt.before(staleBefore)) {
+                    ObjectNode n = objectMapper.createObjectNode();
+                    n.put("draftId", d.getDraftId());
+                    n.put("title", d.getTitle());
+                    n.put("status", d.getStatus());
+                    n.put("project", d.getProject());
+                    n.put("createdBy", d.getCreatedBy());
+                    n.put("createdAt", createdAt.toInstant().toString());
+                    long daysOld = (System.currentTimeMillis() - createdAt.getTime()) / (24L * 3600 * 1000);
+                    n.put("daysOld", daysOld);
+                    staleDrafts.add(n);
+                }
+            }
+            // PENDING_REVIEW 滞留
+            List<DraftEntity> pending = draftService.listByStatus(DraftEntity.STATUS_PENDING_REVIEW, 200);
+            for (DraftEntity d : pending) {
+                if (project != null && !project.isEmpty() && !project.equals(d.getProject())) continue;
+                Date updatedAt = d.getUpdatedAt();
+                if (updatedAt != null && updatedAt.before(staleBefore)) {
+                    ObjectNode n = objectMapper.createObjectNode();
+                    n.put("draftId", d.getDraftId());
+                    n.put("title", d.getTitle());
+                    n.put("status", d.getStatus());
+                    n.put("project", d.getProject());
+                    n.put("createdBy", d.getCreatedBy());
+                    n.put("updatedAt", updatedAt.toInstant().toString());
+                    long daysOld = (System.currentTimeMillis() - updatedAt.getTime()) / (24L * 3600 * 1000);
+                    n.put("daysOld", daysOld);
+                    staleDrafts.add(n);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("staleDrafts 收集失败: {}", e.getMessage());
+        }
+        out.set("staleDrafts", staleDrafts);
+        out.put("staleDraftCount", staleDrafts.size());
+
         return objectMapper.writeValueAsString(out);
     }
 

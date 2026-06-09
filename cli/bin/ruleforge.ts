@@ -351,6 +351,19 @@ rule.command('run-saved-tests')
         output(data, opts.format);
     });
 
+// V5.22.2 — 规则健康仪表盘(BA 每天看一眼)
+rule.command('health')
+    .description('Rule health dashboard — dead/hot rules, stale drafts, anomalies, top reject reasons')
+    .option('--project <name>', 'Project name (omit for all projects)')
+    .option('--days <n>', 'Time window in days', '30')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const params: Record<string, any> = { days: parseInt(opts.days, 10) };
+        if (opts.project) params.project = opts.project;
+        const data = await apiPost('/agent/tools/get_rule_health', params);
+        output(data, opts.format);
+    });
+
 // === export ===
 const exp = program.command('export').description('Export rule content');
 

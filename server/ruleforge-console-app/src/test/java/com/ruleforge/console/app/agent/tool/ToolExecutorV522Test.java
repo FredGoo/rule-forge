@@ -20,10 +20,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.util.Date;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -565,6 +569,117 @@ class ToolExecutorV522Test {
             assertThat(r.get("passed").asInt()).isEqualTo(0);
             assertThat(r.get("failed").asInt()).isEqualTo(0);
             assertThat(r.get("message").asText()).contains("没有保存的测试用例");
+        }
+    }
+
+    // ========== V5.22.2 规则健康仪表盘 ==========
+
+    @Nested
+    @DisplayName("Scenario: get_rule_health 工具")
+    class RuleHealth {
+
+        @Test
+        @DisplayName("聚合 coverage / hotRules / anomalies / reject / staleDrafts")
+        void shouldAggregateAll() throws Exception {
+            // coverage
+            when(analysisService.getRuleCoverageAnalysis(eq("demo"), any(), any()))
+                    .thenReturn(Map.of("totalRules", 50, "activeRules", 35, "deadRules", 15));
+            // hot
+            when(analysisService.getRuleFireFrequency(any(), any(), eq("demo")))
+                    .thenReturn(java.util.List.of(
+                            Map.of("ruleId", "r_hot_1", "fireCount", 1000),
+                            Map.of("ruleId", "r_hot_2", "fireCount", 800)
+                    ));
+            // anomalies
+            when(analysisService.detectAnomalies(any(), eq(30), eq(2.0), eq("demo")))
+                    .thenReturn(java.util.List.of(
+                            Map.of("type", "reject_rate_spike", "severity", "high", "message", "拒绝率飙升")
+                    ));
+            // reject dist
+            when(analysisService.getRejectDistribution(any(), any(), eq("demo"), eq(5)))
+                    .thenReturn(java.util.List.of(
+                            Map.of("reason", "AGE_TOO_LOW", "count", 100)
+                    ));
+            // stale drafts (none)
+            when(draftService.listByStatus(eq(DraftEntity.STATUS_DRAFT), eq(200)))
+                    .thenReturn(java.util.List.of());
+            when(draftService.listByStatus(eq(DraftEntity.STATUS_PENDING_REVIEW), eq(200)))
+                    .thenReturn(java.util.List.of());
+
+            String result = executor.execute(ToolRegistry.GET_RULE_HEALTH,
+                    "{\"project\":\"demo\",\"days\":30}");
+
+            JsonNode r = objectMapper.readTree(result);
+            assertThat(r.get("project").asText()).isEqualTo("demo");
+            assertThat(r.get("days").asInt()).isEqualTo(30);
+            assertThat(r.get("coverage").get("totalRules").asInt()).isEqualTo(50);
+            assertThat(r.get("hotRules").isArray()).isTrue();
+            assertThat(r.get("hotRules").size()).isEqualTo(2);
+            assertThat(r.get("recentAnomalies").get(0).get("severity").asText()).isEqualTo("high");
+            assertThat(r.get("topRejectReasons").get(0).get("reason").asText()).isEqualTo("AGE_TOO_LOW");
+            assertThat(r.get("staleDrafts").isArray()).isTrue();
+            assertThat(r.get("staleDraftCount").asInt()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("DRAFT 滞留 > 3 天进入 staleDrafts")
+        void shouldIncludeStaleDrafts() throws Exception {
+            when(analysisService.getRuleCoverageAnalysis(any(), any(), any()))
+                    .thenReturn(Map.of());
+            when(analysisService.getRuleFireFrequency(any(), any(), any()))
+                    .thenReturn(java.util.List.of());
+            when(analysisService.detectAnomalies(any(), anyInt(), anyDouble(), any()))
+                    .thenReturn(java.util.List.of());
+            when(analysisService.getRejectDistribution(any(), any(), any(), anyInt()))
+                    .thenReturn(java.util.List.of());
+
+            // 一个 5 天前的 DRAFT
+            DraftEntity oldDraft = newDraft("drf_old", DraftEntity.STATUS_DRAFT, "{}");
+            Date old = new Date(System.currentTimeMillis() - 5L * 24 * 3600 * 1000);
+            oldDraft.setCreatedAt(old);
+            oldDraft.setProject("demo");
+            oldDraft.setTitle("滞留草稿");
+            when(draftService.listByStatus(eq(DraftEntity.STATUS_DRAFT), eq(200)))
+                    .thenReturn(java.util.List.of(oldDraft));
+            when(draftService.listByStatus(eq(DraftEntity.STATUS_PENDING_REVIEW), eq(200)))
+                    .thenReturn(java.util.List.of());
+
+            String result = executor.execute(ToolRegistry.GET_RULE_HEALTH, "{\"days\":30}");
+
+            JsonNode r = objectMapper.readTree(result);
+            assertThat(r.get("staleDraftCount").asInt()).isEqualTo(1);
+            JsonNode stale = r.get("staleDrafts").get(0);
+            assertThat(stale.get("draftId").asText()).isEqualTo("drf_old");
+            assertThat(stale.get("status").asText()).isEqualTo("DRAFT");
+            assertThat(stale.get("daysOld").asLong()).isGreaterThanOrEqualTo(5L);
+        }
+
+        @Test
+        @DisplayName("project 过滤生效 — 不同项目的草稿不计入")
+        void shouldFilterByProject() throws Exception {
+            when(analysisService.getRuleCoverageAnalysis(any(), any(), any()))
+                    .thenReturn(Map.of());
+            when(analysisService.getRuleFireFrequency(any(), any(), any()))
+                    .thenReturn(java.util.List.of());
+            when(analysisService.detectAnomalies(any(), anyInt(), anyDouble(), any()))
+                    .thenReturn(java.util.List.of());
+            when(analysisService.getRejectDistribution(any(), any(), any(), anyInt()))
+                    .thenReturn(java.util.List.of());
+
+            DraftEntity otherProject = newDraft("drf_other", DraftEntity.STATUS_DRAFT, "{}");
+            otherProject.setCreatedAt(new Date(System.currentTimeMillis() - 5L * 24 * 3600 * 1000));
+            otherProject.setProject("other_project");
+            otherProject.setTitle("其他项目");
+            when(draftService.listByStatus(eq(DraftEntity.STATUS_DRAFT), eq(200)))
+                    .thenReturn(java.util.List.of(otherProject));
+            when(draftService.listByStatus(eq(DraftEntity.STATUS_PENDING_REVIEW), eq(200)))
+                    .thenReturn(java.util.List.of());
+
+            String result = executor.execute(ToolRegistry.GET_RULE_HEALTH,
+                    "{\"project\":\"demo\",\"days\":30}");
+
+            JsonNode r = objectMapper.readTree(result);
+            assertThat(r.get("staleDraftCount").asInt()).isEqualTo(0);
         }
     }
 
