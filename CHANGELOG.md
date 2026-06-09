@@ -26,6 +26,101 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [5.23.0] - 2026-06-10
+
+### Added
+
+**AI 第三方 API 数据源 — V5.23**
+
+`AI_JAVA` 是第 5 个 `DataSourceConnector` 实现,让运营 / LLM Agent 可以
+写一段 Java 代码、调任意第三方 API、运行时编译加载,**无需**重新打包
+app / 加 schema / 改规则引擎。
+
+---
+
+#### 决策 lib 新增(`com.ruleforge.decision.datasource` 新子包)
+
+- **`IJavaDataSource`** — LLM 写的子类的 SPI:
+  `String getName()` / `Map<String,String> getSchema()` /
+  `Object fetchField(String entityId, String fieldName, Map<String,String> context)`
+- **`JavaSourceCompiler`** — JDK 内置 `javax.tools.JavaCompiler` 走
+  `ProcessBuilder` forkJavac;5s timeout;返回
+  `CompileResult { success, fqcn, publicClassName, classBytes, error }`;
+  自动处理 javac 的"`public class 名 = 文件名`"约束 + 包路径
+  (`outDir/<pkg>/<class>.class`)
+- **`ClassLoaderPool`** — 每个 datasourceId 一个隔离 `URLClassLoader`
+  (URLs 来自 host JVM classpath,LLM 类能 resolve IJavaDataSource +
+  JDK 类型)。`close(id)` 释放,支持 evict
+- **`AiJavaDataSourceConnector implements DataSourceConnector`** —
+  `getConnectorType() = "AI_JAVA"`,被 `DatasourceServiceImpl` 自动
+  discovery 走 `List<DataSourceConnector>` 注入。`fetchFieldValue` 走
+  `config_json.classBytesBase64` → load → instantiate → `fetchField` →
+  写 `nd_datasource_log`(同 `AdvanceAiConnector.logApiCall` 模式)
+- **不引任何三方依赖** — `javax.tools.JavaCompiler` JDK 17 自带;
+  URLClassLoader 自带;无 Groovy / ASM / JIT 类引
+
+---
+
+#### console 端(`ruleforge-console-app`)
+
+- **`AiJavaDataSourceService`** — 流程: 验证 `implements IJavaDataSource`
+  → `JavaSourceCompiler.compile()` → 写 `nd_datasource.config_json =
+  { className, classBytesBase64 }` → 调 `aiJavaConnector.evict(id)`
+  清 cache。`@Transactional`
+- **`DatasourceController` 新增 `POST /{id}/java-source`** — body
+  `{javaSource: "..."}`,返 `{success, className, classBytes, message}`
+- **零 schema 变更** — `config_json TEXT` 装 base64 字节(原本就给
+  `ADVANCE_AI` 的复杂 JSON 装大头)
+
+---
+
+#### 未触动(最小爆炸半径证明)
+
+- `DataSourceConnector` 接口 — 未改
+- `DatasourceServiceImpl` — 未改(Spring auto-discover 新 `@Component`)
+- `Datasource` entity / repository / migration — 未改
+- `DatasourceRoutingProvider` (executor `lazy/`) — 未改(自动复用新 connector)
+- `application.yml` / `pom.xml` — 未改
+
+---
+
+#### 测试覆盖(31 新增测试,全模块 807/807 PASS)
+
+| 模块 | 文件 | 数量 | 覆盖 |
+|---|---|---|---|
+| `ruleforge-decision` | `JavaSourceCompilerTest` | 8 | valid/no-package/top-level inner/empty/no-public/syntax-error/extractPublicClassName/extractPackageName |
+| `ruleforge-decision` | `ClassLoaderPoolTest` | 4 | cache by id / isolation by id / bad bytes → LinkageError / close() 释放 |
+| `ruleforge-decision` | `AiJavaDataSourceConnectorTest` | 9 | type=AI_JAVA / 合法 fetch + 审计 SUCCESS / null result 仍 SUCCESS / 缺 className / 缺 bytes / 非法 base64 / magic bytes 错 / testConnection |
+| `ruleforge-console-app` | `AiJavaDataSourceServiceTest` | 7 | null id / 空 source / 不 implement / datasource 不存在 / 类型错 / 编译失败 / 成功路径 + evict |
+| 全模块 | `mvn -B -pl ruleforge-core,ruleforge-decision,ruleforge-console-app,ruleforge-executor-app -am test` | **807/807** | 0 失败 0 错误 |
+
+---
+
+#### LLM-写-代码 示例(运营/agent 提交)
+
+```java
+package com.ruleforge.user;
+import com.ruleforge.decision.datasource.IJavaDataSource;
+import java.util.*;
+public class Phase7Credit implements IJavaDataSource {
+    @Override public String getName() { return "phase7_credit"; }
+    @Override public Map<String, String> getSchema() {
+        return Map.of("score", "number", "decision", "string");
+    }
+    @Override public Object fetchField(String entityId, String fieldName,
+                                       Map<String, String> context) {
+        if ("score".equals(fieldName)) return 720;
+        if ("decision".equals(fieldName)) return "APPROVE";
+        return null;
+    }
+}
+```
+
+→ `POST /ruleforge/datasource/{id}/java-source -d '{"javaSource": "..."}'`
+→ 编译 + 写 DB + 清 cache,下次规则引擎调本 datasource 走真路径
+
+---
+
 ## [5.21.0] - 2026-06-09
 
 ### Fixed

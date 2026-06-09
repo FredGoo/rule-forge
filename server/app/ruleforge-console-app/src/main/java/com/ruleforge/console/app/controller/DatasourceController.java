@@ -2,6 +2,7 @@ package com.ruleforge.console.app.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruleforge.console.app.datasource.AiJavaDataSourceService;
 import com.ruleforge.decision.entity.Datasource;
 import com.ruleforge.decision.entity.DatasourceEntityMapping;
 import com.ruleforge.decision.entity.DatasourceFieldMapping;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class DatasourceController {
 
     private final IDatasourceService datasourceService;
+    private final AiJavaDataSourceService aiJavaService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ===== 数据源 CRUD =====
@@ -67,6 +69,26 @@ public class DatasourceController {
         return ResponseEntity.ok(Map.of(
                 "success", success,
                 "message", success ? "连接成功" : "连接失败"
+        ));
+    }
+
+    // ===== V5.23: AI Java 数据源 — 编译并应用 Java 源码 =====
+
+    @PostMapping("/{id}/java-source")
+    public ResponseEntity<?> applyJavaSource(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        String javaSource = (String) body.get("javaSource");
+        AiJavaDataSourceService.ApplyResult r = aiJavaService.apply(id, javaSource);
+        if (r.success) {
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "className", r.className,
+                "classBytes", r.classBytes,
+                "message", "编译并应用成功"
+            ));
+        }
+        return ResponseEntity.badRequest().body(Map.of(
+            "success", false,
+            "message", r.message
         ));
     }
 
