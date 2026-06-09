@@ -115,4 +115,109 @@ describe('DraftsView (V5.22)', () => {
             expect(submitCall[1]).toMatchObject({draftId: 'drf_a', submittedBy: 'BA1'});
         });
     });
+
+    it('should switch to test cases tab and load them', async () => {
+        // Given — list returns one DRAFT
+        mockJsonPost
+            .mockResolvedValueOnce({
+                count: 1,
+                drafts: [{
+                    draftId: 'drf_t', ruleType: 'decision_table', project: 'demo',
+                    status: 'DRAFT', title: '年龄测试', source: 'LLM', createdBy: 'u',
+                    createdAt: '2026-06-09T10:00:00', updatedAt: '2026-06-09T10:00:00',
+                    content: {},
+                }]
+            })
+            // click detail
+            .mockResolvedValueOnce({
+                draftId: 'drf_t', ruleType: 'decision_table', project: 'demo',
+                status: 'DRAFT', title: '年龄测试', source: 'LLM', createdBy: 'u',
+                createdAt: '2026-06-09T10:00:00', updatedAt: '2026-06-09T10:00:00',
+                content: {type: 'decision_table', rows: []},
+            })
+            // list_test_cases
+            .mockResolvedValueOnce({
+                count: 1,
+                testCases: [{
+                    testCaseId: 'tc_1', draftId: 'drf_t', name: 'under18',
+                    description: '测试未成年', expectedRowId: 'r1',
+                    createdBy: 'BA1', source: 'MANUAL',
+                    createdAt: '2026-06-09T10:00:00', updatedAt: '2026-06-09T10:00:00',
+                    inputs: {'customer.age': 17},
+                }]
+            });
+
+        // When
+        render(<DraftsView project="demo" username="BA1" />);
+        await waitFor(() => screen.getByText('年龄测试'));
+        fireEvent.click(screen.getByText('年龄测试'));
+        // 切到"测试用例" tab
+        await waitFor(() => screen.getByText(/测试用例/));
+        fireEvent.click(screen.getByText(/测试用例/));
+
+        // Then
+        await waitFor(() => {
+            expect(screen.getByText('under18')).toBeDefined();
+            // 期望行 ID badge
+            expect(screen.getByText(/期望 → r1/)).toBeDefined();
+        });
+        // API call
+        const listTestsCall = mockJsonPost.mock.calls.find(
+            c => c[0] === '/agent/tools/list_test_cases'
+        );
+        expect(listTestsCall).toBeDefined();
+        expect(listTestsCall[1]).toMatchObject({draftId: 'drf_t'});
+    });
+
+    it('should call run_saved_tests when clicking 跑全部 saved tests', async () => {
+        // Given — 1 draft, 1 test case
+        mockJsonPost
+            .mockResolvedValueOnce({
+                count: 1,
+                drafts: [{
+                    draftId: 'drf_r', ruleType: 'decision_table', project: 'demo',
+                    status: 'DRAFT', title: '跑测试', source: 'LLM', createdBy: 'u',
+                    createdAt: '2026-06-09T10:00:00', updatedAt: '2026-06-09T10:00:00',
+                    content: {},
+                }]
+            })
+            .mockResolvedValueOnce({
+                draftId: 'drf_r', ruleType: 'decision_table', project: 'demo',
+                status: 'DRAFT', title: '跑测试', source: 'LLM', createdBy: 'u',
+                createdAt: '2026-06-09T10:00:00', updatedAt: '2026-06-09T10:00:00',
+                content: {type: 'decision_table', rows: []},
+            })
+            .mockResolvedValueOnce({
+                count: 1,
+                testCases: [{
+                    testCaseId: 'tc_1', draftId: 'drf_r', name: 'tc1',
+                    description: null, expectedRowId: 'r1',
+                    createdBy: 'BA', source: 'MANUAL',
+                    createdAt: '2026-06-09T10:00:00', updatedAt: '2026-06-09T10:00:00',
+                    inputs: {x: 1},
+                }]
+            })
+            // run_saved_tests
+            .mockResolvedValueOnce({
+                draftId: 'drf_r', passed: 1, failed: 0, total: 1,
+                results: [{testCaseId: 'tc_1', name: 'tc1', expectedRowId: 'r1', matchedRowId: 'r1', status: 'PASS'}]
+            });
+
+        render(<DraftsView project="demo" username="BA1" />);
+        await waitFor(() => screen.getByText('跑测试'));
+        fireEvent.click(screen.getByText('跑测试'));
+        await waitFor(() => screen.getByText(/测试用例/));
+        fireEvent.click(screen.getByText(/测试用例/));
+        await waitFor(() => screen.getByText('tc1'));
+        fireEvent.click(screen.getByText(/跑全部 saved tests/));
+
+        // Then
+        await waitFor(() => {
+            const runCall = mockJsonPost.mock.calls.find(
+                c => c[0] === '/agent/tools/run_saved_tests'
+            );
+            expect(runCall).toBeDefined();
+            expect(runCall[1]).toMatchObject({draftId: 'drf_r'});
+        });
+    });
 });

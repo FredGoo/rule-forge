@@ -46,6 +46,12 @@ public class ToolRegistry {
     public static final String GENERATE_TEST_CASES = "generate_test_cases";
     public static final String RUN_TEST = "run_test";
 
+    // V5.22.1 — 草稿测试用例持久化 + 跑 saved tests
+    public static final String LIST_TEST_CASES = "list_test_cases";
+    public static final String ADD_TEST_CASE = "add_test_case";
+    public static final String DELETE_TEST_CASE = "delete_test_case";
+    public static final String RUN_SAVED_TESTS = "run_saved_tests";
+
     /**
      * 初始化时注册所有工具
      */
@@ -132,6 +138,22 @@ public class ToolRegistry {
         register(RUN_TEST, "用测试输入跑草稿(本地 mock 执行,验证 cellMap 走哪一行)",
                 List.of(prop("draftId", "string", "draftId - 草稿 ID"),
                         prop("testCases", "string", "testCases - JSON 数组字符串:[{\"name\":\"...\",\"inputs\":{...},\"expectAction\":{...}}, ...]")));
+
+        // V5.22.1 — 草稿测试用例持久化 + 跑 saved tests
+        register(LIST_TEST_CASES, "列草稿下所有保存的测试用例",
+                List.of(prop("draftId", "string", "draftId - 草稿 ID")));
+        register(ADD_TEST_CASE, "给草稿加一个测试用例(BA 手动 / LLM 自动生成的,都走这个落库)",
+                List.of(prop("draftId", "string", "draftId - 草稿 ID"),
+                        prop("name", "string", "name - 用例名"),
+                        prop("description", "string", "description - 描述 (可空)"),
+                        prop("inputs", "string", "inputs - 入参 JSON 字符串,例: {\"age\":17,\"income\":5000}"),
+                        prop("expectedRowId", "string", "expectedRowId - 期望命中的行 ID (可空)"),
+                        prop("createdBy", "string", "createdBy - 创建人"),
+                        prop("source", "string", "source - MANUAL/LLM (默认 MANUAL)")));
+        register(DELETE_TEST_CASE, "删测试用例",
+                List.of(prop("testCaseId", "string", "testCaseId - 用例 ID")));
+        register(RUN_SAVED_TESTS, "跑草稿下所有保存的测试用例(从 rf_draft_test_case 拉,逐个 matchRow)",
+                List.of(prop("draftId", "string", "draftId - 草稿 ID")));
 
         log.info("Registered {} agent tools", toolDefs.size());
     }

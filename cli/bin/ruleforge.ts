@@ -300,6 +300,57 @@ rule.command('test-run')
         output(data, opts.format);
     });
 
+// V5.22.1 — 持久化测试用例(LLM/BA 落库,可重复跑)
+rule.command('list-tests')
+    .description('List persisted test cases for a draft')
+    .requiredOption('--draft-id <id>', 'Draft id')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const data = await apiPost('/agent/tools/list_test_cases', { draftId: opts.draftId });
+        output(data, opts.format);
+    });
+
+rule.command('add-test')
+    .description('Add a persisted test case to a draft (BA manual or LLM auto)')
+    .requiredOption('--draft-id <id>', 'Draft id')
+    .requiredOption('--name <name>', 'Test case name')
+    .option('--description <text>', 'Description')
+    .requiredOption('--inputs <json>', 'Inputs JSON object, e.g. {"customer.age":17}')
+    .option('--expected-row-id <id>', 'Expected row id (the row this case should match)')
+    .option('--created-by <name>', 'Created by', 'BA')
+    .option('--source <src>', 'Source: MANUAL or LLM', 'MANUAL')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const data = await apiPost('/agent/tools/add_test_case', {
+            draftId: opts.draftId,
+            name: opts.name,
+            description: opts.description,
+            inputs: opts.inputs,
+            expectedRowId: opts.expectedRowId,
+            createdBy: opts.createdBy,
+            source: opts.source,
+        });
+        output(data, opts.format);
+    });
+
+rule.command('del-test')
+    .description('Delete a persisted test case')
+    .requiredOption('--test-case-id <id>', 'Test case id')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const data = await apiPost('/agent/tools/delete_test_case', { testCaseId: opts.testCaseId });
+        output(data, opts.format);
+    });
+
+rule.command('run-saved-tests')
+    .description('Run all persisted test cases for a draft (compare matched vs expected row)')
+    .requiredOption('--draft-id <id>', 'Draft id')
+    .option('--format <fmt>', 'Output format: json', 'json')
+    .action(async (opts) => {
+        const data = await apiPost('/agent/tools/run_saved_tests', { draftId: opts.draftId });
+        output(data, opts.format);
+    });
+
 // === export ===
 const exp = program.command('export').description('Export rule content');
 

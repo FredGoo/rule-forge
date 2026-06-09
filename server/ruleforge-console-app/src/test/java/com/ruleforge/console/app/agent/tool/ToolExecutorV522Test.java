@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ruleforge.console.app.draft.DraftApplyService;
 import com.ruleforge.console.app.draft.DraftEntity;
 import com.ruleforge.console.app.draft.DraftService;
+import com.ruleforge.console.app.draft.TestCaseEntity;
+import com.ruleforge.console.app.draft.TestCaseService;
 import com.ruleforge.console.app.service.IAnalysisService;
 import com.ruleforge.console.service.impl.RuleForgeRepositoryServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,13 +53,15 @@ class ToolExecutorV522Test {
     private DraftService draftService;
     @Mock
     private DraftApplyService draftApplyService;
+    @Mock
+    private TestCaseService testCaseService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private ToolExecutor executor;
 
     @BeforeEach
     void setUp() {
-        executor = new ToolExecutor(analysisService, repoService, objectMapper, draftService, draftApplyService);
+        executor = new ToolExecutor(analysisService, repoService, objectMapper, draftService, draftApplyService, testCaseService);
     }
 
     // ========== draft_rule ==========
@@ -399,7 +403,184 @@ class ToolExecutorV522Test {
         }
     }
 
+    // ========== V5.22.1 草稿测试用例持久化 ==========
+
+    @Nested
+    @DisplayName("Scenario: list_test_cases / add_test_case / delete_test_case / run_saved_tests")
+    class TestCasePersistence {
+
+        @Test
+        @DisplayName("list_test_cases 返 testCases 数组 + count")
+        void shouldListTestCases() throws Exception {
+            when(testCaseService.listByDraftId("d1")).thenReturn(java.util.List.of(
+                    newTestCase("tc_1", "d1", "{\"age\":17}", "r1"),
+                    newTestCase("tc_2", "d1", "{\"age\":25}", null)
+            ));
+            lenient().when(testCaseService.toDto(any(TestCaseEntity.class))).thenAnswer(inv -> {
+                TestCaseEntity e = inv.getArgument(0);
+                ObjectNode n = objectMapper.createObjectNode();
+                n.put("testCaseId", e.getTestCaseId());
+                n.put("draftId", e.getDraftId());
+                n.put("name", e.getName());
+                n.put("expectedRowId", e.getExpectedRowId());
+                n.put("source", e.getSource());
+                try {
+                    n.set("inputs", objectMapper.readTree(e.getInputs()));
+                } catch (Exception ex) {
+                    n.put("inputs", e.getInputs());
+                }
+                return n;
+            });
+
+            String result = executor.execute(ToolRegistry.LIST_TEST_CASES, "{\"draftId\":\"d1\"}");
+
+            JsonNode r = objectMapper.readTree(result);
+            assertThat(r.get("count").asInt()).isEqualTo(2);
+            assertThat(r.get("testCases").isArray()).isTrue();
+            assertThat(r.get("testCases").get(0).get("testCaseId").asText()).isEqualTo("tc_1");
+        }
+
+        @Test
+        @DisplayName("add_test_case 调 service + 返 DTO")
+        void shouldAddTestCase() throws Exception {
+            String inputs = "{\"age\":17}";
+            TestCaseEntity tc = newTestCase("tc_new", "d1", inputs, "r1");
+            tc.setName("under18");  // 跟 addTestCase 调用时传的 name 一致
+            when(testCaseService.addTestCase(eq("d1"), eq("under18"), any(), eq(inputs),
+                    eq("r1"), eq("BA"), eq("MANUAL"))).thenReturn(tc);
+            lenient().when(testCaseService.toDto(any(TestCaseEntity.class))).thenAnswer(inv -> {
+                TestCaseEntity e = inv.getArgument(0);
+                ObjectNode n = objectMapper.createObjectNode();
+                n.put("testCaseId", e.getTestCaseId());
+                n.put("draftId", e.getDraftId());
+                n.put("name", e.getName());
+                n.put("expectedRowId", e.getExpectedRowId());
+                try {
+                    n.set("inputs", objectMapper.readTree(e.getInputs()));
+                } catch (Exception ex) {
+                    n.put("inputs", e.getInputs());
+                }
+                return n;
+            });
+
+            String args = "{\"draftId\":\"d1\",\"name\":\"under18\",\"inputs\":" +
+                    objectMapper.writeValueAsString(inputs) + ",\"expectedRowId\":\"r1\",\"createdBy\":\"BA\"}";
+            String result = executor.execute(ToolRegistry.ADD_TEST_CASE, args);
+
+            JsonNode r = objectMapper.readTree(result);
+            assertThat(r.get("testCaseId").asText()).isEqualTo("tc_new");
+            assertThat(r.get("name").asText()).isEqualTo("under18");
+        }
+
+        @Test
+        @DisplayName("add_test_case inputs 非法时返 error")
+        void shouldRejectInvalidInputs() throws Exception {
+            doThrow(new IllegalArgumentException("inputs 必须是 JSON object"))
+                    .when(testCaseService).addTestCase(anyString(), anyString(), any(), anyString(), any(), anyString(), anyString());
+
+            String result = executor.execute(ToolRegistry.ADD_TEST_CASE,
+                    "{\"draftId\":\"d1\",\"name\":\"x\",\"inputs\":\"[]\",\"createdBy\":\"BA\"}");
+            assertThat(result).contains("add_test_case_failed");
+        }
+
+        @Test
+        @DisplayName("delete_test_case 返 deleted=true/false")
+        void shouldDeleteTestCase() throws Exception {
+            when(testCaseService.deleteTestCase("tc_1")).thenReturn(true);
+            String r1 = executor.execute(ToolRegistry.DELETE_TEST_CASE, "{\"testCaseId\":\"tc_1\"}");
+            assertThat(objectMapper.readTree(r1).get("deleted").asBoolean()).isTrue();
+
+            when(testCaseService.deleteTestCase("tc_missing")).thenReturn(false);
+            String r2 = executor.execute(ToolRegistry.DELETE_TEST_CASE, "{\"testCaseId\":\"tc_missing\"}");
+            assertThat(objectMapper.readTree(r2).get("deleted").asBoolean()).isFalse();
+        }
+
+        @Test
+        @DisplayName("run_saved_tests 全 PASS 当 expectedRowId == matchedRowId")
+        void shouldRunSavedTestsPass() throws Exception {
+            String content = """
+                    {
+                      "type": "decision_table",
+                      "rows": [{"rowId": "r1", "remark": "age<18 reject"}],
+                      "columns": [
+                        {"colId": "c1", "type": "condition", "variable": "customer.age", "operator": "lt", "datatype": "number"}
+                      ],
+                      "cellMap": {"r1,c1": "18"}
+                    }
+                    """;
+            DraftEntity d = newDraft("d1", "DRAFT", content);
+            when(draftService.get("d1")).thenReturn(Optional.of(d));
+            // tc_1: inputs age=17, expectedRowId=r1 — 走 matchRow 命中 r1 → PASS
+            when(testCaseService.listByDraftId("d1")).thenReturn(java.util.List.of(
+                    newTestCase("tc_1", "d1", "{\"customer.age\":17}", "r1")
+            ));
+
+            String result = executor.execute(ToolRegistry.RUN_SAVED_TESTS, "{\"draftId\":\"d1\"}");
+
+            JsonNode r = objectMapper.readTree(result);
+            assertThat(r.get("passed").asInt()).isEqualTo(1);
+            assertThat(r.get("failed").asInt()).isEqualTo(0);
+            assertThat(r.get("results").get(0).get("status").asText()).isEqualTo("PASS");
+        }
+
+        @Test
+        @DisplayName("run_saved_tests 期望 r2 但只匹配到 r1 → FAIL")
+        void shouldRunSavedTestsFail() throws Exception {
+            String content = """
+                    {
+                      "type": "decision_table",
+                      "rows": [{"rowId": "r1", "remark": "reject"}],
+                      "columns": [
+                        {"colId": "c1", "type": "condition", "variable": "customer.age", "operator": "lt", "datatype": "number"}
+                      ],
+                      "cellMap": {"r1,c1": "18"}
+                    }
+                    """;
+            DraftEntity d = newDraft("d1", "DRAFT", content);
+            when(draftService.get("d1")).thenReturn(Optional.of(d));
+            // 期望 r2 但实际命中 r1
+            when(testCaseService.listByDraftId("d1")).thenReturn(java.util.List.of(
+                    newTestCase("tc_1", "d1", "{\"customer.age\":17}", "r2")
+            ));
+
+            String result = executor.execute(ToolRegistry.RUN_SAVED_TESTS, "{\"draftId\":\"d1\"}");
+
+            JsonNode r = objectMapper.readTree(result);
+            assertThat(r.get("passed").asInt()).isEqualTo(0);
+            assertThat(r.get("failed").asInt()).isEqualTo(1);
+            assertThat(r.get("results").get(0).get("status").asText()).isEqualTo("FAIL");
+        }
+
+        @Test
+        @DisplayName("run_saved_tests 草稿下无测试用例返 passed/failed=0")
+        void shouldReturnEmptyWhenNoSavedTests() throws Exception {
+            String content = "{\"type\":\"decision_table\",\"rows\":[],\"columns\":[],\"cellMap\":{}}";
+            DraftEntity d = newDraft("d1", "DRAFT", content);
+            when(draftService.get("d1")).thenReturn(Optional.of(d));
+            when(testCaseService.listByDraftId("d1")).thenReturn(java.util.List.of());
+
+            String result = executor.execute(ToolRegistry.RUN_SAVED_TESTS, "{\"draftId\":\"d1\"}");
+
+            JsonNode r = objectMapper.readTree(result);
+            assertThat(r.get("passed").asInt()).isEqualTo(0);
+            assertThat(r.get("failed").asInt()).isEqualTo(0);
+            assertThat(r.get("message").asText()).contains("没有保存的测试用例");
+        }
+    }
+
     // ========== helper ==========
+
+    private TestCaseEntity newTestCase(String testCaseId, String draftId, String inputs, String expectedRowId) {
+        TestCaseEntity tc = new TestCaseEntity();
+        tc.setTestCaseId(testCaseId);
+        tc.setDraftId(draftId);
+        tc.setName("auto_" + testCaseId);
+        tc.setInputs(inputs);
+        tc.setExpectedRowId(expectedRowId);
+        tc.setCreatedBy("BA1");
+        tc.setSource(TestCaseEntity.SOURCE_MANUAL);
+        return tc;
+    }
 
     private DraftEntity newDraft(String id, String status, String content) {
         DraftEntity d = new DraftEntity();

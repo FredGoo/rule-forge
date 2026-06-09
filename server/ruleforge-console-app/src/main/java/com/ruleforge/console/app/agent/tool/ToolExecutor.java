@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ruleforge.console.app.draft.DraftApplyService;
 import com.ruleforge.console.app.draft.DraftEntity;
 import com.ruleforge.console.app.draft.DraftService;
+import com.ruleforge.console.app.draft.TestCaseEntity;
+import com.ruleforge.console.app.draft.TestCaseService;
 import com.ruleforge.console.app.service.IAnalysisService;
 import com.ruleforge.console.repository.model.ResourceItem;
 import com.ruleforge.console.repository.model.ResourcePackage;
@@ -40,6 +42,7 @@ public class ToolExecutor {
     private final ObjectMapper objectMapper;
     private final DraftService draftService;
     private final DraftApplyService draftApplyService;
+    private final TestCaseService testCaseService;
 
     /**
      * 执行工具调用
@@ -77,6 +80,12 @@ public class ToolExecutor {
                 case ToolRegistry.APPLY_DRAFT -> executeApplyDraft(args);
                 case ToolRegistry.GENERATE_TEST_CASES -> executeGenerateTestCases(args);
                 case ToolRegistry.RUN_TEST -> executeRunTest(args);
+
+                // V5.22.1 — 草稿测试用例持久化
+                case ToolRegistry.LIST_TEST_CASES -> executeListTestCases(args);
+                case ToolRegistry.ADD_TEST_CASE -> executeAddTestCase(args);
+                case ToolRegistry.DELETE_TEST_CASE -> executeDeleteTestCase(args);
+                case ToolRegistry.RUN_SAVED_TESTS -> executeRunSavedTests(args);
 
                 default -> "{\"error\": \"Unknown tool: " + toolName + "\"}";
             };
@@ -503,6 +512,113 @@ public class ToolExecutor {
         out.put("draftId", draftId);
         out.put("passed", passed);
         out.put("failed", failed);
+        out.set("results", results);
+        return objectMapper.writeValueAsString(out);
+    }
+
+    // ===== V5.22.1 草稿测试用例持久化 =====
+
+    private String executeListTestCases(JsonNode args) throws Exception {
+        String draftId = args.path("draftId").asText("");
+        if (draftId.isEmpty()) {
+            return "{\"error\": \"draftId 必填\"}";
+        }
+        List<TestCaseEntity> cases = testCaseService.listByDraftId(draftId);
+        ArrayNode arr = objectMapper.createArrayNode();
+        for (TestCaseEntity tc : cases) {
+            arr.add(testCaseService.toDto(tc));
+        }
+        return objectMapper.writeValueAsString(Map.of(
+                "draftId", draftId,
+                "testCases", arr,
+                "count", arr.size()
+        ));
+    }
+
+    private String executeAddTestCase(JsonNode args) throws Exception {
+        String draftId = args.path("draftId").asText("");
+        String name = args.path("name").asText("");
+        String description = args.path("description").asText(null);
+        String inputs = args.path("inputs").asText("");
+        String expectedRowId = args.path("expectedRowId").asText(null);
+        String createdBy = args.path("createdBy").asText("anonymous");
+        String source = args.path("source").asText(TestCaseEntity.SOURCE_MANUAL);
+
+        if (draftId.isEmpty() || name.isEmpty() || inputs.isEmpty()) {
+            return "{\"error\": \"draftId, name, inputs 必填\"}";
+        }
+        try {
+            TestCaseEntity tc = testCaseService.addTestCase(draftId, name, description, inputs, expectedRowId, createdBy, source);
+            return objectMapper.writeValueAsString(testCaseService.toDto(tc));
+        } catch (IllegalArgumentException e) {
+            return objectMapper.writeValueAsString(Map.of("error", "add_test_case_failed", "message", e.getMessage()));
+        }
+    }
+
+    private String executeDeleteTestCase(JsonNode args) throws Exception {
+        String testCaseId = args.path("testCaseId").asText("");
+        if (testCaseId.isEmpty()) {
+            return "{\"error\": \"testCaseId 必填\"}";
+        }
+        boolean ok = testCaseService.deleteTestCase(testCaseId);
+        return objectMapper.writeValueAsString(Map.of(
+                "testCaseId", testCaseId,
+                "deleted", ok
+        ));
+    }
+
+    private String executeRunSavedTests(JsonNode args) throws Exception {
+        String draftId = args.path("draftId").asText("");
+        if (draftId.isEmpty()) {
+            return "{\"error\": \"draftId 必填\"}";
+        }
+        DraftEntity draft = draftService.get(draftId).orElse(null);
+        if (draft == null) {
+            return objectMapper.writeValueAsString(Map.of("error", "draft_not_found", "draftId", draftId));
+        }
+        List<TestCaseEntity> cases = testCaseService.listByDraftId(draftId);
+        if (cases.isEmpty()) {
+            return objectMapper.writeValueAsString(Map.of(
+                    "draftId", draftId,
+                    "passed", 0, "failed", 0,
+                    "results", objectMapper.createArrayNode(),
+                    "message", "该草稿下没有保存的测试用例"
+            ));
+        }
+        JsonNode content = objectMapper.readTree(draft.getContent());
+        ArrayNode results = objectMapper.createArrayNode();
+        int passed = 0, failed = 0;
+        for (TestCaseEntity tc : cases) {
+            ObjectNode result = objectMapper.createObjectNode();
+            result.put("testCaseId", tc.getTestCaseId());
+            result.put("name", tc.getName());
+            result.put("expectedRowId", tc.getExpectedRowId());
+            try {
+                JsonNode inputs = objectMapper.readTree(tc.getInputs());
+                String matchedRowId = matchRow(content, inputs);
+                result.put("matchedRowId", matchedRowId);
+                // 状态:expected 不空时,看 matchedRowId 是否等于 expectedRowId
+                String status;
+                if (tc.getExpectedRowId() != null && !tc.getExpectedRowId().isEmpty()) {
+                    boolean ok = tc.getExpectedRowId().equals(matchedRowId);
+                    status = ok ? "PASS" : "FAIL";
+                } else {
+                    status = matchedRowId != null ? "PASS" : "NO_MATCH";
+                }
+                result.put("status", status);
+                if ("PASS".equals(status)) passed++; else failed++;
+            } catch (Exception e) {
+                result.put("status", "ERROR");
+                result.put("error", e.getMessage());
+                failed++;
+            }
+            results.add(result);
+        }
+        ObjectNode out = objectMapper.createObjectNode();
+        out.put("draftId", draftId);
+        out.put("passed", passed);
+        out.put("failed", failed);
+        out.put("total", cases.size());
         out.set("results", results);
         return objectMapper.writeValueAsString(out);
     }

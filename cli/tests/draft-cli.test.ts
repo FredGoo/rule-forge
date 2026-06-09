@@ -249,4 +249,94 @@ describe('V5.22 draft CLI commands (LLM agent)', () => {
             expect(data).toBeNull();
         });
     });
+
+    // ========== V5.22.1 持久化测试用例 ==========
+
+    describe('persisted test cases (V5.22.1)', () => {
+        it('list-tests → POST list_test_cases with draftId', async () => {
+            const mockFetch = vi.fn().mockResolvedValue({
+                ok: true, status: 200,
+                text: async () => JSON.stringify({
+                    draftId: 'd1', count: 2,
+                    testCases: [
+                        {testCaseId: 'tc_1', name: 'under18', expectedRowId: 'r1'},
+                        {testCaseId: 'tc_2', name: 'normalAdult', expectedRowId: null},
+                    ]
+                })
+            });
+            const data = await apiPost('/agent/tools/list_test_cases', {draftId: 'd1'}, 'http://fake', mockFetch);
+            expect(data.count).toBe(2);
+            expect(data.testCases[0].name).toBe('under18');
+        });
+
+        it('add-test → POST add_test_case with name/inputs/expectedRowId', async () => {
+            const mockFetch = vi.fn().mockResolvedValue({
+                ok: true, status: 200,
+                text: async () => JSON.stringify({
+                    testCaseId: 'tc_new', draftId: 'd1', name: 'under18',
+                    expectedRowId: 'r1', source: 'MANUAL'
+                })
+            });
+            const data = await apiPost('/agent/tools/add_test_case', {
+                draftId: 'd1',
+                name: 'under18',
+                inputs: '{"customer.age":17}',
+                expectedRowId: 'r1',
+                createdBy: 'BA1',
+                source: 'MANUAL',
+            }, 'http://fake', mockFetch);
+            expect(data.testCaseId).toBe('tc_new');
+            expect(data.name).toBe('under18');
+            // 验证请求体包含所有字段
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            expect(body.draftId).toBe('d1');
+            expect(body.inputs).toBe('{"customer.age":17}');
+            expect(body.expectedRowId).toBe('r1');
+        });
+
+        it('del-test → POST delete_test_case with testCaseId', async () => {
+            const mockFetch = vi.fn().mockResolvedValue({
+                ok: true, status: 200,
+                text: async () => JSON.stringify({testCaseId: 'tc_1', deleted: true})
+            });
+            const data = await apiPost('/agent/tools/delete_test_case', {testCaseId: 'tc_1'}, 'http://fake', mockFetch);
+            expect(data.deleted).toBe(true);
+        });
+
+        it('run-saved-tests → POST run_saved_tests with draftId', async () => {
+            const mockFetch = vi.fn().mockResolvedValue({
+                ok: true, status: 200,
+                text: async () => JSON.stringify({
+                    draftId: 'd1', passed: 1, failed: 0, total: 1,
+                    results: [{testCaseId: 'tc_1', name: 'under18', expectedRowId: 'r1', matchedRowId: 'r1', status: 'PASS'}]
+                })
+            });
+            const data = await apiPost('/agent/tools/run_saved_tests', {draftId: 'd1'}, 'http://fake', mockFetch);
+            expect(data.passed).toBe(1);
+            expect(data.results[0].status).toBe('PASS');
+        });
+
+        it('LLM agent workflow: add-test + run-saved-tests (2 POST calls)', async () => {
+            const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+                if (url.includes('/agent/tools/add_test_case')) {
+                    return {ok: true, status: 200, text: async () => JSON.stringify({testCaseId: 'tc_x'})};
+                } else if (url.includes('/agent/tools/run_saved_tests')) {
+                    return {ok: true, status: 200, text: async () => JSON.stringify({passed: 1, failed: 0, total: 1})};
+                }
+                throw new Error('Unexpected URL: ' + url);
+            });
+
+            // 1. add a test
+            const added = await apiPost('/agent/tools/add_test_case', {
+                draftId: 'd1', name: 'tc1', inputs: '{"x":1}', expectedRowId: 'r1', createdBy: 'LLM'
+            }, 'http://fake', mockFetch) as any;
+            expect(added.testCaseId).toBe('tc_x');
+
+            // 2. run saved
+            const run = await apiPost('/agent/tools/run_saved_tests', {draftId: 'd1'}, 'http://fake', mockFetch) as any;
+            expect(run.passed).toBe(1);
+
+            expect(mockFetch).toHaveBeenCalledTimes(2);
+        });
+    });
 });
