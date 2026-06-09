@@ -6,7 +6,7 @@
     <name>Rule Engine</name>
     <groupId>com.ruleforge</groupId>
     <artifactId>rule-engine</artifactId>
-    <version>1.0.0</version>
+    <version>1.21.0</version>
     <packaging>pom</packaging>
 
     <modules>

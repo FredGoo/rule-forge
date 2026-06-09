@@ -26,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [5.21.0] - 2026-06-09
+
 ### Fixed
 
 **Phase 8 ClickHouseBackfillRunner 跨模块依赖 + 错 DataSource (分支 `fix/phase8-clickhouse-backfill-self-contained`)**
