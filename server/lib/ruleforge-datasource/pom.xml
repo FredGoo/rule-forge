@@ -1,0 +1,78 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ruleforge</groupId>
+        <artifactId>ruleforge-parent</artifactId>
+        <version>${revision}</version>
+        <relativePath>../../ruleforge-parent</relativePath>
+    </parent>
+
+    <name>RuleForge Datasource</name>
+    <artifactId>ruleforge-datasource</artifactId>
+    <version>${revision}</version>
+    <description>Data source abstraction — third-party API client base + compile/load infrastructure.
+        Shared by console-app and executor-app. Does NOT connect to any database —
+        persistence (audit log / cache / metadata) is each app's responsibility.</description>
+
+    <dependencies>
+        <!-- V5.23+: 仅依赖 core + 必要 Spring 接口, 不引数据库驱动 / MyBatis / Hikari / Flyway -->
+        <dependency>
+            <groupId>com.ruleforge</groupId>
+            <artifactId>ruleforge-core</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
+        <!-- Spring context (Bean 注入 / @Autowired) — 用 spring-context 而不是 spring-boot-starter,
+             强制 lib 不引 Spring Boot runtime(只有 app 才引 starter) -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+
+        <!-- Jackson (Vars / CompileResult 序列化) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+
+        <!-- Resilience4j (限流/熔断/重试实现) — 纯库, 不引 spring-boot-starter -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-ratelimiter</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-circuitbreaker</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-retry</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
