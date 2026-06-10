@@ -29,6 +29,7 @@ pub struct ExecutorRegistry {
     pub script: Arc<dyn NodeExecutor>,
     pub gateway: Arc<dyn NodeExecutor>,
     pub user_task: Arc<dyn NodeExecutor>,
+    pub intermediate_event: Arc<dyn NodeExecutor>,
 }
 
 // Manual Debug — the inner `dyn NodeExecutor` doesn't require Debug, so
@@ -42,6 +43,10 @@ impl std::fmt::Debug for ExecutorRegistry {
             .field("script", &std::any::type_name_of_val(&*self.script))
             .field("gateway", &std::any::type_name_of_val(&*self.gateway))
             .field("user_task", &std::any::type_name_of_val(&*self.user_task))
+            .field(
+                "intermediate_event",
+                &std::any::type_name_of_val(&*self.intermediate_event),
+            )
             .finish()
     }
 }
@@ -58,6 +63,9 @@ impl ExecutorRegistry {
             script: Arc::new(crate::executors::script::ScriptExecutor::default()),
             gateway: Arc::new(crate::executors::gateway::GatewayExecutor),
             user_task: Arc::new(crate::executors::user_task::UserTaskExecutor),
+            intermediate_event: Arc::new(
+                crate::executors::intermediate_event::IntermediateEventExecutor,
+            ),
         }
     }
 }
@@ -77,6 +85,9 @@ impl Default for ExecutorRegistry {
             script: Arc::new(crate::executors::script::ScriptExecutor::default()),
             gateway: Arc::new(crate::executors::gateway::GatewayExecutor),
             user_task: Arc::new(crate::executors::user_task::UserTaskExecutor),
+            intermediate_event: Arc::new(
+                crate::executors::intermediate_event::IntermediateEventExecutor,
+            ),
         }
     }
 }
@@ -122,7 +133,9 @@ pub async fn dispatch(
         NodeKind::ExclusiveGateway { .. } | NodeKind::ParallelGateway { .. } => {
             reg.gateway.execute(node, ctx).await
         }
-        NodeKind::IntermediateEvent { .. } => Ok(NodeResult::Continue),
+        NodeKind::IntermediateEvent { .. } => {
+            reg.intermediate_event.execute(node, ctx).await
+        }
         NodeKind::SubProcess { .. } => Err(FlowError::Unsupported("SubProcess".to_string())),
     }
 }
