@@ -16,4 +16,5 @@ pub mod model;
 pub mod rete;
 pub mod rete_builder;
 pub mod rete_engine;
+pub mod rule_type;
 pub mod value_compute;
