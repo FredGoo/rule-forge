@@ -120,7 +120,8 @@ impl IntermediateEventKind {
 /// duration syntax used by BPMN: `PT5S` (5 sec), `PT1M` (1 min),
 /// `PT2H` (2 hr). V5.26 P0 doesn't need the full `PnYnMnDTnHnMnS`
 /// grammar — date-based durations are not used in decision flows.
-fn parse_iso_duration(raw: &str) -> Result<Duration, IntermediateEventError> {
+/// `pub(crate)` so the BoundaryEventExecutor can reuse it.
+pub(crate) fn parse_iso_duration(raw: &str) -> Result<Duration, IntermediateEventError> {
     let s = raw.trim();
     if !s.starts_with("PT") {
         return Err(IntermediateEventError::BadDuration {

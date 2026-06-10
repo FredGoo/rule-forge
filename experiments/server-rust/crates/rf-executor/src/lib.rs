@@ -10,6 +10,7 @@ pub mod dispatch;
 pub mod error;
 pub mod executors;
 pub mod flow_context;
+pub mod flow_resolver;
 pub mod next_node;
 pub mod node_executor;
 pub mod node_result;

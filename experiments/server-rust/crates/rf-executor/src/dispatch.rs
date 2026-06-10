@@ -15,6 +15,7 @@ use rf_ir::node_kind::NodeKind;
 
 use crate::error::FlowError;
 use crate::flow_context::FlowContext;
+use crate::flow_resolver::FlowResolver;
 use crate::node_executor::NodeExecutor;
 use crate::node_result::NodeResult;
 
@@ -30,6 +31,13 @@ pub struct ExecutorRegistry {
     pub gateway: Arc<dyn NodeExecutor>,
     pub user_task: Arc<dyn NodeExecutor>,
     pub intermediate_event: Arc<dyn NodeExecutor>,
+    pub boundary_event: Arc<dyn NodeExecutor>,
+    pub sub_process: Arc<dyn NodeExecutor>,
+    /// `Option` so the default registry (used by unit tests that
+    /// don't care about sub-flows) doesn't have to wire a
+    /// resolver. `rf-http` sets this to an adapter that wraps
+    /// `FlowDefinitionRepo::get_or_load`.
+    pub flow_resolver: Option<Arc<dyn FlowResolver>>,
 }
 
 // Manual Debug — the inner `dyn NodeExecutor` doesn't require Debug, so
@@ -46,6 +54,22 @@ impl std::fmt::Debug for ExecutorRegistry {
             .field(
                 "intermediate_event",
                 &std::any::type_name_of_val(&*self.intermediate_event),
+            )
+            .field(
+                "boundary_event",
+                &std::any::type_name_of_val(&*self.boundary_event),
+            )
+            .field(
+                "sub_process",
+                &std::any::type_name_of_val(&*self.sub_process),
+            )
+            .field(
+                "flow_resolver",
+                &self
+                    .flow_resolver
+                    .as_ref()
+                    .map(|r| std::any::type_name_of_val(&**r))
+                    .unwrap_or("None"),
             )
             .finish()
     }
@@ -66,6 +90,9 @@ impl ExecutorRegistry {
             intermediate_event: Arc::new(
                 crate::executors::intermediate_event::IntermediateEventExecutor,
             ),
+            boundary_event: Arc::new(crate::executors::boundary_event::BoundaryEventExecutor),
+            sub_process: Arc::new(crate::executors::sub_process::SubProcessExecutor),
+            flow_resolver: None,
         }
     }
 }
@@ -88,6 +115,9 @@ impl Default for ExecutorRegistry {
             intermediate_event: Arc::new(
                 crate::executors::intermediate_event::IntermediateEventExecutor,
             ),
+            boundary_event: Arc::new(crate::executors::boundary_event::BoundaryEventExecutor),
+            sub_process: Arc::new(crate::executors::sub_process::SubProcessExecutor),
+            flow_resolver: None,
         }
     }
 }
@@ -136,6 +166,11 @@ pub async fn dispatch(
         NodeKind::IntermediateEvent { .. } => {
             reg.intermediate_event.execute(node, ctx).await
         }
-        NodeKind::SubProcess { .. } => Err(FlowError::Unsupported("SubProcess".to_string())),
+        NodeKind::BoundaryEvent { .. } => reg.boundary_event.execute(node, ctx).await,
+        // SubProcess needs the parent registry to recursively
+        // traverse the sub-flow. `execute_with` carries it in.
+        NodeKind::SubProcess { .. } => {
+            reg.sub_process.execute_with(node, ctx, reg).await
+        }
     }
 }
