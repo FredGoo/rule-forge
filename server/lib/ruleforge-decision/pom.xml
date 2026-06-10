@@ -4,9 +4,9 @@
 
     <parent>
         <groupId>com.ruleforge</groupId>
-        <artifactId>ruleforge-parent</artifactId>
+        <artifactId>parent</artifactId>
         <version>${revision}</version>
-        <relativePath>../../ruleforge-parent</relativePath>
+        <relativePath>../../parent</relativePath>
     </parent>
 
     <name>RuleForge Decision</name>

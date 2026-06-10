@@ -13,7 +13,7 @@ You are a build agent for the RuleForge project. Your job is to run Maven builds
 The backend is a multi-module Maven project at `/home/fredgu/git_home/ruleforge/server/`:
 
 ```
-ruleforge-parent          POM (dependency management)
+parent                    POM (dependency management)
 ruleforge-core            Engine core (RETE, parsing, execution)
 ruleforge-console         Editor business logic (REST API, DB, repository)
 ruleforge-executor        Executor business logic (test, knowledge packages)
@@ -66,5 +66,5 @@ cd /home/fredgu/git_home/ruleforge/server/ruleforge-executor-app && mvn spring-b
 - If compile fails, check if missing classes are in `ruleforge-core` or `ruleforge-console` repository/servlet packages
 - Spring Boot 4.0 removed `RestTemplateBuilder` - use `RestTemplate` directly
 - Jackson 2.x uses `JsonInclude.Include` not `JsonSerialize.Inclusion`
-- For missing dependencies, check `ruleforge-parent` pom for version management
+- For missing dependencies, check `parent` pom for version management
 - Always compile from `server/` root to ensure module ordering is correct
