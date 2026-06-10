@@ -45,7 +45,7 @@ pub enum ActivityOutcome {
 /// payload attached to each `Activation`. P1 only supports
 /// `VariableAssignAction` (write a value to a var). P5 expands to
 /// scoring / method calls.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActionTemplate {
     pub target: String,
     pub value: serde_json::Value,
@@ -55,11 +55,19 @@ pub struct ActionTemplate {
 /// just the `Rule` id + salience; `object_criteria_map` comes in P4.
 /// The `action_template` is set by the engine (after the agenda
 /// picks the activation) to drive `Rhs.actions` execution.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Activation {
     pub rule_id: String,
     pub rule_name: String,
     pub salience: i32,
+    /// P4: Drools `activation-group` — mutually exclusive. At most
+    /// one rule per group can fire per fire cycle. `None` means no
+    /// group (always eligible).
+    pub activation_group: Option<String>,
+    /// P4: Drools `agenda-group` — must be focused to fire. The
+    /// engine tracks which group is "in focus" (default: `"MAIN"`).
+    /// `None` means it always fires regardless of focus.
+    pub agenda_group: Option<String>,
     /// Optional P1 action payload (variable assign). `None` for
     /// activations whose rule has no RHS / where the engine
     /// hasn't attached an action yet. Set by
@@ -73,6 +81,8 @@ impl Activation {
             rule_id: rule_id.into(),
             rule_name: rule_name.into(),
             salience,
+            activation_group: None,
+            agenda_group: None,
             action_template: None,
         }
     }
@@ -90,6 +100,34 @@ impl Activation {
             value,
         });
         self
+    }
+
+    /// Attach activation_group / agenda_group metadata.
+    pub fn with_groups(
+        mut self,
+        activation_group: Option<String>,
+        agenda_group: Option<String>,
+    ) -> Self {
+        self.activation_group = activation_group;
+        self.agenda_group = agenda_group;
+        self
+    }
+}
+
+// `Ord` / `PartialOrd` — `BinaryHeap` is a max-heap, so the
+// activation with the highest salience pops first. Ties broken
+// by `rule_id` for deterministic ordering (Java's
+// `PriorityQueue` uses insertion order on ties).
+impl Ord for Activation {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.salience
+            .cmp(&other.salience)
+            .then(self.rule_id.cmp(&other.rule_id))
+    }
+}
+impl PartialOrd for Activation {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 

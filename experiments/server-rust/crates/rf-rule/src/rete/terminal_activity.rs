@@ -68,11 +68,20 @@ impl Activity for TerminalActivity {
         // Java `TerminalActivity.enter` creates `ActivationImpl` +
         // fires `ActivationCreatedEvent`. V5.25 P1 just emits the
         // `ActivityOutcome::Activation` for the engine to collect.
-        vec![ActivityOutcome::Activation(Activation::new(
-            self.rule_id.clone(),
-            self.rule_name.clone(),
-            self.salience,
-        ))]
+        // P4 also attaches activation_group / agenda_group
+        // metadata so the engine can do mutual-exclusion and
+        // focus routing.
+        vec![ActivityOutcome::Activation(
+            Activation::new(
+                self.rule_id.clone(),
+                self.rule_name.clone(),
+                self.salience,
+            )
+            .with_groups(
+                self.activation_group.clone(),
+                self.agenda_group.clone(),
+            ),
+        )]
     }
 
     fn reset(&mut self) {

@@ -7,6 +7,7 @@
 
 #![allow(dead_code)]
 
+pub mod agenda;
 pub mod assertor;
 pub mod deserialize;
 pub mod fact;

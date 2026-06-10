@@ -27,6 +27,7 @@
 //! production the engine would load packages from a directory or
 //! HTTP endpoint and index by `package_id`. P1 keeps it in-process.
 
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use async_trait::async_trait;
@@ -35,6 +36,7 @@ use rf_executor::rule_engine::{RuleEngine, RuleEngineError, RuleResults};
 use rf_executor::working_memory::WorkingMemory;
 use serde_json::Value as JsonValue;
 
+use crate::agenda::Agenda;
 use crate::deserialize::KnowledgePackageWrapper;
 use crate::fact::fact_from_value;
 use crate::rete::EvaluationContext;
@@ -50,6 +52,13 @@ pub struct ReteRuleEngine {
     /// runtime, P5+), wrap the whole engine in an `Arc<Mutex<…>>`
     /// at the caller.
     instances: Vec<ReteInstance>,
+    /// The agenda group currently "in focus". Rules whose
+    /// `agenda_group` is `Some(name)` only fire when the
+    /// engine's focus matches. Defaults to `Some("MAIN")` —
+    /// matches Drools' default agenda. `None` disables all
+    /// agenda-group filtering (rules with `Some(group)` never
+    /// fire).
+    focused_agenda_group: Option<String>,
 }
 
 impl ReteRuleEngine {
@@ -60,6 +69,7 @@ impl ReteRuleEngine {
         let instance = ReteInstance::from_wrapper(wrapper);
         Self {
             instances: vec![instance],
+            focused_agenda_group: Some("MAIN".to_string()),
         }
     }
 
@@ -68,7 +78,15 @@ impl ReteRuleEngine {
     pub fn from_instance(instance: ReteInstance) -> Self {
         Self {
             instances: vec![instance],
+            focused_agenda_group: Some("MAIN".to_string()),
         }
+    }
+
+    /// Switch the focused agenda group. Pass `None` to disable
+    /// agenda-group filtering (rules with `agenda_group = Some(_)`
+    /// never fire). Pass `Some(name)` to focus that group.
+    pub fn set_focused_agenda_group(&mut self, group: Option<String>) {
+        self.focused_agenda_group = group;
     }
 }
 
@@ -80,26 +98,19 @@ impl RuleEngine for ReteRuleEngine {
     ) -> Result<RuleResults, RuleEngineError> {
         let mut fired = Vec::new();
         let mut matched = Vec::new();
+        let mut agenda = Agenda::new();
+        // Track which activation_groups have already fired this
+        // cycle — mutual exclusion (Drools semantics: at most
+        // one rule per group fires per cycle).
+        let mut fired_activation_groups: HashSet<String> = HashSet::new();
 
-        // P1: we share the same `Vars` between the engine and the
-        // outer `ctx.vars`. To feed facts to RETE, we build a
-        // working-memory trait object backed by a clone of `ctx.vars`
-        // — and reset the fire epoch so per-cycle caches clear.
-        let wm: Rc<std::cell::RefCell<dyn WorkingMemory>> = {
-            // No mutation through `&self` — Vars is the same data
-            // both sides see, but we have to give the engine a
-            // RefCell to satisfy `&mut WorkingMemory` callers in
-            // P2+. For P1 it's mostly read-only.
-            let wm = Rc::new(std::cell::RefCell::new(ctx.vars.clone()));
-            wm
-        };
+        let wm: Rc<std::cell::RefCell<dyn WorkingMemory>> = Rc::new(
+            std::cell::RefCell::new(ctx.vars.clone()),
+        );
         let mut eval = EvaluationContext::new(wm.clone());
 
         for instance in &self.instances {
             instance.reset();
-            // Walk each OTN's class, pull facts, propagate.
-            // For P1 the engine doesn't need a separate fact-id
-            // table — `facts_of_class` is enough.
             let otn_classes: Vec<String> = instance
                 .otn_activities
                 .iter()
@@ -114,13 +125,37 @@ impl RuleEngine for ReteRuleEngine {
                     let activations = instance.enter(&entity, &mut eval);
                     for a in activations {
                         matched.push(a.rule_id.clone());
-                        if let Some(action) = a.action_template {
-                            ctx.vars.assign(action.target, action.value);
-                        }
-                        fired.push(a.rule_id);
+                        agenda.add(a);
                     }
                 }
             }
+        }
+
+        // Drain the agenda in salience order. For each
+        // activation:
+        // - skip if its agenda_group doesn't match the focus
+        // - skip if its activation_group already fired (mutual
+        //   exclusion)
+        // - otherwise: run the action_template and mark fired
+        while let Some(a) = agenda.pop() {
+            // Agenda-group filter.
+            if let Some(group) = &a.agenda_group {
+                if self.focused_agenda_group.as_deref() != Some(group.as_str()) {
+                    continue;
+                }
+            }
+            // Activation-group mutual exclusion.
+            if let Some(group) = &a.activation_group {
+                if fired_activation_groups.contains(group) {
+                    continue;
+                }
+                fired_activation_groups.insert(group.clone());
+            }
+            // Fire the rule.
+            if let Some(action) = a.action_template {
+                ctx.vars.assign(action.target, action.value);
+            }
+            fired.push(a.rule_id);
         }
 
         Ok(RuleResults {
@@ -144,6 +179,285 @@ mod tests {
     use crate::deserialize::KnowledgePackage;
     use crate::rete::Activation;
     use serde_json::json;
+
+    /// P4: two rules, different salience. The higher-salience
+    /// rule should fire first. Both fire (no mutual exclusion).
+    #[test]
+    fn end_to_end_salience_orders_fire_sequence() {
+        // Build a package with two rules:
+        //   r-lo (salience 0): "set_lo"
+        //   r-hi (salience 10): "set_hi"
+        // Both match Applicant{age: 30} → both fire. The order
+        // in `fired_rules` should be r-hi first.
+        let otn = ReteNode::ObjectType {
+            id: 1,
+            object_type_class: Some("Applicant".into()),
+            lines: vec![crate::model::Line {
+                from_node_id: 1,
+                to_node_id: 2,
+                from: None,
+                to: None,
+            }],
+        };
+        let crit = ReteNode::Criteria {
+            id: 2,
+            debug: false,
+            criteria: age_geq_18_criteria(),
+            lines: vec![
+                crate::model::Line {
+                    from_node_id: 2,
+                    to_node_id: 3,
+                    from: None,
+                    to: None,
+                },
+                crate::model::Line {
+                    from_node_id: 2,
+                    to_node_id: 4,
+                    from: None,
+                    to: None,
+                },
+            ],
+        };
+        let rule_lo = Rule {
+            id: "r-lo".into(),
+            name: "set_lo".into(),
+            rule_type: None,
+            file: None,
+            salience: 0,
+            effective_date: None,
+            expires_date: None,
+            enabled: true,
+            debug: false,
+            activation_group: None,
+            agenda_group: None,
+            auto_focus: false,
+            ruleflow_group: None,
+            lhs: Lhs::default(),
+            rhs: Rhs::default(),
+            r#loop: false,
+            remark: None,
+            with_else: false,
+        };
+        let term_lo = ReteNode::Terminal {
+            id: 3,
+            rule: rule_lo.clone(),
+        };
+        let term_hi = ReteNode::Terminal {
+            id: 4,
+            rule: Rule {
+                id: "r-hi".into(),
+                name: "set_hi".into(),
+                salience: 10,
+                ..rule_lo
+            },
+        };
+        let kp = KnowledgePackage {
+            rete: Rete {
+                object_type_nodes: vec![otn],
+                activation_group_retes_map: Default::default(),
+                agenda_group_retes_map: Default::default(),
+            },
+            with_else_rules: Default::default(),
+        };
+        let mut wrap = KnowledgePackageWrapper::from_parts(
+            "kp",
+            kp,
+            vec![crit, term_lo, term_hi],
+            None,
+        );
+        wrap.build_deserialize();
+        let engine = ReteRuleEngine::from_wrapper(&wrap);
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let mut ctx = FlowContext::new("salience-test");
+            ctx.vars.assert_fact("Applicant", json!({"age": 30}));
+            let results = engine.fire_rules(&mut ctx).await.unwrap();
+            assert_eq!(results.fired_rules, vec!["r-hi", "r-lo"]);
+            assert!(results.matched_rules.contains(&"r-hi".to_string()));
+            assert!(results.matched_rules.contains(&"r-lo".to_string()));
+        });
+    }
+
+    /// P4: two rules in the same `activation_group`. Only the
+    /// highest-salience one fires (mutual exclusion).
+    #[test]
+    fn end_to_end_activation_group_mutually_excludes() {
+        let otn = ReteNode::ObjectType {
+            id: 1,
+            object_type_class: Some("Applicant".into()),
+            lines: vec![crate::model::Line {
+                from_node_id: 1,
+                to_node_id: 2,
+                from: None,
+                to: None,
+            }],
+        };
+        let crit = ReteNode::Criteria {
+            id: 2,
+            debug: false,
+            criteria: age_geq_18_criteria(),
+            lines: vec![
+                crate::model::Line {
+                    from_node_id: 2,
+                    to_node_id: 3,
+                    from: None,
+                    to: None,
+                },
+                crate::model::Line {
+                    from_node_id: 2,
+                    to_node_id: 4,
+                    from: None,
+                    to: None,
+                },
+            ],
+        };
+        let rule_with_group = |id: &str, sal: i32| Rule {
+            id: id.into(),
+            name: id.into(),
+            rule_type: None,
+            file: None,
+            salience: sal,
+            effective_date: None,
+            expires_date: None,
+            enabled: true,
+            debug: false,
+            activation_group: Some("approve-group".into()),
+            agenda_group: None,
+            auto_focus: false,
+            ruleflow_group: None,
+            lhs: Lhs::default(),
+            rhs: Rhs::default(),
+            r#loop: false,
+            remark: None,
+            with_else: false,
+        };
+        let term_a = ReteNode::Terminal { id: 3, rule: rule_with_group("r-a", 0) };
+        let term_b = ReteNode::Terminal { id: 4, rule: rule_with_group("r-b", 5) };
+        let kp = KnowledgePackage {
+            rete: Rete {
+                object_type_nodes: vec![otn],
+                activation_group_retes_map: Default::default(),
+                agenda_group_retes_map: Default::default(),
+            },
+            with_else_rules: Default::default(),
+        };
+        let mut wrap = KnowledgePackageWrapper::from_parts(
+            "kp",
+            kp,
+            vec![crit, term_a, term_b],
+            None,
+        );
+        wrap.build_deserialize();
+        let engine = ReteRuleEngine::from_wrapper(&wrap);
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let mut ctx = FlowContext::new("act-group-test");
+            ctx.vars.assert_fact("Applicant", json!({"age": 30}));
+            let results = engine.fire_rules(&mut ctx).await.unwrap();
+            // r-b has higher salience → fires. r-a blocked.
+            assert_eq!(results.fired_rules, vec!["r-b"]);
+            // Both matched (network saw both terminals) but only
+            // r-b fired.
+            assert!(results.matched_rules.contains(&"r-a".to_string()));
+            assert!(results.matched_rules.contains(&"r-b".to_string()));
+        });
+    }
+
+    /// P4: a rule in `agenda_group = "CUSTOM"` should NOT fire
+    /// when the engine's focus is `"MAIN"` (default). After
+    /// switching the focus to `"CUSTOM"`, the rule fires.
+    #[test]
+    fn end_to_end_agenda_group_focus_routing() {
+        let otn = ReteNode::ObjectType {
+            id: 1,
+            object_type_class: Some("Applicant".into()),
+            lines: vec![crate::model::Line {
+                from_node_id: 1,
+                to_node_id: 2,
+                from: None,
+                to: None,
+            }],
+        };
+        let crit = ReteNode::Criteria {
+            id: 2,
+            debug: false,
+            criteria: age_geq_18_criteria(),
+            lines: vec![crate::model::Line {
+                from_node_id: 2,
+                to_node_id: 3,
+                from: None,
+                to: None,
+            }],
+        };
+        let term = ReteNode::Terminal {
+            id: 3,
+            rule: Rule {
+                id: "r-custom".into(),
+                name: "r-custom".into(),
+                rule_type: None,
+                file: None,
+                salience: 0,
+                effective_date: None,
+                expires_date: None,
+                enabled: true,
+                debug: false,
+                activation_group: None,
+                agenda_group: Some("CUSTOM".into()),
+                auto_focus: false,
+                ruleflow_group: None,
+                lhs: Lhs::default(),
+                rhs: Rhs::default(),
+                r#loop: false,
+                remark: None,
+                with_else: false,
+            },
+        };
+        let kp = KnowledgePackage {
+            rete: Rete {
+                object_type_nodes: vec![otn],
+                activation_group_retes_map: Default::default(),
+                agenda_group_retes_map: Default::default(),
+            },
+            with_else_rules: Default::default(),
+        };
+        let mut wrap = KnowledgePackageWrapper::from_parts(
+            "kp",
+            kp,
+            vec![crit, term],
+            None,
+        );
+        wrap.build_deserialize();
+        let mut engine = ReteRuleEngine::from_wrapper(&wrap);
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            // Default focus is "MAIN"; r-custom is in "CUSTOM" so
+            // it should NOT fire.
+            let mut ctx = FlowContext::new("focus-1");
+            ctx.vars.assert_fact("Applicant", json!({"age": 30}));
+            let r1 = engine.fire_rules(&mut ctx).await.unwrap();
+            assert!(r1.fired_rules.is_empty(), "got {:?}", r1.fired_rules);
+            assert!(r1.matched_rules.contains(&"r-custom".to_string()));
+
+            // Switch focus to "CUSTOM"; r-custom should fire.
+            engine.set_focused_agenda_group(Some("CUSTOM".into()));
+            let mut ctx2 = FlowContext::new("focus-2");
+            ctx2.vars.assert_fact("Applicant", json!({"age": 30}));
+            let r2 = engine.fire_rules(&mut ctx2).await.unwrap();
+            assert_eq!(r2.fired_rules, vec!["r-custom"]);
+        });
+    }
 
     fn age_geq_18_criteria() -> Criteria {
         Criteria {
