@@ -215,6 +215,71 @@ services:
     networks:
       - ruleforge
 
+  # ================================
+  # Rust 流程执行器 (V5.27) — `rf-http` binary
+  # 跟 Java executor-app 平行,挂同一份 knowledge 目录 + console-app
+  # 8082/8281: HTTP_PORT 默认 8281,跟 Java executor 的 8280 区分
+  # KNOWLEDGE_DIR: 挂进容器的 knowledge dir,空时降级到 MockRuleEngine
+  # ================================
+  rust-flow:
+    build:
+      # Build context = workspace root. The Dockerfile at
+      # experiments/server-rust/Dockerfile copies Cargo.toml /
+      # Cargo.lock from the root and the `crates/` tree, so
+      # the build path needs both. Setting the context to
+      # ./experiments/server-rust would break the COPY
+      # statements (they expect to see `Cargo.toml` in CWD).
+      context: .
+      dockerfile: experiments/server-rust/Dockerfile
+    container_name: ruleforge-rust-flow
+    init: true
+    environment:
+      # 跟 Java executor 同样的 CONSOLE_URL — Rust 走 HTTP 拉 BPMN
+      CONSOLE_URL: http://console-app:8180
+      # Postgres for the rust state store. 容器内 5432 是 postgres-rust 的监听端口
+      PG_URL: postgres://ruleforge:ruleforge@postgres-rust:5432/ruleforge_rust
+      # Knowledge dir — 跟 console-app 的 RF_REPO_DIR 同源
+      # (Java console 导出 *.json 到该目录,Rust binary 启动时 load)
+      # 留空时降级到 MockRuleEngine(Phase 4 桩),不阻断启动
+      #
+      # 为什么用 /app/data/riskruleforge 而不是 /knowledge:
+      # console-app 把 RF_REPO_DIR 设在 /app/data/riskruleforge
+      # (一个子目录),它写出的 *.json 都在这里;直接 mount 同名
+      # volume 进 /app/data,再把 KNOWLEDGE_DIR 指向子路径,Rust
+      # 就能读到 console 实时导出的知识包 — 不需要另起 volume copy
+      # step。空目录(还没在 console 里 save 任何 rule)时 binary
+      # 降级到 MockRuleEngine,容器照常起。
+      KNOWLEDGE_DIR: /app/data/riskruleforge
+      # Worker ID for the recovery loop (Phase 6).
+      WORKER_ID: rust-flow-1
+      # 30s sweep 间隔,跟 Java executor 对齐
+      RECOVERY_INTERVAL_SECS: "30"
+      # Rust log filter (RUST_LOG syntax)
+      RUST_LOG: info,rf_http=debug,rf_executor=debug,rf_state=debug
+    volumes:
+      # Knowledge 目录 — 跟 console-app 的 console_data 同 volume,
+      # 容器内路径是 /app/data,与 Java console 的 RF_REPO_DIR 子路径对齐
+      - console_data:/app/data
+      - rust_flow_logs:/app/logs
+    depends_on:
+      console-app:
+        condition: service_healthy
+      postgres-rust:
+        condition: service_healthy
+    # 本地 Playwright E2E 用 — 跟 Java executor(8280)区分,避免端口冲突
+    ports:
+      - "${RUST_FLOW_PORT:-8281}:8281"
+    healthcheck:
+      # 容器起来了但 rf-http 还在加载 knowledge / 连 postgres / migrate
+      # 所以 start_period 给 30s 缓冲。失败阈值 3 次 = 9s 后报 unhealthy
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8281/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ruleforge
+
 # ================================
 # 持久化卷
 # ================================
@@ -232,6 +297,8 @@ volumes:
   clickhouse_data:
     driver: local
   postgres_rust_data:
+    driver: local
+  rust_flow_logs:
     driver: local
 
 # ================================

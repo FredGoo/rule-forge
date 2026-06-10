@@ -12,6 +12,7 @@
 #![allow(dead_code)]
 
 pub mod flow_def_repo;
+pub mod flow_resolver;
 pub mod inflight;
 pub mod routes;
 pub mod state;

@@ -51,6 +51,19 @@ pub enum NodeKind {
     IntermediateEvent {
         attrs: Attrs,
     },
+    /// `boundaryEvent` — sits on the edge of an activity. Two flavors
+    /// in V5.27: `errorBoundaryEvent` (catches a thrown error from
+    /// the attached activity) and `timerBoundaryEvent` (fires after
+    /// `timerDuration`; common for SLA timeouts). The
+    /// `eventType` attr is the discriminator (mirrors
+    /// `IntermediateEvent`'s `eventType`). Attached activity is
+    /// identified by the BPMN `attachedToRef` attribute, but for
+    /// V5.27 routing we treat the boundary's outgoing edges as the
+    /// handler path — the main flow continues via the normal
+    /// `next_node` logic, and a fired boundary is a sibling step.
+    BoundaryEvent {
+        attrs: Attrs,
+    },
     /// Recognized but not executed by the v0 executor — parser still extracts
     /// the node so legacy BPMN files don't fail to load, but a flow that
     /// actually traverses into a subProcess will be rejected at runtime.

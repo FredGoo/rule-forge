@@ -91,10 +91,6 @@ impl BpmnXmlParser {
                 // routes those to NoOp, but a misconfigured serviceTask is
                 // better caught in the editor than at runtime.
             };
-            if matches!(kind, NodeKind::SubProcess { .. }) {
-                tracing::warn!(%node_id, "SubProcess not supported, skipping");
-                continue;
-            }
             if nodes.contains_key(&node_id) {
                 return Err(IrError::DuplicateNodeId(node_id, process_id.clone()));
             }
@@ -218,6 +214,7 @@ fn build_node_kind(
         "exclusiveGateway" => Some(NodeKind::ExclusiveGateway { attrs: ext.clone() }),
         "parallelGateway" => Some(NodeKind::ParallelGateway { attrs: ext.clone() }),
         "intermediateCatchEvent" => Some(NodeKind::IntermediateEvent { attrs: ext.clone() }),
+        "boundaryEvent" => Some(NodeKind::BoundaryEvent { attrs: ext.clone() }),
         "subProcess" => Some(NodeKind::SubProcess { attrs: ext.clone() }),
         _ => None,
     };

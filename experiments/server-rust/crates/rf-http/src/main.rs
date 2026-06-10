@@ -28,6 +28,7 @@ use rf_executor::dispatch::ExecutorRegistry;
 use rf_executor::flow_context::FlowContext;
 use rf_executor::traverser::{traverse, TraverseOutcome};
 use rf_http::flow_def_repo::{FlowDefinitionRepo, HttpFlowLoader};
+use rf_http::flow_resolver::HttpFlowResolver;
 use rf_http::inflight::{InflightStore, PgInflightStore};
 use rf_http::routes::{decision, evaluate, event, health, invalidate, load};
 use rf_http::state::AppState;
@@ -120,6 +121,16 @@ async fn main() -> Result<()> {
             Arc::new(ReteRuleEngine::from_wrappers(&refs))
         };
     let registry = Arc::new(ExecutorRegistry::with_rule_engine(rule_engine));
+    // Wire the FlowResolver for SubProcess support. The
+    // resolver wraps the same `FlowDefinitionRepo` the main
+    // /evaluate handler uses, so sub-flow lookups go through
+    // the same cache + HTTP-fetch path. We have to do this
+    // post-construction (ExecutorRegistry::with_rule_engine
+    // leaves `flow_resolver = None`) because the resolver
+    // needs the `Arc<FlowDefinitionRepo>` we just built.
+    let mut registry_mut = (*registry).clone();
+    registry_mut.flow_resolver = Some(Arc::new(HttpFlowResolver::new(Arc::clone(&repo))));
+    let registry = Arc::new(registry_mut);
 
     // Pick the in-flight store: pg-backed if `pg_url` is set, else
     // in-memory (dev fallback).
