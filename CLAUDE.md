@@ -33,7 +33,7 @@ docker compose logs -f console-app # View logs
 ## Project Architecture
 
 ```
-ruleforge-parent        Maven parent POM, Spring Boot BOM, Java 17
+parent                  Maven parent POM, Spring Boot BOM, Java 17
 ruleforge-core          RETE rule engine (parsing, execution, knowledge base)
 ruleforge-console       Web console business logic (controllers, services, DB)
 ruleforge-executor      Rule execution engine (test endpoints, knowledge package)

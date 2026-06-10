@@ -3,7 +3,7 @@
 ## 模块结构
 
 ```
-ruleforge-parent        Maven parent POM, Spring Boot BOM, Java 17
+parent                  Maven parent POM, Spring Boot BOM, Java 17
 ruleforge-core          RETE 规则引擎（解析、执行、知识库）
 ruleforge-console       Web 控制台业务逻辑（controllers, services, DB）
 ruleforge-executor      规则执行引擎（测试端点、知识包加载）
