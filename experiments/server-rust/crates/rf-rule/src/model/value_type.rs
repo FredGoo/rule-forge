@@ -20,6 +20,25 @@ pub enum ValueType {
     NamedReference,
 }
 
+impl ValueType {
+    /// Short Chinese-bracket label used in `Value.id()` keys. Mirrors
+    /// Java's `[变量]` / `[常量]` style for cache key readability in
+    /// trace logs.
+    pub fn as_label(&self) -> &'static str {
+        match self {
+            Self::Input => "[输入]",
+            Self::Variable => "[变量]",
+            Self::Constant => "[常量]",
+            Self::VariableCategory => "[变量对象]",
+            Self::Method => "[方法]",
+            Self::Parameter => "[参数]",
+            Self::Paren => "[括号]",
+            Self::CommonFunction => "[公共函数]",
+            Self::NamedReference => "[具名引用]",
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

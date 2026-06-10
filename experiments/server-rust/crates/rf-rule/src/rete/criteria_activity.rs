@@ -2,17 +2,19 @@
 //! Mirror of Java
 //! `com.ruleforge.runtime.rete.CriteriaActivity`.
 //!
-//! ## V5.25 P1 scope
+//! ## V5.25 P2 scope
 //!
-//! - Supports `Op::Equals` / `NotEquals` / `LessThen` / `LessThenEquals` /
-//!   `GreaterThen` / `GreaterThenEquals` on `serde_json::Value`.
+//! - All 20 `Op` values supported via [`crate::assertor::evaluate`].
 //! - Left side: `VariableLeftPart` → fact.get_property(variable_name).
-//! - Right side: `Value::Constant` → the literal value.
+//!   `EvalLeftPart` is treated as a property name in P2 (real
+//!   expression eval is P5 work).
+//! - Right side: any `Value` variant via
+//!   [`crate::value_compute::fetch_value`] — `Constant` returns its
+//!   inline value, `Variable` walks working memory, `Method` and
+//!   `CommonFunction` dispatch through the registries, etc.
 //! - Caches the evaluation result in `EvaluationContext.criteria_value_map`
 //!   keyed by `criteria.id()` so a shared criteria only evaluates once
 //!   per fire cycle.
-//! - P2 will add `In` / `NotIn` / `Match` / `Null` / `Contain` etc. and
-//!   the full `ValueCompute` for non-constant RHS.
 //!
 //! ## On pass/fail
 //!
@@ -25,10 +27,12 @@ use std::sync::Arc;
 use super::activity::{AbstractActivity, Activity, ActivityOutcome};
 use super::evaluation_context::{EvaluateResponse, EvaluationContext};
 use super::path::Path;
+use crate::assertor;
 use crate::fact::{Fact, GeneralEntity};
 use crate::model::left_part::LeftPart;
 use crate::model::value::Value;
 use crate::model::{Criteria, Op};
+use crate::value_compute;
 
 /// `CriteriaActivity` — one `Criteria` per activity. The Java side
 /// allows multiple criteria on the same node; we keep them 1:1 for
@@ -85,13 +89,13 @@ impl Activity for CriteriaActivity {
 
         if !response.result {
             // Java `passAndNode()` propagates "this branch is blocked"
-            // to downstream join nodes. P3 wires the real glue; P1
+            // to downstream join nodes. P3 wires the real glue; P2
             // just returns empty.
             return vec![];
         }
 
         // Java: `tracker.addObjectCriteria(obj, this.criteria)`.
-        // P1 doesn't thread FactId through GeneralEntity yet, so we
+        // P2 doesn't thread FactId through GeneralEntity yet, so we
         // skip the fact-tracker write. P3 will wire it.
         // (See `FactTracker::record_match` in `evaluation_context.rs`.)
 
@@ -111,7 +115,7 @@ impl Activity for CriteriaActivity {
     }
 
     fn pass_and_node(&mut self) {
-        // No-op in P1; P3 walks outbound paths and calls passAndNode
+        // No-op in P2; P3 walks outbound paths and calls passAndNode
         // on join nodes.
     }
 }
@@ -144,10 +148,12 @@ impl CriteriaActivity {
                     .cloned()
                     .unwrap_or(serde_json::Value::Null),
                 LeftPart::Eval { expression } => {
-                    // P2 will wire `simpleeval`; for now we treat the
-                    // expression as a property name (degenerate case
-                    // for early smoke tests).
-                    fact.get_property(expression).cloned().unwrap_or(serde_json::Value::Null)
+                    // P5 will wire a real expression engine; P2
+                    // treats the expression as a property name
+                    // (degenerate case for early smoke tests).
+                    fact.get_property(expression)
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null)
                 }
             };
             ctx.part_value_put(&left_id, computed.clone());
@@ -161,7 +167,7 @@ impl CriteriaActivity {
                 if let Some(cached) = ctx.part_value_get(&vid) {
                     cached.clone()
                 } else {
-                    let computed = const_value(v);
+                    let computed = value_compute::fetch_value(v, &ctx.working_memory, &ctx.env);
                     ctx.part_value_put(&vid, computed.clone());
                     computed
                 }
@@ -170,12 +176,8 @@ impl CriteriaActivity {
             None => serde_json::Value::Null,
         };
 
-        // Compare.
-        let result = match self.criteria.op {
-            Op::Null => left.is_null(),
-            Op::NotNull => !left.is_null(),
-            op => apply_op(&left, &right, op),
-        };
+        // Compare via the assertor dispatcher (P2: all 20 ops).
+        let result = assertor::evaluate(&left, &right, self.criteria.op);
 
         if result {
             EvaluateResponse::matched(left, right)
@@ -183,67 +185,6 @@ impl CriteriaActivity {
             EvaluateResponse::unmatched(left, right)
         }
     }
-}
-
-/// Extract the JSON literal from a `Value::Constant`. For other RHS
-/// kinds in P1 we fall back to `Null` — the full ValueCompute ships
-/// in P2.
-fn const_value(v: &Value) -> serde_json::Value {
-    match v {
-        Value::Constant {
-            constant_value, ..
-        } => constant_value.clone().unwrap_or(serde_json::Value::Null),
-        // VariableCategory / Variable / Input are not constants;
-        // P2's ValueCompute resolves them via working-memory lookups.
-        _ => serde_json::Value::Null,
-    }
-}
-
-/// Apply a comparison op. Mirrors `ConditionEvaluator.compare` in
-/// `rf-executor/src/condition.rs` but lives here as a free function
-/// so the rete/ module doesn't depend on condition.rs.
-fn apply_op(left: &serde_json::Value, right: &serde_json::Value, op: Op) -> bool {
-    use serde_json::Value::*;
-    if left.is_null() || right.is_null() {
-        return match op {
-            Op::Equals => left == right,
-            Op::NotEquals => left != right,
-            _ => false,
-        };
-    }
-    // Numeric compare.
-    if let (Some(a), Some(b)) = (left.as_f64(), right.as_f64()) {
-        return match op {
-            Op::Equals => (a - b).abs() < f64::EPSILON,
-            Op::NotEquals => (a - b).abs() >= f64::EPSILON,
-            Op::GreaterThen => a > b,
-            Op::GreaterThenEquals => a >= b,
-            Op::LessThen => a < b,
-            Op::LessThenEquals => a <= b,
-            _ => false,
-        };
-    }
-    // String compare.
-    if let (Some(a), Some(b)) = (left.as_str(), right.as_str()) {
-        return match op {
-            Op::Equals => a == b,
-            Op::NotEquals => a != b,
-            Op::GreaterThen => a > b,
-            Op::GreaterThenEquals => a >= b,
-            Op::LessThen => a < b,
-            Op::LessThenEquals => a <= b,
-            _ => false,
-        };
-    }
-    // Bool compare.
-    if let (Some(a), Some(b)) = (left.as_bool(), right.as_bool()) {
-        return match op {
-            Op::Equals => a == b,
-            Op::NotEquals => a != b,
-            _ => false,
-        };
-    }
-    false
 }
 
 #[cfg(test)]
@@ -286,13 +227,8 @@ mod tests {
         let a = CriteriaActivity::new(make_criteria(Op::GreaterThen, "age", json!(18)), false);
         let mut ctx = ctx();
         let fact = GeneralEntity::new("Applicant").with_field("age", json!(25));
-        // First call: no cache → evaluate.
         let resp1 = a.evaluate(&fact, &mut ctx);
         assert!(resp1.result);
-        // Second call: same fact, same id → would hit cache, but
-        // `evaluate` doesn't check cache (the cache check is in
-        // `enter`). For the unit test we just confirm the
-        // underlying op is right.
         let resp2 = a.evaluate(&fact, &mut ctx);
         assert!(resp2.result);
     }
@@ -304,21 +240,12 @@ mod tests {
             false,
         );
         let mut ctx = ctx();
-        // First fact — cache miss, evaluates against the field.
         let fact = GeneralEntity::new("Applicant").with_field("name", json!("alice"));
         let resp = a.evaluate(&fact, &mut ctx);
         assert!(resp.result);
-        // After `evaluate`, the `part_value_map` caches the left and
-        // right by `LeftPart.id` / `Value.id`. The second `evaluate`
-        // on a different fact with the same criteria id will hit
-        // the cache and return the cached response (true) — this
-        // matches Java's `context.storePartValue` behavior. To
-        // re-evaluate, clean the cache.
         let fact2 = GeneralEntity::new("Applicant").with_field("name", json!("bob"));
         let resp2 = a.evaluate(&fact2, &mut ctx);
         assert!(resp2.result, "cache reuses first fact's true result");
-        // After cleaning, the second fact's name("bob") is compared
-        // with the value("alice") and fails.
         ctx.clean();
         let resp3 = a.evaluate(&fact2, &mut ctx);
         assert!(!resp3.result);
@@ -334,6 +261,134 @@ mod tests {
         let fact = GeneralEntity::new("Applicant"); // no `age` field
         let resp = a.evaluate(&fact, &mut ctx);
         assert!(!resp.result); // left is null → NotNull is false
+    }
+
+    #[test]
+    fn evaluate_in_with_array_rhs() {
+        // Constant + array on RHS — exercises the assertor dispatcher
+        // path for `In`.
+        let crit = Criteria {
+            op: Op::In,
+            left: Left {
+                left_type: LeftType::Variable,
+                left_part: LeftPart::Variable {
+                    variable_category: Some("Applicant".into()),
+                    variable_label: Some("city".into()),
+                    variable_name: Some("city".into()),
+                    datatype: Some("string".into()),
+                },
+                arithmetic: None,
+            },
+            value: Some(Value::Constant {
+                constant_name: None,
+                constant_label: None,
+                constant_category: None,
+                constant_value: Some(json!(["Beijing", "Shanghai", "Shenzhen"])),
+            }),
+        };
+        let a = CriteriaActivity::new(crit, false);
+        let mut ctx = ctx();
+        let f1 = GeneralEntity::new("Applicant").with_field("city", json!("Shanghai"));
+        assert!(a.evaluate(&f1, &mut ctx).result);
+        let f2 = GeneralEntity::new("Applicant").with_field("city", json!("Hangzhou"));
+        // Cache says true on first hit; clean to re-evaluate.
+        ctx.clean();
+        assert!(!a.evaluate(&f2, &mut ctx).result);
+    }
+
+    #[test]
+    fn evaluate_match_with_regex_rhs() {
+        let crit = Criteria {
+            op: Op::Match,
+            left: Left {
+                left_type: LeftType::Variable,
+                left_part: LeftPart::Variable {
+                    variable_category: Some("Applicant".into()),
+                    variable_label: Some("postal".into()),
+                    variable_name: Some("postal".into()),
+                    datatype: Some("string".into()),
+                },
+                arithmetic: None,
+            },
+            value: Some(Value::Constant {
+                constant_name: None,
+                constant_label: None,
+                constant_category: None,
+                constant_value: Some(json!("^1[0-9]{5}$")),
+            }),
+        };
+        let a = CriteriaActivity::new(crit, false);
+        let mut ctx = ctx();
+        let f1 = GeneralEntity::new("Applicant").with_field("postal", json!("100000"));
+        assert!(a.evaluate(&f1, &mut ctx).result);
+        let f2 = GeneralEntity::new("Applicant").with_field("postal", json!("20000"));
+        ctx.clean();
+        assert!(!a.evaluate(&f2, &mut ctx).result);
+    }
+
+    #[test]
+    fn evaluate_contain_substring() {
+        let a = CriteriaActivity::new(
+            Criteria {
+                op: Op::Contain,
+                left: Left {
+                    left_type: LeftType::Variable,
+                    left_part: LeftPart::Variable {
+                        variable_category: Some("Applicant".into()),
+                        variable_label: Some("name".into()),
+                        variable_name: Some("name".into()),
+                        datatype: Some("string".into()),
+                    },
+                    arithmetic: None,
+                },
+                value: Some(Value::Constant {
+                    constant_name: None,
+                    constant_label: None,
+                    constant_category: None,
+                    constant_value: Some(json!("ali")),
+                }),
+            },
+            false,
+        );
+        let mut ctx = ctx();
+        let f = GeneralEntity::new("Applicant").with_field("name", json!("alice"));
+        assert!(a.evaluate(&f, &mut ctx).result);
+    }
+
+    #[test]
+    fn evaluate_rhs_variable_uses_value_compute() {
+        // RHS is a `Variable`, not a constant. The evaluate() path
+        // must walk working memory (`Vars.get("applicant.age")`).
+        use crate::value_compute::ReteEnv;
+        let wm: std::rc::Rc<std::cell::RefCell<dyn rf_executor::working_memory::WorkingMemory>> = {
+            let mut v = rf_executor::vars::Vars::new();
+            v.assign("applicant.age", json!(30));
+            std::rc::Rc::new(std::cell::RefCell::new(v))
+        };
+        let mut ctx = EvaluationContext::new(wm);
+        ctx.set_env(ReteEnv::default());
+        let crit = Criteria {
+            op: Op::GreaterThen,
+            left: Left {
+                left_type: LeftType::Variable,
+                left_part: LeftPart::Variable {
+                    variable_category: Some("Applicant".into()),
+                    variable_label: Some("age".into()),
+                    variable_name: Some("age".into()),
+                    datatype: Some("int".into()),
+                },
+                arithmetic: None,
+            },
+            value: Some(Value::Variable {
+                variable_name: Some("age".into()),
+                variable_label: Some("age".into()),
+                variable_category: Some("applicant".into()),
+                datatype: Some("int".into()),
+            }),
+        };
+        let a = CriteriaActivity::new(crit, false);
+        let fact = GeneralEntity::new("Applicant").with_field("age", json!(40));
+        assert!(a.evaluate(&fact, &mut ctx).result);
     }
 
     #[test]
@@ -383,13 +438,9 @@ mod tests {
             Arc::new(TerminalActivity::for_test("r1", "approve", 10));
         a.add_path(Arc::new(Path::new(term)));
         let mut ctx = ctx();
-        // First fact — cache miss, evaluate true.
         let fact1 = GeneralEntity::new("Applicant").with_field("age", json!(25));
         let out1 = a.enter(&fact1, &mut ctx);
         assert_eq!(out1.len(), 1);
-        // Second fact — cache hit on the criteria id; the result is
-        // re-used (Java behavior). Both facts "match" because the
-        // cache says so.
         let fact2 = GeneralEntity::new("Applicant").with_field("age", json!(5));
         let out2 = a.enter(&fact2, &mut ctx);
         assert_eq!(out2.len(), 1, "cached response should be reused");

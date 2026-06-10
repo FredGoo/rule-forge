@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 use super::left_part::Left;
 use super::op::Op;
 use super::value::Value;
-use super::value_type::ValueType;
 
 /// `Criteria` — `left op value` predicate. The base class for an
 /// "atomic" condition in a rule's LHS. And/Or/Junction are tree nodes
@@ -59,23 +58,6 @@ impl Criteria {
             Op::NotMatch => "不匹配",
             Op::Contain => "包含",
             Op::NotContain => "不包含",
-        }
-    }
-}
-
-impl ValueType {
-    /// Compact label used in the criteria id — matches Java's `[变量]` etc.
-    pub fn as_label(&self) -> &'static str {
-        match self {
-            Self::Input => "[输入]",
-            Self::Variable => "[变量]",
-            Self::Constant => "[常量]",
-            Self::VariableCategory => "[变量对象]",
-            Self::Method => "[BEAN]",
-            Self::Parameter => "[参数]",
-            Self::Paren => "[PAREN]",
-            Self::CommonFunction => "[CFUNC]",
-            Self::NamedReference => "[REF]",
         }
     }
 }

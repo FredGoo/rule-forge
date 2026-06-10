@@ -33,6 +33,7 @@ use rf_executor::working_memory::WorkingMemory;
 
 use super::fact_tracker::FactTracker;
 use crate::model::Criteria;
+use crate::value_compute::ReteEnv;
 
 /// `EvaluateResponse` — the result of evaluating a single `Criteria`
 /// for a given fact. Carries the computed `left_result` and
@@ -98,6 +99,10 @@ pub struct EvaluationContext {
     /// the engine can `borrow_mut()` it inside `enter` (which takes
     /// `&self`).
     pub working_memory: std::rc::Rc<std::cell::RefCell<dyn WorkingMemory>>,
+    /// `ReteEnv` — method / common-function dispatchers + named
+    /// reference table. Created with defaults in `new`; tests can
+    /// replace via `set_env`.
+    pub env: ReteEnv,
 }
 
 impl EvaluationContext {
@@ -108,7 +113,14 @@ impl EvaluationContext {
             fact_tracker: FactTracker::new(),
             debug_msgs: Vec::new(),
             working_memory: wm,
+            env: ReteEnv::default(),
         }
+    }
+
+    /// P2 helper — replace the dispatch env (used by tests that
+    /// register a custom method / function).
+    pub fn set_env(&mut self, env: ReteEnv) {
+        self.env = env;
     }
 
     /// Clear all per-cycle caches. Called by `ReteInstance` at the
