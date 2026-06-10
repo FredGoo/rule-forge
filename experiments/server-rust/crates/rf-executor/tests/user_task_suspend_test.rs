@@ -114,7 +114,7 @@ fn resume_with_yes_decision_routes_to_end_yes() {
 
     let mut ctx = suspended.ctx;
     // Simulate HTTP /flow/decision writing the user's choice:
-    ctx.vars.insert("approve", json!("yes"));
+    ctx.vars.assign("approve", json!("yes"));
     ctx.current_awaiting_value = Some(json!("yes"));
     ctx.current_awaiting_field = Some("approve".to_string());
 
@@ -135,7 +135,7 @@ fn resume_with_no_decision_routes_to_end_no() {
         _ => panic!("expected Suspended"),
     };
     let mut ctx = suspended.ctx;
-    ctx.vars.insert("approve", json!("no"));
+    ctx.vars.assign("approve", json!("no"));
     ctx.current_awaiting_value = Some(json!("no"));
     ctx.current_awaiting_field = Some("approve".to_string());
 

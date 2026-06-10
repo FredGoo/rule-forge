@@ -148,7 +148,7 @@ impl PgInflightStore {
         let mut ctx = FlowContext::new(flow_run_id);
         if let Some(v) = row_vars.and_then(Value::as_object) {
             for (k, vv) in v {
-                ctx.vars.insert(k.clone(), vv.clone());
+                ctx.vars.assign(k.clone(), vv.clone());
             }
         }
         // The userTask executor writes `current_awaiting_field` /

@@ -93,7 +93,7 @@ fn condition_true_routes_to_yes() {
            <bpmn:endEvent id="end_no"/>"#,
     ));
     let mut ctx = FlowContext::new("r1");
-    ctx.vars.insert("age", json!(20));
+    ctx.vars.assign("age", json!(20));
     let outcome = traverse(def, ctx, test_registry());
     let ctx = outcome.into_context();
     assert_eq!(ctx.current_node_id.as_deref(), Some("end_yes"));
@@ -119,7 +119,7 @@ fn condition_false_falls_through_to_default() {
            <bpmn:endEvent id="end_no"/>"#,
     ));
     let mut ctx = FlowContext::new("r1");
-    ctx.vars.insert("age", json!(15));
+    ctx.vars.assign("age", json!(15));
     let outcome = traverse(def, ctx, test_registry());
     let ctx = outcome.into_context();
     assert_eq!(ctx.current_node_id.as_deref(), Some("end_no"));
