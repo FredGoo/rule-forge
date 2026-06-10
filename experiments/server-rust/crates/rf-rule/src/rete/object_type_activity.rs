@@ -94,11 +94,18 @@ impl Activity for ObjectTypeActivity {
     fn pass_and_node(&mut self) {
         // No-op: OTN is not a join node.
     }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 impl AbstractActivity for ObjectTypeActivity {
     fn paths(&self) -> &[Arc<Path>] {
         &self.paths
+    }
+    fn push_path(&mut self, path: Arc<Path>) {
+        self.paths.push(path);
     }
 }
 
@@ -157,7 +164,7 @@ mod tests {
             "approve",
             10,
         ));
-        otn.add_path(Arc::new(Path::new(terminal)));
+        otn.add_path(Arc::new(Path::new(&terminal)));
         let mut ctx = ctx();
         let fact = GeneralEntity::new("Applicant");
         let out = otn.enter(&fact, &mut ctx);

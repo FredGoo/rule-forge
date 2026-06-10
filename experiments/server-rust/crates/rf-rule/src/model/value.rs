@@ -128,17 +128,28 @@ impl Value {
 
     /// Canonical id, matching Java's per-`Value` `getId()`.
     /// Used by `Criteria.id()` to build the full criteria cache key.
+    /// The id must uniquely identify the value within a fire
+    /// cycle's `part_value_map` cache — so a `Constant` with two
+    /// different `constant_value`s MUST produce two different ids.
+    /// Including the JSON form of `constant_value` (alongside
+    /// category/label for human-readability) guarantees that.
     pub fn id(&self) -> String {
         let label = self.value_type().as_label();
         match self {
             Self::Constant {
+                constant_name,
                 constant_category,
                 constant_label,
-                ..
+                constant_value,
             } => format!(
-                "{label}{}.{}",
+                "{label}{}.{}.{}={}",
+                constant_name.as_deref().unwrap_or(""),
                 constant_category.as_deref().unwrap_or(""),
-                constant_label.as_deref().unwrap_or("")
+                constant_label.as_deref().unwrap_or(""),
+                constant_value
+                    .as_ref()
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "null".to_string()),
             ),
             Self::Variable {
                 variable_category,

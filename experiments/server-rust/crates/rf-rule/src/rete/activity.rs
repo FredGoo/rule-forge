@@ -94,7 +94,7 @@ impl Activation {
 }
 
 /// `Activity` — the RETE runtime trait.
-pub trait Activity {
+pub trait Activity: 'static {
     /// Process one fact. Returns the outcomes produced by this
     /// activity + all downstream activities it propagated to.
     fn enter(
@@ -117,15 +117,28 @@ pub trait Activity {
     /// "this branch is blocked" downstream so an And/Or knows to
     /// re-evaluate. P3.
     fn pass_and_node(&mut self);
+
+    /// `Any` downcast — used by the builder to call
+    /// `AbstractActivity::push_path` on a `&mut dyn Activity`.
+    /// All concrete activities are `'static`, so this works
+    /// through a trait object.
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
 /// `AbstractActivity` — common behavior for nodes that have
 /// outbound `Path`s. Mirrors Java's `AbstractActivity.visitPaths` +
-/// `doPassAndNode`. Concrete nodes (ObjectType / Criteria / Terminal)
-/// delegate to this for the "fire my children" part.
+/// `doPassAndNode`. Concrete nodes (ObjectType / Criteria / And / Or /
+/// Terminal) delegate to this for the "fire my children" part.
 pub trait AbstractActivity: Activity {
     /// Outbound paths. `&[Arc<Path>]` for shared ownership.
     fn paths(&self) -> &[Arc<Path>];
+
+    /// Add an outbound `Path`. The builder calls this once per
+    /// `Line` during the wire phase. Implemented as `self.paths.push(path)`
+    /// for each concrete activity. Named `push_path` to avoid
+    /// shadowing the inherent `add_path` methods that some
+    /// activities ship.
+    fn push_path(&mut self, path: Arc<Path>);
 
     /// Walk each child path, mark it passed, recurse. Aggregates
     /// downstream outcomes.
@@ -137,10 +150,15 @@ pub trait AbstractActivity: Activity {
         let mut outcomes = Vec::new();
         for path in self.paths() {
             path.mark_passed();
-            // `path.to()` returns `&Arc<dyn Activity + Send + Sync>`;
-            // double-deref to call `enter` through `&dyn Activity`.
-            let activity_rc: &Arc<dyn Activity + Send + Sync> = path.to();
-            let activity: &dyn Activity = &**activity_rc;
+            // SAFETY: the path's raw pointer is valid as long as
+            // the `ReteInstance` that owns the target slot is
+            // alive. The engine holds the only `&mut` to the
+            // slot; `Activity::enter` is `&self` (read-only on
+            // the activity's own state). The `Path::passed` flag
+            // is updated via the path's own `AtomicBool`, not
+            // through the activity.
+            let activity_ptr: *const (dyn Activity + Send + Sync) = path.to();
+            let activity: &dyn Activity = unsafe { &*activity_ptr };
             outcomes.extend(activity.enter(fact, ctx));
         }
         outcomes

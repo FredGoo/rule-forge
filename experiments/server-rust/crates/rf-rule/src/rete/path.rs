@@ -8,6 +8,32 @@
 //! when their in-edges have already fired (de-dup across multiple
 //! fact firings within one fire cycle).
 //!
+//! ## Why a raw pointer and not `Arc` / `Weak`?
+//!
+//! Both `Arc` and `Weak` block `Arc::get_mut` on the target slot
+//! (the former by raising strong count, the latter by raising
+//! weak count — `Arc::get_mut` requires `strong == 1 && weak ==
+//! 0`). The wire phase needs `Arc::get_mut` to push inbound paths
+//! onto join nodes (And/Or) and outbound paths onto source nodes
+//! — both per `Line`, in topological order. A raw pointer
+//! `*const dyn Activity + Send + Sync` is non-owning and does
+//! not count toward either total, so `Arc::get_mut` works.
+//!
+//! ## Safety
+//!
+//! The raw pointer's validity is the engine's responsibility:
+//! the pointer must not be used after the `ReteInstance` that
+//! owns the target slot is dropped. The `Path` carries
+//! `PhantomData<Arc<dyn Activity + Send + Sync>>` so the
+//! compiler treats it as `Send + Sync` (the raw pointer itself is
+//! `!Send + !Sync`).
+//!
+//! `Activity::enter(&self, ...)` is read-only on the activity —
+//! all per-cycle state lives in `Path::passed` (or, in P5+,
+//! `Cell<bool>` on the activity itself). The only `&mut self` is
+//! on `reset`, called by the engine holding the only `&mut` to
+//! the slot, so no aliasing occurs.
+//!
 //! ## Interior mutability on `passed`
 //!
 //! `Activity::enter` is `&self`, but `visit_paths` needs to flip the
@@ -22,16 +48,27 @@
 //! cycle at a time on one task), but it's the safest default and
 //! matches the cost of a single `MOV`.
 
+use std::marker::PhantomData;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use super::activity::Activity;
 
-/// `Path` — `passed` flag + strong ref to the target `Activity`.
+/// `Path` — `passed` flag + non-owning raw pointer to the target
+/// `Activity`. The target is owned by a `ReteInstance` slot.
 pub struct Path {
-    to: Arc<dyn Activity + Send + Sync>,
+    to: *const (dyn Activity + Send + Sync),
+    _marker: PhantomData<Arc<dyn Activity + Send + Sync>>,
     passed: AtomicBool,
 }
+
+// SAFETY: the raw pointer is to a `dyn Activity + Send + Sync`.
+// The target's lifetime is bounded by the `ReteInstance` that
+// owns it; while the `ReteInstance` lives, the pointer is valid
+// and the activity is `Send + Sync`. The `Path` itself holds no
+// state that requires `!Send + !Sync` access.
+unsafe impl Send for Path {}
+unsafe impl Sync for Path {}
 
 impl std::fmt::Debug for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -42,15 +79,23 @@ impl std::fmt::Debug for Path {
 }
 
 impl Path {
-    pub fn new(target: Arc<dyn Activity + Send + Sync>) -> Self {
+    /// Build a `Path` that points to `target`. The path does not
+    /// own the activity — the caller must keep the `target` Arc
+    /// alive (typically in a `ReteInstance` slot) for the path to
+    /// be usable.
+    pub fn new(target: &Arc<dyn Activity + Send + Sync>) -> Self {
         Self {
-            to: target,
+            to: Arc::as_ptr(target),
+            _marker: PhantomData,
             passed: AtomicBool::new(false),
         }
     }
 
-    pub fn to(&self) -> &Arc<dyn Activity + Send + Sync> {
-        &self.to
+    /// Return the raw pointer to the target. Caller must
+    /// dereference to `&dyn Activity`. The pointer is valid as
+    /// long as the `ReteInstance` that owns the target is alive.
+    pub fn to(&self) -> *const (dyn Activity + Send + Sync) {
+        self.to
     }
 
     pub fn is_passed(&self) -> bool {
@@ -83,19 +128,20 @@ mod tests {
         fn reset(&mut self) {}
         fn join_node_is_passed(&self) -> bool { false }
         fn pass_and_node(&mut self) {}
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
     }
 
     #[test]
     fn path_starts_unpassed() {
         let a: Arc<dyn Activity + Send + Sync> = Arc::new(NoopActivity);
-        let p = Path::new(a);
+        let p = Path::new(&a);
         assert!(!p.is_passed());
     }
 
     #[test]
     fn path_mark_passed_through_shared_ref() {
         let a: Arc<dyn Activity + Send + Sync> = Arc::new(NoopActivity);
-        let p = Path::new(a);
+        let p = Path::new(&a);
         let p_ref = &p;
         p_ref.mark_passed();
         assert!(p.is_passed());

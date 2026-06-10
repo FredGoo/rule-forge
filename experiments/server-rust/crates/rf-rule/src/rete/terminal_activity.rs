@@ -86,11 +86,19 @@ impl Activity for TerminalActivity {
     fn pass_and_node(&mut self) {
         // No-op.
     }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 impl AbstractActivity for TerminalActivity {
     fn paths(&self) -> &[Arc<Path>] {
         &[] // leaf — no children.
+    }
+    fn push_path(&mut self, _path: Arc<Path>) {
+        // Leaf — no outbound paths. The wire phase skips Terminal
+        // sources, so this is unreachable in practice.
     }
 }
 

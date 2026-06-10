@@ -258,4 +258,139 @@ mod tests {
         assert_eq!(t.target, "approved");
         assert_eq!(t.value, json!(true));
     }
+
+    /// P3 end-to-end: two criteria joined by an `And` node.
+    /// The rule fires only when BOTH `age >= 18` AND
+    /// `income >= 5000`. With `age=25, income=8000` both pass;
+    /// with `age=25, income=3000` only the first passes and the
+    /// And blocks the fire.
+    #[test]
+    fn end_to_end_and_join_two_criteria() {
+        let age_crit = age_geq_18_criteria();
+        let income_crit = Criteria {
+            op: Op::GreaterThenEquals,
+            left: Left {
+                left_type: LeftType::Variable,
+                left_part: LeftPart::Variable {
+                    variable_category: Some("Applicant".into()),
+                    variable_label: Some("income".into()),
+                    variable_name: Some("income".into()),
+                    datatype: Some("int".into()),
+                },
+                arithmetic: None,
+            },
+            value: Some(Value::Constant {
+                constant_name: None,
+                constant_label: None,
+                constant_category: None,
+                constant_value: Some(json!(5000)),
+            }),
+        };
+        let otn = ReteNode::ObjectType {
+            id: 1,
+            object_type_class: Some("Applicant".into()),
+            lines: vec![
+                crate::model::Line {
+                    from_node_id: 1,
+                    to_node_id: 2,
+                    from: None,
+                    to: None,
+                },
+                crate::model::Line {
+                    from_node_id: 1,
+                    to_node_id: 3,
+                    from: None,
+                    to: None,
+                },
+            ],
+        };
+        let crit_age = ReteNode::Criteria {
+            id: 2,
+            debug: false,
+            criteria: age_crit,
+            lines: vec![crate::model::Line {
+                from_node_id: 2,
+                to_node_id: 4,
+                from: None,
+                to: None,
+            }],
+        };
+        let crit_income = ReteNode::Criteria {
+            id: 3,
+            debug: false,
+            criteria: income_crit,
+            lines: vec![crate::model::Line {
+                from_node_id: 3,
+                to_node_id: 4,
+                from: None,
+                to: None,
+            }],
+        };
+        let and_node = ReteNode::And {
+            id: 4,
+            to_line_count: 2,
+            lines: vec![crate::model::Line {
+                from_node_id: 4,
+                to_node_id: 5,
+                from: None,
+                to: None,
+            }],
+        };
+        let term = ReteNode::Terminal {
+            id: 5,
+            rule: simple_rule("r-approve"),
+        };
+        let kp = KnowledgePackage {
+            rete: Rete {
+                object_type_nodes: vec![otn],
+                activation_group_retes_map: Default::default(),
+                agenda_group_retes_map: Default::default(),
+            },
+            with_else_rules: Default::default(),
+        };
+        let mut wrap = KnowledgePackageWrapper::from_parts(
+            "kp",
+            kp,
+            vec![crit_age, crit_income, and_node, term],
+            None,
+        );
+        wrap.build_deserialize();
+        let engine = ReteRuleEngine::from_wrapper(&wrap);
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let mut ctx = FlowContext::new("test");
+
+            // Both conditions met → fire.
+            ctx.vars.assert_fact(
+                "Applicant",
+                json!({"age": 25, "income": 8000}),
+            );
+            let r1 = engine.fire_rules(&mut ctx).await.unwrap();
+            assert!(
+                r1.matched_rules.contains(&"r-approve".to_string()),
+                "expected r-approve when both conditions met, got {:?}",
+                r1.matched_rules
+            );
+
+            // Reset for next fire cycle.
+            ctx.vars.reset_fire_epoch();
+            let mut ctx2 = FlowContext::new("test2");
+            ctx2.vars.assert_fact(
+                "Applicant",
+                json!({"age": 25, "income": 3000}),
+            );
+            // age is fine (25 >= 18), income fails (3000 < 5000).
+            // And should NOT fire.
+            let r2 = engine.fire_rules(&mut ctx2).await.unwrap();
+            assert!(
+                !r2.matched_rules.contains(&"r-approve".to_string()),
+                "And should block: age=25, income=3000 — got {:?}",
+                r2.matched_rules
+            );
+        });
+    }
 }

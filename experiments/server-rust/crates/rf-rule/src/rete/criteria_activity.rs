@@ -118,11 +118,18 @@ impl Activity for CriteriaActivity {
         // No-op in P2; P3 walks outbound paths and calls passAndNode
         // on join nodes.
     }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 impl AbstractActivity for CriteriaActivity {
     fn paths(&self) -> &[Arc<Path>] {
         &self.paths
+    }
+    fn push_path(&mut self, path: Arc<Path>) {
+        self.paths.push(path);
     }
 }
 
@@ -400,7 +407,7 @@ mod tests {
         );
         let term: Arc<dyn Activity + Send + Sync> =
             Arc::new(TerminalActivity::for_test("r1", "approve", 10));
-        a.add_path(Arc::new(Path::new(term)));
+        a.add_path(Arc::new(Path::new(&term)));
         let mut ctx = ctx();
         let fact = GeneralEntity::new("Applicant").with_field("age", json!(25));
         let out = a.enter(&fact, &mut ctx);
@@ -420,7 +427,7 @@ mod tests {
         );
         let term: Arc<dyn Activity + Send + Sync> =
             Arc::new(TerminalActivity::for_test("r1", "approve", 10));
-        a.add_path(Arc::new(Path::new(term)));
+        a.add_path(Arc::new(Path::new(&term)));
         let mut ctx = ctx();
         let fact = GeneralEntity::new("Applicant").with_field("age", json!(20));
         let out = a.enter(&fact, &mut ctx);
@@ -436,7 +443,7 @@ mod tests {
         );
         let term: Arc<dyn Activity + Send + Sync> =
             Arc::new(TerminalActivity::for_test("r1", "approve", 10));
-        a.add_path(Arc::new(Path::new(term)));
+        a.add_path(Arc::new(Path::new(&term)));
         let mut ctx = ctx();
         let fact1 = GeneralEntity::new("Applicant").with_field("age", json!(25));
         let out1 = a.enter(&fact1, &mut ctx);
