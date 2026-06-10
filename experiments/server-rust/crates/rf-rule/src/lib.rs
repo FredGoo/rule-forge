@@ -11,3 +11,6 @@ pub mod deserialize;
 pub mod fact;
 pub mod mock;
 pub mod model;
+pub mod rete;
+pub mod rete_builder;
+pub mod rete_engine;

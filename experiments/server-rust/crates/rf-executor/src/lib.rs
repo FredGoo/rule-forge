@@ -16,5 +16,6 @@ pub mod node_result;
 pub mod rule_engine;
 pub mod traverser;
 pub mod vars;
+pub mod working_memory;
 
 pub use dispatch::ExecutorRegistry;
