@@ -11,12 +11,13 @@
 //! Wiring:
 //! - `FlowDefinitionRepo` caches parsed BPMN, with `HttpFlowLoader`
 //!   hitting the Java console on miss.
-//! - `ExecutorRegistry` wires `MockRuleEngine` for v0 (Phase 7+ could
-//!   swap in a real engine).
+//! - `ExecutorRegistry` wires `ReteRuleEngine` (production) if
+//!   `--knowledge-dir` is set, else falls back to `MockRuleEngine`.
 //! - If `PG_URL` is set, builds a `PgInflightStore` and a recovery
 //!   loop. Otherwise falls back to the in-memory `MemInflightStore`.
 
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -30,7 +31,9 @@ use rf_http::flow_def_repo::{FlowDefinitionRepo, HttpFlowLoader};
 use rf_http::inflight::{InflightStore, PgInflightStore};
 use rf_http::routes::{decision, evaluate, event, health, invalidate, load};
 use rf_http::state::AppState;
+use rf_rule::loader::load_dir;
 use rf_rule::mock::MockRuleEngine;
+use rf_rule::rete_engine::ReteRuleEngine;
 use rf_state::persistence::PgStateStore;
 use rf_state::recovery::RecoveryLoop;
 use rf_state::serialization::SuspendPayload;
@@ -54,6 +57,14 @@ struct Cli {
     /// (Phase 6: e.g. `postgres://ruleforge:ruleforge@localhost:5432/ruleforge_rust`).
     #[arg(long, env = "PG_URL", default_value = "")]
     pg_url: String,
+
+    /// Directory of `*.json` knowledge packages. If set, the binary
+    /// loads them at startup and wires `ReteRuleEngine` for the rule
+    /// executor; otherwise falls back to `MockRuleEngine` (Phase 4
+    /// hand-coded `age>=18 && income>=5000` test fixture). Each file
+    /// is a `KnowledgePackageWrapper` JSON.
+    #[arg(long, env = "KNOWLEDGE_DIR", default_value = "")]
+    knowledge_dir: String,
 
     /// Worker ID for recovery loop logging.
     #[arg(long, env = "WORKER_ID", default_value = "rust-flow-1")]
@@ -84,7 +95,31 @@ async fn main() -> Result<()> {
             .context("build reqwest client")?,
     });
     let repo = Arc::new(FlowDefinitionRepo::new(loader));
-    let registry = Arc::new(ExecutorRegistry::with_rule_engine(Arc::new(MockRuleEngine)));
+
+    // Pick the rule engine: production wires `ReteRuleEngine` from
+    // a knowledge dir; dev / smoke-test paths fall back to
+    // `MockRuleEngine` (hand-coded `age>=18 && income>=5000`).
+    let rule_engine: Arc<dyn rf_executor::rule_engine::RuleEngine> =
+        if cli.knowledge_dir.is_empty() {
+            warn!(
+                "KNOWLEDGE_DIR is empty — falling back to MockRuleEngine; \
+                 pass --knowledge-dir=<path> to use real rule packages"
+            );
+            Arc::new(MockRuleEngine)
+        } else {
+            let dir = PathBuf::from(&cli.knowledge_dir);
+            let wrappers = load_dir(&dir).with_context(|| {
+                format!("load knowledge packages from {}", dir.display())
+            })?;
+            info!(
+                n = wrappers.len(),
+                dir = %dir.display(),
+                "loaded knowledge packages — wiring ReteRuleEngine"
+            );
+            let refs: Vec<&_> = wrappers.iter().collect();
+            Arc::new(ReteRuleEngine::from_wrappers(&refs))
+        };
+    let registry = Arc::new(ExecutorRegistry::with_rule_engine(rule_engine));
 
     // Pick the in-flight store: pg-backed if `pg_url` is set, else
     // in-memory (dev fallback).

@@ -11,6 +11,7 @@ pub mod agenda;
 pub mod assertor;
 pub mod deserialize;
 pub mod fact;
+pub mod loader;
 pub mod mock;
 pub mod model;
 pub mod rete;

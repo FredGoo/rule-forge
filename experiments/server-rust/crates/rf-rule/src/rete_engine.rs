@@ -73,6 +73,24 @@ impl ReteRuleEngine {
         }
     }
 
+    /// Build an engine from multiple knowledge packages. Every
+    /// package fires on every `fire_rules` call (the engine doesn't
+    /// route by flow_id — that's the Java side's responsibility;
+    /// for v0 we just compile all available packages and let the
+    /// RETE network filter by fact class). Each wrapper is
+    /// consumed by reference; the caller should pre-build the
+    /// wrappers (e.g. via [`crate::loader::load_dir`]).
+    pub fn from_wrappers(wrappers: &[&KnowledgePackageWrapper]) -> Self {
+        let instances: Vec<ReteInstance> = wrappers
+            .iter()
+            .map(|w| ReteInstance::from_wrapper(*w))
+            .collect();
+        Self {
+            instances,
+            focused_agenda_group: Some("MAIN".to_string()),
+        }
+    }
+
     /// Build from a pre-built `ReteInstance` (for tests that want
     /// to skip the wrapper dance).
     pub fn from_instance(instance: ReteInstance) -> Self {
