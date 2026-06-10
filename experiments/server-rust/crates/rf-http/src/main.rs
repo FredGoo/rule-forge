@@ -226,7 +226,7 @@ impl Recover for HttpRecover {
         let mut ctx = FlowContext::new(flow_run_id);
         if let Some(v) = row.row_vars.as_ref().and_then(serde_json::Value::as_object) {
             for (k, vv) in v {
-                ctx.vars.insert(k.clone(), vv.clone());
+                ctx.vars.assign(k.clone(), vv.clone());
             }
         }
         // The userTask executor sets current_awaiting_field to the

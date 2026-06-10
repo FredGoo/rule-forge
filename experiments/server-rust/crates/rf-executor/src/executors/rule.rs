@@ -63,11 +63,11 @@ impl NodeExecutor for RuleExecutor {
         // `nd_matched_rules` columns of `nd_decision_flow_state`.
         if !results.fired_rules.is_empty() {
             ctx.vars
-                .insert("_fireable_rules", serde_json::json!(results.fired_rules));
+                .assign("_fireable_rules", serde_json::json!(results.fired_rules));
         }
         if !results.matched_rules.is_empty() {
             ctx.vars
-                .insert("_matched_rules", serde_json::json!(results.matched_rules));
+                .assign("_matched_rules", serde_json::json!(results.matched_rules));
         }
 
         // Honour the file/project attrs on the node (logged for now;

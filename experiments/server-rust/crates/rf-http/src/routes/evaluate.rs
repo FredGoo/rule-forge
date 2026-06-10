@@ -180,14 +180,14 @@ fn seed_vars(ctx: &mut FlowContext, req: &EvaluateRequest) {
     // convention — see `DecisionServiceImpl.executeDecisionFlow`).
     if let Some(obj) = req.vars.as_object() {
         for (k, v) in obj {
-            ctx.vars.insert(k.clone(), v.clone());
+            ctx.vars.assign(k.clone(), v.clone());
         }
     }
     if let Some(applicant) = &req.applicant {
-        ctx.vars.insert("applicant".to_string(), applicant.clone());
+        ctx.vars.assign("applicant".to_string(), applicant.clone());
     }
     if let Some(order) = &req.order {
-        ctx.vars.insert("order".to_string(), order.clone());
+        ctx.vars.assign("order".to_string(), order.clone());
     }
     if let Some(uid) = &req.user_id {
         ctx.vars

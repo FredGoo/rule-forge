@@ -7,4 +7,7 @@
 
 #![allow(dead_code)]
 
+pub mod deserialize;
+pub mod fact;
 pub mod mock;
+pub mod model;

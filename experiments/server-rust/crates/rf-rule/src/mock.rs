@@ -56,9 +56,9 @@ impl RuleEngine for MockRuleEngine {
         };
 
         // 3. Write back into the same vars bag.
-        ctx.vars.insert("approved", Value::Bool(approved));
+        ctx.vars.assign("approved", Value::Bool(approved));
         ctx.vars
-            .insert("creditLimit", Value::Number(credit_limit.into()));
+            .assign("creditLimit", Value::Number(credit_limit.into()));
 
         // 4. Return the audit trail for the state row.
         let fired_rules: Vec<String> = vec!["MockRuleEngine:fire".to_string()];
@@ -111,7 +111,7 @@ mod tests {
     async fn mock_engine_approves_qualified_applicant() {
         let engine = MockRuleEngine;
         let mut ctx = FlowContext::new("r");
-        ctx.vars.insert(
+        ctx.vars.assign(
             "applicant",
             Value::Object(
                 BTreeMap::from_iter([
