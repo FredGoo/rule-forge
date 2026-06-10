@@ -178,16 +178,33 @@ fn seed_vars(ctx: &mut FlowContext, req: &EvaluateRequest) {
     // a non-object). Normalize: take the map, then overlay the
     // optional top-level `applicant` and `order` fields (Java
     // convention — see `DecisionServiceImpl.executeDecisionFlow`).
+    //
+    // For each top-level OBJECT value, also `assert_fact` it so the
+    // ReteRuleEngine can find it by class. The Java side's
+    // `WorkingMemory.assertFact(GeneralEntity)` is called the same
+    // way for every fact in the input bag. Scalar / array values are
+    // not facts (they're "global vars" in Drools parlance) — they
+    // stay in `var_assigns` only.
     if let Some(obj) = req.vars.as_object() {
         for (k, v) in obj {
             ctx.vars.assign(k.clone(), v.clone());
+            if v.is_object() {
+                ctx.vars.assert_fact(k.clone(), v.clone());
+            }
         }
     }
     if let Some(applicant) = &req.applicant {
         ctx.vars.assign("applicant".to_string(), applicant.clone());
+        if applicant.is_object() {
+            ctx.vars
+                .assert_fact("applicant".to_string(), applicant.clone());
+        }
     }
     if let Some(order) = &req.order {
         ctx.vars.assign("order".to_string(), order.clone());
+        if order.is_object() {
+            ctx.vars.assert_fact("order".to_string(), order.clone());
+        }
     }
     if let Some(uid) = &req.user_id {
         ctx.vars
