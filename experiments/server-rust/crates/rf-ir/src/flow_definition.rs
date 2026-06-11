@@ -25,6 +25,15 @@ pub struct FlowDefinition {
     /// `id`s of `<endEvent>` elements. Multiple end events are allowed (the
     /// last one reached determines the run's terminal state).
     pub ends: Vec<String>,
+    /// V5.28 P1 — `activity_id → boundary_id` reverse-lookup.
+    /// Built by the parser from each boundary event's
+    /// `attachedToRef` attribute. Used by the `traverse` driver
+    /// to route to a boundary's outgoing when the attached
+    /// activity throws an error. `Vec<String>` because BPMN
+    /// allows multiple boundaries on one activity (e.g. one
+    /// error boundary per `errorRef`).
+    #[serde(default)]
+    pub attached_boundaries: BTreeMap<String, Vec<String>>,
     /// Original BPMN XML, kept so the executor can hash it again to detect
     /// external mutation (mirrors Java `FlowDefinition.sourceXml`).
     pub source_xml: String,

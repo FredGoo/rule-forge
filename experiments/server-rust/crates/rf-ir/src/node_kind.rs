@@ -57,11 +57,23 @@ pub enum NodeKind {
     /// `timerDuration`; common for SLA timeouts). The
     /// `eventType` attr is the discriminator (mirrors
     /// `IntermediateEvent`'s `eventType`). Attached activity is
-    /// identified by the BPMN `attachedToRef` attribute, but for
-    /// V5.27 routing we treat the boundary's outgoing edges as the
-    /// handler path — the main flow continues via the normal
-    /// `next_node` logic, and a fired boundary is a sibling step.
+    /// identified by the BPMN `attachedToRef` attribute.
+    ///
+    /// V5.28 P1 — `attached_to` is the id of the activity this
+    /// boundary is attached to (parsed from the BPMN
+    /// `attachedToRef` attribute). When the activity throws an
+    /// error matching this boundary's `ruleforge:errorRef`, the
+    /// `traverse` driver routes the flow to this boundary's
+    /// outgoing edges (the handler path) instead of the
+    /// activity's normal outgoing. V5.27 treated the boundary as
+    /// a sibling in the sequence flow (its outgoing was the
+    /// handler path, but no actual error routing happened);
+    /// V5.28 P1 is the "really attached" version. Backward
+    /// compat: `attached_to == None` keeps the V5.27 sibling
+    /// behaviour (executor suspends with `error:<ref>` or
+    /// timer).
     BoundaryEvent {
+        attached_to: Option<String>,
         attrs: Attrs,
     },
     /// Recognized but not executed by the v0 executor — parser still extracts

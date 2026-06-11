@@ -33,6 +33,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use rf_ir::flow_definition::FlowDefinition;
+use rf_ir::node_kind::NodeKind;
 
 use crate::dispatch::{dispatch, ExecutorRegistry};
 use crate::error::FlowError;
@@ -41,6 +42,58 @@ use crate::next_node::next_node;
 use crate::node_result::{ForkBranch, NodeResult, SuspendInfo};
 
 const MAX_STEPS: usize = 1000;
+
+/// V5.28 P1 — resolve the boundary-routing target for a
+/// thrown error. Looks up the activity's attached
+/// boundaries (built by the parser from `bpmn:attachedToRef`)
+/// and returns the target node id of the first outgoing
+/// edge of the first boundary whose `ruleforge:errorRef`
+/// matches `thrown_ref`. Document order is preserved by the
+/// parser (BTreeMap iteration is stable), so when multiple
+/// boundaries match, the first one in document order wins.
+///
+/// A boundary's `outgoing_ids` are **edge ids** (not target
+/// node ids — same shape as every other node). We resolve
+/// the target via `def.edges.iter().find(|e| e.id == edge_id)`.
+///
+/// Returns `None` if no attached boundary exists for the
+/// activity, or if none of the attached boundaries' error
+/// refs match. The caller (the `Continue` branch in `step`)
+/// then falls through to the normal `next_node` path.
+fn boundary_next(
+    def: &FlowDefinition,
+    activity_id: &str,
+    thrown_ref: &str,
+) -> Option<String> {
+    let boundary_ids = def.attached_boundaries.get(activity_id)?;
+    for bid in boundary_ids {
+        let boundary = def.nodes.get(bid)?;
+        let NodeKind::BoundaryEvent { attrs, .. } = &boundary.kind else {
+            continue;
+        };
+        // Default to "error" — matches
+        // `BoundaryEventKind::from_attrs` which also defaults
+        // to "error" when `ruleforge:errorRef` is missing.
+        let boundary_ref = attrs.ruleforge("errorRef").unwrap_or("error");
+        if boundary_ref != thrown_ref {
+            continue;
+        }
+        // Take the boundary's first outgoing edge's
+        // target as the handler path. A boundary with
+        // multiple outgoings (rare — typically a
+        // boundary has one handler path) is documented
+        // as "first wins" in V5.28 P1 v0. Future
+        // versions can route to all.
+        let first_edge_id = boundary.outgoing_ids.first()?;
+        let target = def
+            .edges
+            .iter()
+            .find(|e| &e.id == first_edge_id)
+            .map(|e| e.target.clone())?;
+        return Some(target);
+    }
+    None
+}
 
 /// Public entry — single-call traversal. Loops `step()` until done,
 /// suspended, or failed. Wraps the type-state for callers that don't
@@ -285,14 +338,45 @@ impl Traverser<Running> {
         };
 
         match result {
-            NodeResult::Continue => match next_node(&self.def, &node, &self.ctx) {
-                Ok(Some(next_id)) => {
-                    self.next = Some(next_id);
-                    Ok(StepOutcome::Continue(self))
+            NodeResult::Continue => {
+                // V5.28 P1 — boundary error routing. If the
+                // activity threw (an action set
+                // `ctx.thrown_error`), look up the attached
+                // boundaries for this node and route to the
+                // matching boundary's first outgoing edge.
+                // We do this BEFORE `next_node` so the
+                // boundary short-circuits the activity's
+                // normal outgoing. If no boundary matches,
+                // fall through to the normal next_node path.
+                if let Some(thrown_ref) = self.ctx.thrown_error.take() {
+                    if let Some(boundary_next) =
+                        boundary_next(&self.def, &node_id, &thrown_ref)
+                    {
+                        self.next = Some(boundary_next);
+                        return Ok(StepOutcome::Continue(self));
+                    }
+                    // No matching boundary — re-attach the
+                    // thrown error so an outer handler (or
+                    // a log line) can still see it. v0
+                    // doesn't have an outer handler, so this
+                    // is a deliberate "drop with trace" —
+                    // the activity continues normally.
+                    tracing::warn!(
+                        node_id = %node_id,
+                        thrown_ref = %thrown_ref,
+                        "activity threw but no matching attached boundary; falling through to normal outgoing"
+                    );
+                    self.ctx.thrown_error = Some(thrown_ref);
                 }
-                Ok(None) => Ok(StepOutcome::Done(self.into_completed())),
-                Err(e) => Err((self.into_failed(), e)),
-            },
+                match next_node(&self.def, &node, &self.ctx) {
+                    Ok(Some(next_id)) => {
+                        self.next = Some(next_id);
+                        Ok(StepOutcome::Continue(self))
+                    }
+                    Ok(None) => Ok(StepOutcome::Done(self.into_completed())),
+                    Err(e) => Err((self.into_failed(), e)),
+                }
+            }
             NodeResult::Branch(target) => {
                 self.next = Some(target);
                 Ok(StepOutcome::Continue(self))

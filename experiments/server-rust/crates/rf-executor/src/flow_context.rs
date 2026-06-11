@@ -30,6 +30,17 @@ pub struct FlowContext {
     /// Value of `current_awaiting_field` in the current vars. Cleared once
     /// consumed by the gateway.
     pub current_awaiting_value: Option<Value>,
+    /// V5.28 P1 — set by an action / rule that wants to
+    /// throw an error. The `traverse` driver reads this
+    /// after the activity's `dispatch` and routes the
+    /// flow to the attached boundary's outgoing (if a
+    /// boundary with a matching `errorRef` exists).
+    /// Cleared once consumed. Convention: an action
+    /// that wants to throw calls
+    /// `ctx.thrown_error = Some("error".to_string())` (or
+    /// any other ref it wants the boundary to match).
+    #[serde(default)]
+    pub thrown_error: Option<String>,
 }
 
 impl FlowContext {
@@ -40,6 +51,7 @@ impl FlowContext {
             current_node_id: None,
             current_awaiting_field: None,
             current_awaiting_value: None,
+            thrown_error: None,
         }
     }
 }
