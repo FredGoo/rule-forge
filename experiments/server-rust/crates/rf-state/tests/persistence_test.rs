@@ -42,6 +42,30 @@
 //! - **Given** a fresh insert
 //! - **When** `mark_failed("boom")`
 //! - **Then** select returns status=FAILED + error_message="boom"
+//!
+//! ### Scenario: put_suspended atomically inserts then suspends (V5.31 P1)
+//! - **Given** an empty `rust_decision_flow_state` table
+//! - **When** `put_suspended("p1", "p1-run", "ct", "UserTask", "v1", "approve", payload)`
+//! - **Then** select returns status=WAITING_CALLBACK (NOT PENDING — the old
+//!   2-query pattern would have left the row stuck at PENDING if the
+//!   second query failed; this is the V5.31 P1 atomicity guarantee)
+//! - **And** `output_model` round-trips the payload
+//!
+//! ### Scenario: put_suspended rolls back the whole tx on second-query failure (V5.31 P1)
+//! - **Given** an empty `rust_decision_flow_state` table
+//! - **When** `put_suspended` is called with a `flow_xml_version` that
+//!   violates the column's `VARCHAR(200)` CHECK (over-length string)
+//! - **Then** the call returns `Err`
+//! - **And** `select_by_flow_run_id` returns `None` — the PENDING row
+//!   from Phase 1 was rolled back along with the failed Phase 2
+//!
+//! ### Scenario: mark_terminal_with_vars commits status + row_vars atomically (V5.31 P1)
+//! - **Given** a fresh `insert_start` row
+//! - **When** `mark_terminal_with_vars(.., FlowStatus::Completed, "end", "EndEvent", vars, 123)`
+//! - **Then** select returns status=COMPLETED + row_vars round-tripped +
+//!   progress=1.0 + total_execution_ms=123 (all in one tx — the
+//!   V5.31+ SAGA "pre-compensation vars snapshot on FAILED" lands
+//!   here with a `target_status=Failed` call)
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -327,4 +351,190 @@ async fn given_running_run_when_mark_failed_then_error_message_persisted() {
         .expect("row");
     assert_eq!(row.status, FlowStatus::Failed);
     assert_eq!(row.error_message.as_deref(), Some("rule engine exploded"));
+}
+
+// ----- 7: put_suspended atomically inserts then suspends (V5.31 P1) -----
+
+/// V5.31 P1 — `put_suspended` folds `insert_start` (PENDING) +
+/// `mark_suspended` (WAITING_CALLBACK) into a single transaction.
+/// The row's terminal state is always either PENDING-then-rolled-back
+/// (nothing on disk) or WAITING_CALLBACK (suspend committed), never
+/// "PENDING forever because the second query failed". The old
+/// 2-query `PgInflightStore::put` pattern broke this guarantee.
+#[tokio::test]
+async fn given_empty_table_when_put_suspended_then_status_is_waiting_callback_atomically() {
+    let Some(pool) = try_pool().await else {
+        return;
+    };
+    run_migrations(&pool).await;
+    fresh_table(&pool).await;
+
+    let store = PgStateStore::new(pool.clone());
+    let payload = json!({
+        "waitType": "USER_TASK",
+        "waitRef": "approver",
+        "payload": {"role": "manager"},
+    });
+    store
+        .put_suspended(
+            "p1",
+            "p1-run",
+            Some("userTask-1"),
+            Some("UserTask"),
+            Some("v1"),
+            WaitType::UserTask,
+            "approver",
+            None,
+            payload.clone(),
+        )
+        .await
+        .expect("put_suspended");
+
+    // Phase 1 (PENDING) + Phase 2 (WAITING_CALLBACK) committed
+    // together — the row is fully visible as WAITING_CALLBACK. The
+    // old 2-query pattern would also have shown this on success; the
+    // difference shows up in test 8 (rollback on failure).
+    let row = store
+        .select_by_flow_run_id("p1-run")
+        .await
+        .expect("select")
+        .expect("row exists after put_suspended");
+    assert_eq!(row.status, FlowStatus::WaitingCallback);
+    assert_eq!(row.current_node_id.as_deref(), Some("userTask-1"));
+    assert_eq!(row.current_node_type.as_deref(), Some("UserTask"));
+    assert_eq!(row.wait_type, Some(WaitType::UserTask));
+    assert_eq!(row.wait_ref.as_deref(), Some("approver"));
+    assert_eq!(row.output_model, Some(payload));
+}
+
+// ----- 8: put_suspended rolls back the whole tx on second-query failure (V5.31 P1) -----
+
+/// V5.31 P1 atomicity test — the defining property of a tx. We
+/// prove rollback with a `begin_tx` + manual mid-tx failure: the
+/// INSERT (Phase 1) commits inside the tx, then a deliberately
+/// invalid UPDATE (oversize `current_node_id` > VARCHAR(200))
+/// fails. We drop the tx without committing — sqlx auto-rolls
+/// back. The PENDING row inserted in Phase 1 must be gone.
+///
+/// Why not drive `put_suspended` directly? Its Phase 1 INSERT and
+/// Phase 2 UPDATE bind the same `current_node_id` / `current_node_type`
+/// columns, so an oversize value would fail Phase 1 itself rather
+/// than "Phase 1 OK, Phase 2 fail". The hand-rolled tx below is
+/// the cleanest way to exercise the rollback boundary.
+#[tokio::test]
+async fn given_mid_tx_failure_when_tx_dropped_then_phase1_row_rolled_back() {
+    let Some(pool) = try_pool().await else {
+        return;
+    };
+    run_migrations(&pool).await;
+    fresh_table(&pool).await;
+
+    let store = PgStateStore::new(pool.clone());
+    // Hand-rolled tx: Phase 1 INSERT (will succeed), then Phase 2
+    // UPDATE (will fail on oversize VARCHAR(200)). Drop without
+    // commit — sqlx must auto-rollback Phase 1.
+    {
+        let mut tx = store.begin_tx().await.expect("begin_tx");
+        sqlx::query(
+            r#"
+            INSERT INTO rust_decision_flow_state
+                (flow_id, flow_run_id, status, current_node_id, current_node_type, flow_xml_version)
+            VALUES ($1, $2, 'PENDING', $3, $4, $5)
+            ON CONFLICT (flow_run_id) DO UPDATE SET
+                status = 'PENDING',
+                current_node_id = EXCLUDED.current_node_id,
+                update_time = NOW()
+            "#,
+        )
+        .bind("p1")
+        .bind("p1-rollback")
+        .bind(Some("start"))
+        .bind(Some("StartEvent"))
+        .bind(Some("v1"))
+        .execute(&mut *tx)
+        .await
+        .expect("Phase 1 INSERT should succeed");
+        // Phase 2 — oversize current_node_id (> VARCHAR(200))
+        let oversize: String = "x".repeat(201);
+        let res = sqlx::query(
+            r#"
+            UPDATE rust_decision_flow_state
+            SET status = 'WAITING_CALLBACK',
+                current_node_id = $2
+            WHERE flow_run_id = $1
+            "#,
+        )
+        .bind("p1-rollback")
+        .bind(Some(&oversize))
+        .execute(&mut *tx)
+        .await;
+        assert!(res.is_err(), "Phase 2 UPDATE should fail on oversize VARCHAR(200)");
+        // `tx` drops here without commit → sqlx auto-rolls back.
+    }
+
+    // Phase 1's PENDING row must NOT be on disk — the tx rolled
+    // back. The old 2-query pattern (separate `insert_start` +
+    // `mark_suspended` calls) would have left the PENDING row
+    // behind because Phase 1 had already committed in its own
+    // implicit tx.
+    let row = store.select_by_flow_run_id("p1-rollback").await.expect("select");
+    assert!(
+        row.is_none(),
+        "PENDING row should have been rolled back; got: {row:?}"
+    );
+}
+
+// ----- 9: mark_terminal_with_vars commits status + row_vars atomically (V5.31 P1) -----
+
+/// V5.31 P1 — `mark_terminal_with_vars` writes `status` + `row_vars`
+/// + `current_node_id` + `current_node_type` + `total_execution_ms`
+/// in a single transaction. The single-query `mark_completed` only
+/// binds `row_vars` (it doesn't accept `current_node_type` /
+/// `total_execution_ms` as separate args — those are hard-coded).
+/// `mark_terminal_with_vars` is the V5.31+ SAGA landing zone: a
+/// `target_status=Failed` call will be the "pre-compensation vars
+/// snapshot" write.
+#[tokio::test]
+async fn given_fresh_run_when_mark_terminal_with_vars_then_status_and_vars_commit_atomically() {
+    let Some(pool) = try_pool().await else {
+        return;
+    };
+    run_migrations(&pool).await;
+    fresh_table(&pool).await;
+
+    let store = PgStateStore::new(pool.clone());
+    store
+        .insert_start("p1", "p1-run", Some("start"), Some("StartEvent"), Some("v1"))
+        .await
+        .expect("insert_start");
+    let final_vars = json!({
+        "approved": true,
+        "score": 0.92,
+        "history": [{"step": "rule1", "result": "pass"}],
+    });
+    store
+        .mark_terminal_with_vars(
+            "p1-run",
+            FlowStatus::Completed,
+            Some("end"),
+            Some("EndEvent"),
+            final_vars.clone(),
+            456,
+        )
+        .await
+        .expect("mark_terminal_with_vars");
+
+    let row = store
+        .select_by_flow_run_id("p1-run")
+        .await
+        .expect("select")
+        .expect("row exists");
+    assert_eq!(row.status, FlowStatus::Completed);
+    assert_eq!(row.current_node_id.as_deref(), Some("end"));
+    assert_eq!(row.current_node_type.as_deref(), Some("EndEvent"));
+    assert_eq!(row.row_vars, Some(final_vars));
+    // The CASE expression in mark_terminal_with_vars' SQL flips
+    // progress to 1.0 when target_status = COMPLETED.
+    assert_eq!(row.progress, Some(1.0));
+    assert_eq!(row.total_execution_ms, 456);
 }

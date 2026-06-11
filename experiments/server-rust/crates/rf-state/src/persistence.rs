@@ -348,4 +348,163 @@ impl PgStateStore {
         .await?;
         Ok(n)
     }
+
+    // ── V5.31 P1 — compound atomic writes ─────────────────────────────────
+    //
+    // The single-query `mark_*` methods above are already atomic (a
+    // single Postgres UPDATE is its own transaction). The methods
+    // below are for **composite** writes that span multiple statements
+    // and would otherwise leave half-written state if the second
+    // statement failed after the first one succeeded.
+    //
+    // V5.31 P1 SAGA — the
+    // `mark_terminal_with_vars(Failed, pre_compensation_vars)` path
+    // is the landing zone for V5.31+ "persist compensation trace on
+    // FAILED" — the API surface is designed so adding a
+    // `compensation_trace: Option<Value>` field is a one-line SQL
+    // change, no method-shape refactor.
+
+    /// V5.31 P1 — acquire a Postgres transaction tied to this
+    /// store. Caller is responsible for `commit()` / `rollback()`
+    /// (or letting `Transaction` drop, which sqlx auto-rolls back).
+    /// Same `Transaction<'_, Postgres>` shape as
+    /// `select_recoverable_skip_locked` already uses.
+    pub async fn begin_tx(&self) -> Result<Transaction<'_, Postgres>, StateError> {
+        Ok(self.pool.begin().await?)
+    }
+
+    /// V5.31 P1 — atomically `insert_start` (PENDING) +
+    /// `mark_suspended` (WAITING_CALLBACK) in a single transaction.
+    ///
+    /// Replaces the old `PgInflightStore::put` two-step pattern:
+    /// that pattern called `insert_start` then `mark_suspended` as
+    /// independent queries; if the second failed, the row stayed
+    /// PENDING forever (broke `count_by_status(WaitingCallback)` and
+    /// made `/flow/decision` 404). With `put_suspended` both writes
+    /// commit together or roll back together.
+    ///
+    /// `ON CONFLICT (flow_run_id) DO UPDATE` keeps the original
+    /// `insert_start` upsert semantics: a `put_suspended` for an
+    /// existing `flow_run_id` resets the row to PENDING and then
+    /// flips it to WAITING_CALLBACK (the resume path's expected
+    /// behaviour — `/flow/decision` resume re-suspends with new
+    /// `current_node_id` and `next_retry_at`).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn put_suspended(
+        &self,
+        flow_id: &str,
+        flow_run_id: &str,
+        current_node_id: Option<&str>,
+        current_node_type: Option<&str>,
+        flow_xml_version: Option<&str>,
+        wait_type: WaitType,
+        wait_ref: &str,
+        next_retry_at: Option<DateTime<Utc>>,
+        payload: Value,
+    ) -> Result<(), StateError> {
+        let mut tx: Transaction<'_, Postgres> = self.pool.begin().await?;
+        // Phase 1 — INSERT (PENDING). On conflict, reset to PENDING
+        // and refresh the start metadata. The trigger
+        // `trg_rust_decision_flow_state_touch` (migration line 68-71)
+        // auto-bumps `update_time`.
+        sqlx::query(
+            r#"
+            INSERT INTO rust_decision_flow_state
+                (flow_id, flow_run_id, status, current_node_id, current_node_type, flow_xml_version)
+            VALUES ($1, $2, 'PENDING', $3, $4, $5)
+            ON CONFLICT (flow_run_id) DO UPDATE SET
+                status = 'PENDING',
+                current_node_id = EXCLUDED.current_node_id,
+                current_node_type = EXCLUDED.current_node_type,
+                flow_xml_version = EXCLUDED.flow_xml_version,
+                update_time = NOW()
+            "#,
+        )
+        .bind(flow_id)
+        .bind(flow_run_id)
+        .bind(current_node_id)
+        .bind(current_node_type)
+        .bind(flow_xml_version)
+        .execute(&mut *tx)
+        .await?;
+        // Phase 2 — UPDATE → WAITING_CALLBACK. We pass the same
+        // `current_node_id` / `current_node_type` as the INSERT so
+        // the row's "where did we suspend" pointer survives the
+        // tx. The wait_type / wait_ref / next_retry_at / payload
+        // (output_model jsonb) are the actual suspend payload.
+        sqlx::query(
+            r#"
+            UPDATE rust_decision_flow_state
+            SET status = 'WAITING_CALLBACK',
+                current_node_id = $2,
+                current_node_type = $3,
+                wait_type = $4,
+                wait_ref = $5,
+                next_retry_at = $6,
+                output_model = $7
+            WHERE flow_run_id = $1
+            "#,
+        )
+        .bind(flow_run_id)
+        .bind(current_node_id)
+        .bind(current_node_type)
+        .bind(wait_type)
+        .bind(wait_ref)
+        .bind(next_retry_at)
+        .bind(payload)
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// V5.31 P1 — atomically write a status flip (COMPLETED / FAILED)
+    /// + `row_vars` snapshot + `total_execution_ms` in a single
+    /// transaction. The single-query `mark_completed` is already
+    /// atomic, but it doesn't bind `row_vars` (vars is a separate
+    /// column from the `mark_completed` call's caller-supplied
+    /// snapshot in the in-memory path). This method folds both
+    /// writes so the post-terminal-state row's `row_vars` is
+    /// guaranteed to match `status`.
+    ///
+    /// V5.31+ SAGA — when the compensation path lands
+    /// (compensation handler ran, outer flow becomes FAILED), this
+    /// is the API: `mark_terminal_with_vars(.., Failed, ..,
+    /// pre_compensation_vars_snapshot, ..)`. The snapshot is what
+    /// a future "undo compensation" recovery would reload. V5.31 P1
+    /// only stores the snapshot; the undo path itself is V5.31+ scope.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn mark_terminal_with_vars(
+        &self,
+        flow_run_id: &str,
+        target_status: FlowStatus,
+        current_node_id: Option<&str>,
+        current_node_type: Option<&str>,
+        row_vars: Value,
+        total_execution_ms: i64,
+    ) -> Result<(), StateError> {
+        let mut tx: Transaction<'_, Postgres> = self.pool.begin().await?;
+        sqlx::query(
+            r#"
+            UPDATE rust_decision_flow_state
+            SET status = $2,
+                current_node_id = $3,
+                current_node_type = $4,
+                row_vars = $5,
+                progress = CASE WHEN $2 = 'COMPLETED' THEN 1.0 ELSE progress END,
+                total_execution_ms = $6
+            WHERE flow_run_id = $1
+            "#,
+        )
+        .bind(flow_run_id)
+        .bind(target_status)
+        .bind(current_node_id)
+        .bind(current_node_type)
+        .bind(row_vars)
+        .bind(total_execution_ms)
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(())
+    }
 }
