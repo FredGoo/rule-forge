@@ -15,7 +15,7 @@
 </div>
 
 > **⚠️ 项目状态：活跃开发中**
-> Phase 1-11 已完成，Phase 12+ 规划中。详见 [路线图](docs/roadmap.md) 和 [更新日志](CHANGELOG.md)。
+> Phase 1-12 已完成 (V5.25-V5.27: Rust 端 RETE 引擎 + BPMN 完整化),Phase 9+ 规划中。详见 [路线图](docs/roadmap.md) 和 [更新日志](CHANGELOG.md)。
 
 ---
 
