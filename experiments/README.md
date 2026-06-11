@@ -28,7 +28,7 @@ git mv experiments/<X> ./<X>            # 去掉 experiments/ 前缀
 
 | 目录 | 状态 | 升格条件 |
 |---|---|---|
-| `server-rust/` | 8 phases 完成 / 5/9 executor / MockRuleEngine | 9 executor 完整 + 真实 rule engine + Java console → Rust invalidate 通知链通 |
+| `server-rust/` | 12 phases 完成(V5.25-V5.32)/ 9 executor / Mock + ReteRuleEngine / Postgres state + advisory lock + compound atomic writes / V5.32 BPMN 完整化(Conditional + Link + Compensation SAGA) | V5.33+: UEL evaluator / Polling worker / ConditionalStartEvent / Java console → Rust invalidate 通知链通 |
 
 ## 命名约定
 

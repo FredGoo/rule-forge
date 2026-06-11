@@ -9,13 +9,14 @@
 [![Java](https://img.shields.io/badge/Java-17-blue.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.6-green.svg)](https://spring.io/projects/spring-boot)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg)](https://www.typescriptlang.org/)
+[![Rust](https://img.shields.io/badge/Rust-alpha-orange.svg)](experiments/server-rust/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](LICENSE)
 
 </div>
 
 > **⚠️ 项目状态：活跃开发中**
-> Phase 1-12 已完成 (V5.25-V5.27: Rust 端 RETE 引擎 + BPMN 完整化),Phase 9+ 规划中。详见 [路线图](docs/roadmap.md) 和 [更新日志](CHANGELOG.md)。
+> Phase 1-12 + V5.28-V5.32 已完成 (Rust 端 RETE 引擎 + BPMN 完整化 + ParallelGateway JOIN / Multi-Instance / Error·Escalation·Terminate EndEvent / Compensation SAGA / Conditional·Link Intermediate Event),Phase 9+ 规划中。详见 [路线图](docs/roadmap.md) 和 [更新日志](CHANGELOG.md)。
 
 ---
 
@@ -113,6 +114,7 @@ graph TB
 🎨  console-ui                React + Vite + Ant Design 5 可视化设计器
 🖥️  cli                       RuleForge CLI（Agent 命令行接口）
 🐍  model-service             Python FastAPI 微服务（PKL 模型推理）
+🦀  experiments/server-rust   Rust 规则引擎 + BPMN 执行器（**alpha / 实验性**）
 ```
 
 > 历史说明:原 `ruleforge-console` / `ruleforge-executor` 子模块已合入 `console-app` / `executor-app`(commits `5f01ebe5` / `f963fd5`);原 `frontend/` 目录已重命名为 `console-ui/`(commit `06c59925`)。
@@ -125,15 +127,67 @@ graph LR
     decision["ruleforge-decision<br/>数据源 / 灰度 / 陪跑"]
     console["ruleforge-console-app<br/>编辑器应用 :8180"]
     executor["ruleforge-executor-app<br/>执行器应用 :8280"]
+    rustEx["experiments/server-rust<br/>🦀 Rust 引擎 + BPMN 执行器<br/><b>alpha · 实验性</b>"]
 
     core --> decision
     decision --> console
     core --> executor
     decision --> executor
+    core -. Rust RE-implementation .-> rustEx
 
     classDef module fill:#e8f5e9,stroke:#388e3c,color:#1b5e20
+    classDef experimental fill:#fff3e0,stroke:#e65100,color:#bf360c,stroke-dasharray: 5 5
     class core,decision,console,executor module
+    class rustEx experimental
 ```
+
+## 🦀 实验性 Rust 引擎(仅 `experiments/server-rust/`)
+
+> **状态:alpha · 实验性 · 不进生产流量**。Rust 端是 BPMN 2.0 执行器的平行 Rust 实现,
+> 目的是:
+> 1. 验证 Rust 在规则引擎 + BPMN 编排场景下的性能 / 内存 / 并发上限;
+> 2. 给 Java 端落 Java 长期未跟的 BPMN 2.0 子集(Link / Conditional / 完整的 Compensation SAGA)
+>    提供"先在 Rust 走通契约"的可参考实现;
+> 3. 给生产流量做"逃生通道"——一旦 Java 执行器在某个 corner case 出问题,Rust 端可作为
+>    备选,但需要单独的性能 + 正确性压测才能上生产。
+
+### 当前覆盖(V5.25-V5.32)
+
+- ✅ RETE 引擎 + 知识包加载 + Mock rule engine
+- ✅ BPMN 2.0 节点:Start / End / ServiceTask / ScriptTask / UserTask / ExclusiveGateway / ParallelGateway
+- ✅ IntermediateEvent(message / signal / timer / **conditional** / **linkThrow** / **linkCatch**)
+- ✅ BoundaryEvent(error / timer) + multi-outgoing fan-out
+- ✅ SubProcess(并行 join + outputMapping)
+- ✅ Multi-Instance task wrapper(parallel + sequential)
+- ✅ Error / Escalation / Terminate EndEvent
+- ✅ Compensation SAGA(scope / throw / handler / per-scope LIFO)
+- ✅ Postgres state store + atomic compound writes + advisory lock + recovery sweep
+- ✅ HTTP:`/evaluate` · `/flow/decision` · `/flow/event` · `/flow/start-by-message` · `/flow/load` · `/health`
+
+### Java 端还没 mirror、待回填的 Rust 首发语义
+
+- `linkThrowEvent` / `linkCatchEvent`(`BpmnXmlParser.java` 当前不识别)
+- `conditionalIntermediateCatchEvent` v0 外部 signal trigger 模式
+- 多 handler / 跨 scope compensation
+- Postgres advisory-lock 驱动的 single-key CAS
+- 复合原子化写(`put_suspended` / `mark_terminal_with_vars`)
+
+### 怎么跑(本地)
+
+```bash
+cd experiments/server-rust
+
+# 1) 单元 + 集成测试(纯 cargo,无外部依赖)
+cargo test --workspace
+
+# 2) 启 HTTP front(默认 :8281,跟 Java executor 的 8280 平行)
+PG_URL=postgres://ruleforge:ruleforge@localhost:5432/ruleforge_rust \
+KNOWLEDGE_DIR=./fixtures/knowledge \
+cargo run -p rf-http
+```
+
+> 升格 production 时只需 `git mv experiments/server-rust ./server-rust` 一条命令;详见
+> [`experiments/README.md`](experiments/README.md) 的 "升格 production" 段落。
 
 ## 🚀 快速开始
 
@@ -203,9 +257,10 @@ mvn compile
 | 层 | 技术 |
 |----|------|
 | ☕ 后端 | Java 17 · Spring Boot 4.0.6 · MyBatis-Plus · MySQL · ANTLR4 · RETE · Flowable 8 |
+| 🦀 后端(实验) | Rust 1.x · Tokio · Axum · sqlx · `experiments/server-rust/`(alpha,**不**进生产流量) |
 | 🎨 前端 | TypeScript · React · Vite 8 · Ant Design 5 · bpmn-js |
 | 🧠 AI/ML | PKL Model Service · Python · Agent 分析 |
-| ✅ 测试 | JUnit 5 · Mockito · AssertJ · Vitest · Playwright |
+| ✅ 测试 | JUnit 5 · Mockito · AssertJ · Vitest · Playwright · cargo test |
 | 🐳 部署 | Docker · Docker Compose |
 
 ## ✅ 测试
