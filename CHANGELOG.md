@@ -26,6 +26,94 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [5.27.0] - 2026-06-11
+
+### Added
+
+**V5.27 — Rust 端 BPMN 完整化 + production 化收口 (#60→#65, 6 PRs)**
+
+V5.25-V5.27 是一组连续的 Rust 端收口工作:从零复刻 Java RETE 引擎
+(V5.25)→ 接 HTTP 入口 (V5.26)→ 切生产 + 补齐剩余 BPMN 节点 + 接
+docker-compose (V5.27)。
+
+#### V5.25 — Rust 端复刻 Java RETE 规则执行器 (#60, P0-P6)
+
+把 `ruleforge-core` 的 RETE 引擎移植到 `experiments/server-rust/crates/rf-rule`,
+7 个 phase 全部完成,114 个测试 pass。Rust 端现在能跑 Java
+`console-app` 导出的真实知识包 JSON,行为对齐。
+
+关键架构:
+- **Vars 升格 WorkingMemory** — 加 `assert_fact` / `retract` / `update`
+  / `class_index` + `fire_epoch`,Vars 同时是事实袋 / 输出容器 / working
+  memory 三用
+- **JSON 加载路径** — 直接消费 Java Jackson 导出的
+  `KnowledgePackageWrapper` JSON,100% 兼容
+- **Agenda = BinaryHeap** — salience desc + rule_id tiebreak;
+  `activation_group` 用 `HashSet<String>` 互斥,`agenda_group` 用
+  `Option<String>` focus 路由
+- **5 个 rule_type 适配器** — DecisionTable (First/Any hit policy) +
+  DecisionTree (含 20-op invert 映射) + Scorecard + UL/RL script
+
+#### V5.26 — IntermediateEvent message/signal/timer catch + /flow/event handler
+
+**#61 IntermediateEvent 业务逻辑**:
+- `IntermediateEventExecutor` — message/signal 走 `AsyncData` + 等
+  `current_awaiting_field` 匹配;timer 走 `AsyncTask` + `next_retry_at` =
+  now + duration(ISO 8601 子集 `PT5S` / `PT1M` / `PT2H` / `PT1D` /
+  `PT1W`)
+- 16 个测试(message/signal/timer 各 suspend/resume/parse-error 路径)
+- 无 `eventType` 的 catch / throw 事件走 Continue 直通
+
+**#62 /flow/event 收口 message/signal 投递**:
+- `POST /flow/event` 收客户端投递(Java console 端
+  `BpmnMessageRestService.correlateMessage` 调用),写
+  `current_awaiting_value` 后从 inflight 拿出 sub-state 重新 traverse
+- 完整 suspend→resume 闭环测试覆盖
+
+**#63 fix: IE 走 pg 路径不再被错标为 UserTask**:
+- 之前 `RecoveryLoop` 把所有非-UserTask 节点都标成 `IntermediateEvent`
+  userTask resume 路径错误地命中 IE 节点,死循环空转;现在按
+  `WaitType` 正确分桶,AsyncData 跳过 recovery
+
+#### V5.27 — ReteRuleEngine 切生产 + BoundaryEvent/SubProcess + Docker
+
+**#64 ReteRuleEngine 切生产 — 1 flag 替代 MockRuleEngine**:
+- `ReteRuleEngine::from_wrappers(&[&KnowledgePackageWrapper])` — 一次
+  构造多 package 引擎
+- `loader::load_dir(path)` — 读 `*.json` 文件,自动
+  `build_deserialize()` + `build_with_else_rules()`,错误带 file path
+  (`LoadError::Json { path, .. }`)
+- `main.rs`: `--knowledge-dir` (env `KNOWLEDGE_DIR`) — 非空 →
+  `load_dir` + `ReteRuleEngine`;空 → 沿用 `MockRuleEngine` (warn
+  日志)
+- `routes/evaluate.rs::seed_vars` 关键修复:每个 top-level Object
+  值的 key 同步 `vars.assert_fact(key, value)` — RETE working memory
+  跟 `var_assigns` 是两套结构,只 `assign` 时 `facts_of_class()`
+  找不到东西
+- 4 个 e2e 测试走真实 HTTP `/evaluate`,验证 matching fact → 规则 fire
+
+**#65 BoundaryEvent/SubProcess executor + docker-compose 接入**:
+- **BoundaryEvent** — `NodeKind::BoundaryEvent` + `BoundaryEventExecutor`:
+  error (`error:<ref>` wait_ref) + timer (复用 IE 的 ISO 8601
+  parser) 两种 flavor,7 个集成测试
+- **SubProcess** — `NodeKind::SubProcess` 从 parser-skip 升级到
+  dispatcher-routed;新增 `FlowResolver` trait(在 `rf-executor` 侧,
+  `rf-http` 侧 `HttpFlowResolver` 包装 `FlowDefinitionRepo`);新增
+  `NodeExecutor::execute_with` 让 SubProcessExecutor 拿到 parent
+  registry 递归 `traverse()` 子流;子流完成时 var_assigns 全量回拷
+  (V5.27 不支持 outputMapping — 留 V5.28);子流 suspend 时
+  payload 标注 `sub_called_element` 让 `/flow/event` handler 路由
+  到对的子流
+- **Docker** — `experiments/server-rust/Dockerfile` (multi-stage,
+  ~150MB) + `docker-compose.yml` 加 `rust-flow` 服务(挂
+  `console_data` volume 共享 Java 端导出的 `*.json`,空时降级
+  MockRuleEngine 不阻断启动)
+
+**测试**:V5.27 共 +14 测试 (BoundaryEvent x7, SubProcess x7),workspace
+总计 172 个测试全过,无回归。
+
+---
+
 ## [5.24.0] - 2026-06-10
 
 ### Changed

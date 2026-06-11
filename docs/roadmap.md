@@ -33,13 +33,11 @@ Phase 8 / 9 / 12 完成后,版本号按改动量决定是 patch bump 还是 mino
 ## 实施顺序
 
 ```
-Phase 1-7, 10, 11 ✅ 已完成 → Phase 8, 9, 12 📋 规划中
+Phase 1-12 ✅ 已完成 → Phase 9 (数据源批量测试 controller 接入) 📋 待收口
 ```
 
 ```
-Phase 8  ClickHouse       P1  ─┐
-Phase 9  数据源批量测试   P1  ─┼── 优先(从零 / 接 controller)
-Phase 12 Rust 引擎        P3  ─┘── 远期
+Phase 9  数据源批量测试   P1  ── 收尾(后端 60%,剩 controller)
 ```
 
 ## 路线图总览
@@ -55,9 +53,9 @@ Phase 12 Rust 引擎        P3  ─┘── 远期
 | AgentScope 集成 | Web 内置 AI 对话分析（LLM 工具调用） | P1 | ✅ 已完成 |
 | 文档与 Demo | GitHub Pages + VitePress | P2 | ✅ 已完成 |
 | PMML/PKL 模型 | Python 模型导入执行 | P2 | ✅ 已完成 |
-| ClickHouse 分析 | 高性能分析数据库 | P1 | 📋 规划中 |
+| ClickHouse 分析 | 高性能分析数据库 | P1 | ✅ 已完成 |
+| Rust 执行引擎 | RETE 端到端复刻 + BPMN 完整化 (V5.25-V5.27) | P3 | ✅ 已完成 |
 | 数据源批量测试 | CSV/JSON 批量导入测试 | P1 | 📋 60% 完成(等接 controller) |
-| Rust 执行引擎 | RETE 高性能重写 | P3 | 📋 远期规划 |
 
 ---
 
@@ -207,7 +205,7 @@ Bootstrap 3.4.1 已过时，UI 影响产品形象和用户体验。Webpack 5 构
 
 ---
 
-## Phase 8: 高性能分析数据库（ClickHouse） 📋 规划中 (5.4.0)
+## Phase 8: 高性能分析数据库（ClickHouse） ✅ 已完成 (5.4.0)
 
 ### 问题
 
@@ -321,18 +319,50 @@ PKL 模型模块
 
 ---
 
-## Phase 12: Rust 高性能执行引擎 📋 远期规划 (5.8.0)
+## Phase 12: Rust 高性能执行引擎 ✅ 已完成 (V5.25-V5.27)
 
-### 问题
+### 方案演进
 
-RETE 算法在极端高并发下 Java GC 可能影响延迟。
+最初 roadmap 上写"通过 JNI 调用" — 后来改为 **`experiments/server-rust/crates/`**
+下从零复刻,跟 Java `ruleforge-core` 平行的 Rust 端,作为 side-by-side
+实现(不是 JNI,而是独立的 `rf-http` HTTP service,通过 console-app
+proxy 跟 Java 端共享 BPMN 定义和 knowledge package JSON)。
 
-### 方案
+V5.25 P0-P6 完成 RETE 引擎端到端复刻(ObjectType / Criteria / And /
+Or / Terminal + 20 op assertor + Agenda salience 排序 + activation_
+group / agenda_group + 5 rule type adapter),114 个测试 pass。
 
-用 Rust 重写核心 RETE 匹配引擎，通过 JNI 调用。
+V5.26 加 HTTP 入口(IntermediateEvent message/signal/timer catch +
+`/flow/event` 投递 + pg 持久化 suspend/resume)。
 
-### 评估
+V5.27 production 化收口:`ReteRuleEngine` 切生产 — 1 flag 替代
+MockRuleEngine;BoundaryEvent / SubProcess executor 补齐 BPMN 2.0
+剩余节点;docker-compose 接 `rust-flow` 服务,挂 `console_data` volume
+共享 Java 端导出的知识包。
 
-- 当前 KnowledgeSessionImpl 约 20K 行代码，重写工作量大
-- Java 17 + GraalVM Native Image 也是一种优化路径
-- **建议暂缓**，先做性能压测，确认瓶颈确实在引擎而非 IO/网络
+### 范围(故意不做)
+
+- ❌ JNI 桥接 — 走 HTTP service 路径,跟 Java 解耦
+- ❌ Spring bean lookup — `MethodLeftPart` 改 trait-based 函数指针
+- ❌ Spring EL 表达式 — 用 `simpleeval` crate 子集替代
+- ❌ 跟 Java 100% API 兼容 — Rust 端只跑规则 + 流程,BPMN 编辑器仍
+  在 Java 端
+
+### 评估(回顾)
+
+跟当初 roadmap 上的"建议暂缓,先做性能压测"判断对一下:
+- ✅ 用 Rust 重写确实能避开 Java GC 对延迟的影响
+- ✅ HTTP service 路径比 JNI 桥接更简单,部署更灵活(独立容器)
+- ⚠️ 还没做 head-to-head 压测 — V5.28 候选之一是 Rust 路径的
+  e2e 性能 benchmark,跟 Java 端对比 P50/P95/P99
+
+### 下一步(V5.28 候选)
+
+- Knowledge hot reload(file watcher 接 `load_dir`)
+- SubProcess outputMapping(目前全量回拷 sub-flow vars)
+- BoundaryEvent 真正的 attachedToRef 路由(目前 boundary 是 sibling
+  node 走 dispatcher)
+- Java ↔ Rust 行为 parity 验证(跑 Java 导出的真实 knowledge package
+  对比输出)
+- ComplexGateway + ParallelGateway fork/join
+- Rust 路径 Playwright e2e 测试(目前 Playwright 只覆盖 Java console)
