@@ -48,6 +48,21 @@ pub struct FlowDefinition {
     /// preserved (BTreeMap iteration is stable).
     #[serde(default)]
     pub attached_compensations: BTreeMap<String, Vec<String>>,
+    /// V5.32 — `link_name → link_catch_node_id`
+    /// reverse-lookup. Built by the parser from each
+    /// `<bpmn:intermediateCatchEvent>` with a
+    /// `<bpmn:linkEventDefinition name="..."/>` child.
+    /// Used by the `LinkThrow` executor to resolve
+    /// the throw's `link_name` to the catch node id
+    /// and return `NodeResult::Branch(catch_id)`.
+    /// Multiple catches with the same name: the
+    /// first in document order wins (BTreeMap
+    /// `entry().or_insert_with` is first-wins).
+    /// V5.32 v0 scope: throw and catch must be in
+    /// the same process. Cross-process link jumps
+    /// are V5.32+ scope.
+    #[serde(default)]
+    pub link_targets: BTreeMap<String, String>,
     /// Original BPMN XML, kept so the executor can hash it again to detect
     /// external mutation (mirrors Java `FlowDefinition.sourceXml`).
     pub source_xml: String,

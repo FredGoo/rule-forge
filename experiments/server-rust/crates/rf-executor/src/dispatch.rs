@@ -340,7 +340,20 @@ pub async fn dispatch(
             reg.gateway.execute_with(node, ctx, reg).await
         }
         NodeKind::IntermediateEvent { .. } => {
-            reg.intermediate_event.execute(node, ctx).await
+            // V5.32 — LinkThrow needs the registry's `def` to
+            // resolve the catch node id from
+            // `def.link_targets`. The
+            // `IntermediateEventExecutor` overrides
+            // `execute_with` to read `reg.def`; the trait's
+            // default `execute_with` would just call `execute`
+            // (which doesn't have access to reg). Other
+            // intermediate-event kinds (message/signal/timer/
+            // conditional/linkCatch) don't use `def`, but
+            // routing them all through `execute_with` keeps
+            // the dispatch surface uniform with
+            // `ParallelGateway` / `SubProcess` /
+            // `CompensationThrow`.
+            reg.intermediate_event.execute_with(node, ctx, reg).await
         }
         NodeKind::BoundaryEvent { .. } => reg.boundary_event.execute(node, ctx).await,
         // SubProcess needs the parent registry to recursively
