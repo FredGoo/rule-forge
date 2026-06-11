@@ -34,6 +34,12 @@ pub struct ExecutorRegistry {
     pub intermediate_event: Arc<dyn NodeExecutor>,
     pub boundary_event: Arc<dyn NodeExecutor>,
     pub sub_process: Arc<dyn NodeExecutor>,
+    /// V5.28 P7 — `StartEvent` is no longer a
+    /// parameterless no-op. The executor reads the
+    /// `startTrigger` attr to decide whether to
+    /// `Continue` (manual) or `Suspend` (message /
+    /// timer).
+    pub start_event: Arc<dyn NodeExecutor>,
     /// `Option` so the default registry (used by unit tests that
     /// don't care about sub-flows) doesn't have to wire a
     /// resolver. `rf-http` sets this to an adapter that wraps
@@ -79,6 +85,10 @@ impl std::fmt::Debug for ExecutorRegistry {
                 &std::any::type_name_of_val(&*self.sub_process),
             )
             .field(
+                "start_event",
+                &std::any::type_name_of_val(&*self.start_event),
+            )
+            .field(
                 "flow_resolver",
                 &self
                     .flow_resolver
@@ -115,6 +125,7 @@ impl ExecutorRegistry {
             ),
             boundary_event: Arc::new(crate::executors::boundary_event::BoundaryEventExecutor),
             sub_process: Arc::new(crate::executors::sub_process::SubProcessExecutor),
+            start_event: Arc::new(crate::executors::start_event::StartEventExecutor),
             flow_resolver: None,
             def: None,
         }
@@ -141,6 +152,7 @@ impl Default for ExecutorRegistry {
             ),
             boundary_event: Arc::new(crate::executors::boundary_event::BoundaryEventExecutor),
             sub_process: Arc::new(crate::executors::sub_process::SubProcessExecutor),
+            start_event: Arc::new(crate::executors::start_event::StartEventExecutor),
             flow_resolver: None,
             def: None,
         }
@@ -172,7 +184,15 @@ pub async fn dispatch(
     reg: &ExecutorRegistry,
 ) -> Result<NodeResult, FlowError> {
     match &node.kind {
-        NodeKind::StartEvent | NodeKind::EndEvent => Ok(NodeResult::Continue),
+        // V5.28 P7 — `StartEvent` is now a real executor
+        // (manual → Continue, message → Suspend, timer →
+        // Unsupported because the scheduler runs timer
+        // flows directly). `EndEvent` stays a no-op
+        // `Continue` (the end of a branch is detected by
+        // the traverser when it sees an end node, not by
+        // the executor).
+        NodeKind::StartEvent { .. } => reg.start_event.execute(node, ctx).await,
+        NodeKind::EndEvent => Ok(NodeResult::Continue),
         NodeKind::ServiceTask { task_type, .. } => match task_type {
             rf_ir::node_kind::TaskType::Rule => reg.rule.execute(node, ctx).await,
             rf_ir::node_kind::TaskType::Action => reg.action.execute(node, ctx).await,
