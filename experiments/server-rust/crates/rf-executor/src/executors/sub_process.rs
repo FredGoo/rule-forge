@@ -136,17 +136,59 @@ impl NodeExecutor for SubProcessExecutor {
         // id, not the sub id).
         sub_ctx.flow_run_id = ctx.flow_run_id.clone();
 
-        let outcome = traverse(sub_def, sub_ctx, Arc::new(reg.clone()));
+        // V5.28 P3 — clear `def` so the recursive
+        // `traverse()` re-auto-wires to `sub_def`. The
+        // parent's `def` (which may be set) would
+        // otherwise leak into the sub-flow's parallel
+        // gateway lookup (the gateway resolves outgoing
+        // edges against `reg.def.edges` — using the
+        // parent's `def.edges` here would surface
+        // `EdgeNotFound` for sub-flow edges that don't
+        // exist in the parent).
+        let mut reg_for_sub = reg.clone();
+        reg_for_sub.def = None;
+        let outcome = traverse(sub_def, sub_ctx, Arc::new(reg_for_sub));
+
+        // V5.28 P3 — parse `ruleforge:outputMapping` to filter
+        // which sub-flow vars get copied back to the parent.
+        // V5.27 unconditionally copied every var — silent bug:
+        // - sub-flow's loop counters / temp accumulators
+        //   leaked into parent
+        // - parent's pre-existing vars could be silently
+        //   overwritten by sub-flow writes
+        //
+        // V5.28 P3 contract:
+        // - `outputMapping` not set  → V5.27 behavior (copy all)
+        // - `outputMapping=""`        → copy NOTHING (explicit
+        //                                opt-out)
+        // - `outputMapping="a,b,c"`   → copy ONLY a, b, c
+        let output_mapping: Option<Vec<String>> = attrs
+            .ruleforge("outputMapping")
+            .map(|raw| raw.split(',').map(|s| s.trim().to_string()).collect());
+
         match outcome {
             TraverseOutcome::Completed(t) => {
-                // Copy back any output vars the sub-flow set.
-                // V5.27 maps every sub-flow var back into the
-                // parent — future versions can use the
-                // `ruleforge:outputMapping` attr to filter.
-                // Iterate by reference (we can't move out of
-                // `&Traverser<Completed>`).
-                for (k, v) in t.ctx().vars.as_object() {
-                    ctx.vars.assign(k.clone(), v.clone());
+                // Copy back vars per the outputMapping filter.
+                // We can't move out of `&Traverser<Completed>`,
+                // so iterate by reference.
+                match output_mapping {
+                    None => {
+                        // V5.27 behavior — copy all sub-flow
+                        // vars back to parent.
+                        for (k, v) in t.ctx().vars.as_object() {
+                            ctx.vars.assign(k.clone(), v.clone());
+                        }
+                    }
+                    Some(allowed) => {
+                        // Filter: only copy vars in the
+                        // allowed list. Empty allowed list
+                        // = copy nothing (explicit opt-out).
+                        for k in &allowed {
+                            if let Some(v) = t.ctx().vars.get(k) {
+                                ctx.vars.assign(k.clone(), v.clone());
+                            }
+                        }
+                    }
                 }
                 Ok(NodeResult::Continue)
             }
