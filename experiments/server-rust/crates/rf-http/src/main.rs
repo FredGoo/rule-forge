@@ -39,6 +39,7 @@ use rf_rule::rete_engine::ReteRuleEngine;
 use rf_state::persistence::PgStateStore;
 use rf_state::recovery::RecoveryLoop;
 use rf_state::serialization::SuspendPayload;
+use rf_state::state_row::FlowStatus;
 use rf_state::Recover;
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
@@ -298,12 +299,22 @@ impl Recover for HttpRecover {
         let outcome = traverse(Arc::clone(&def), ctx, Arc::clone(&self.registry));
         match outcome {
             TraverseOutcome::Completed(t) => {
+                // V5.31 P1 — use `mark_terminal_with_vars` so the
+                // COMPLETED status flip and the final `row_vars`
+                // snapshot commit in one transaction. This is the
+                // SAGA landing zone for V5.31+: a Failed call would
+                // be the "pre-compensation vars snapshot" write.
+                // We pass `EndEvent` as `current_node_type` to
+                // match the contract the single-query
+                // `mark_completed` used to hard-code.
                 let map: serde_json::Map<String, serde_json::Value> =
                     t.ctx.vars.into_inner().into_iter().collect();
                 self.state
-                    .mark_completed(
+                    .mark_terminal_with_vars(
                         flow_run_id,
+                        FlowStatus::Completed,
                         t.ctx.current_node_id.as_deref(),
+                        Some("EndEvent"),
                         serde_json::Value::Object(map),
                         0,
                     )

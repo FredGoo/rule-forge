@@ -188,25 +188,15 @@ impl InflightStore for PgInflightStore {
                 (WaitType::AsyncTask, String::new(), Value::Null)
             }
         };
-        // Ensure a row exists (PENDING) and then immediately update to
-        // WAITING_CALLBACK. The userTask path's row_vars needs the
-        // intermediate ctx state, so we mirror the in-memory store:
-        // write a row, then suspend it.
+        // V5.31 P1 — `put_suspended` atomically folds the
+        // `insert_start` (PENDING) + `mark_suspended`
+        // (WAITING_CALLBACK) writes into a single transaction. The
+        // old 2-query pattern left the row stuck at PENDING if the
+        // second query failed (broke `count_by_status(WaitingCallback)`
+        // and made `/flow/decision` 404). With the atomic version
+        // either both writes commit or both roll back — there's no
+        // observable PENDING-but-should-be-WAITING_CALLBACK state.
         let node_type = node_type_for(wait_type);
-        if let Err(e) = self
-            .state
-            .insert_start(
-                &flow_id,
-                &flow_run_id,
-                Some(flow.ctx.current_node_id.as_deref().unwrap_or("")),
-                Some(node_type),
-                Some(flow.def.source_xml_hash.as_str()),
-            )
-            .await
-        {
-            warn!(?e, "PgInflightStore::put insert_start failed");
-            return;
-        }
         let payload_json = SuspendPayload {
             wait_type: wait_type.into(),
             wait_ref: wait_ref.clone(),
@@ -216,10 +206,12 @@ impl InflightStore for PgInflightStore {
         .to_value();
         if let Err(e) = self
             .state
-            .mark_suspended(
+            .put_suspended(
+                &flow_id,
                 &flow_run_id,
                 Some(flow.ctx.current_node_id.as_deref().unwrap_or("")),
                 Some(node_type),
+                Some(flow.def.source_xml_hash.as_str()),
                 wait_type.into(),
                 &wait_ref,
                 flow.suspend_info.as_ref().and_then(|i| i.next_retry_at),
@@ -227,7 +219,7 @@ impl InflightStore for PgInflightStore {
             )
             .await
         {
-            warn!(?e, "PgInflightStore::put mark_suspended failed");
+            warn!(?e, "PgInflightStore::put put_suspended failed");
             return;
         }
         debug!(%flow_run_id, %flow_id, "PgInflightStore: put");
