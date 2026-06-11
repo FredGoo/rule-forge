@@ -138,6 +138,12 @@ impl BpmnXmlParser {
         // activity are allowed; v0 uses the first
         // (document order).
         let mut attached_compensations: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        // V5.32 — `link_name → link_catch_node_id`. Built
+        // from each `<intermediateCatchEvent>` with a
+        // `<linkEventDefinition name="L"/>` child. BTreeMap
+        // iteration is document order; first-wins on duplicate
+        // names (`entry().or_insert_with`).
+        let mut link_targets: BTreeMap<String, String> = BTreeMap::new();
         for n in nodes.values() {
             match &n.kind {
                 NodeKind::StartEvent { .. } => {
@@ -165,6 +171,18 @@ impl BpmnXmlParser {
                         .or_default()
                         .push(n.node_id.clone());
                 }
+                NodeKind::IntermediateEvent { attrs } => {
+                    // V5.32 — link catch registration. We only
+                    // register `eventType=linkCatch` nodes; throws
+                    // and other flavors are ignored here.
+                    if attrs.ruleforge("eventType").as_deref() == Some("linkCatch") {
+                        if let Some(name) = attrs.ruleforge("linkName") {
+                            link_targets
+                                .entry(name.to_string())
+                                .or_insert_with(|| n.node_id.clone());
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -184,6 +202,7 @@ impl BpmnXmlParser {
             ends,
             attached_boundaries,
             attached_compensations,
+            link_targets,
             source_xml: bpmn_xml.to_string(),
             source_xml_hash,
             parsed_at: Utc::now(),
@@ -260,7 +279,27 @@ fn build_node_kind(
         }
         "exclusiveGateway" => Some(NodeKind::ExclusiveGateway { attrs: ext.clone() }),
         "parallelGateway" => Some(NodeKind::ParallelGateway { attrs: ext.clone() }),
-        "intermediateCatchEvent" => Some(NodeKind::IntermediateEvent { attrs: ext.clone() }),
+        "intermediateCatchEvent" => {
+            // V5.32 — intermediate catch events can carry a
+            // `<bpmn:conditionalEventDefinition>` or
+            // `<bpmn:linkEventDefinition>` child. The
+            // event-definition text is stored as `ruleforge:`
+            // attrs (kind + payload) so the executor can
+            // resolve the kind via `IntermediateEventKind::from_attrs`
+            // — same path as message/signal/timer.
+            let merged = merge_event_definitions(ext, &el);
+            Some(NodeKind::IntermediateEvent { attrs: merged })
+        }
+        // V5.32 — `<bpmn:intermediateThrowEvent>`. Mirrors
+        // catch: child event definitions get hoisted into
+        // attrs. Throw flavor is resolved by the executor
+        // (see `IntermediateEventKind::from_attrs` for
+        // `linkThrow` vs `linkCatch` distinction by parent
+        // tag — handled inside the helper).
+        "intermediateThrowEvent" => {
+            let merged = merge_event_definitions(ext, &el);
+            Some(NodeKind::IntermediateEvent { attrs: merged })
+        }
         // V5.28 P1 — read `attachedToRef` from the
         // BPMN-core attribute namespace (not
         // `ruleforge:` / `flowable:`). A boundary
@@ -373,6 +412,69 @@ fn extract_extension_attrs(el: &roxmltree::Node) -> Attrs {
         }
     }
     Attrs(map)
+}
+
+/// V5.32 — merge a BPMN intermediate event's child event-definition
+/// into `ext` (the extension attrs).
+///
+/// Recognised child elements (BPMN 2.0 §9.4):
+/// - `<bpmn:conditionalEventDefinition>` →
+///   `ruleforge:eventType = "conditional"` + the inner
+///   `<bpmn:condition>` text in `ruleforge:condition`.
+/// - `<bpmn:linkEventDefinition name="L">` →
+///   `ruleforge:eventType = "linkThrow"` or `"linkCatch"`
+///   (depending on the parent element's local tag) +
+///   `ruleforge:linkName = "L"`.
+///
+/// V5.32 v0: we store the text only — the executor reads
+/// `ruleforge:eventType` and dispatches. UEL evaluation
+/// (for conditional) is V5.32+ scope.
+///
+/// Returns a new `Attrs` value (BTreeMap clone of `ext`
+/// with the event-definition keys overwritten).
+fn merge_event_definitions(ext: &Attrs, el: &roxmltree::Node) -> Attrs {
+    let mut merged: BTreeMap<String, String> = ext.0.clone();
+    let parent_local = el.tag_name().name();
+    for child in el.children().filter(|c| c.is_element()) {
+        let local = child.tag_name().name();
+        match local {
+            "conditionalEventDefinition" => {
+                // <bpmn:condition>...</bpmn:condition>
+                if let Some(cond) = child
+                    .children()
+                    .find(|c| c.is_element() && c.tag_name().name() == "condition")
+                {
+                    let text = cond.text().unwrap_or("").trim();
+                    // V5.32 v0 stores the text as-is, even if
+                    // empty — the executor fails on empty (test
+                    // 2 of conditional_intermediate_test). This
+                    // mirrors the "missing condition" semantic
+                    // for empty bodies.
+                    merged.insert("ruleforge:eventType".into(), "conditional".into());
+                    merged.insert("ruleforge:condition".into(), text.to_string());
+                }
+            }
+            "linkEventDefinition" => {
+                // <bpmn:linkEventDefinition name="L1"/>
+                if let Some(name) = child
+                    .attribute((NS_BPMN, "name"))
+                    .or_else(|| child.attribute("name"))
+                {
+                    // Throw vs Catch is determined by the
+                    // parent element's local tag.
+                    let event_type = if parent_local == "intermediateThrowEvent" {
+                        "linkThrow"
+                    } else {
+                        "linkCatch"
+                    };
+                    merged.insert("ruleforge:eventType".into(), event_type.into());
+                    merged.insert("ruleforge:linkName".into(), name.to_string());
+                }
+            }
+            _ => {}
+        }
+    }
+    Attrs(merged)
 }
 
 fn sha256_hex(s: &str) -> String {

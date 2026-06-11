@@ -59,6 +59,7 @@ use rf_ir::node_kind::NodeKind;
 use serde_json::json;
 use std::str::FromStr;
 
+use crate::dispatch::ExecutorRegistry;
 use crate::error::FlowError;
 use crate::flow_context::FlowContext;
 use crate::node_executor::NodeExecutor;
@@ -88,6 +89,26 @@ pub enum IntermediateEventKind {
     Signal { name: String },
     /// IntermediateCatchEvent waiting for a timer.
     Timer { duration: Duration },
+    /// V5.32 — IntermediateCatchEvent waiting for a
+    /// condition. V5.32 v0 stores the condition text only and
+    /// suspends with `wait_ref = "conditional:<node_id>"`.
+    /// An external agent (or a future polling worker —
+    /// V5.32+ scope) writes
+    /// `current_awaiting_field = "conditional:<node_id>"` +
+    /// a value to resume. The condition text in `payload` is
+    /// for observability only; V5.32 v0 does not evaluate it.
+    Conditional { condition: String },
+    /// V5.32 — IntermediateThrowEvent with
+    /// `<linkEventDefinition name="L"/>`. Jumps to the
+    /// `LinkCatch` with the matching `link_name` via
+    /// `NodeResult::Branch(catch_id)`. The throw's outgoing
+    /// edges are bypassed by the traverser's `Branch` arm.
+    LinkThrow { link_name: String },
+    /// V5.32 — IntermediateCatchEvent with
+    /// `<linkEventDefinition name="L"/>`. Pass-through; the
+    /// throw already did the routing, so the catch just
+    /// returns `Continue`.
+    LinkCatch { link_name: String },
     /// IntermediateThrowEvent (or no eventType set): the node
     /// passes through without suspending. Throw events don't
     /// need a separate kind because they always Continue.
@@ -130,6 +151,43 @@ impl IntermediateEventKind {
                     })?;
                 let duration = parse_iso_duration(raw)?;
                 Ok(IntermediateEventKind::Timer { duration })
+            }
+            // ── V5.32 ─────────────────────────────────────────
+            // Conditional intermediate catch. The condition
+            // text is whatever the parser extracted from
+            // `<bpmn:condition>...</bpmn:condition>`. An
+            // empty string is **not** a parse error here —
+            // the executor's runtime check
+            // (see `execute`) is the place where
+            // "missing condition" fails. This mirrors the
+            // message/signal "missing eventName" pattern:
+            // `from_attrs` succeeds, `execute` returns
+            // `FlowError::Action` for runtime validation
+            // failures.
+            Some("conditional") => {
+                let condition = attrs
+                    .ruleforge("condition")
+                    .unwrap_or("")
+                    .to_string();
+                Ok(IntermediateEventKind::Conditional { condition })
+            }
+            Some("linkThrow") => {
+                let link_name = attrs
+                    .ruleforge("linkName")
+                    .ok_or_else(|| IntermediateEventError::MissingField {
+                        field: "linkName".to_string(),
+                    })?
+                    .to_string();
+                Ok(IntermediateEventKind::LinkThrow { link_name })
+            }
+            Some("linkCatch") => {
+                let link_name = attrs
+                    .ruleforge("linkName")
+                    .ok_or_else(|| IntermediateEventError::MissingField {
+                        field: "linkName".to_string(),
+                    })?
+                    .to_string();
+                Ok(IntermediateEventKind::LinkCatch { link_name })
             }
             Some(other) => Err(IntermediateEventError::UnknownKind {
                 kind: other.to_string(),
@@ -190,8 +248,29 @@ pub struct IntermediateEventExecutor;
 impl NodeExecutor for IntermediateEventExecutor {
     async fn execute(
         &self,
+        _node: &FlowNode,
+        _ctx: &mut FlowContext,
+    ) -> Result<NodeResult, FlowError> {
+        // V5.32 — `execute_with` is the real entry point
+        // because `LinkThrow` needs the registry's `def` to
+        // resolve `def.link_targets[link_name]`. Other
+        // intermediate-event kinds (message / signal / timer
+        // / conditional / linkCatch / None) don't use `def`,
+        // but the dispatcher routes everything through
+        // `execute_with` for uniformity. Mirrors
+        // `CompensationThrowExecutor` / `SubProcessExecutor` /
+        // `ParallelGatewayExecutor` (V5.28 P6).
+        Err(FlowError::Unsupported(
+            "IntermediateEventExecutor requires execute_with (use dispatcher)"
+                .to_string(),
+        ))
+    }
+
+    async fn execute_with(
+        &self,
         node: &FlowNode,
         ctx: &mut FlowContext,
+        reg: &ExecutorRegistry,
     ) -> Result<NodeResult, FlowError> {
         let NodeKind::IntermediateEvent { attrs } = &node.kind else {
             return Err(FlowError::Unsupported(
@@ -212,7 +291,96 @@ impl NodeExecutor for IntermediateEventExecutor {
             IntermediateEventKind::Timer { duration } => {
                 catch_timer(node, ctx, duration)
             }
+            // ── V5.32 ─────────────────────────────────────────
+            IntermediateEventKind::Conditional { condition } => {
+                catch_conditional(node, ctx, &condition)
+            }
+            IntermediateEventKind::LinkThrow { link_name } => {
+                throw_link(node, reg, &link_name)
+            }
+            IntermediateEventKind::LinkCatch { .. } => {
+                // Routing was already done by the throw.
+                // The catch is a no-op `Continue` so the
+                // traverser follows the catch's outgoing
+                // edges normally.
+                Ok(NodeResult::Continue)
+            }
         }
+    }
+}
+
+/// V5.32 — Conditional intermediate catch path. `wait_ref`
+/// namespace is `conditional:<node_id>`. The condition text is
+/// stored in `SuspendInfo.payload` for observability only;
+/// v0 doesn't evaluate it. Resume is driven by an external
+/// agent that writes
+/// `current_awaiting_field = "conditional:<node_id>"` +
+/// `current_awaiting_value` to the suspended flow. Polling
+/// (V5.32+ scope) is the alternative resume path.
+fn catch_conditional(
+    node: &FlowNode,
+    ctx: &mut FlowContext,
+    condition: &str,
+) -> Result<NodeResult, FlowError> {
+    // Runtime validation: a conditional catch with an
+    // empty `<bpmn:condition>` body is a hard failure.
+    // This matches the missing-field semantic for
+    // message/signal: the executor surfaces a clear
+    // `FlowError::Action` for the in-editor user to fix.
+    if condition.is_empty() {
+        return Err(FlowError::Action(format!(
+            "conditional catch '{}': missing condition expression",
+            node.node_id
+        )));
+    }
+    let kind_ref = format!("conditional:{}", node.node_id);
+    if is_resume(ctx, &kind_ref) {
+        // External signal landed — resume. The value is
+        // whatever the upstream callback sent (v0 doesn't
+        // read it; we just check presence).
+        return Ok(NodeResult::Continue);
+    }
+    ctx.current_awaiting_field = Some(kind_ref.clone());
+    let payload = json!({
+        "node_id": node.node_id,
+        "event_type": "conditional",
+        "condition": condition,
+    });
+    Ok(NodeResult::Suspend(SuspendInfo {
+        wait_type: WaitType::AsyncData,
+        wait_ref: kind_ref,
+        next_retry_at: None,
+        payload,
+    }))
+}
+
+/// V5.32 — Link throw path. Looks up the matching catch
+/// node id in `def.link_targets[link_name]` and returns
+/// `NodeResult::Branch(catch_id)`. The traverser's
+/// `Branch(target) => self.next = Some(target)` arm routes
+/// directly to the catch — bypassing the throw's outgoing
+/// edges (which are a dead-letter path in BPMN).
+///
+/// On missing link name: hard `Failed` (BPMN 2.0 §9.3.2
+/// requires every link throw to have a matching catch; v0
+/// makes the failure explicit).
+fn throw_link(
+    node: &FlowNode,
+    reg: &ExecutorRegistry,
+    link_name: &str,
+) -> Result<NodeResult, FlowError> {
+    let def = reg.def.as_ref().ok_or_else(|| {
+        FlowError::Action(format!(
+            "linkThrow '{}': registry missing def",
+            node.node_id
+        ))
+    })?;
+    match def.link_targets.get(link_name) {
+        Some(catch_id) => Ok(NodeResult::Branch(catch_id.clone())),
+        None => Err(FlowError::Action(format!(
+            "linkThrow '{}': no linkCatch with name '{}'",
+            node.node_id, link_name
+        ))),
     }
 }
 
