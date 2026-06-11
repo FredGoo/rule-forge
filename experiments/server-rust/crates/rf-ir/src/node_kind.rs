@@ -26,7 +26,41 @@ use crate::attrs::Attrs;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NodeKind {
-    StartEvent,
+    /// `bpmn:startEvent`. V5.27 treated this as a
+    /// parameterless no-op; V5.28 P7 attaches
+    /// `attrs` to carry the **start trigger**
+    /// discriminator (mirrors `IntermediateEvent`'s
+    /// `eventType`):
+    ///
+    /// - no `startTrigger` (or `startTrigger="manual"`)
+    ///   — the **default** behaviour. The flow starts
+    ///   when the HTTP caller POSTs to
+    ///   `/ruleforge/evaluate`. The dispatcher's
+    ///   `StartEvent` arm is a no-op `Continue`.
+    /// - `startTrigger="message"` + `eventName` —
+    ///   **message start**. The dispatcher suspends
+    ///   with `AsyncData` + wait_ref
+    ///   `message:<eventName>` and the flow stays in
+    ///   the inflight store until a caller hits
+    ///   `POST /flow/start-by-message` with the same
+    ///   event name. (V5.28 P7 v0 supports a single
+    ///   registered flow per event name; multi-flow
+    ///   fan-out is V5.29 Multi-Instance.)
+    /// - `startTrigger="timer"` + `timerDuration` —
+    ///   **timer start**. The dispatcher is NOT
+    ///   called for a timer-start flow in v0 — the
+    ///   scheduler in `main.rs` is responsible for
+    ///   creating flow runs (timer scheduling is
+    ///   out of V5.28 P7 scope; the parser
+    ///   recognises the trigger so a future
+    ///   `TimerScheduler` can register it).
+    ///
+    /// `attrs` is **always present** (V5.28 P7) so
+    /// callers can read the trigger discriminator
+    /// uniformly; the parser fills it with an empty
+    /// `Attrs` for legacy BPMN files that don't set
+    /// `startTrigger`.
+    StartEvent { attrs: Attrs },
     EndEvent,
     ServiceTask {
         task_type: TaskType,

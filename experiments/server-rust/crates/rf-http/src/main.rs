@@ -4,6 +4,7 @@
 //! - `POST /ruleforge/evaluate`        run a flow synchronously
 //! - `POST /ruleforge/flow/decision`   resume a suspended (userTask) flow
 //! - `POST /ruleforge/flow/event`      deliver a message/signal to a suspended flow
+//! - `POST /ruleforge/flow/start-by-message`  start a message-triggered flow (V5.28 P7)
 //! - `POST /ruleforge/flow/invalidate` drop a flow_id from the cache
 //! - `GET  /ruleforge/flow/load`       proxy to the Java console
 //! - `GET  /health`                    liveness probe
@@ -30,7 +31,7 @@ use rf_executor::traverser::{traverse, TraverseOutcome};
 use rf_http::flow_def_repo::{FlowDefinitionRepo, HttpFlowLoader};
 use rf_http::flow_resolver::HttpFlowResolver;
 use rf_http::inflight::{InflightStore, PgInflightStore};
-use rf_http::routes::{decision, evaluate, event, health, invalidate, load};
+use rf_http::routes::{decision, evaluate, event, health, invalidate, load, start_by_message};
 use rf_http::state::AppState;
 use rf_rule::loader::load_dir;
 use rf_rule::mock::MockRuleEngine;
@@ -195,6 +196,10 @@ async fn main() -> Result<()> {
         .route(
             "/ruleforge/flow/event",
             axum::routing::post(event::deliver),
+        )
+        .route(
+            "/ruleforge/flow/start-by-message",
+            axum::routing::post(start_by_message::start_by_message),
         )
         .route(
             "/ruleforge/flow/invalidate",

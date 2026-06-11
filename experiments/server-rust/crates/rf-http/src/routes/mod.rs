@@ -6,3 +6,4 @@ pub mod event;
 pub mod health;
 pub mod invalidate;
 pub mod load;
+pub mod start_by_message;

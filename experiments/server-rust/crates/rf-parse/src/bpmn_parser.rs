@@ -132,7 +132,7 @@ impl BpmnXmlParser {
         let mut attached_boundaries: BTreeMap<String, Vec<String>> = BTreeMap::new();
         for n in nodes.values() {
             match &n.kind {
-                NodeKind::StartEvent => {
+                NodeKind::StartEvent { .. } => {
                     if start.is_some() {
                         return Err(IrError::MultipleStartEvents(process_id.clone()));
                     }
@@ -179,7 +179,7 @@ fn build_node_kind(
     ext: &Attrs,
 ) -> Result<Option<NodeKind>, IrError> {
     let kind = match local {
-        "startEvent" => Some(NodeKind::StartEvent),
+        "startEvent" => Some(NodeKind::StartEvent { attrs: ext.clone() }),
         "endEvent" => Some(NodeKind::EndEvent),
         "serviceTask" => {
             let task_type_raw = ext.ruleforge("taskType").ok_or_else(|| {
