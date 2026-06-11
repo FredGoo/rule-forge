@@ -40,6 +40,16 @@ pub struct ExecutorRegistry {
     /// `Continue` (manual) or `Suspend` (message /
     /// timer).
     pub start_event: Arc<dyn NodeExecutor>,
+    /// V5.29 — multi-instance wrapper. The
+    /// dispatcher consults this **before** the
+    /// per-kind arms for `ServiceTask` /
+    /// `ScriptTask` / `UserTask`: any task node
+    /// with `ruleforge:multiInstance = "true"` is
+    /// routed here. The wrapper itself reads
+    /// `reg.rule` / `reg.action` / `reg.script` /
+    /// `reg.user_task` to invoke the inner
+    /// executor.
+    pub multi_instance: Arc<dyn NodeExecutor>,
     /// `Option` so the default registry (used by unit tests that
     /// don't care about sub-flows) doesn't have to wire a
     /// resolver. `rf-http` sets this to an adapter that wraps
@@ -89,6 +99,10 @@ impl std::fmt::Debug for ExecutorRegistry {
                 &std::any::type_name_of_val(&*self.start_event),
             )
             .field(
+                "multi_instance",
+                &std::any::type_name_of_val(&*self.multi_instance),
+            )
+            .field(
                 "flow_resolver",
                 &self
                     .flow_resolver
@@ -126,6 +140,7 @@ impl ExecutorRegistry {
             boundary_event: Arc::new(crate::executors::boundary_event::BoundaryEventExecutor),
             sub_process: Arc::new(crate::executors::sub_process::SubProcessExecutor),
             start_event: Arc::new(crate::executors::start_event::StartEventExecutor),
+            multi_instance: Arc::new(crate::executors::multi_instance::MultiInstanceExecutor::new()),
             flow_resolver: None,
             def: None,
         }
@@ -153,6 +168,7 @@ impl Default for ExecutorRegistry {
             boundary_event: Arc::new(crate::executors::boundary_event::BoundaryEventExecutor),
             sub_process: Arc::new(crate::executors::sub_process::SubProcessExecutor),
             start_event: Arc::new(crate::executors::start_event::StartEventExecutor),
+            multi_instance: Arc::new(crate::executors::multi_instance::MultiInstanceExecutor::new()),
             flow_resolver: None,
             def: None,
         }
@@ -176,6 +192,22 @@ impl crate::rule_engine::RuleEngine for NoopRuleEngine {
     }
 }
 
+/// `task_kind_attrs` — V5.29 helper. Returns the
+/// `attrs` field of a task-kind `NodeKind` (any of
+/// `ServiceTask` / `ScriptTask` / `UserTask`) or
+/// `None` for non-task kinds. Used by the
+/// multi-instance gate to read the
+/// `multiInstance` attr without duplicating the
+/// match arms in `dispatch()`.
+fn task_kind_attrs(kind: &NodeKind) -> Option<&rf_ir::attrs::Attrs> {
+    match kind {
+        NodeKind::ServiceTask { attrs, .. }
+        | NodeKind::ScriptTask { attrs, .. }
+        | NodeKind::UserTask { attrs, .. } => Some(attrs),
+        _ => None,
+    }
+}
+
 /// Run a single node against the context. Exhaustive over `NodeKind` —
 /// a new variant is a compile error in this match.
 pub async fn dispatch(
@@ -183,6 +215,24 @@ pub async fn dispatch(
     ctx: &mut FlowContext,
     reg: &ExecutorRegistry,
 ) -> Result<NodeResult, FlowError> {
+    // V5.29 — multi-instance gate. ANY task kind
+    // (ServiceTask / ScriptTask / UserTask) with
+    // `ruleforge:multiInstance = "true"` is
+    // routed to the MI wrapper first, before
+    // dispatching on `task_type` / kind-specific
+    // arms. The wrapper either expands to N
+    // children (and returns Continue with the
+    // union-merged vars) or passes through to
+    // the inner executor (when the attr is
+    // absent / != "true").
+    if let Some(mi_attr) = task_kind_attrs(&node.kind)
+        .and_then(|a| a.ruleforge("multiInstance"))
+    {
+        if mi_attr == "true" {
+            return reg.multi_instance.execute_with(node, ctx, reg).await;
+        }
+    }
+
     match &node.kind {
         // V5.28 P7 — `StartEvent` is now a real executor
         // (manual → Continue, message → Suspend, timer →
