@@ -1,41 +1,57 @@
 //! BoundaryEventNodeExecutor — error / timer boundary on an activity edge.
 //!
 //! BPMN 2.0 boundary events sit on the perimeter of an activity
-//! (the `attachedToRef` attribute in the XML, which we currently
-//! ignore — the boundary's outgoing edges are the handler path).
-//! Two flavors in V5.27:
+//! (the `attachedToRef` attribute in the XML). Two flavors:
 //!
 //! - `errorBoundaryEvent` — fires when the attached activity
-//!   "throws" an error. In v0 we don't have explicit error
-//!   throwing from activities, so we model it as: the boundary
-//!   suspends waiting for a resume key of the form
-//!   `error:<errorRef-or-default>`. The main flow
-//!   continues via the activity's normal outgoing edge; the
-//!   boundary's outgoing edge is the handler path.
-//! - `timerBoundaryEvent` — fires after a duration. Same shape
-//!   as the IntermediateEvent timer, but tagged with
+//!   "throws" an error (an action sets
+//!   [`FlowContext::thrown_error`]). The boundary suspends
+//!   waiting for a resume key of the form
+//!   `error:<errorRef-or-default>`, OR — in V5.28 P1
+//!   "really attached" semantics — the
+//!   [`crate::traverser`] driver routes the activity's
+//!   outcome to the boundary's outgoing edges when the
+//!   activity throws (no visit, no suspend).
+//! - `timerBoundaryEvent` — fires after a duration. Same
+//!   shape as the IntermediateEvent timer, but tagged with
 //!   `event_type: "boundaryTimer"` so observability can
 //!   distinguish them.
 //!
+//! ## V5.28 P1 — really attached semantics
+//!
+//! V5.27 treated every boundary as a sibling node the
+//! traverser visits (sibling-style). V5.28 P1 introduces
+//! "really attached" routing: when the activity throws
+//! an error and a boundary with a matching `errorRef`
+//! is `attachedToRef` the activity, the traverser
+//! short-circuits the activity's normal outgoing and
+//! routes to the boundary's outgoing (the handler
+//! path). The boundary is **not visited** in this
+//! path — the executor below only runs for
+//! sibling-style boundaries (where the boundary is on
+//! a sequenceFlow in the main path) and for "second
+//! chance" resume handling (where a caller resumes
+//! with `current_awaiting_field` matching the
+//! boundary's wait_ref).
+//!
 //! ## Why a separate executor
 //!
-//! The v0 dispatcher pattern is "visit one node, get one
-//! NodeResult, route to next_node". A boundary event is its own
-//! node that the traversal visits. That's a simplification of
-//! true BPMN semantics (where the boundary intercepts the
-//! activity's outcome), but it's good enough for v0 and keeps
-//! the dispatch exhaustive — adding `BoundaryEvent` to
-//! [`NodeKind`] is a compile error in the match arm if not
-//! handled here.
+//! The dispatcher pattern is "visit one node, get one
+//! NodeResult, route to next_node". A boundary event
+//! visited via a sequenceFlow is a regular node that
+//! goes through this pattern. A "really attached"
+//! boundary is handled in the traverser's
+//! `attached_boundaries` lookup before `next_node` is
+//! called — see [`crate::traverser::traverse_branch`].
 //!
 //! ## Resume
 //!
-//! Like [`IntermediateEventExecutor`], the resume path checks
-//! `current_awaiting_field` against the boundary's wait_ref. If
-//! a caller (HTTP `/flow/event` handler) already wrote the
-//! matching field and value, this is a continuation — return
-//! `Continue` so the boundary's outgoing edge picks up the
-//! handler path.
+//! Like [`IntermediateEventExecutor`], the resume path
+//! checks `current_awaiting_field` against the
+//! boundary's wait_ref. If a caller (HTTP `/flow/event`
+//! handler) already wrote the matching field and value,
+//! this is a continuation — return `Continue` so the
+//! boundary's outgoing edge picks up the handler path.
 
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
@@ -129,11 +145,27 @@ impl NodeExecutor for BoundaryEventExecutor {
         node: &FlowNode,
         ctx: &mut FlowContext,
     ) -> Result<NodeResult, FlowError> {
-        let NodeKind::BoundaryEvent { attrs } = &node.kind else {
+        let NodeKind::BoundaryEvent { attached_to, attrs } = &node.kind else {
             return Err(FlowError::Unsupported(
                 "BoundaryEventExecutor on non-BoundaryEvent".to_string(),
             ));
         };
+        // V5.28 P1 — `attached_to` is the activity id from
+        // `bpmn:attachedToRef`. The "really attached" path
+        // routes the activity's outcome to the boundary's
+        // outgoing edges **without visiting this node** —
+        // see [`crate::traverser::traverse_branch`]. The
+        // executor below only runs when the boundary is on
+        // a sequenceFlow in the main path (sibling-style,
+        // V5.27 back-compat) or when a caller resumes a
+        // suspended sibling boundary. We trace the
+        // `attached_to` value so observability can tell
+        // the two modes apart.
+        tracing::debug!(
+            node_id = %node.node_id,
+            attached_to = ?attached_to,
+            "BoundaryEventExecutor reached (sibling-style path)"
+        );
         let kind = BoundaryEventKind::from_attrs(attrs)
             .map_err(|e| FlowError::Action(e.to_string()))?;
         match kind {

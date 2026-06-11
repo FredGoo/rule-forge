@@ -122,8 +122,16 @@ impl BpmnXmlParser {
 
         let mut start: Option<String> = None;
         let mut ends: Vec<String> = Vec::new();
+        // V5.28 P1 — build the `activity_id → boundary_ids`
+        // reverse-lookup. BPMN allows multiple boundaries
+        // on one activity (one per `errorRef`), so the
+        // value is a `Vec`. We insert in document order
+        // (BTreeMap iteration is stable), which means
+        // when an activity throws, the first matching
+        // boundary in document order wins.
+        let mut attached_boundaries: BTreeMap<String, Vec<String>> = BTreeMap::new();
         for n in nodes.values() {
-            match n.kind {
+            match &n.kind {
                 NodeKind::StartEvent => {
                     if start.is_some() {
                         return Err(IrError::MultipleStartEvents(process_id.clone()));
@@ -131,6 +139,15 @@ impl BpmnXmlParser {
                     start = Some(n.node_id.clone());
                 }
                 NodeKind::EndEvent => ends.push(n.node_id.clone()),
+                NodeKind::BoundaryEvent {
+                    attached_to: Some(activity_id),
+                    ..
+                } => {
+                    attached_boundaries
+                        .entry(activity_id.clone())
+                        .or_default()
+                        .push(n.node_id.clone());
+                }
                 _ => {}
             }
         }
@@ -148,6 +165,7 @@ impl BpmnXmlParser {
             edges,
             start,
             ends,
+            attached_boundaries,
             source_xml: bpmn_xml.to_string(),
             source_xml_hash,
             parsed_at: Utc::now(),
@@ -214,7 +232,23 @@ fn build_node_kind(
         "exclusiveGateway" => Some(NodeKind::ExclusiveGateway { attrs: ext.clone() }),
         "parallelGateway" => Some(NodeKind::ParallelGateway { attrs: ext.clone() }),
         "intermediateCatchEvent" => Some(NodeKind::IntermediateEvent { attrs: ext.clone() }),
-        "boundaryEvent" => Some(NodeKind::BoundaryEvent { attrs: ext.clone() }),
+        // V5.28 P1 — read `attachedToRef` from the
+        // BPMN-core attribute namespace (not
+        // `ruleforge:` / `flowable:`). A boundary
+        // without `attachedToRef` is a sibling-style
+        // boundary (V5.27 behaviour, kept for
+        // back-compat) — the executor suspends with
+        // `error:<ref>` or timer wait_ref.
+        "boundaryEvent" => {
+            let attached_to = el
+                .attribute((NS_BPMN, "attachedToRef"))
+                .or_else(|| el.attribute("attachedToRef"))
+                .map(|s| s.to_string());
+            Some(NodeKind::BoundaryEvent {
+                attached_to,
+                attrs: ext.clone(),
+            })
+        }
         "subProcess" => Some(NodeKind::SubProcess { attrs: ext.clone() }),
         _ => None,
     };
