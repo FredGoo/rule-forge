@@ -4,12 +4,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruleforge.decision.entity.DecisionFlowState;
 import com.ruleforge.decision.exception.FlowExecutionException;
+import com.ruleforge.decision.flow.engine.FlowContext;
 import com.ruleforge.decision.mapper.DecisionFlowStateMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -83,6 +85,43 @@ public class FlowStatePersistenceService {
             log.warn("Failed to deserialize row_vars for flowRunId={}: {}",
                 state.getFlowRunId(), e.getMessage());
             return Collections.emptyMap();
+        }
+    }
+
+    /**
+     * V5.33 A0 — 序列化 ctx.joinArrivals 到 join_arrivals JSON,写状态行。
+     * 格式: {"join_node_id": arrived_count}。
+     */
+    public void serializeJoinArrivals(DecisionFlowState state, Map<String, Integer> joinArrivals) {
+        if (joinArrivals == null || joinArrivals.isEmpty()) {
+            state.setJoinArrivals(null);
+            return;
+        }
+        try {
+            state.setJoinArrivals(MAPPER.writeValueAsString(joinArrivals));
+        } catch (Exception e) {
+            log.warn("Failed to serialize join_arrivals: {}", e.getMessage());
+            state.setJoinArrivals("{}");
+        }
+    }
+
+    /**
+     * V5.33 A0 — 反序列化 join_arrivals JSON 回 ctx.joinArrivals。失败降级到空 Map。
+     */
+    public void deserializeJoinArrivals(DecisionFlowState state, FlowContext ctx) {
+        String json = state.getJoinArrivals();
+        if (json == null || json.isBlank()) {
+            ctx.setJoinArrivals(new HashMap<>());
+            return;
+        }
+        try {
+            Map<String, Integer> map = MAPPER.readValue(json,
+                new TypeReference<Map<String, Integer>>() {});
+            ctx.setJoinArrivals(map);
+        } catch (Exception e) {
+            log.warn("Failed to deserialize join_arrivals for flowRunId={}: {}",
+                state.getFlowRunId(), e.getMessage());
+            ctx.setJoinArrivals(new HashMap<>());
         }
     }
 

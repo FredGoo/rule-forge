@@ -99,7 +99,7 @@ public class BpmnXmlParser {
 
             Map<String, String> ext = extractExtensionAttrs(el);
             List<String> outgoing = new ArrayList<>();
-            // 收集所有 outgoing 引用
+            // 收集所有 outgoing 引用(从子元素 <bpmn:outgoing> 读)
             for (Element out : (List<Element>) el.elements()) {
                 if ("outgoing".equals(out.getName())) {
                     outgoing.add(out.getTextTrim());
@@ -159,6 +159,29 @@ public class BpmnXmlParser {
             }
             boolean isDefault = conditionExpression == null && percent == null;
             edges.add(new SequenceFlow(id, src, tgt, conditionExpression, percent, isDefault, ext));
+        }
+
+        // V5.33 A0 — 兜底:如果节点的 outgoingIds 仍为空,从 edges 按 sourceRef 推导。
+        // bpmn-js 导出的 BPMN 偶尔用 self-closing 节点没带 <bpmn:outgoing> 子元素,
+        // 这种情况下我们靠 sequenceFlow 的 sourceRef 反推 outgoing edge id 列表。
+        // 已经显式声明的 outgoing 不会被覆盖。
+        // 注意:nodes 是 LinkedHashMap,FlowNode 的 outgoingIds 是 List.copyOf 不可变;
+        // 这里重建节点,把 sourceRef 反推的 edge id 合并进去。
+        for (java.util.Map.Entry<String, FlowNode> entry : nodes.entrySet()) {
+            FlowNode n = entry.getValue();
+            if (!n.getOutgoingIds().isEmpty()) continue;
+            List<String> derived = new ArrayList<>();
+            for (SequenceFlow e : edges) {
+                if (n.getNodeId().equals(e.getSourceId())) {
+                    derived.add(e.getId());
+                }
+            }
+            if (!derived.isEmpty()) {
+                FlowNode replaced = new FlowNode(n.getNodeId(), n.getType(), n.getName(),
+                    n.getExtensionAttrs(), n.getScriptText(), n.getScriptFormat(),
+                    derived, n.isAsync());
+                nodes.put(entry.getKey(), replaced);
+            }
         }
 
         // 找 startNode / endNodes
