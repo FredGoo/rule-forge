@@ -1,4 +1,4 @@
-//! 9 concrete NodeExecutor implementations.
+//! 10 concrete NodeExecutor implementations.
 //!
 //! - `RuleExecutor`   — delegates to `dyn RuleEngine` (mock for Phase 4)
 //! - `ActionExecutor` — calls `fn(&mut Vars)` from a mock registry
@@ -19,11 +19,20 @@
 //!   start = `Suspend` with `message:<eventName>` wait_ref; timer start
 //!   is `Unsupported` (the scheduler in `main.rs` runs timer flows
 //!   directly without going through the dispatcher).
+//! - `MultiInstanceExecutor` — V5.29. Wraps any task kind with
+//!   `multiInstanceLoopCharacteristics` semantics. Parallel = in-memory
+//!   for-loop on a cloned ctx, sequential = in-memory for-loop on the
+//!   same ctx. Reuses V5.28 P6's `Fork` data type internally for the
+//!   data-model contract (per-child `Vars` clone), but routes through
+//!   `NodeResult::Continue` at the outer level (the wrapper runs the
+//!   children synchronously — see the executor's docstring for why
+//!   `NodeResult::Fork` would re-fire the wrapper recursively).
 
 pub mod action;
 pub mod boundary_event;
 pub mod gateway;
 pub mod intermediate_event;
+pub mod multi_instance;
 pub mod rule;
 pub mod script;
 pub mod start_event;
@@ -34,6 +43,7 @@ pub use action::{ActionExecutor, ActionFn, MockActionRegistry};
 pub use boundary_event::{BoundaryEventError, BoundaryEventExecutor, BoundaryEventKind};
 pub use gateway::GatewayExecutor;
 pub use intermediate_event::{IntermediateEventError, IntermediateEventExecutor, IntermediateEventKind};
+pub use multi_instance::{MultiInstanceError, MultiInstanceExecutor};
 pub use rule::RuleExecutor;
 pub use script::ScriptExecutor;
 pub use start_event::{StartEventError, StartEventExecutor, StartTrigger};
