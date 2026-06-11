@@ -10,6 +10,7 @@
 
 use std::sync::Arc;
 
+use rf_ir::flow_definition::FlowDefinition;
 use rf_ir::flow_node::FlowNode;
 use rf_ir::node_kind::NodeKind;
 
@@ -38,6 +39,20 @@ pub struct ExecutorRegistry {
     /// resolver. `rf-http` sets this to an adapter that wraps
     /// `FlowDefinitionRepo::get_or_load`.
     pub flow_resolver: Option<Arc<dyn FlowResolver>>,
+    /// V5.28 — the `FlowDefinition` this registry is running.
+    /// `GatewayExecutor::execute` for a `ParallelGateway` reads
+    /// this to resolve outgoing edge targets (the `FlowNode`
+    /// itself only carries edge `id`s, not target `id`s). The
+    /// `traverse()` driver auto-wires this from its
+    /// `def` argument if the caller didn't set it explicitly,
+    /// so existing tests that build a registry with
+    /// `with_rule_engine(...)` and call `traverse(def, ctx, reg)`
+    /// still work without changes. Set this to `None` for
+    /// unit tests that exercise executors in isolation
+    /// without a flow definition (the gateway executor
+    /// errors with a clear message if it's `None` and a
+    /// parallel gateway is dispatched).
+    pub def: Option<Arc<FlowDefinition>>,
 }
 
 // Manual Debug — the inner `dyn NodeExecutor` doesn't require Debug, so
@@ -71,6 +86,14 @@ impl std::fmt::Debug for ExecutorRegistry {
                     .map(|r| std::any::type_name_of_val(&**r))
                     .unwrap_or("None"),
             )
+            .field(
+                "def",
+                &self
+                    .def
+                    .as_ref()
+                    .map(|d| d.process_id.clone())
+                    .unwrap_or_else(|| "None".to_string()),
+            )
             .finish()
     }
 }
@@ -93,6 +116,7 @@ impl ExecutorRegistry {
             boundary_event: Arc::new(crate::executors::boundary_event::BoundaryEventExecutor),
             sub_process: Arc::new(crate::executors::sub_process::SubProcessExecutor),
             flow_resolver: None,
+            def: None,
         }
     }
 }
@@ -118,6 +142,7 @@ impl Default for ExecutorRegistry {
             boundary_event: Arc::new(crate::executors::boundary_event::BoundaryEventExecutor),
             sub_process: Arc::new(crate::executors::sub_process::SubProcessExecutor),
             flow_resolver: None,
+            def: None,
         }
     }
 }
@@ -160,8 +185,14 @@ pub async fn dispatch(
         },
         NodeKind::ScriptTask { .. } => reg.script.execute(node, ctx).await,
         NodeKind::UserTask { .. } => reg.user_task.execute(node, ctx).await,
-        NodeKind::ExclusiveGateway { .. } | NodeKind::ParallelGateway { .. } => {
-            reg.gateway.execute(node, ctx).await
+        NodeKind::ExclusiveGateway { .. } => reg.gateway.execute(node, ctx).await,
+        // ParallelGateway needs the registry's `def` to resolve
+        // outgoing edge targets. The `GatewayExecutor` overrides
+        // `execute_with` to read `reg.def`; the trait's default
+        // `execute_with` would just call `execute` (which
+        // doesn't have access to reg).
+        NodeKind::ParallelGateway { .. } => {
+            reg.gateway.execute_with(node, ctx, reg).await
         }
         NodeKind::IntermediateEvent { .. } => {
             reg.intermediate_event.execute(node, ctx).await

@@ -6,11 +6,12 @@
 //! the next gateway's binary-decision routing (mirrors Java's
 //! `currentAwaitingField` mechanism).
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::vars::Vars;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FlowContext {
     /// UUID for this run, links to `rust_decision_flow_state.flow_run_id`.
     pub flow_run_id: String,

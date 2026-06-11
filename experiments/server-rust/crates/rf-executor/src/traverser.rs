@@ -16,6 +16,17 @@
 //! code path handles all transitions, with `instanceof` checks scattered
 //! through the codebase to enforce "completed can't be resumed". The
 //! type-state makes that check at compile time.
+//!
+//! ## Parallel split (V5.28)
+//!
+//! A `NodeResult::Fork(Vec<ForkBranch>)` is produced by
+//! `GatewayExecutor` for a `parallelGateway` node. The
+//! `traverse()` driver handles it inline by running each
+//! branch recursively via `traverse()` and merging the
+//! results. V5.28 v0 has no join synchronization — the
+//! parent's "post-fork" continuation is the end of flow.
+//! See [`node_result::ForkBranch`] for the per-branch
+//! payload.
 
 use std::collections::HashSet;
 use std::marker::PhantomData;
@@ -27,7 +38,7 @@ use crate::dispatch::{dispatch, ExecutorRegistry};
 use crate::error::FlowError;
 use crate::flow_context::FlowContext;
 use crate::next_node::next_node;
-use crate::node_result::{NodeResult, SuspendInfo};
+use crate::node_result::{ForkBranch, NodeResult, SuspendInfo};
 
 const MAX_STEPS: usize = 1000;
 
@@ -39,13 +50,98 @@ pub fn traverse(
     ctx: FlowContext,
     reg: Arc<ExecutorRegistry>,
 ) -> TraverseOutcome {
-    let mut t = Traverser::<Running>::begin(def, ctx, reg);
+    // V5.28 — auto-wire the def into the registry so executors
+    // that need to read it (e.g. `GatewayExecutor` for a
+    // `ParallelGateway` resolving outgoing edge targets) can.
+    // Callers can pre-set `reg.def` to skip the clone; if
+    // they don't, we clone the Arc into a fresh registry.
+    // Arc clone is cheap (atomic increment) so this is
+    // not a hot path concern.
+    let reg = if reg.def.is_some() {
+        reg
+    } else {
+        let mut r = (*reg).clone();
+        r.def = Some(Arc::clone(&def));
+        Arc::new(r)
+    };
+    // Hand off to `traverse_branch` so that the top-level
+    // entry and per-branch entries share a single
+    // implementation. The top-level call starts at
+    // `def.start`; branch calls start at the branch's
+    // outgoing-edge target.
+    traverse_branch(Arc::clone(&def), def.start.clone(), ctx, reg, HashSet::new())
+}
+
+/// Run a sub-traversal starting at a specific node id.
+/// Used for parallel-fork branches (and, in principle,
+/// any other "resume from here" entry point). Each branch
+/// gets its own `FlowContext` (cloned by the gateway
+/// executor) and its own `visited` set, so writes are
+/// isolated and loop detection is local.
+fn traverse_branch(
+    def: Arc<FlowDefinition>,
+    start: String,
+    ctx: FlowContext,
+    reg: Arc<ExecutorRegistry>,
+    visited: HashSet<String>,
+) -> TraverseOutcome {
+    let mut t = Traverser::<Running>::begin_at(def, start, ctx, reg, visited);
     loop {
         match t.step() {
             Ok(StepOutcome::Continue(next)) => t = next,
             Ok(StepOutcome::Done(done)) => return TraverseOutcome::Completed(done),
             Ok(StepOutcome::Suspended(suspended, info)) => {
                 return TraverseOutcome::Suspended(suspended, info)
+            }
+            Ok(StepOutcome::Fork(parent, branches)) => {
+                // Nested fork (a branch that itself contains
+                // a parallel gateway). Recurse via
+                // `traverse_branch` so each sub-branch
+                // starts at its outgoing-edge target.
+                let mut last_ctx = parent.ctx.clone();
+                let mut merged_visited = parent.visited.clone();
+                for branch in branches {
+                    let outcome = traverse_branch(
+                        parent.def.clone(),
+                        branch.start,
+                        branch.ctx,
+                        parent.reg.clone(),
+                        branch.visited,
+                    );
+                    match outcome {
+                        TraverseOutcome::Completed(c) => {
+                            // Last-branch-wins for the
+                            // context. For the visited
+                            // set, take the union so
+                            // the parent's loop detection
+                            // is correct after the fork
+                            // (any node any branch
+                            // visited is "off-limits" for
+                            // re-visit by the parent).
+                            last_ctx = c.ctx;
+                            merged_visited.extend(c.visited.iter().cloned());
+                        }
+                        TraverseOutcome::Suspended(s, info) => {
+                            return TraverseOutcome::Suspended(s, info);
+                        }
+                        TraverseOutcome::Failed(f, err) => {
+                            return TraverseOutcome::Failed(f, err);
+                        }
+                    }
+                }
+                // All sub-branches completed. The branch's
+                // continuation is the merged context. V5.28
+                // v0 has no join semantics — the parent
+                // finishes here (next = None).
+                let new_parent = Traverser::<Running> {
+                    def: parent.def,
+                    ctx: last_ctx,
+                    reg: parent.reg,
+                    next: None,
+                    visited: merged_visited,
+                    _state: PhantomData,
+                };
+                t = new_parent;
             }
             Err((failed, err)) => return TraverseOutcome::Failed(failed, err),
         }
@@ -130,6 +226,29 @@ impl Traverser<Running> {
         }
     }
 
+    /// Construct a traverser that starts at a specific node id
+    /// rather than `def.start`. Used by the parallel-split
+    /// fork handler to run each branch from its outgoing
+    /// edge's target. The `visited` set is passed in (cloned
+    /// from the parent) so each branch's loop detection is
+    /// local — siblings don't interfere with each other.
+    pub fn begin_at(
+        def: Arc<FlowDefinition>,
+        start: String,
+        ctx: FlowContext,
+        reg: Arc<ExecutorRegistry>,
+        visited: HashSet<String>,
+    ) -> Self {
+        Self {
+            def,
+            ctx,
+            reg,
+            next: Some(start),
+            visited,
+            _state: PhantomData,
+        }
+    }
+
     /// Take a single step. The executor is intentionally synchronous-style
     /// (`async` for future-proofing when Phase 4 adds real async nodes, but
     /// Phase 3's `dispatch` is pure-CPU).
@@ -177,6 +296,24 @@ impl Traverser<Running> {
             NodeResult::Branch(target) => {
                 self.next = Some(target);
                 Ok(StepOutcome::Continue(self))
+            }
+            NodeResult::Fork(branches) => {
+                // The GatewayExecutor built the branches —
+                // we just hand them up to the driver. The
+                // driver runs each branch via
+                // `traverse_loop()`, merges results, and
+                // returns a fresh `Traverser<Running>` with
+                // `next = None` (V5.28 v0: parallel split
+                // has no join semantics).
+                let parent = Traverser::<Running> {
+                    def: self.def,
+                    ctx: self.ctx,
+                    reg: self.reg,
+                    next: None,
+                    visited: self.visited,
+                    _state: PhantomData,
+                };
+                Ok(StepOutcome::Fork(parent, branches))
             }
             NodeResult::Suspend(info) => {
                 let suspended = self.into_suspended();
@@ -240,4 +377,10 @@ pub enum StepOutcome {
     Continue(Traverser<Running>),
     Done(Traverser<Completed>),
     Suspended(Traverser<Suspended>, SuspendInfo),
+    /// Parallel split — the driver should run each branch
+    /// via `traverse_loop` and continue the parent with
+    /// the merged context. The `Traverser<Running>` here
+    /// carries the parent's `def` / `reg` / `visited` set
+    /// (cloned into the branches' `ForkBranch.visited`).
+    Fork(Traverser<Running>, Vec<ForkBranch>),
 }

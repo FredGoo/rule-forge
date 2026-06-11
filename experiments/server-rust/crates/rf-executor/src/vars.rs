@@ -25,13 +25,13 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// 单调递增的 fact ID。Java 端用 Object identity(无 ID),Rust 这边
 /// 给每个 fact 分配一个 id,主要是为了 (a) FactTracker 跟踪 join
 /// 状态 (b) class_index 用 id set 表达。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct FactId(pub u64);
 
 /// 单调递增的 fire epoch,每 `reset_fire_epoch()` 一次 +1。
@@ -43,17 +43,26 @@ pub type FireEpoch = u64;
 /// 通配 class name,对应 Java 端 `"__*__"`。
 pub const WILDCARD_CLASS: &str = "__*__";
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Vars {
     /// facts — RETE working memory
     pub facts: BTreeMap<FactId, Value>,
     /// fact → class 反向索引
     pub fact_class: BTreeMap<FactId, String>,
     /// class → facts 索引
+    /// V5.28 — derived as `Serialize`/`Deserialize` so that
+    /// `ForkBranch` (which carries a `FlowContext` which
+    /// carries a `Vars`) can derive them too. The `Vars` is
+    /// only ever serialized in the `Fork` path of
+    /// `NodeResult`, which is purely in-memory and never
+    /// hits the wire or DB.
+    #[serde(default)]
     class_index: BTreeMap<String, BTreeSet<FactId>>,
     /// var assignments(rule input/output 共享通道,path → value)
     pub var_assigns: BTreeMap<String, Value>,
+    #[serde(default)]
     next_fact_id: u64,
+    #[serde(default)]
     fire_epoch: u64,
 }
 
