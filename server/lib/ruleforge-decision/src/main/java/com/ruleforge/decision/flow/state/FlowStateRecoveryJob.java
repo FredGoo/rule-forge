@@ -82,6 +82,8 @@ public class FlowStateRecoveryJob {
             ctx.setFlowRunId(state.getFlowRunId());
             ctx.setCurrentNodeId(state.getCurrentNodeId());
             ctx.setVars(persistence.deserializeVars(state));
+            // V5.33 A0 — 反序列化 join_arrivals JSON 回 ctx.joinArrivals
+            persistence.deserializeJoinArrivals(state, ctx);
 
             // 4. resume
             log.info("[FLOW-RECOVERY] resuming flowRunId={} from node={}",

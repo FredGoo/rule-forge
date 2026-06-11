@@ -58,6 +58,13 @@ public class DecisionFlowState {
     @TableField("row_vars")
     private String rowVars;
 
+    /**
+     * V5.33 A0 — fork/join 计数器 JSON 快照。
+     * 格式: {"join_node_id": arrived_count}。resume 时反序列化回 ctx.joinArrivals。
+     */
+    @TableField("join_arrivals")
+    private String joinArrivals;
+
     @TableField("row_entity_snapshot")
     private String rowEntitySnapshot;
 
