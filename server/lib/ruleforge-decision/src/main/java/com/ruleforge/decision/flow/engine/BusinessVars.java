@@ -57,4 +57,14 @@ public class BusinessVars {
     public void setOutputModel(Object outputModel) {
         this.outputModel = outputModel;
     }
+
+    /**
+     * 工厂:从一个 vars map 直接构造(走 {@link #addVars(Map)} 防御性拷贝)。
+     * 常用在反序列化 / Resume 路径 — 调用方拿到 map,需要装进一个 BusinessVars。
+     */
+    public static BusinessVars from(Map<String, Object> vars) {
+        BusinessVars bv = new BusinessVars();
+        bv.addVars(vars);
+        return bv;
+    }
 }

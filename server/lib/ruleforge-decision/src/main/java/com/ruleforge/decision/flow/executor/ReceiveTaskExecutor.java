@@ -71,18 +71,18 @@ public class ReceiveTaskExecutor implements NodeExecutor {
         String channel = MessageKind.channelFor(MessageKind.Message.INSTANCE, messageRef);
 
         MessageBus.Subscription sub = bus.subscribe(channel, flowResumer::resumeFromMessage);
-        ctx.addBusSubscription(sub);
+        ctx.suspend().register(sub);
 
         log.info("[RECEIVE-TASK] flowRunId={} nodeId={} messageRef={} channel={} → subscribed",
-            ctx.getFlowRunId(), node.getNodeId(), messageRef, channel);
+            ctx.identity().flowRunId(), node.getNodeId(), messageRef, channel);
 
         throw new AsyncNodeSuspendException(
             node.getNodeId(), "RECEIVE_TASK",
             AsyncNodeSuspendException.WAIT_TYPE_ASYNC_DATA, channel,
             Map.of(
                 "messageRef", messageRef,
-                "flowRunId", ctx.getFlowRunId(),
-                "flowId", ctx.getCurrentBpmn() != null
+                "flowRunId", ctx.identity().flowRunId(),
+                "flowId", ctx.currentBpmn() != null
                     ? "" /* 当前单 pool 走 FlowDefinitionRepo,flowId 由 engine.resume 从 state 拿 */
                     : ""
             ),

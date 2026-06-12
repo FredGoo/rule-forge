@@ -73,10 +73,10 @@ class FlowNodeRunnerForkJoinTest {
                     + node.attr("ruleforge", "method"));
             }
             if (writesVar != null) {
-                context.getVars().put(writesVar, writesValue);
+                context.vars().getVars().put(writesVar, writesValue);
             }
             if (capture != null) {
-                capture.set(new HashMap<>(context.getVars()));
+                capture.set(new HashMap<>(context.vars().getVars()));
             }
         }
     }
@@ -125,8 +125,7 @@ class FlowNodeRunnerForkJoinTest {
     }
 
     private FlowContext newCtx(String flowRunId) {
-        FlowContext ctx = new FlowContext();
-        ctx.setFlowRunId(flowRunId);
+        FlowContext ctx = FlowContext.forFlow(flowRunId, "test-flow", null);
         return ctx;
     }
 
@@ -141,12 +140,12 @@ class FlowNodeRunnerForkJoinTest {
             AtomicReference<Map<String, Object>> cap2 = new AtomicReference<>();
             MultiMethodActionExecutor action = new MultiMethodActionExecutor()
                 .register("write_a", (n, c) -> {
-                    c.getVars().put("var_a", "alpha");
-                    cap1.set(new HashMap<>(c.getVars()));
+                    c.vars().getVars().put("var_a", "alpha");
+                    cap1.set(new HashMap<>(c.vars().getVars()));
                 })
                 .register("write_b", (n, c) -> {
-                    c.getVars().put("var_b", "beta");
-                    cap2.set(new HashMap<>(c.getVars()));
+                    c.vars().getVars().put("var_b", "beta");
+                    cap2.set(new HashMap<>(c.vars().getVars()));
                 });
 
             String xml = """
@@ -187,8 +186,8 @@ class FlowNodeRunnerForkJoinTest {
         @DisplayName("Given 两 branch 写同名 var,When fork+join 推进,Then 末班胜出")
         void parallel_fork_union_merges_branch_vars_with_last_wins_collision() {
             MultiMethodActionExecutor action = new MultiMethodActionExecutor()
-                .register("write_x1", (n, c) -> c.getVars().put("var_x", 1))
-                .register("write_x2", (n, c) -> c.getVars().put("var_x", 2))
+                .register("write_x1", (n, c) -> c.vars().getVars().put("var_x", 1))
+                .register("write_x2", (n, c) -> c.vars().getVars().put("var_x", 2))
                 .register("noop", (n, c) -> { /* noop */ });
 
             String xml = """
@@ -219,7 +218,7 @@ class FlowNodeRunnerForkJoinTest {
             runner.traverse(def, ctx, def.getStartNodeId());
 
             // join 后 var_x 应是 1 或 2(末班胜出,具体哪个取决于遍历顺序)
-            Integer varX = (Integer) ctx.getVars().get("var_x");
+            Integer varX = (Integer) ctx.vars().getVars().get("var_x");
             assertNotNull(varX);
             assertTrue(varX == 1 || varX == 2, "var_x should be 1 or 2 (last-wins collision), got: " + varX);
         }
@@ -229,9 +228,9 @@ class FlowNodeRunnerForkJoinTest {
         void parallel_join_synchronizes_two_branches_then_routes_through_post_join_node() {
             AtomicReference<Map<String, Object>> postCapture = new AtomicReference<>();
             MultiMethodActionExecutor action = new MultiMethodActionExecutor()
-                .register("write_b1", (n, c) -> c.getVars().put("var_b1", "from_b1"))
-                .register("write_b2", (n, c) -> c.getVars().put("var_b2", "from_b2"))
-                .register("post", (n, c) -> postCapture.set(new HashMap<>(c.getVars())));
+                .register("write_b1", (n, c) -> c.vars().getVars().put("var_b1", "from_b1"))
+                .register("write_b2", (n, c) -> c.vars().getVars().put("var_b2", "from_b2"))
+                .register("post", (n, c) -> postCapture.set(new HashMap<>(c.vars().getVars())));
 
             String xml = """
                 <?xml version="1.0" encoding="UTF-8"?>
@@ -270,8 +269,8 @@ class FlowNodeRunnerForkJoinTest {
         @DisplayName("Given 无 join 节点(P0 fallback),When 跑完,Then 各 branch 跑到底,vars 仍 union")
         void parallel_join_missing_falls_back_to_p0_behavior() {
             MultiMethodActionExecutor action = new MultiMethodActionExecutor()
-                .register("write_a", (n, c) -> c.getVars().put("var_a", "alpha"))
-                .register("write_b", (n, c) -> c.getVars().put("var_b", "beta"));
+                .register("write_a", (n, c) -> c.vars().getVars().put("var_a", "alpha"))
+                .register("write_b", (n, c) -> c.vars().getVars().put("var_b", "beta"));
 
             String xml = """
                 <?xml version="1.0" encoding="UTF-8"?>
@@ -298,8 +297,8 @@ class FlowNodeRunnerForkJoinTest {
             runner.traverse(def, ctx, def.getStartNodeId());
 
             // vars union 后应该有两个 var
-            assertTrue(ctx.getVars().containsKey("var_a"));
-            assertTrue(ctx.getVars().containsKey("var_b"));
+            assertTrue(ctx.vars().getVars().containsKey("var_a"));
+            assertTrue(ctx.vars().getVars().containsKey("var_b"));
         }
     }
 
@@ -329,7 +328,7 @@ class FlowNodeRunnerForkJoinTest {
         @DisplayName("Given 一 branch 遇 userTask suspend,When traverse,Then 整 flow 走完所有 active token(无更多)就停 — 不抛错")
         void parallel_fork_async_branch_does_not_crash_above() {
             MultiMethodActionExecutor action = new MultiMethodActionExecutor()
-                .register("ok", (n, c) -> c.getVars().put("var_a", "alpha"));
+                .register("ok", (n, c) -> c.vars().getVars().put("var_a", "alpha"));
             NodeExecutor userTask = new SuspendingUserTask();
             String xml = """
                 <?xml version="1.0" encoding="UTF-8"?>

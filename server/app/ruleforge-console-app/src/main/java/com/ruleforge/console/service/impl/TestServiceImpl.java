@@ -78,15 +78,19 @@ public class TestServiceImpl implements TestService {
                     flowVariables.putAll((Map<String, Object>) fact);
                 }
             }
-            FlowContext flowCtx = new FlowContext();
-            flowCtx.setFlowRunId(UUID.randomUUID().toString());
-            flowCtx.setVars(new HashMap<>(flowVariables));
-            flowCtx.setSession(session);
+            // V5.39 A1:4 参构造
+            FlowContext flowCtx = new FlowContext(
+                new com.ruleforge.decision.flow.engine.FlowIdentity(
+                    UUID.randomUUID().toString(), flowId, null),
+                com.ruleforge.decision.flow.engine.BusinessVars.from(new HashMap<>(flowVariables)),
+                new com.ruleforge.decision.flow.engine.ReteSession(),
+                new com.ruleforge.decision.flow.engine.SuspendRegistry());
+            flowCtx.rete().replaceSession(session);
             DecisionFlowState state = flowEngine.start(flowId, flowCtx);
             if (DecisionFlowState.STATUS_FAILED.equals(state.getStatus())) {
                 throw new FlowExecutionException(state.getErrorMessage());
             }
-            Map<String, Object> resultVars = flowCtx.getVars();
+            Map<String, Object> resultVars = flowCtx.effectiveVars();
             session.getParameters().putAll(resultVars);
             row.put(VariableCategory.PARAM_CATEGORY, session.getParameters());
 

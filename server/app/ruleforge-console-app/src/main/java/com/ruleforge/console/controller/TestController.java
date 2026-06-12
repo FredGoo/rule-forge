@@ -146,16 +146,20 @@ public class TestController {
             // RuleNodeExecutor 内部对 outputModel == null 走 NoOp 兜底(V5.18 V18 + 后续
             // PR 加的 guard,见 RuleNodeExecutor.java line 67),所以 console-app 测试路径
             // 不引入 executor-app 的 OutputModel 类,守住模块边界。
-            FlowContext flowCtx = new FlowContext();
-            flowCtx.setFlowRunId(UUID.randomUUID().toString());
-            flowCtx.setVars(new HashMap<>(flowVariables));
-            flowCtx.setSession(session);
+            // V5.39 A1:4 参构造
+            FlowContext flowCtx = new FlowContext(
+                new com.ruleforge.decision.flow.engine.FlowIdentity(
+                    UUID.randomUUID().toString(), flowId, null),
+                com.ruleforge.decision.flow.engine.BusinessVars.from(new HashMap<>(flowVariables)),
+                new com.ruleforge.decision.flow.engine.ReteSession(),
+                new com.ruleforge.decision.flow.engine.SuspendRegistry());
+            flowCtx.rete().replaceSession(session);
             DecisionFlowState state = flowEngine.start(flowId, flowCtx);
             if (DecisionFlowState.STATUS_FAILED.equals(state.getStatus())) {
                 throw new FlowExecutionException(state.getErrorMessage());
             }
             // 把 FlowEngine 写回的 vars 同步回 facts(供前端展示 var-assign 后的值)
-            Map<String, Object> resultVars = flowCtx.getVars();
+            Map<String, Object> resultVars = flowCtx.effectiveVars();
             for (Map.Entry<VariableCategory, Object> entry : facts.entrySet()) {
                 Object obj = entry.getValue();
                 if (obj instanceof GeneralEntity) {

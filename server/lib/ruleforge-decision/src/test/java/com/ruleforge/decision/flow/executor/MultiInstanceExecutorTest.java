@@ -76,13 +76,12 @@ class MultiInstanceExecutorTest {
         return reg;
     }
 
-    /** V5.33 A0:ctx.getVars() 委托 currentToken;init token 让 put 走 token.vars(非 ctx.vars)。
+    /** V5.33 A0:ctx.vars().getVars() 委托 currentToken;init token 让 put 走 token.vars(非 ctx.vars)。
      * 注:不在这里 setCurrentNodeId,因为单元测试是直接调 wrapper,不走 Runner traverse。 */
     private FlowContext newCtx() {
-        FlowContext ctx = new FlowContext();
-        ctx.setFlowRunId("test-" + System.nanoTime());
+        FlowContext ctx = FlowContext.newDefault("test-flow");
         Token t = new Token("tok-" + System.nanoTime());
-        ctx.getActiveTokens().add(t);
+        ctx.activeTokens().add(t);
         ctx.setCurrentToken(t);
         return ctx;
     }
@@ -118,8 +117,8 @@ class MultiInstanceExecutorTest {
         void parallel_runs_all_items_to_completion() throws Exception {
             StubActionExecutor action = new StubActionExecutor()
                 .register("tag_with_item", (n, c) -> {
-                    Object item = c.getVars().get("item");
-                    c.getVars().put("tag", item);
+                    Object item = c.vars().getVars().get("item");
+                    c.vars().getVars().put("tag", item);
                 });
             NodeExecutorRegistry registry = newRegistry(action);
 
@@ -133,22 +132,22 @@ class MultiInstanceExecutorTest {
                 """;
             FlowDefinition def = parser.parseSingleProcess(miXml(taskNode));
             FlowContext ctx = newCtx();
-            ctx.getVars().put("items", Arrays.asList("a", "b", "c"));
+            ctx.vars().getVars().put("items", Arrays.asList("a", "b", "c"));
 
             NodeExecutor exec = registry.resolve(def.getNode("t"));
             exec.execute(def.getNode("t"), ctx);
 
-            Object tag = ctx.getVars().get("tag");
+            Object tag = ctx.vars().getVars().get("tag");
             assertTrue("a".equals(tag) || "b".equals(tag) || "c".equals(tag),
                 "tag should be one of {a,b,c}, got: " + tag);
-            assertEquals(Arrays.asList("a", "b", "c"), ctx.getVars().get("outputs"));
+            assertEquals(Arrays.asList("a", "b", "c"), ctx.vars().getVars().get("outputs"));
         }
 
         @Test
         @DisplayName("Given MI task → post → end,When resolve MI + post,Then tag 末班胜出 ∈ {x,y}")
         void parallel_runs_to_post_node() throws Exception {
             StubActionExecutor action = new StubActionExecutor()
-                .register("tag_with_item", (n, c) -> c.getVars().put("tag", c.getVars().get("item")));
+                .register("tag_with_item", (n, c) -> c.vars().getVars().put("tag", c.vars().getVars().get("item")));
             NodeExecutorRegistry registry = newRegistry(action);
 
             String taskNode = """
@@ -163,14 +162,14 @@ class MultiInstanceExecutorTest {
                 """;
             FlowDefinition def = parser.parseSingleProcess(miXml(taskNode));
             FlowContext ctx = newCtx();
-            ctx.getVars().put("items", Arrays.asList("x", "y"));
+            ctx.vars().getVars().put("items", Arrays.asList("x", "y"));
 
             NodeExecutor miTaskExec = registry.resolve(def.getNode("t"));
             miTaskExec.execute(def.getNode("t"), ctx);
             NodeExecutor postExec = registry.resolve(def.getNode("post"));
             postExec.execute(def.getNode("post"), ctx);
 
-            Object tag = ctx.getVars().get("tag");
+            Object tag = ctx.vars().getVars().get("tag");
             assertTrue("x".equals(tag) || "y".equals(tag),
                 "tag should be x or y, got: " + tag);
         }
@@ -179,7 +178,7 @@ class MultiInstanceExecutorTest {
         @DisplayName("Given items=[] parallel,When 跑,Then outputs=[],tag 不创建")
         void parallel_empty_collection_completes_immediately() throws Exception {
             StubActionExecutor action = new StubActionExecutor()
-                .register("tag_with_item", (n, c) -> c.getVars().put("tag", c.getVars().get("item")));
+                .register("tag_with_item", (n, c) -> c.vars().getVars().put("tag", c.vars().getVars().get("item")));
             NodeExecutorRegistry registry = newRegistry(action);
 
             String taskNode = """
@@ -192,13 +191,13 @@ class MultiInstanceExecutorTest {
                 """;
             FlowDefinition def = parser.parseSingleProcess(miXml(taskNode));
             FlowContext ctx = newCtx();
-            ctx.getVars().put("items", new ArrayList<>());
+            ctx.vars().getVars().put("items", new ArrayList<>());
 
             NodeExecutor exec = registry.resolve(def.getNode("t"));
             exec.execute(def.getNode("t"), ctx);
 
-            assertEquals(new ArrayList<>(), ctx.getVars().get("outputs"));
-            assertFalse(ctx.getVars().containsKey("tag"));
+            assertEquals(new ArrayList<>(), ctx.vars().getVars().get("outputs"));
+            assertFalse(ctx.vars().getVars().containsKey("tag"));
         }
     }
 
@@ -211,12 +210,12 @@ class MultiInstanceExecutorTest {
         void sequential_runs_items_in_order() throws Exception {
             StubActionExecutor action = new StubActionExecutor()
                 .register("append_item", (n, c) -> {
-                    Object item = c.getVars().get("item");
+                    Object item = c.vars().getVars().get("item");
                     @SuppressWarnings("unchecked")
-                    List<Object> cur = (List<Object>) c.getVars().getOrDefault("collected", new ArrayList<>());
+                    List<Object> cur = (List<Object>) c.vars().getVars().getOrDefault("collected", new ArrayList<>());
                     List<Object> next = new ArrayList<>(cur);
                     next.add(item);
-                    c.getVars().put("collected", next);
+                    c.vars().getVars().put("collected", next);
                 });
             NodeExecutorRegistry registry = newRegistry(action);
 
@@ -230,12 +229,12 @@ class MultiInstanceExecutorTest {
                 """;
             FlowDefinition def = parser.parseSingleProcess(miXml(taskNode));
             FlowContext ctx = newCtx();
-            ctx.getVars().put("items", Arrays.asList("a", "b", "c"));
+            ctx.vars().getVars().put("items", Arrays.asList("a", "b", "c"));
 
             NodeExecutor exec = registry.resolve(def.getNode("t"));
             exec.execute(def.getNode("t"), ctx);
 
-            assertEquals(Arrays.asList("a", "b", "c"), ctx.getVars().get("collected"));
+            assertEquals(Arrays.asList("a", "b", "c"), ctx.vars().getVars().get("collected"));
         }
 
         @Test
@@ -243,8 +242,8 @@ class MultiInstanceExecutorTest {
         void sequential_empty_collection_completes_immediately() throws Exception {
             StubActionExecutor action = new StubActionExecutor()
                 .register("collect_count", (n, c) -> {
-                    Integer cur = (Integer) c.getVars().getOrDefault("count", 0);
-                    c.getVars().put("count", cur + 1);
+                    Integer cur = (Integer) c.vars().getVars().getOrDefault("count", 0);
+                    c.vars().getVars().put("count", cur + 1);
                 });
             NodeExecutorRegistry registry = newRegistry(action);
 
@@ -258,12 +257,12 @@ class MultiInstanceExecutorTest {
                 """;
             FlowDefinition def = parser.parseSingleProcess(miXml(taskNode));
             FlowContext ctx = newCtx();
-            ctx.getVars().put("items", new ArrayList<>());
+            ctx.vars().getVars().put("items", new ArrayList<>());
 
             NodeExecutor exec = registry.resolve(def.getNode("t"));
             exec.execute(def.getNode("t"), ctx);
 
-            assertFalse(ctx.getVars().containsKey("count"));
+            assertFalse(ctx.vars().getVars().containsKey("count"));
         }
     }
 
@@ -277,7 +276,7 @@ class MultiInstanceExecutorTest {
             StubActionExecutor action = new StubActionExecutor()
                 .register("tag_with_item", (n, c) -> {
                     // pass-through 时 elementVar 不应被 wrapper 写入
-                    c.getVars().put("tag", c.getVars().get("item"));
+                    c.vars().getVars().put("tag", c.vars().getVars().get("item"));
                 });
             NodeExecutorRegistry registry = newRegistry(action);
 
@@ -287,7 +286,7 @@ class MultiInstanceExecutorTest {
                 """;
             FlowDefinition def = parser.parseSingleProcess(miXml(taskNode));
             FlowContext ctx = newCtx();
-            ctx.getVars().put("items", Arrays.asList("a", "b", "c"));
+            ctx.vars().getVars().put("items", Arrays.asList("a", "b", "c"));
 
             NodeExecutor exec = registry.resolve(def.getNode("t"));
             exec.execute(def.getNode("t"), ctx);
@@ -296,9 +295,9 @@ class MultiInstanceExecutorTest {
             assertTrue(exec instanceof StubActionExecutor,
                 "Expected inner action executor, got: " + exec.getClass().getSimpleName());
             // tag = null(wrapper 没介入,vars 里没 item)
-            assertNull(ctx.getVars().get("tag"));
+            assertNull(ctx.vars().getVars().get("tag"));
             // outputs 不应存在
-            assertFalse(ctx.getVars().containsKey("outputs"));
+            assertFalse(ctx.vars().getVars().containsKey("outputs"));
         }
 
         @Test
@@ -318,7 +317,7 @@ class MultiInstanceExecutorTest {
                 """;
             FlowDefinition def = parser.parseSingleProcess(miXml(taskNode));
             FlowContext ctx = newCtx();
-            ctx.getVars().put("items", null);
+            ctx.vars().getVars().put("items", null);
 
             NodeExecutor exec = registry.resolve(def.getNode("t"));
             FlowExecutionException ex = assertThrows(FlowExecutionException.class,
@@ -345,7 +344,7 @@ class MultiInstanceExecutorTest {
                 """;
             FlowDefinition def = parser.parseSingleProcess(miXml(taskNode));
             FlowContext ctx = newCtx();
-            ctx.getVars().put("items", "not-a-list");
+            ctx.vars().getVars().put("items", "not-a-list");
 
             NodeExecutor exec = registry.resolve(def.getNode("t"));
             FlowExecutionException ex = assertThrows(FlowExecutionException.class,

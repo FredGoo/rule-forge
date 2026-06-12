@@ -64,9 +64,7 @@ class ReceiveTaskExecutorTest {
         @Test
         @DisplayName("Given RECEIVE_TASK + messageRef, when execute, then bus.subscribe 1 次 + 抛 AsyncNodeSuspendException")
         void subscribes_and_suspends() {
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-1");
-
+            FlowContext ctx = FlowContext.forFlow("fr-1", "test-flow", null);
             AsyncNodeSuspendException ex = assertThrows(AsyncNodeSuspendException.class,
                 () -> executor.execute(receiveNode("callback_signal"), ctx));
 
@@ -78,20 +76,17 @@ class ReceiveTaskExecutorTest {
         @Test
         @DisplayName("Given RECEIVE_TASK, when execute, then subscription stash 到 ctx.busSubscriptions")
         void subscription_stashed_in_context() {
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-2");
+            FlowContext ctx = FlowContext.forFlow("fr-2", "test-flow", null);
             assertThrows(AsyncNodeSuspendException.class,
                 () -> executor.execute(receiveNode("payment_received"), ctx));
-            assertEquals(1, ctx.getBusSubscriptions().size(),
+            assertEquals(1, ctx.suspend().all().size(),
                 "subscription 应被 stash 进 ctx.busSubscriptions,给 Runner COMPLETED/FAIL 出口 close");
         }
 
         @Test
         @DisplayName("Given RECEIVE_TASK, when execute, then exception payload 含 messageRef + flowRunId")
         void exception_payload_bridge() {
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-3");
-
+            FlowContext ctx = FlowContext.forFlow("fr-3", "test-flow", null);
             AsyncNodeSuspendException ex = assertThrows(AsyncNodeSuspendException.class,
                 () -> executor.execute(receiveNode("payment_received"), ctx));
 
@@ -107,8 +102,7 @@ class ReceiveTaskExecutorTest {
         @Test
         @DisplayName("Given RECEIVE_TASK + messageRef=null, when execute, then 抛 FlowExecutionException")
         void missing_message_ref_throws() {
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-x");
+            FlowContext ctx = FlowContext.forFlow("fr-x", "test-flow", null);
             assertThrows(FlowExecutionException.class,
                 () -> executor.execute(receiveNode(null), ctx));
         }
@@ -116,8 +110,7 @@ class ReceiveTaskExecutorTest {
         @Test
         @DisplayName("Given RECEIVE_TASK + messageRef=空, when execute, then 抛 FlowExecutionException")
         void blank_message_ref_throws() {
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-x");
+            FlowContext ctx = FlowContext.forFlow("fr-x", "test-flow", null);
             assertThrows(FlowExecutionException.class,
                 () -> executor.execute(receiveNode(""), ctx));
         }

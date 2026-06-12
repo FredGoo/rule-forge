@@ -33,12 +33,12 @@ public class GatewayNodeExecutor implements NodeExecutor {
     public void execute(FlowNode node, FlowContext context) {
         // Gateway 节点本身不做事,实际路由在 FlowNodeRunner.nextNode() 里。
         // 这里只校验:userTask 后的 binary 决策字段在 ctx.vars 里存在
-        if (context.getCurrentAwaitingField() != null
+        if (context.vars().getCurrentAwaitingField() != null
             && node.getType() == com.ruleforge.decision.flow.ir.NodeType.USER_TASK) {
-            if (!context.getVars().containsKey(context.getCurrentAwaitingField())) {
+            if (!context.effectiveVars().containsKey(context.vars().getCurrentAwaitingField())) {
                 throw new FlowExecutionException(
                     "UserTask awaiting decision but ctx.vars missing field="
-                    + context.getCurrentAwaitingField());
+                    + context.vars().getCurrentAwaitingField());
             }
         }
     }

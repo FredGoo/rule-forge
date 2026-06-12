@@ -110,18 +110,18 @@ public class FlowStatePersistenceService {
      */
     public void deserializeJoinArrivals(DecisionFlowState state, FlowContext ctx) {
         String json = state.getJoinArrivals();
+        // V5.39 A1:joinArrivals 是 ctx 暴露的 live map,直接 mutate(原 setJoinArrivals 没了)
+        ctx.joinArrivals().clear();
         if (json == null || json.isBlank()) {
-            ctx.setJoinArrivals(new HashMap<>());
             return;
         }
         try {
             Map<String, Integer> map = MAPPER.readValue(json,
                 new TypeReference<Map<String, Integer>>() {});
-            ctx.setJoinArrivals(map);
+            ctx.joinArrivals().putAll(map);
         } catch (Exception e) {
             log.warn("Failed to deserialize join_arrivals for flowRunId={}: {}",
                 state.getFlowRunId(), e.getMessage());
-            ctx.setJoinArrivals(new HashMap<>());
         }
     }
 
@@ -157,24 +157,24 @@ public class FlowStatePersistenceService {
         // 1. rowVars — fail-soft
         String rowVarsJson;
         try {
-            Map<String, Object> vars = ctx.getVars(); // 委托 currentToken
+            Map<String, Object> vars = ctx.effectiveVars(); // 委托 currentToken
             rowVarsJson = vars == null || vars.isEmpty() ? null : MAPPER.writeValueAsString(vars);
         } catch (Exception e) {
             log.warn("Failed to serialize row_vars for flowRunId={}: {}",
-                ctx.getFlowRunId(), e.getMessage());
+                ctx.identity().flowRunId(), e.getMessage());
             rowVarsJson = "{}";
         }
 
         // 2. joinArrivals — fail-soft
         String joinArrivalsJson;
         try {
-            Map<String, Integer> joinArrivals = ctx.getJoinArrivals();
+            Map<String, Integer> joinArrivals = ctx.joinArrivals();
             joinArrivalsJson = joinArrivals == null || joinArrivals.isEmpty()
                 ? null
                 : MAPPER.writeValueAsString(joinArrivals);
         } catch (Exception e) {
             log.warn("Failed to serialize join_arrivals for flowRunId={}: {}",
-                ctx.getFlowRunId(), e.getMessage());
+                ctx.identity().flowRunId(), e.getMessage());
             joinArrivalsJson = "{}";
         }
 

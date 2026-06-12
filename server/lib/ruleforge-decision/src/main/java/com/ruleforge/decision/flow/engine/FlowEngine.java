@@ -23,7 +23,7 @@ public class FlowEngine {
     private final FlowNodeRunner runner;
 
     public DecisionFlowState start(String flowId, FlowContext ctx) {
-        if (ctx.getFlowRunId() == null) {
+        if (ctx.identity().flowRunId() == null) {
             throw new FlowExecutionException("FlowContext.flowRunId is required");
         }
         FlowDefinition def = repo.getOrLoad(flowId);
@@ -35,7 +35,7 @@ public class FlowEngine {
      * 找 process,delegate 到 runner.traverse(BpmnDefinition, ctx, participantId, startNodeId)。
      */
     public DecisionFlowState start(String flowId, String participantId, FlowContext ctx) {
-        if (ctx.getFlowRunId() == null) {
+        if (ctx.identity().flowRunId() == null) {
             throw new FlowExecutionException("FlowContext.flowRunId is required");
         }
         if (participantId == null || participantId.isBlank()) {

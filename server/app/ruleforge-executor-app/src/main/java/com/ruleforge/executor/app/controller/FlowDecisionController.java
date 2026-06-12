@@ -73,15 +73,18 @@ public class FlowDecisionController {
         // 1. 拉 IR definition
         FlowDefinition def = flowDefinitionRepo.getOrLoad(state.getFlowId());
 
-        // 2. 反序列化 ctx.vars
-        FlowContext ctx = new FlowContext();
-        ctx.setFlowRunId(flowRunId);
-        ctx.setVars(persistence.deserializeVars(state));
-        ctx.setCurrentNodeId(state.getCurrentNodeId());
+        // 2. 反序列化 ctx.vars(V5.39 A1:4 参构造)
+        com.ruleforge.decision.flow.engine.Token rootToken =
+            new com.ruleforge.decision.flow.engine.Token("tok-decision-" + flowRunId);
+        rootToken.setCurrentNodeId(state.getCurrentNodeId());
+        FlowContext ctx = FlowContext.forFlow(flowRunId, state.getFlowId(),
+            persistence.deserializeVars(state));
+        ctx.activeTokens().add(rootToken);
+        ctx.setCurrentToken(rootToken);
 
         // 3. 把 decision 写进 vars.<decisionField>(从 payload 读字段名)
         String decisionField = readDecisionField(state);
-        ctx.getVars().put(decisionField, decision);
+        ctx.effectiveVars().put(decisionField, decision);
         log.info("[FLOW-DECISION] resuming flowRunId={} from node={} decision={}->vars.{}",
             flowRunId, state.getCurrentNodeId(), decision, decisionField);
 

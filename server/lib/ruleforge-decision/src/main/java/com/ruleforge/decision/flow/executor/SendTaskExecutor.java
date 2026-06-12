@@ -60,15 +60,15 @@ public class SendTaskExecutor implements NodeExecutor {
                 "SendTask node " + node.getNodeId() + " missing messageRef attribute");
         }
         // 防御性复制 vars — publish 是 fire-and-forget,不希望 publish 后 vars 改动回灌
-        Map<String, Object> payload = new HashMap<>(ctx.getVars() == null ? Map.of() : ctx.getVars());
-        payload.put("flowRunId", ctx.getFlowRunId());
+        Map<String, Object> payload = new HashMap<>(ctx.effectiveVars() == null ? Map.of() : ctx.effectiveVars());
+        payload.put("flowRunId", ctx.identity().flowRunId());
         payload.put("currentNodeId", node.getNodeId());
 
         int delivered = publisher.publishMessage(
-            messageRef, payload, ctx.getFlowRunId(), node.getNodeId());
+            messageRef, payload, ctx.identity().flowRunId(), node.getNodeId());
 
         log.info("[SEND-TASK] flowRunId={} nodeId={} messageRef={} delivered={}",
-            ctx.getFlowRunId(), node.getNodeId(), messageRef, delivered);
+            ctx.identity().flowRunId(), node.getNodeId(), messageRef, delivered);
         // 不抛 — Continue,让 Runner 走 sequenceFlow 继续
     }
 }

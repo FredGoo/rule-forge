@@ -87,10 +87,9 @@ class CompensationRunnerTest {
     }
 
     private FlowContext newCtx() {
-        FlowContext ctx = new FlowContext();
-        ctx.setFlowRunId("test-" + System.nanoTime());
+        FlowContext ctx = FlowContext.newDefault("test-flow");
         Token t = new Token("tok-" + System.nanoTime());
-        ctx.getActiveTokens().add(t);
+        ctx.activeTokens().add(t);
         ctx.setCurrentToken(t);
         return ctx;
     }
@@ -154,10 +153,10 @@ class CompensationRunnerTest {
 
     @SuppressWarnings("unchecked")
     private void appendCompensated(FlowContext ctx, String name) {
-        List<String> cur = (List<String>) ctx.getVars().getOrDefault("compensated", new ArrayList<>());
+        List<String> cur = (List<String>) ctx.vars().getVars().getOrDefault("compensated", new ArrayList<>());
         List<String> next = new ArrayList<>(cur);
         next.add(name);
-        ctx.getVars().put("compensated", next);
+        ctx.vars().getVars().put("compensated", next);
     }
 
     @Test
@@ -180,7 +179,7 @@ class CompensationRunnerTest {
         }
 
         @SuppressWarnings("unchecked")
-        List<String> compensated = (List<String>) ctx.getVars().get("compensated");
+        List<String> compensated = (List<String>) ctx.vars().getVars().get("compensated");
         assertNotNull(compensated);
         assertEquals(Arrays.asList("hb", "ha"), compensated,
             "LIFO: act_b 后注册 → hb 先跑;act_a 先注册 → ha 后跑");
@@ -203,7 +202,7 @@ class CompensationRunnerTest {
             reg.resolve(def.getNode(nid)).execute(def.getNode(nid), ctx);
         }
         // 此时 scope 已被 pop,stack 是空的;ctx.compensatedHandlers 包含 (act_b,hb)+(act_a,ha)
-        assertTrue(ctx.getCompensatedHandlers().size() >= 2,
+        assertTrue(ctx.currentToken().getCompensatedHandlers().size() >= 2,
             "dedup 记录应被写入 compensatedHandlers");
 
         // 再造一个新 ctx + 走 ct 但 stack 空 — 应抛错(plan: 7 个测试里这叫 empty_stack 单独测)
@@ -215,8 +214,8 @@ class CompensationRunnerTest {
         StubAction action = new StubAction()
             .register("mark_a", (n, c) -> {})
             .register("mark_b", (n, c) -> {})
-            .register("mark_handler_a", (n, c) -> c.getVars().put("ha_wrote", "handler_a_done"))
-            .register("mark_handler_b", (n, c) -> c.getVars().put("hb_wrote", "handler_b_done"));
+            .register("mark_handler_a", (n, c) -> c.vars().getVars().put("ha_wrote", "handler_a_done"))
+            .register("mark_handler_b", (n, c) -> c.vars().getVars().put("hb_wrote", "handler_b_done"));
         FlowDefinition def = parser.parseSingleProcess(BASIC_FIXTURE);
         NodeExecutorRegistry reg = newRegistry(action, def);
         FlowContext ctx = newCtx();
@@ -224,8 +223,8 @@ class CompensationRunnerTest {
         for (String nid : new String[]{"act_a", "cs", "act_b", "ct"}) {
             reg.resolve(def.getNode(nid)).execute(def.getNode(nid), ctx);
         }
-        assertEquals("handler_a_done", ctx.getVars().get("ha_wrote"));
-        assertEquals("handler_b_done", ctx.getVars().get("hb_wrote"));
+        assertEquals("handler_a_done", ctx.vars().getVars().get("ha_wrote"));
+        assertEquals("handler_b_done", ctx.vars().getVars().get("hb_wrote"));
     }
 
     @Test
@@ -279,7 +278,7 @@ class CompensationRunnerTest {
         }
         // fail_h 抛错 → 累积到 CompensationTrace.failures,但 ok_h 应该已跑过
         @SuppressWarnings("unchecked")
-        List<String> compensated = (List<String>) ctx.getVars().get("compensated");
+        List<String> compensated = (List<String>) ctx.vars().getVars().get("compensated");
         assertNotNull(compensated, "ok handler should have marked vars.compensated");
         assertTrue(compensated.contains("ok"), "ok handler ran despite fail handler errored");
     }
@@ -328,10 +327,10 @@ class CompensationRunnerTest {
             NodeExecutorRegistry reg = newRegistry(action, def);
             FlowContext ctx = newCtx();
 
-            assertEquals(0, ctx.getCompensationStack().size());
+            assertEquals(0, ctx.currentToken().getCompensationStack().size());
             reg.resolve(def.getNode("cs")).execute(def.getNode("cs"), ctx);
-            assertEquals(1, ctx.getCompensationStack().size());
-            assertEquals("scope1", ctx.getCompensationStack().get(0));
+            assertEquals(1, ctx.currentToken().getCompensationStack().size());
+            assertEquals("scope1", ctx.currentToken().getCompensationStack().get(0));
         }
 
         @Test
@@ -343,10 +342,10 @@ class CompensationRunnerTest {
             FlowContext ctx = newCtx();
 
             reg.resolve(def.getNode("cs")).execute(def.getNode("cs"), ctx);
-            int afterFirst = ctx.getCompensationStack().size();
+            int afterFirst = ctx.currentToken().getCompensationStack().size();
             // 同一 scope id 再 push 一次(模拟 reentry)
             reg.resolve(def.getNode("cs")).execute(def.getNode("cs"), ctx);
-            assertEquals(afterFirst, ctx.getCompensationStack().size(),
+            assertEquals(afterFirst, ctx.currentToken().getCompensationStack().size(),
                 "consecutive duplicate should be idempotent (warn + skip)");
         }
     }
@@ -364,9 +363,9 @@ class CompensationRunnerTest {
             FlowContext ctx = newCtx();
 
             reg.resolve(def.getNode("cs")).execute(def.getNode("cs"), ctx);
-            assertEquals(1, ctx.getCompensationStack().size());
+            assertEquals(1, ctx.currentToken().getCompensationStack().size());
             reg.resolve(def.getNode("ce")).execute(def.getNode("ce"), ctx);
-            assertEquals(0, ctx.getCompensationStack().size(), "matched scope popped");
+            assertEquals(0, ctx.currentToken().getCompensationStack().size(), "matched scope popped");
         }
 
         @Test
@@ -379,11 +378,11 @@ class CompensationRunnerTest {
 
             reg.resolve(def.getNode("cs")).execute(def.getNode("cs"), ctx);
             // 改 ce 的 scopeId 来 mismatch — 通过手工 push 不同 id
-            ctx.getCompensationStack().add("DIFFERENT");
-            int sizeBefore = ctx.getCompensationStack().size();
+            ctx.currentToken().getCompensationStack().add("DIFFERENT");
+            int sizeBefore = ctx.currentToken().getCompensationStack().size();
             reg.resolve(def.getNode("ce")).execute(def.getNode("ce"), ctx);
             // V5.31 P0 v0:不匹配 scopeId → 留 stack(没真正 pop),best-effort
-            assertTrue(ctx.getCompensationStack().size() >= sizeBefore - 1,
+            assertTrue(ctx.currentToken().getCompensationStack().size() >= sizeBefore - 1,
                 "mismatched end should warn and leave stack intact (or pop only the matching one if found)");
         }
     }

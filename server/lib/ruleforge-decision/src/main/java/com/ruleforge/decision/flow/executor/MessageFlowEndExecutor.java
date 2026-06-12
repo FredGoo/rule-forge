@@ -57,7 +57,7 @@ public class MessageFlowEndExecutor {
             throw new FlowExecutionException(
                 "MessageFlowEndExecutor called on node without messageFlowId: " + node.getNodeId());
         }
-        BpmnDefinition bpmn = ctx.getCurrentBpmn();
+        BpmnDefinition bpmn = ctx.currentBpmn();
         if (bpmn == null) {
             throw new FlowExecutionException(
                 "FlowContext.currentBpmn is null — MessageFlowEnd requires collaboration context");
@@ -65,31 +65,31 @@ public class MessageFlowEndExecutor {
         MessageFlow mf = bpmn.findMessageFlow(messageFlowId)
             .orElseThrow(() -> new FlowExecutionException(
                 "MessageFlow not found by id: " + messageFlowId
-                + " (node=" + node.getNodeId() + " pool=" + ctx.getCurrentPoolId() + ")"));
+                + " (node=" + node.getNodeId() + " pool=" + ctx.currentPoolId() + ")"));
 
         // payload 携带 flowRunId/flowId/currentNodeId/vars 4 件套 — FlowResumer.resumeFromMessage 依赖
-        Map<String, Object> payload = new HashMap<>(ctx.getVars() == null ? Map.of() : ctx.getVars());
-        payload.put("flowRunId", ctx.getFlowRunId());
+        Map<String, Object> payload = new HashMap<>(ctx.effectiveVars() == null ? Map.of() : ctx.effectiveVars());
+        payload.put("flowRunId", ctx.identity().flowRunId());
         payload.put("flowId", bpmn.processes().values().stream()
             .filter(d -> {
                 // 找到 sourcePool 所属的 processId(flowId)
                 // 简化:遍历 processes,看 currentPoolId 是哪个 participant 的 processRef
                 BpmnDefinition self = bpmn;
-                return self.findParticipant(ctx.getCurrentPoolId())
+                return self.findParticipant(ctx.currentPoolId())
                     .map(p -> p.getProcessRef().equals(d.getProcessId()))
                     .orElse(false);
             })
             .findFirst()
             .map(d -> d.getProcessId())
-            .orElse(ctx.getCurrentPoolId() == null ? "" : ctx.getCurrentPoolId()));
+            .orElse(ctx.currentPoolId() == null ? "" : ctx.currentPoolId()));
         payload.put("currentNodeId", node.getNodeId());
 
         int delivered = publisher.publishPoolMessage(
             mf.getSourceParticipantId(), mf.getTargetParticipantId(), mf.getName(),
-            payload, ctx.getFlowRunId(), node.getNodeId());
+            payload, ctx.identity().flowRunId(), node.getNodeId());
 
         log.info("[MSG-FLOW-END] poolId={} nodeId={} channel={} delivered={}",
-            ctx.getCurrentPoolId(), node.getNodeId(), mf.channelName(), delivered);
+            ctx.currentPoolId(), node.getNodeId(), mf.channelName(), delivered);
         // 不抛 — 让 source flow 走完到 COMPLETED
     }
 }

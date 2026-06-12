@@ -28,6 +28,6 @@ public class CompensationIntermediateExecutor implements NodeExecutor {
     public void execute(FlowNode node, FlowContext context) {
         String attachedTo = node.attr("ruleforge", "attachedToRef");
         log.debug("[COMP-INTERMEDIATE] flowRunId={} nodeId={} attachedToRef={} (v0: no-op)",
-            context.getFlowRunId(), node.getNodeId(), attachedTo);
+            context.identity().flowRunId(), node.getNodeId(), attachedTo);
     }
 }

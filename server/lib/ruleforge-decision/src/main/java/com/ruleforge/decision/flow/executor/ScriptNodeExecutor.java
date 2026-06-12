@@ -52,7 +52,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
         @SuppressWarnings("unchecked")
         Map<String, Object> parameters = new java.util.HashMap<>();
         Bindings bindings = new SimpleBindings();
-        bindings.put("variables", context.getVars());
+        bindings.put("variables", context.effectiveVars());
         bindings.put("parameters", parameters);
 
         try {
@@ -63,7 +63,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
         }
 
         if (!parameters.isEmpty()) {
-            context.getVars().putAll(parameters);
+            context.effectiveVars().putAll(parameters);
         }
     }
 }

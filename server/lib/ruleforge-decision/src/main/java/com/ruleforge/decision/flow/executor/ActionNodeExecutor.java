@@ -47,11 +47,11 @@ public class ActionNodeExecutor implements NodeExecutor {
         // 优先 method(Map),无则 method()
         Method mapMethod = findMethod(bean.getClass(), methodName, Map.class);
         if (mapMethod != null) {
-            Object result = mapMethod.invoke(bean, context.getVars());
+            Object result = mapMethod.invoke(bean, context.effectiveVars());
             if (result instanceof Map<?, ?>) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> mapResult = (Map<String, Object>) result;
-                context.getVars().putAll(mapResult);
+                context.effectiveVars().putAll(mapResult);
             }
             return;
         }

@@ -77,7 +77,7 @@ public class MessageFlowStartExecutor {
             throw new FlowExecutionException(
                 "MessageFlowStartExecutor called on node without messageFlowId: " + node.getNodeId());
         }
-        BpmnDefinition bpmn = ctx.getCurrentBpmn();
+        BpmnDefinition bpmn = ctx.currentBpmn();
         if (bpmn == null) {
             throw new FlowExecutionException(
                 "FlowContext.currentBpmn is null — MessageFlowStart requires collaboration context");
@@ -85,14 +85,14 @@ public class MessageFlowStartExecutor {
         MessageFlow mf = bpmn.findMessageFlow(messageFlowId)
             .orElseThrow(() -> new FlowExecutionException(
                 "MessageFlow not found by id: " + messageFlowId
-                + " (node=" + node.getNodeId() + " pool=" + ctx.getCurrentPoolId() + ")"));
+                + " (node=" + node.getNodeId() + " pool=" + ctx.currentPoolId() + ")"));
 
         String channel = mf.channelName();
         MessageBus.Subscription sub = bus.subscribe(channel, flowResumer::resumeFromMessage);
-        ctx.addBusSubscription(sub);
+        ctx.suspend().register(sub);
 
         log.info("[MSG-FLOW-START] poolId={} nodeId={} channel={} → subscribed",
-            ctx.getCurrentPoolId(), node.getNodeId(), channel);
+            ctx.currentPoolId(), node.getNodeId(), channel);
 
         throw new AsyncNodeSuspendException(
             node.getNodeId(), "MESSAGE_FLOW_START",

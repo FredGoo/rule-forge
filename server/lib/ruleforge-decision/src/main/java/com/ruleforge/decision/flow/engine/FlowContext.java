@@ -1,236 +1,193 @@
 package com.ruleforge.decision.flow.engine;
 
-import com.ruleforge.model.GeneralEntity;
-import com.ruleforge.runtime.KnowledgeSession;
+import com.ruleforge.decision.flow.ir.BpmnDefinition;
+import com.ruleforge.decision.flow.ir.FlowDefinition;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
- * 决策流执行上下文。每条 evaluate 独立一个 FlowContext,不可跨请求共享。
+ * V5.39 A1 — 决策流执行上下文(facade over 4 typed handles)。
  *
- * <p>字段语义:
+ * <p>V5.39 之前是 20 字段 / 7+ 层调用方 / 6 处 {@code currentToken} 委派 shim 的
+ * god-object。V5.39 拆成 4 个 role-focused 子上下文 + 7 个 transient/worklist 字段。
+ *
+ * <h2>4 个 typed handle(per-flowRunId 状态)</h2>
  * <ul>
- *   <li>flowRunId: 单次执行 UUID,关联 nd_decision_flow_state / nd_decision_flow_log</li>
- *   <li>vars: 流程变量(兼容字段;V5.33 A0 起委托给 currentToken.vars)</li>
- *   <li>session: KnowledgeSession,RuleNodeExecutor 拿它跑 fireRules</li>
- *   <li>outputModel: 业务侧 POJO(Object,V5.18 修法保留 — RuleNodeExecutor 用 BeanUtils.describe/populate
- *                   反射处理任意类型,不直接引用 executor-app 的 OutputModel 类,守住模块边界)</li>
- *   <li>insertedEntities: 已 insert 进 session 的 entities,供状态恢复时序列化</li>
- *   <li>currentAwaitingField: 当前 userTask 等待写入的决策字段名,GatewayNodeExecutor 路由时读</li>
- *   <li>currentNodeId: 当前执行到的节点 id(委托给 currentToken)</li>
- *   <li><b>activeTokens</b> (V5.33 A0): 多 token 推进;fork 推 N 个 sub-token,join 合并</li>
- *   <li><b>currentToken</b> (V5.33 A0): 当前 executor 读 vars / nodeId 走 currentToken</li>
- *   <li><b>joinArrivals</b> (V5.33 A0): join_target_id → 已到达分支数,worklist 计数用</li>
+ *   <li>{@link #identity()} — {@link FlowIdentity} 不可变 record:flowRunId / flowId / currentPoolId</li>
+ *   <li>{@link #vars()} — {@link BusinessVars}:vars map / currentAwaitingField / outputModel</li>
+ *   <li>{@link #rete()} — {@link ReteSession}:KnowledgeSession / insertedEntities</li>
+ *   <li>{@link #suspend()} — {@link SuspendRegistry}:bus 订阅生命周期</li>
  * </ul>
  *
- * <p>vars / currentNodeId 委托给 currentToken 是为了保持 API 兼容 — 6 处 caller
- * (DecisionServiceImpl / ShadowExecutionServiceImpl / FlowDecisionController /
- * TestController / TestServiceImpl / FlowStateRecoveryJob) 不需要改一行。
+ * <h2>7 个 transient/worklist 字段(V5.40+ 计划移走,本版本保留在 ctx 上)</h2>
+ * <ul>
+ *   <li>{@link #activeTokens()} / {@link #currentToken()} — multi-token worklist
+ *       (V5.33 A0,Runner traverse 维护)</li>
+ *   <li>{@link #joinArrivals()} / {@link #joinedTokens()} — fork/join 计数(V5.33 A0)</li>
+ *   <li>{@link #currentDef()} / {@link #currentBpmn()} — traverse-time 临时引用
+ *       (Runner 在 dispatch 前 set)</li>
+ * </ul>
+ *
+ * <h2>per-token 状态(已迁出 FlowContext)</h2>
+ * <ul>
+ *   <li>{@code currentNodeId} / {@code thrownError} / {@code compensationStack} /
+ *       {@code compensatedHandlers} — 全部走 {@link Token#getCurrentNodeId()} 等,
+ *       不再走 FlowContext 的 6 处委派 shim</li>
+ *   <li>{@code vars} — 走 {@link Token#getVars()}(per-fork 隔离)</li>
+ * </ul>
+ *
+ * <p>每条 evaluate 独立一个 FlowContext,不可跨请求共享。
  */
 public class FlowContext {
-    private String flowRunId;
-    private Map<String, Object> vars = new HashMap<>();
-    private KnowledgeSession session;
-    private Object outputModel;
-    private List<GeneralEntity> insertedEntities;
-    private String currentAwaitingField;
-    private String currentNodeId;
-    /**
-     * V5.34 A2 — EndEvent 写出的 thrown error ref(Error/Escalation)。
-     * 委托给 currentToken(跟 vars / currentNodeId 同套路),process-time 状态,不持久化。
-     */
-    private String thrownError;
 
-    // V5.33 A0 — 多 token 模型
-    /** 多 token 推进;worklist 由 traverse 主循环维护。 */
-    private List<Token> activeTokens = new ArrayList<>();
-    /** 当前 executor 看到的 token(fork/join 推进时切换)。 */
+    // ----- 4 typed handles (V5.39) -----
+    private final FlowIdentity identity;
+    private final BusinessVars businessVars;
+    private final ReteSession reteSession;
+    private final SuspendRegistry suspendRegistry;
+
+    // ----- transient / worklist (V5.40+ 计划移走) -----
+    private final List<Token> activeTokens = new ArrayList<>();
     private Token currentToken;
-    /** join_target_id → 已到达分支数,持久化到 nd_decision_flow_state.join_arrivals JSON。 */
-    private Map<String, Integer> joinArrivals = new HashMap<>();
-    /**
-     * V5.33 A0 — join_target_id → 已到达 join 的 token 列表。
-     * join 齐了时,把列表里所有 token.vars union-merge 到 rootToken。
-     */
-    private Map<String, List<Token>> joinedTokens = new HashMap<>();
-    /**
-     * V5.34 A3 — BPMN SAGA 补偿栈。`CompensationStart` push scopeId,
-     * `CompensationEnd` 匹配 pop,`CompensationThrow` pop innermost + 跑 handler sub-flow。
-     * 委托给 currentToken(跟 vars/currentNodeId/thrownError 同套路)。
-     * process-time 状态,不持久化。
-     */
-    private List<String> compensationStack = new ArrayList<>();
-    /**
-     * V5.34 A3 — 已跑过的 (activityId, handlerNodeId) pair 集合。
-     * outer throw 重复触发时 dedup(handler sub-flow resume 不重跑)。
-     */
-    private Set<String> compensatedHandlers = new HashSet<>();
-    /**
-     * V5.34 A3 — 当前 traverse 的 {@link com.ruleforge.decision.flow.ir.FlowDefinition}。
-     * Runner traverse 在 dispatch 前 set,executor 读(process-time,transient,不持久化)。
-     * 同样给 V5.35 A5 LinkThrow 拿 linkTargets 用。
-     */
-    private com.ruleforge.decision.flow.ir.FlowDefinition currentDef;
-    /**
-     * V5.37 B0 — 当前 traverse 的 BpmnDefinition(transient,Runner traverse 在 dispatch 前 set)。
-     * MessageFlow executor 拿它找 message flow 4-tuple + (poolId, nodeId) 路由。
-     */
-    private com.ruleforge.decision.flow.ir.BpmnDefinition currentBpmn;
-    /**
-     * V5.37 B0 — 当前正在跑的 pool id(participantId)。transient,Runner traverse 在
-     * {@code traverse(BpmnDefinition, ctx, participantId, ...)} 重载里 set。
-     * MessageFlow executor 拿它定位 (sourcePool/targetPool, sourceNode/targetNode) 4-tuple。
-     */
+    private final Map<String, Integer> joinArrivals = new HashMap<>();
+    private final Map<String, List<Token>> joinedTokens = new HashMap<>();
+    private FlowDefinition currentDef;
+    private BpmnDefinition currentBpmn;
+
+    public FlowContext(FlowIdentity identity, BusinessVars businessVars,
+                       ReteSession reteSession, SuspendRegistry suspendRegistry) {
+        if (identity == null) throw new IllegalArgumentException("identity is required");
+        if (businessVars == null) throw new IllegalArgumentException("businessVars is required");
+        if (reteSession == null) throw new IllegalArgumentException("reteSession is required");
+        if (suspendRegistry == null) throw new IllegalArgumentException("suspendRegistry is required");
+        this.identity = identity;
+        this.businessVars = businessVars;
+        this.reteSession = reteSession;
+        this.suspendRegistry = suspendRegistry;
+    }
+
+    // ----- 4 typed handle accessors -----
+
+    public FlowIdentity identity() { return identity; }
+    public BusinessVars vars() { return businessVars; }
+    public ReteSession rete() { return reteSession; }
+    public SuspendRegistry suspend() { return suspendRegistry; }
+
+    // ----- currentPoolId transient (V5.37 B0 multi-pool traverse 会 set) -----
+    // 注:不在 FlowIdentity 里 — 那里是 startup-time 不可变;这里是 traverse-time 可变。
+    // executor 读 ctx.currentPoolId(),优先取 transient,缺省回落到 identity。
+
     private String currentPoolId;
-    /**
-     * V5.37 B0 — 当前 flow 累积的 bus subscriptions。SUSPEND 时**保留**(等 resume)、
-     * COMPLETED/FAIL 时**关闭**。ReceiveTask / MessageFlowStart 都 stash 进来。
-     */
-    private final List<com.ruleforge.decision.flow.bus.MessageBus.Subscription> busSubscriptions =
-        new java.util.ArrayList<>();
 
-    public String getFlowRunId() { return flowRunId; }
-    public void setFlowRunId(String flowRunId) { this.flowRunId = flowRunId; }
-
-    /**
-     * 兼容字段:返回 currentToken.vars(若 currentToken 为 null 返回本字段)。
-     * 现有 caller(6 处)无需改;NodeExecutor 拿 vars 走这里即可。
-     */
-    public Map<String, Object> getVars() {
-        if (currentToken != null) return currentToken.getVars();
-        return vars;
+    public String currentPoolId() {
+        return currentPoolId != null ? currentPoolId : identity.currentPoolId();
     }
 
-    public void setVars(Map<String, Object> vars) {
-        if (currentToken != null) {
-            currentToken.setVars(vars);
-        } else {
-            this.vars = vars == null ? new HashMap<>() : vars;
-        }
-    }
-
-    public KnowledgeSession getSession() { return session; }
-    public void setSession(KnowledgeSession session) { this.session = session; }
-
-    public Object getOutputModel() { return outputModel; }
-    public void setOutputModel(Object outputModel) { this.outputModel = outputModel; }
-
-    public List<GeneralEntity> getInsertedEntities() { return insertedEntities; }
-    public void setInsertedEntities(List<GeneralEntity> insertedEntities) { this.insertedEntities = insertedEntities; }
-
-    public String getCurrentAwaitingField() { return currentAwaitingField; }
-    public void setCurrentAwaitingField(String currentAwaitingField) { this.currentAwaitingField = currentAwaitingField; }
-
-    /** 委托给 currentToken.currentNodeId(若 currentToken 为 null 返回本字段)。 */
-    public String getCurrentNodeId() {
-        if (currentToken != null) return currentToken.getCurrentNodeId();
-        return currentNodeId;
-    }
-
-    public void setCurrentNodeId(String currentNodeId) {
-        if (currentToken != null) {
-            currentToken.setCurrentNodeId(currentNodeId);
-        } else {
-            this.currentNodeId = currentNodeId;
-        }
-    }
-
-    // -------- V5.34 A2 — thrownError(委托 currentToken) --------
-
-    /** 委托给 currentToken.thrownError(若 currentToken 为 null 返回本字段)。 */
-    public String getThrownError() {
-        if (currentToken != null) return currentToken.getThrownError();
-        return thrownError;
-    }
-
-    public void setThrownError(String thrownError) {
-        if (currentToken != null) {
-            currentToken.setThrownError(thrownError);
-        } else {
-            this.thrownError = thrownError;
-        }
-    }
-
-    // V5.33 A0 — 多 token 字段
-
-    public List<Token> getActiveTokens() { return activeTokens; }
-    public void setActiveTokens(List<Token> activeTokens) {
-        this.activeTokens = activeTokens == null ? new ArrayList<>() : activeTokens;
-    }
-
-    public Token getCurrentToken() { return currentToken; }
-    public void setCurrentToken(Token currentToken) { this.currentToken = currentToken; }
-
-    public Map<String, Integer> getJoinArrivals() { return joinArrivals; }
-    public void setJoinArrivals(Map<String, Integer> joinArrivals) {
-        this.joinArrivals = joinArrivals == null ? new HashMap<>() : joinArrivals;
-    }
-
-    public Map<String, List<Token>> getJoinedTokens() { return joinedTokens; }
-    public void setJoinedTokens(Map<String, List<Token>> joinedTokens) {
-        this.joinedTokens = joinedTokens == null ? new HashMap<>() : joinedTokens;
-    }
-
-    // -------- V5.34 A3 — compensation 字段(委托 currentToken) --------
-
-    /** 委托给 currentToken.compensationStack。 */
-    public List<String> getCompensationStack() {
-        if (currentToken != null) return currentToken.getCompensationStack();
-        return compensationStack;
-    }
-
-    public void setCompensationStack(List<String> stack) {
-        if (currentToken != null) {
-            currentToken.setCompensationStack(stack);
-        } else {
-            this.compensationStack = stack == null ? new ArrayList<>() : stack;
-        }
-    }
-
-    /** 委托给 currentToken.compensatedHandlers。 */
-    public Set<String> getCompensatedHandlers() {
-        if (currentToken != null) return currentToken.getCompensatedHandlers();
-        return compensatedHandlers;
-    }
-
-    public void setCompensatedHandlers(Set<String> set) {
-        if (currentToken != null) {
-            currentToken.setCompensatedHandlers(set);
-        } else {
-            this.compensatedHandlers = set == null ? new HashSet<>() : set;
-        }
-    }
-
-    // -------- V5.34 A3 — currentDef(transient, traverse 前 set) --------
-
-    public com.ruleforge.decision.flow.ir.FlowDefinition getCurrentDef() { return currentDef; }
-    public void setCurrentDef(com.ruleforge.decision.flow.ir.FlowDefinition currentDef) {
-        this.currentDef = currentDef;
-    }
-
-    // -------- V5.37 B0 — currentBpmn / currentPoolId / busSubscriptions(transient) --------
-
-    public com.ruleforge.decision.flow.ir.BpmnDefinition getCurrentBpmn() { return currentBpmn; }
-    public void setCurrentBpmn(com.ruleforge.decision.flow.ir.BpmnDefinition currentBpmn) {
-        this.currentBpmn = currentBpmn;
-    }
-
-    public String getCurrentPoolId() { return currentPoolId; }
     public void setCurrentPoolId(String currentPoolId) {
         this.currentPoolId = currentPoolId;
     }
 
-    public List<com.ruleforge.decision.flow.bus.MessageBus.Subscription> getBusSubscriptions() {
-        return busSubscriptions;
+    /**
+     * V5.39 A1 — 实际承载 per-token vars 的 map(per-fork 隔离语义)。
+     *
+     * <p>当 {@link #currentToken()} 有值时,返回 {@code currentToken.getVars()};
+     * 否则返回 {@link BusinessVars#getVars()}。
+     *
+     * <p>executor 调 {@code ctx.effectiveVars()} 时,BusinessVars 直接返回内部
+     * map — 这个方法专治 traverse 期间"vars 写到 currentToken,不是写到 BusinessVars"
+     * 的契约。Fork 时 Runner 拍 currentToken.vars 快照;join 时 union-merge 回
+     * currentToken.vars;traverse-end 再 merge 回 BusinessVars。
+     *
+     * <p>不要乱用 — 这是给 executor "读/写当前活动 vars map" 的窄口。
+     */
+    public java.util.Map<String, Object> effectiveVars() {
+        if (currentToken != null && currentToken.getVars() != null) {
+            return currentToken.getVars();
+        }
+        return businessVars.getVars();
     }
 
-    /** MessageFlowStart / ReceiveTask 用:把新订阅塞进 list,SUSPEND 时不关,COMPLETED/FAIL 时 Runner 关。 */
-    public void addBusSubscription(com.ruleforge.decision.flow.bus.MessageBus.Subscription s) {
-        if (s != null) busSubscriptions.add(s);
+    // ----- transient / worklist accessors -----
+
+    public List<Token> activeTokens() { return activeTokens; }
+
+    public Token currentToken() { return currentToken; }
+
+    /**
+     * V5.39 A1 — setCurrentToken 共享 vars map 引用(根 token 视图)。
+     *
+     * <p>设计:BusinessVars.vars 是 per-flowRunId 入口 vars,Token.vars 是 per-fork
+     * 隔离拷贝。Traverse 启动时,根 token 应直接看到 BusinessVars 的入口 vars。
+     * 但 Token ctor 给的是空 HashMap,如果只是"复制 values",后续 caller 往
+     * BusinessVars.put 的修改不会反映到 currentToken(导致 executor 读不到)。
+     *
+     * <p>这里采用<b>引用共享</b>:让 token.getVars() 跟 businessVars.getVars() 指向
+     * 同一个 map。后续 put 到 BusinessVars 或 currentToken.getVars() 都改同一份。
+     * Fork 时,Token.fork() 会显式 new 一个 HashMap(parent.vars) — 隔离生效。
+     *
+     * <p>若 caller 显式 setVars 过(传入的 token.getVars() 不是默认空 HashMap),
+     * 保留 caller 的值,不覆盖。
+     */
+    public void setCurrentToken(Token currentToken) {
+        this.currentToken = currentToken;
+        if (currentToken != null && currentToken.getVars() != null) {
+            // 共享 BusinessVars 的 map 引用,除非 caller 已经塞了非空 map
+            if (currentToken.getVars().isEmpty()) {
+                currentToken.setVars(businessVars.getVars());
+            }
+        }
+    }
+
+    public Map<String, Integer> joinArrivals() { return joinArrivals; }
+
+    public Map<String, List<Token>> joinedTokens() { return joinedTokens; }
+
+    public FlowDefinition currentDef() { return currentDef; }
+    public void setCurrentDef(FlowDefinition currentDef) { this.currentDef = currentDef; }
+
+    public BpmnDefinition currentBpmn() { return currentBpmn; }
+    public void setCurrentBpmn(BpmnDefinition currentBpmn) { this.currentBpmn = currentBpmn; }
+
+    // ----- 便利工厂 -----
+
+    /**
+     * 用 UUID 生成 flowRunId,其它字段 placeholder;适合测试 / 单池 stateless 场景。
+     */
+    public static FlowContext newDefault(String flowId) {
+        return new FlowContext(
+            new FlowIdentity(java.util.UUID.randomUUID().toString(), flowId, null),
+            new BusinessVars(),
+            new ReteSession(),
+            new SuspendRegistry()
+        );
+    }
+
+    /**
+     * 测试用工厂:显式指定 flowRunId(避免依赖 UUID),其它字段 placeholder。
+     * 通常 test helper 拿这个省得每次写 4 参构造。
+     */
+    public static FlowContext newForTest(String flowRunId, String flowId) {
+        return new FlowContext(
+            new FlowIdentity(flowRunId, flowId, null),
+            new BusinessVars(),
+            new ReteSession(),
+            new SuspendRegistry()
+        );
+    }
+
+    /**
+     * 测试用工厂:连 vars 一起传入。{@code null} vars 走空 BusinessVars。
+     * 替代原来 {@code new FlowContext() + setFlowRunId + setVars} 的两步走。
+     */
+    public static FlowContext forFlow(String flowRunId, String flowId, java.util.Map<String, Object> vars) {
+        return new FlowContext(
+            new FlowIdentity(flowRunId, flowId, null),
+            BusinessVars.from(vars),
+            new ReteSession(),
+            new SuspendRegistry()
+        );
     }
 }

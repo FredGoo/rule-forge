@@ -73,8 +73,7 @@ class FlowNodeRunnerLinkTest {
     }
 
     private FlowContext newCtx(String id) {
-        FlowContext ctx = new FlowContext();
-        ctx.setFlowRunId(id);
+        FlowContext ctx = FlowContext.forFlow(id, "test-flow", null);
         return ctx;
     }
 

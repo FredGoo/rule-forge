@@ -136,7 +136,7 @@ public class FlowNodeRunner {
         if (startNodeId == null) {
             throw new FlowExecutionException("Flow has no start node: " + def.getProcessId());
         }
-        if (ctx.getFlowRunId() == null) {
+        if (ctx.identity().flowRunId() == null) {
             throw new FlowExecutionException("FlowContext.flowRunId is required");
         }
 
@@ -150,17 +150,17 @@ public class FlowNodeRunner {
         DecisionFlowState state = upsertState(def, ctx, DecisionFlowState.STATUS_PENDING, startNodeId, null, null);
 
         // 2. 初始化代表 token
-        if (ctx.getActiveTokens().isEmpty()) {
+        if (ctx.activeTokens().isEmpty()) {
             Token rootToken = new Token("tok-" + UUID.randomUUID());
             rootToken.setCurrentNodeId(startNodeId);
-            ctx.getActiveTokens().add(rootToken);
+            ctx.activeTokens().add(rootToken);
         }
-        if (ctx.getCurrentToken() == null) {
-            ctx.setCurrentToken(ctx.getActiveTokens().get(0));
+        if (ctx.currentToken() == null) {
+            ctx.setCurrentToken(ctx.activeTokens().get(0));
         }
 
         // 3. worklist 主循环
-        Deque<Token> worklist = new ArrayDeque<>(ctx.getActiveTokens());
+        Deque<Token> worklist = new ArrayDeque<>(ctx.activeTokens());
         int visitedCount = 0;
         boolean forkedAtLeastOnce = false;
 
@@ -190,7 +190,7 @@ public class FlowNodeRunner {
                     throw new FlowExecutionException("Node not found: " + nodeId);
                 }
 
-                ctx.setCurrentNodeId(nodeId);
+                ctx.currentToken().setCurrentNodeId(nodeId);
                 if (stateMapper != null) {
                     state.setStatus(DecisionFlowState.STATUS_RUNNING);
                     state.setCurrentNodeId(nodeId);
@@ -206,7 +206,7 @@ public class FlowNodeRunner {
                 } catch (com.ruleforge.decision.flow.executor.IntermediateEventExecutor.BranchTransition bt) {
                     // V5.35 A5 — linkThrow 跳到 linkCatch(跳过 throw 出边)
                     nodeId = bt.targetNodeId();
-                    log.info("[LINK-BRANCH] flowRunId={} → {}", ctx.getFlowRunId(), nodeId);
+                    log.info("[LINK-BRANCH] flowRunId={} → {}", ctx.identity().flowRunId(), nodeId);
                     continue;
                 } catch (AsyncNodeSuspendException ex) {
                     // V5.28 P6:first Suspend 短路整 fork
@@ -236,24 +236,24 @@ public class FlowNodeRunner {
                         Token child = token.fork("tok-" + UUID.randomUUID());
                         child.setCurrentNodeId(branchTarget);
                         worklist.add(child);
-                        ctx.getActiveTokens().add(child);
+                        ctx.activeTokens().add(child);
                     }
                     log.info("[FORK] flowRunId={} parent={} branches={} joinTarget={}",
-                        ctx.getFlowRunId(), token.getTokenId(), transition.branchTargets, transition.joinNodeId);
+                        ctx.identity().flowRunId(), token.getTokenId(), transition.branchTargets, transition.joinNodeId);
                     break;  // 当前 token 暂停推进
                 } else if (transition.kind == NodeTransition.Kind.JOIN) {
                     // join: 计数 +1,检查是否齐
-                    Integer arrived = ctx.getJoinArrivals().get(transition.joinNodeId);
+                    Integer arrived = ctx.joinArrivals().get(transition.joinNodeId);
                     int newCount = (arrived == null ? 0 : arrived) + 1;
-                    ctx.getJoinArrivals().put(transition.joinNodeId, newCount);
+                    ctx.joinArrivals().put(transition.joinNodeId, newCount);
                     // V5.33 A0 — 暂存到达 join 的 token
-                    ctx.getJoinedTokens()
+                    ctx.joinedTokens()
                         .computeIfAbsent(transition.joinNodeId, k -> new ArrayList<>())
                         .add(token);
                     // V5.33 A0 — joinArrivals 变更后写回 state
                     if (stateMapper != null) {
                         try {
-                            state.setJoinArrivals(MAPPER.writeValueAsString(ctx.getJoinArrivals()));
+                            state.setJoinArrivals(MAPPER.writeValueAsString(ctx.joinArrivals()));
                         } catch (Exception e) {
                             log.warn("Failed to serialize join_arrivals: {}", e.getMessage());
                         }
@@ -262,13 +262,13 @@ public class FlowNodeRunner {
                     if (newCount < transition.expected) {
                         // 没齐,此 token 走完,等兄弟
                         log.debug("[JOIN-WAIT] flowRunId={} join={} arrived={}/{}",
-                            ctx.getFlowRunId(), transition.joinNodeId, newCount, transition.expected);
+                            ctx.identity().flowRunId(), transition.joinNodeId, newCount, transition.expected);
                         break;
                     } else {
                         // 齐了 — 把所有已到达 join 的 token 的 vars union-merge 到 rootToken
                         // 然后跳到 join 后第一个 outgoing,visited 重置
-                        Token rootToken = ctx.getActiveTokens().get(0);
-                        List<Token> arrivedTokens = ctx.getJoinedTokens().get(transition.joinNodeId);
+                        Token rootToken = ctx.activeTokens().get(0);
+                        List<Token> arrivedTokens = ctx.joinedTokens().get(transition.joinNodeId);
                         if (arrivedTokens != null) {
                             for (Token t : arrivedTokens) {
                                 if (t != rootToken) {
@@ -284,7 +284,7 @@ public class FlowNodeRunner {
                         rootToken.setCurrentNodeId(transition.joinOutgoing);
                         worklist.add(rootToken);
                         log.info("[JOIN] flowRunId={} join={} expected={} → post={}",
-                            ctx.getFlowRunId(), transition.joinNodeId, transition.expected, transition.joinOutgoing);
+                            ctx.identity().flowRunId(), transition.joinNodeId, transition.expected, transition.joinOutgoing);
                         break;  // 当前 token 走完;worklist 重新塞 rootToken
                     }
                 } else {
@@ -297,10 +297,10 @@ public class FlowNodeRunner {
         // 4. 全部 token 都走完 — COMPLETED
         // P0 fallback: 如果没 join 节点(fork 后直接走完),各 branch 写完没 union
         // — 在退出前把 activeTokens 里的所有 token 的 vars union-merge 进 rootToken
-        if (!ctx.getActiveTokens().isEmpty()) {
-            Token rootToken = ctx.getActiveTokens().get(0);
-            for (int i = 1; i < ctx.getActiveTokens().size(); i++) {
-                rootToken.unionMerge(ctx.getActiveTokens().get(i));
+        if (!ctx.activeTokens().isEmpty()) {
+            Token rootToken = ctx.activeTokens().get(0);
+            for (int i = 1; i < ctx.activeTokens().size(); i++) {
+                rootToken.unionMerge(ctx.activeTokens().get(i));
             }
             ctx.setCurrentToken(rootToken);
         }
@@ -320,13 +320,13 @@ public class FlowNodeRunner {
             persistenceService.serializeForAtomicUpdate(state, ctx);
         }
         log.info("[FLOW-COMPLETED] flowId={} flowRunId={} nodes={} forked={}",
-            def.getProcessId(), ctx.getFlowRunId(), visitedCount, forkedAtLeastOnce);
+            def.getProcessId(), ctx.identity().flowRunId(), visitedCount, forkedAtLeastOnce);
         return state;
     }
 
     /** 决定下一节点。null 表示流程结束。 */
     public String nextNode(FlowDefinition def, FlowNode node, FlowContext ctx) {
-        NodeTransition t = nextTransition(def, node, ctx, ctx.getCurrentToken());
+        NodeTransition t = nextTransition(def, node, ctx, ctx.currentToken());
         return t.nextNodeId;
     }
 
@@ -380,18 +380,18 @@ public class FlowNodeRunner {
         // 多 outgoing — 走路由
         // 1. userTask 后的 binary 决策
         if (node.getType() == NodeType.USER_TASK
-            && ctx.getCurrentAwaitingField() != null
-            && ctx.getVars().containsKey(ctx.getCurrentAwaitingField())) {
-            Object value = ctx.getVars().get(ctx.getCurrentAwaitingField());
+            && ctx.vars().getCurrentAwaitingField() != null
+            && ctx.effectiveVars().containsKey(ctx.vars().getCurrentAwaitingField())) {
+            Object value = ctx.effectiveVars().get(ctx.vars().getCurrentAwaitingField());
             String target = matchDecisionValue(def, node, String.valueOf(value));
             if (target != null) {
-                ctx.setCurrentAwaitingField(null);
+                ctx.vars().setCurrentAwaitingField(null);
                 return NodeTransition.next(target);
             }
         }
 
         // 2. condition (UEL)
-        String conditionTarget = matchCondition(def, node, ctx.getVars());
+        String conditionTarget = matchCondition(def, node, ctx.effectiveVars());
         if (conditionTarget != null) return NodeTransition.next(conditionTarget);
 
         // 3. percent (加权随机)
@@ -485,7 +485,7 @@ public class FlowNodeRunner {
             persistenceService.serializeForAtomicUpdate(state, ctx);
         }
         log.info("[FLOW-SUSPENDED] flowId={} flowRunId={} nodeId={} waitType={} waitRef={}",
-            state.getFlowId(), ctx.getFlowRunId(), token.getCurrentNodeId(), ex.getWaitType(), ex.getWaitRef());
+            state.getFlowId(), ctx.identity().flowRunId(), token.getCurrentNodeId(), ex.getWaitType(), ex.getWaitRef());
         return state;
     }
 
@@ -503,15 +503,15 @@ public class FlowNodeRunner {
      * Runner traverse 在 COMPLETED / FAIL 出口调;SUSPEND 出口不调(等 resume 继续持有)。
      */
     private void closeBusSubscriptions(FlowContext ctx) {
-        if (ctx == null || ctx.getBusSubscriptions() == null) return;
-        for (com.ruleforge.decision.flow.bus.MessageBus.Subscription s : ctx.getBusSubscriptions()) {
+        if (ctx == null || ctx.suspend().all() == null) return;
+        for (com.ruleforge.decision.flow.bus.MessageBus.Subscription s : ctx.suspend().all()) {
             try {
                 s.close();
             } catch (Exception e) {
                 log.warn("Failed to close bus subscription: {}", e.getMessage());
             }
         }
-        ctx.getBusSubscriptions().clear();
+        ctx.suspend().all().clear();
     }
 
     private DecisionFlowState upsertState(FlowDefinition def, FlowContext ctx,
@@ -521,16 +521,16 @@ public class FlowNodeRunner {
             // 构造一个内存 state,只用于 traverse 内部传递
             DecisionFlowState stub = new DecisionFlowState();
             stub.setFlowId(def.getProcessId());
-            stub.setFlowRunId(ctx.getFlowRunId());
+            stub.setFlowRunId(ctx.identity().flowRunId());
             stub.setStatus(status);
             stub.setCurrentNodeId(nodeId);
             return stub;
         }
-        DecisionFlowState state = stateMapper.selectByFlowRunId(ctx.getFlowRunId());
+        DecisionFlowState state = stateMapper.selectByFlowRunId(ctx.identity().flowRunId());
         if (state == null) {
             state = new DecisionFlowState();
             state.setFlowId(def.getProcessId());
-            state.setFlowRunId(ctx.getFlowRunId());
+            state.setFlowRunId(ctx.identity().flowRunId());
         }
         state.setStatus(status);
         state.setCurrentNodeId(nodeId);

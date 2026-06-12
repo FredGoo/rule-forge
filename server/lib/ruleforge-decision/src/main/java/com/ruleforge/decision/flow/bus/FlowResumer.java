@@ -6,6 +6,7 @@ import com.ruleforge.decision.entity.DecisionFlowState;
 import com.ruleforge.decision.flow.engine.FlowContext;
 import com.ruleforge.decision.flow.engine.FlowDefinitionRepo;
 import com.ruleforge.decision.flow.engine.FlowEngine;
+import com.ruleforge.decision.flow.engine.Token;
 import com.ruleforge.decision.flow.ir.FlowDefinition;
 import com.ruleforge.decision.mapper.DecisionFlowStateMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -110,10 +111,17 @@ public class FlowResumer {
             }
 
             // 2. 构造 ctx + 调 engine.resume
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId(flowRunId);
-            ctx.setCurrentNodeId(currentNodeId);
-            ctx.setVars(vars);
+            FlowContext ctx = new FlowContext(
+                new com.ruleforge.decision.flow.engine.FlowIdentity(flowRunId, flowId, null),
+                com.ruleforge.decision.flow.engine.BusinessVars.from(vars),
+                new com.ruleforge.decision.flow.engine.ReteSession(),
+                new com.ruleforge.decision.flow.engine.SuspendRegistry());
+            // Resume 路径从 DB 还原状态 — 设根 token + currentNodeId
+            // (vars 已经在 BusinessVars.from(vars) 时由 setCurrentToken 共享引用)
+            Token rootToken = new Token("tok-resume-" + flowRunId);
+            rootToken.setCurrentNodeId(currentNodeId);
+            ctx.activeTokens().add(rootToken);
+            ctx.setCurrentToken(rootToken);
             log.info("[BUS→FLOW] resume flowRunId={} flowId={} currentNodeId={} channel={}",
                 flowRunId, flowId, currentNodeId, message.channel());
             engine.resume(def, ctx, currentNodeId);

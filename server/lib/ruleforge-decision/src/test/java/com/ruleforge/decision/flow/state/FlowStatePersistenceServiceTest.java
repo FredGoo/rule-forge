@@ -55,19 +55,17 @@ class FlowStatePersistenceServiceTest {
     }
 
     private FlowContext ctxWithVars(Map<String, Object> vars) {
-        FlowContext ctx = new FlowContext();
-        ctx.setFlowRunId("test-" + System.nanoTime());
+        FlowContext ctx = FlowContext.newDefault("test-flow");
         Token t = new Token("tok-" + System.nanoTime());
         t.setVars(vars == null ? new HashMap<>() : vars);
-        ctx.getActiveTokens().add(t);
+        ctx.activeTokens().add(t);
         ctx.setCurrentToken(t);
         return ctx;
     }
 
     private FlowContext ctxWithNoToken(Map<String, Object> vars) {
-        FlowContext ctx = new FlowContext();
-        ctx.setFlowRunId("test-" + System.nanoTime());
-        ctx.setVars(vars == null ? new HashMap<>() : vars);
+        FlowContext ctx = FlowContext.newDefault("test-flow");
+        ctx.vars().getVars().putAll(vars == null ? new HashMap<>() : vars);
         // 不 setCurrentToken
         return ctx;
     }
@@ -79,12 +77,12 @@ class FlowStatePersistenceServiceTest {
         vars.put("amount", 1000);
         vars.put("approved", true);
         FlowContext ctx = ctxWithVars(vars);
-        ctx.getJoinArrivals().put("join1", 3);
-        ctx.getJoinArrivals().put("join2", 1);
+        ctx.joinArrivals().put("join1", 3);
+        ctx.joinArrivals().put("join2", 1);
 
         DecisionFlowState state = new DecisionFlowState();
         state.setId(42L);
-        state.setFlowRunId(ctx.getFlowRunId());
+        state.setFlowRunId(ctx.identity().flowRunId());
         state.setStatus(DecisionFlowState.STATUS_RUNNING);
 
         FlowStatePersistenceService.AtomicUpdate payload =
@@ -123,7 +121,7 @@ class FlowStatePersistenceServiceTest {
         FlowContext ctx = ctxWithVars(vars);
 
         DecisionFlowState state = new DecisionFlowState();
-        state.setFlowRunId(ctx.getFlowRunId());
+        state.setFlowRunId(ctx.identity().flowRunId());
 
         FlowStatePersistenceService.AtomicUpdate payload =
             service.serializeForAtomicUpdate(state, ctx);
@@ -147,8 +145,8 @@ class FlowStatePersistenceServiceTest {
         // 这里改成空 Map 测
         joinArrivals = Collections.emptyMap();
         FlowContext ctx = ctxWithVars(new HashMap<>());
-        ctx.getJoinArrivals().clear();
-        ctx.getJoinArrivals().putAll(joinArrivals);
+        ctx.joinArrivals().clear();
+        ctx.joinArrivals().putAll(joinArrivals);
 
         DecisionFlowState state = new DecisionFlowState();
         FlowStatePersistenceService.AtomicUpdate payload =
@@ -195,7 +193,7 @@ class FlowStatePersistenceServiceTest {
         @DisplayName("Given 一次 serializeForAtomicUpdate,When 调 mapper,Then updateAtomic 调 1 次(updateById 不调)")
         void invokes_update_atomic_exactly_once() {
             FlowContext ctx = ctxWithVars(Map.of("k", "v"));
-            ctx.getJoinArrivals().put("j1", 2);
+            ctx.joinArrivals().put("j1", 2);
             DecisionFlowState state = new DecisionFlowState();
             state.setId(1L);
 

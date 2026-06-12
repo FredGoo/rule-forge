@@ -59,16 +59,16 @@ class CompensationIntegrationTest {
             .register("noop", (n, c) -> {})
             .register("mark_main", (n, c) -> {})
             .register("mark_handler_a", (n, c) -> {
-                List<String> cur = (List<String>) c.getVars().getOrDefault("compensated", new ArrayList<>());
+                List<String> cur = (List<String>) c.vars().getVars().getOrDefault("compensated", new ArrayList<>());
                 List<String> next = new ArrayList<>(cur);
                 next.add("ha");
-                c.getVars().put("compensated", next);
+                c.vars().getVars().put("compensated", next);
             })
             .register("mark_handler_b", (n, c) -> {
-                List<String> cur = (List<String>) c.getVars().getOrDefault("compensated", new ArrayList<>());
+                List<String> cur = (List<String>) c.vars().getVars().getOrDefault("compensated", new ArrayList<>());
                 List<String> next = new ArrayList<>(cur);
                 next.add("hb");
-                c.getVars().put("compensated", next);
+                c.vars().getVars().put("compensated", next);
             });
 
         CompensationStartExecutor cstart = new CompensationStartExecutor();
@@ -119,23 +119,22 @@ class CompensationIntegrationTest {
             """;
         FlowDefinition def = parser.parseSingleProcess(xml);
 
-        FlowContext ctx = new FlowContext();
-        ctx.setFlowRunId("test-comp-" + System.nanoTime());
+        FlowContext ctx = FlowContext.newDefault("test-flow");
         Token t = new Token("tok-" + System.nanoTime());
         t.setCurrentNodeId(def.getStartNodeId());
-        ctx.getActiveTokens().add(t);
+        ctx.activeTokens().add(t);
         ctx.setCurrentToken(t);
 
         FlowNodeRunner runner = new FlowNodeRunner(reg, new ConditionEvaluator(), null);
         runner.traverse(def, ctx, def.getStartNodeId());
 
-        List<String> compensated = (List<String>) ctx.getVars().get("compensated");
+        List<String> compensated = (List<String>) ctx.vars().getVars().get("compensated");
         assertNotNull(compensated, "compensated vars should be set by handler sub-flows");
         // act_a 先注册(早)→ handler_a 后跑;act_b 后注册(晚)→ handler_b 先跑
         assertEquals(Arrays.asList("hb", "ha"), compensated,
             "LIFO order: act_b's handler_b ran first, act_a's handler_a ran second");
         // 跑完 throw 后 stack 应清空
-        assertTrue(ctx.getCompensationStack().isEmpty(),
+        assertTrue(ctx.currentToken().getCompensationStack().isEmpty(),
             "stack should be empty after CompensationThrow pops innermost scope");
     }
 }

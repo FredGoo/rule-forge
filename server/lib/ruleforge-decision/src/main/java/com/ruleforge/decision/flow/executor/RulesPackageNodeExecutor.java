@@ -53,7 +53,7 @@ public class RulesPackageNodeExecutor implements NodeExecutor {
         for (Map<String, String> rule : rules) {
             fired.add(rule.getOrDefault("name", rule.getOrDefault("file", "?")));
         }
-        context.getVars().put("rulesFired", fired);
+        context.effectiveVars().put("rulesFired", fired);
         log.info("[RULES-PACKAGE] node={} rules={}", node.getNodeId(), fired);
     }
 }

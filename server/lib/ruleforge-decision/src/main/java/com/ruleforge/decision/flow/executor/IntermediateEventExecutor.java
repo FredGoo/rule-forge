@@ -30,7 +30,7 @@ import java.util.Map;
  * <p>LinkThrow 需要当前 {@link FlowDefinition} 来查 linkTargets 索引。
  * 来源(优先级):
  * <ol>
- *   <li>{@code ctx.getCurrentDef()} — Runner traverse 在 dispatch 前 set</li>
+ *   <li>{@code ctx.currentDef()} — Runner traverse 在 dispatch 前 set</li>
  *   <li>静态 fallback {@link Holder#DEF} — 测试场景手工 for-loop 时用</li>
  * </ol>
  */
@@ -83,7 +83,7 @@ public class IntermediateEventExecutor implements NodeExecutor {
         if (kind instanceof IntermediateEventKind.LinkThrow lt) {
             String target = resolveLinkTarget(context, lt.linkName());
             log.info("[LINK-THROW] flowRunId={} from={} to={} linkName={}",
-                context.getFlowRunId(), node.getNodeId(), target, lt.linkName());
+                context.identity().flowRunId(), node.getNodeId(), target, lt.linkName());
             throw new BranchTransition(target);
         }
         if (kind instanceof IntermediateEventKind.LinkCatch lc) {
@@ -91,7 +91,7 @@ public class IntermediateEventExecutor implements NodeExecutor {
             FlowDefinition def = resolveDef(context);
             if (def != null && !def.getLinkTargets().containsKey(lc.linkName())) {
                 log.warn("[LINK-CATCH-ORPHAN] flowRunId={} node={} linkName={} has no matching linkThrow (continuing anyway)",
-                    context.getFlowRunId(), node.getNodeId(), lc.linkName());
+                    context.identity().flowRunId(), node.getNodeId(), lc.linkName());
             }
             return;
         }
@@ -104,7 +104,7 @@ public class IntermediateEventExecutor implements NodeExecutor {
         payload.put("eventType", "message");
         payload.put("eventName", name);
         log.info("[INTERMEDIATE-SUSPEND-MESSAGE] flowRunId={} nodeId={} eventName={}",
-            ctx.getFlowRunId(), node.getNodeId(), name);
+            ctx.identity().flowRunId(), node.getNodeId(), name);
         return new AsyncNodeSuspendException(
             node.getNodeId(),
             "INTERMEDIATE_EVENT",
@@ -119,7 +119,7 @@ public class IntermediateEventExecutor implements NodeExecutor {
         payload.put("eventType", "signal");
         payload.put("eventName", name);
         log.info("[INTERMEDIATE-SUSPEND-SIGNAL] flowRunId={} nodeId={} eventName={}",
-            ctx.getFlowRunId(), node.getNodeId(), name);
+            ctx.identity().flowRunId(), node.getNodeId(), name);
         return new AsyncNodeSuspendException(
             node.getNodeId(),
             "INTERMEDIATE_EVENT",
@@ -135,7 +135,7 @@ public class IntermediateEventExecutor implements NodeExecutor {
         payload.put("duration", duration.toString());
         Instant nextRetry = Instant.now().plus(duration);
         log.info("[INTERMEDIATE-SUSPEND-TIMER] flowRunId={} nodeId={} duration={} nextRetryAt={}",
-            ctx.getFlowRunId(), node.getNodeId(), duration, nextRetry);
+            ctx.identity().flowRunId(), node.getNodeId(), duration, nextRetry);
         return new AsyncNodeSuspendException(
             node.getNodeId(),
             "INTERMEDIATE_EVENT",
@@ -150,7 +150,7 @@ public class IntermediateEventExecutor implements NodeExecutor {
         payload.put("eventType", "conditional");
         payload.put("condition", expr);
         log.info("[INTERMEDIATE-SUSPEND-CONDITIONAL] flowRunId={} nodeId={} expr={}",
-            ctx.getFlowRunId(), node.getNodeId(), expr);
+            ctx.identity().flowRunId(), node.getNodeId(), expr);
         return new AsyncNodeSuspendException(
             node.getNodeId(),
             "INTERMEDIATE_EVENT",
@@ -177,7 +177,7 @@ public class IntermediateEventExecutor implements NodeExecutor {
     }
 
     private FlowDefinition resolveDef(FlowContext ctx) {
-        FlowDefinition def = ctx.getCurrentDef();
+        FlowDefinition def = ctx.currentDef();
         if (def == null) def = Holder.DEF;
         return def;
     }

@@ -32,15 +32,15 @@ public class CompensationStartExecutor implements NodeExecutor {
             // V5.31 P0 兜底:无 scopeId 用 nodeId
             scopeId = node.getNodeId();
         }
-        java.util.List<String> stack = context.getCompensationStack();
+        java.util.List<String> stack = context.currentToken().getCompensationStack();
         // 幂等:栈顶是同一个 scopeId 就 warn + skip
         if (!stack.isEmpty() && scopeId.equals(stack.get(stack.size() - 1))) {
             log.warn("[COMP-START-DUP] flowRunId={} nodeId={} scopeId={} — consecutive duplicate, skipping push",
-                context.getFlowRunId(), node.getNodeId(), scopeId);
+                context.identity().flowRunId(), node.getNodeId(), scopeId);
             return;
         }
         stack.add(scopeId);
         log.info("[COMP-START] flowRunId={} nodeId={} scopeId={}, stack size={}",
-            context.getFlowRunId(), node.getNodeId(), scopeId, stack.size());
+            context.identity().flowRunId(), node.getNodeId(), scopeId, stack.size());
     }
 }

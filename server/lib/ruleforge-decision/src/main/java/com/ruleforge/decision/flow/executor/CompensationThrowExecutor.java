@@ -36,7 +36,7 @@ public class CompensationThrowExecutor implements NodeExecutor, ApplicationConte
     @Override
     public void execute(FlowNode node, FlowContext context) {
         log.info("[COMP-THROW] flowRunId={} nodeId={} — running handlers",
-            context.getFlowRunId(), node.getNodeId());
+            context.identity().flowRunId(), node.getNodeId());
         NodeExecutorRegistry reg = resolveRegistry();
         if (reg == null) {
             throw new com.ruleforge.decision.exception.FlowExecutionException(
@@ -52,7 +52,7 @@ public class CompensationThrowExecutor implements NodeExecutor, ApplicationConte
      * 测试场景:由 Runner 在 traverse 前 set;production 场景:由 Runner 在 traverse 时注入。
      */
     private com.ruleforge.decision.flow.ir.FlowDefinition getCurrentDef(FlowContext ctx) {
-        if (ctx.getCurrentDef() != null) return ctx.getCurrentDef();
+        if (ctx.currentDef() != null) return ctx.currentDef();
         // 兜底:Holder.DEF(测试场景)
         return Holder.DEF;
     }

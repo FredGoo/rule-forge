@@ -78,10 +78,16 @@ public class FlowStateRecoveryJob {
             }
 
             // 3. 反序列化 vars → 构造 FlowContext
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId(state.getFlowRunId());
-            ctx.setCurrentNodeId(state.getCurrentNodeId());
-            ctx.setVars(persistence.deserializeVars(state));
+            FlowContext ctx = new FlowContext(
+                new com.ruleforge.decision.flow.engine.FlowIdentity(state.getFlowRunId(), state.getFlowId(), null),
+                com.ruleforge.decision.flow.engine.BusinessVars.from(persistence.deserializeVars(state)),
+                new com.ruleforge.decision.flow.engine.ReteSession(),
+                new com.ruleforge.decision.flow.engine.SuspendRegistry());
+            com.ruleforge.decision.flow.engine.Token rootToken =
+                new com.ruleforge.decision.flow.engine.Token("tok-recover-" + state.getFlowRunId());
+            rootToken.setCurrentNodeId(state.getCurrentNodeId());
+            ctx.activeTokens().add(rootToken);
+            ctx.setCurrentToken(rootToken);
             // V5.33 A0 — 反序列化 join_arrivals JSON 回 ctx.joinArrivals
             persistence.deserializeJoinArrivals(state, ctx);
 
