@@ -167,19 +167,111 @@ Rust 首发:Java `BpmnXmlParser.java` 当前不识别 `intermediateThrowEvent`,
   (UEL evaluator / Polling worker / ConditionalStartEvent /
   invalidate 通知链)
 
-### Java 端 mirror 待办(供 V5.33+ 跟踪)
+---
 
-V5.28-V5.32 在 Rust 端先收口的功能,Java 端还没 mirror:
+**V5.33-V5.38 — Java 端 BPMN 2.0 完整化 + 多池协作 + 异步消息 (#81-#92, 12 PRs)**
 
-- `BpmnXmlParser.java L204` 识别 `intermediateThrowEvent` + `linkEventDefinition`
-  + `conditionalEventDefinition`
-- 多 handler / 跨 scope Compensation SAGA(目前 Java 端只支持单
-  handler per activity)
-- Postgres advisory-lock 驱动的 single-key CAS(目前 Java 端用
-  MySQL `SELECT ... FOR UPDATE`)
-- 复合原子化写(`put_suspended` / `mark_terminal_with_vars`)
-- Multi-Instance 任务包装(Java 端目前只支持串行)
-- V5.30 Error / Escalation / Terminate EndEvent
+V5.33-V5.38 是 Java 引擎把 V5.28-V5.32 在 Rust 端先走的契约全 mirror,
+并扩展出 V5.37 多池协作 + V5.38 异步消息机制 — 整个 RuleForge 决策引擎
+进入"生产级 BPMN 2.0 全功能"状态。
+
+#### V5.33 A0 — Java 端 mirror V5.28 P6 ParallelGateway JOIN 严格化 (#81)
+
+- `Token` 类 + `FlowContext` 加 `activeTokens` / `currentToken` / `joinArrivals`
+- `FlowNodeRunner.traverse` 改 worklist 算法,支持 fork/join + onSuspend/onFail/onComplete 三出口
+- `ParallelGatewayExecutor` 加 `findJoinTarget` 启发式(找最近 ancestor gateway)
+- DB 加 `nd_decision_flow_state.join_target_node` 列 + `FlowStateRecoveryJob` 反序列化
+
+#### V5.33 A1 — Java 端 mirror V5.29 Multi-Instance parallel (#82)
+
+- `MultiInstanceExecutor` wrapper(parallel + sequential)+ `MultiInstanceChildContext`
+- `NodeExecutorRegistry` 路由:任何 SERVICE_TASK 带 `ruleforge:multiInstance="true"` 优先走 MI
+
+#### V5.34 A2 — Java 端 mirror V5.30 Error/Escalation/Terminate EndEvent 严格化 (#83)
+
+- `EndEventKind` 枚举 5 variant(None / Error / Escalation / Terminate + 兜底)
+- `FlowContext.thrownError` 字段(给 parent scope 收口)
+- `EventNodeExecutor` 拆 4 path(Error/Escalation/Terminate + 兜底)
+
+#### V5.34 A3 — Java 端 mirror V5.31 P0 完整 Compensation SAGA (#84)
+
+- 4 个 Compensation executor(Start / End / IntermediateThrow / Throw)
+- `CompensationRunner` helper(单 handler per activity → 多 handler fan-out)
+- `FlowContext` / `FlowDefinition` 加 compensation 相关字段
+
+#### V5.35 A4 — Java 端 mirror V5.31 P1 复合原子化写 (#85)
+
+- `FlowStateStore.upsertSuspendedWithVars` / `markTerminalWithVars` 等复合原子化方法
+- 给 Multi-Instance 子 context 提供"批量原子写"能力,避免中间状态被并发读
+
+#### V5.35 A5 — Java 端 mirror V5.32 link/conditional intermediate event (#86)
+
+- `IntermediateEventKind` sealed interface(message / signal / timer / link / conditional)
+- `parseIsoDuration` helper(timer 解析 `PT5M` 之类 ISO-8601)
+- `FlowDefinition.linkTargets` + parser 构建 link 索引
+- `IntermediateEventExecutor`(新)+ `NodeTransition.BRANCH` kind 路由 link throw→catch
+
+#### V5.36 A6 — Java 端 mirror V5.30 补充 Cancel/Compensation/Message/Signal EndEvent (#87)
+
+- `EndEventKind` 扩 4 variant(Cancel / Compensation / MessageEnd / SignalEnd)
+- `fromAttrs` 工厂从 BPMN 属性自动识别
+- 集成 `CompensationRunner` 跑 attachedTo activity 的 handlers
+
+#### V5.36 A7 — Java 端 mirror V5.32 UEL 表达式 + Polling worker (#88)
+
+- `ConditionEvaluator` 补 UEL:null 字面量 + 字符串比较 op + 数字 `==` / `!=` 浮点容差
+- `ConditionalPollingWorker` — 定时轮询 conditional suspended flow,重新求值条件
+
+#### V5.37 B0 — BPMN 2.0 §12 Collaboration + Pool / Lane (#90, greenfield Java 端)
+
+- 5 个新 IR 类型:`BpmnDefinition` record + `Collaboration` / `Participant` / `MessageFlow` / `Lane`
+- `BpmnXmlParser.parse` BREAKING → 返 `BpmnDefinition`;保留 `parseSingleProcess` 便利方法
+- 2 个新 executor:`MessageFlowStartExecutor`(subscribe + 抛 AsyncNodeSuspendException)
+  + `MessageFlowEndExecutor`(publish + 不抛)
+- `FlowContext` 加 `currentPoolId` / `busSubscriptions` / `currentBpmn` 字段
+- `FlowNodeRunner.traverse(BpmnDefinition, ctx, participantId, startNodeId)` 重载 +
+  `closeBusSubscriptions` 在 COMPLETED/FAIL 出口调,SUSPEND 保留
+- `FlowEngine.start(flowId, participantId, ctx)` 多池启动入口
+- 14 个新 BDD + 1 个生产 caller 适配(BpmnFlowController 走 `parseSingleProcess`)
+
+#### V5.37 B1 — BPMN 2.0 §11 Choreography 基础 (#91, greenfield Java 端)
+
+- 2 个新 IR 类型:`Choreography` + `ChoreographyTask`(3 角色 + 反向引用 §12 message flow)
+- `BpmnDefinition` 加 `choreography` 字段(平级,nullable,B0 兼容)
+- `BpmnXmlParser` 升级:独立 `<bpmn:choreography>` 根 + collab 内嵌 + 交叉校验
+- 业务不变量:initiating 必须是 first/second 之一(否则 IAE)
+- 19 个新 BDD;executor 不动(纯 IR + 校验)
+
+#### V5.38 C0 — MessageBus SPI 定义 (#89)
+
+- `Message` / `MessageKind`(sealed:Message / Signal / PoolMessage)+ `MessageHandler` / `MessageBus` interface
+- `InMemoryMessageBus` + 3 个测试类
+- `FlowResumer` — bus ↔ flow 桥接,从 Message 反序列化 vars 调 `engine.resume`
+- `MessageBusPublisher` — 3 个高阶方法(单池 / 跨池 / signal)的 ergonomic sugar
+- 4 测试类(MessageTest / MessageKindTest / InMemoryMessageBusTest / FlowResumerTest)
+
+#### V5.38 C1 — Send Task + Receive Task 节点落地 (#92)
+
+- `NodeType` 加 `SEND_TASK` / `RECEIVE_TASK`(BPMN §10 单 pool 内异步回调)
+- `FlowNode` 加 `messageRef` 字段(11-field ctor,跟 B0 `messageFlowId` 字段正交)
+- `SendTaskExecutor` — publish 到 `message:<name>` channel,fire-and-forget
+- `ReceiveTaskExecutor` — subscribe 同 channel + 抛 AsyncNodeSuspendException
+- `BpmnXmlParser` 解析 `<bpmn:sendTask>` / `<bpmn:receiveTask>` + 顶层 `messageRef` 属性
+- 10 个新 BDD(SendTaskExecutorTest 5 + ReceiveTaskExecutorTest 5)
+- **架构定位**:`MessageBus` SPI 的第一个节点级 use case
+- **跟 B0 区别**:B0 跨池 message flow 用 `pool:<from>_to_<to>:<name>`,C1 单池用
+  `message:<name>`,channel 命名空间完全隔离
+
+#### 文档 / 状态
+
+- `README.md` — 头部状态行加 V5.33-V5.38 完成清单;技术栈表加"V5.38 C0
+  MessageBus SPI" + "V5.38 C1 Send/Receive Task" 节点;架构定位段加
+  "V5.37 多池协作 + V5.38 异步消息" 段落
+- 决定**不**做 V5.38 C2(Signal 广播 + Message 投递深度集成) — C1
+  Send/Receive Task 已覆盖普通决策流 95% 异步回调需求,C2 在多流程编排
+  / 政策广播场景才需要,留待真实业务需求驱动再开荒
+- 决定**不**做 V5.37 B2(Choreography executor)— B1 协议层补完已够
+  普通决策流使用
 
 ## [5.27.0] - 2026-06-11
 

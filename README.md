@@ -16,7 +16,7 @@
 </div>
 
 > **⚠️ 项目状态：活跃开发中**
-> Phase 1-12 + V5.28-V5.32 已完成 (Rust 端 RETE 引擎 + BPMN 完整化 + ParallelGateway JOIN / Multi-Instance / Error·Escalation·Terminate EndEvent / Compensation SAGA / Conditional·Link Intermediate Event),Phase 9+ 规划中。详见 [路线图](docs/roadmap.md) 和 [更新日志](CHANGELOG.md)。
+> Phase 1-12 + V5.28-V5.38 已完成 (Rust 端 RETE 引擎 + Java 端 BPMN 2.0 完整化 + 多池协作 + 异步消息 — ParallelGateway JOIN / Multi-Instance / Error·Escalation·Terminate EndEvent / Compensation SAGA / Conditional·Link Intermediate Event / BPMN §12 Collaboration+Pool+Lane / BPMN §11 Choreography / MessageBus SPI / Send+Receive Task)。V5.39+ 规划中。详见 [路线图](docs/roadmap.md) 和 [更新日志](CHANGELOG.md)。
 
 ---
 
@@ -96,6 +96,10 @@ graph TB
 - 🧩 **多类型规则** — 向导式规则集、脚本式规则集、决策表、决策树、评分卡、决策流
 - 🔄 **Flowable 8 BPM** — 基于 Flowable 8 的 BPMN 2.0 决策流引擎
 - 🔥 **热部署** — 规则动态更新，无需重启服务
+- **V5.33-V5.36 (Java 端 BPMN 2.0 完整化)** — ParallelGateway 真 JOIN + Multi-Instance parallel + Error/Escalation/Terminate/Cancel/Compensation/Message/Signal EndEvent 严格化 + Compensation SAGA + IntermediateEvent (Message/Signal/Timer/Link/Conditional) + UEL 表达式 + Polling worker
+- **V5.37 (多池协作)** — BPMN §12 Collaboration + Pool + Lane 完整支持,跨池 Message Flow 走 MessageBus transport
+- **V5.37 (对话协议)** — BPMN §11 Choreography IR + parser(纯协议层补完,executor 留给未来)
+- **V5.38 (异步消息)** — MessageBus SPI(InMemoryMessageBus) + FlowResumer 桥接 + Send Task / Receive Task 单 pool 异步回调节点(channel 命名空间 `message:<name>`,跟跨池 `pool:<from>_to_<to>:<name>` 隔离)
 
 ### 可视化 & 运维
 
