@@ -161,6 +161,63 @@ public final class CompensationRunner {
     /** handler(activity, handler_node) pair。 */
     private record HandlerPair(String activityId, String handlerNodeId) {}
 
+    /**
+     * V5.36 A6 — 跑指定 activity 的 compensation handlers(<b>不</b>从 stack pop scope)。
+     *
+     * <p>用于 {@link EndEventKind.Compensation} 变体:EndEvent 上声明
+     * {@code ruleforge:attachedTo=actA} 时,只跑 actA 的 handlers,不动 stack。
+     *
+     * <p>语义跟 {@link #runHandlers} 类似,差别:
+     * <ul>
+     *   <li><b>不</b>从 compensationStack pop(EndEvent 已经是收尾节点,scope 由 ce 显式收)</li>
+     *   <li>只跑 attachedCompensations[attachedTo] 列表里的 handlers(若没声明 → 警告 + 返回空 trace)</li>
+     *   <li>dedup、failure 累积、suspend 透传 跟 runHandlers 一样</li>
+     * </ul>
+     */
+    public static CompensationTrace runHandlersForActivity(FlowDefinition def, FlowContext ctx,
+                                                           NodeExecutorRegistry reg,
+                                                           String attachedTo) {
+        CompensationTrace trace = new CompensationTrace();
+        if (attachedTo == null || attachedTo.isBlank()) {
+            log.warn("[COMP-A6] runHandlersForActivity called with blank attachedTo at flowRunId={}",
+                ctx.getFlowRunId());
+            return trace;
+        }
+        Map<String, List<String>> attached = def.getAttachedCompensations();
+        List<String> handlerIds = attached == null ? null : attached.get(attachedTo);
+        if (handlerIds == null || handlerIds.isEmpty()) {
+            log.warn("[COMP-A6] no handlers declared for activityId={} at flowRunId={}",
+                attachedTo, ctx.getFlowRunId());
+            return trace;
+        }
+        // 倒序遍历(跟 runHandlers 行为一致)
+        List<String> reversed = new ArrayList<>(handlerIds);
+        Collections.reverse(reversed);
+        for (String handlerId : reversed) {
+            String key = attachedTo + "::" + handlerId;
+            if (ctx.getCompensatedHandlers().contains(key)) continue;
+            ctx.getCompensatedHandlers().add(key);
+
+            String startNodeId = resolveSubFlowStart(def, handlerId);
+            if (startNodeId == null) {
+                log.warn("[COMP-A6-SKIP] handler {} has no outgoing target, skipping", handlerId);
+                continue;
+            }
+            HandlerPair pair = new HandlerPair(attachedTo, handlerId);
+            try {
+                runHandlerSubFlow(def, startNodeId, ctx, reg, pair);
+            } catch (AsyncNodeSuspendException ex) {
+                log.info("[COMP-A6-SUSPEND] handler {} suspended, propagating", handlerId);
+                throw ex;
+            } catch (Exception ex) {
+                log.warn("[COMP-A6-FAIL] handler {} failed: {}, continuing with next",
+                    handlerId, ex.getMessage());
+                trace.failures.add(handlerId + ": " + ex.getMessage());
+            }
+        }
+        return trace;
+    }
+
     /** 跑完返回的 trace(failures 列表)。 */
     public static final class CompensationTrace {
         public final List<String> failures = new ArrayList<>();

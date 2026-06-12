@@ -118,4 +118,77 @@ class EndEventKindTest {
         // sanity:None 不带 ref,getter 不会抛 NPE
         assertNull(((EndEventKind.None) EndEventKind.None.INSTANCE).errorRef());
     }
+
+    // -------- V5.36 A6 — Cancel/Compensation/MessageEnd/SignalEnd 4 variant --------
+
+    @Nested
+    @DisplayName("V5.36 A6 — 4 补充 variant")
+    class A6Variants {
+
+        @Test
+        @DisplayName("Given endType=cancel,When fromAttrs,Then Cancel(无 ref)")
+        void cancel_variant() {
+            EndEventKind kind = EndEventKind.fromAttrs(attrs("ruleforge:endType", "cancel"));
+            assertTrue(kind instanceof EndEventKind.Cancel,
+                "Expected Cancel, got: " + kind.getClass().getSimpleName());
+        }
+
+        @Test
+        @DisplayName("Given endType=compensation + attachedTo=actA,When fromAttrs,Then Compensation{attachedTo=actA}")
+        void compensation_variant() {
+            EndEventKind kind = EndEventKind.fromAttrs(attrs(
+                "ruleforge:endType", "compensation",
+                "ruleforge:attachedTo", "actA"));
+            assertTrue(kind instanceof EndEventKind.Compensation);
+            assertEquals("actA", ((EndEventKind.Compensation) kind).attachedTo());
+        }
+
+        @Test
+        @DisplayName("Given endType=messageEnd + eventName=foo,When fromAttrs,Then MessageEnd{name=foo}")
+        void message_end_variant() {
+            EndEventKind kind = EndEventKind.fromAttrs(attrs(
+                "ruleforge:endType", "messageEnd",
+                "ruleforge:eventName", "foo"));
+            assertTrue(kind instanceof EndEventKind.MessageEnd,
+                "Expected MessageEnd, got: " + kind.getClass().getSimpleName());
+            assertEquals("foo", ((EndEventKind.MessageEnd) kind).name());
+        }
+
+        @Test
+        @DisplayName("Given endType=signalEnd + eventName=bar,When fromAttrs,Then SignalEnd{name=bar}")
+        void signal_end_variant() {
+            EndEventKind kind = EndEventKind.fromAttrs(attrs(
+                "ruleforge:endType", "signalEnd",
+                "ruleforge:eventName", "bar"));
+            assertTrue(kind instanceof EndEventKind.SignalEnd);
+            assertEquals("bar", ((EndEventKind.SignalEnd) kind).name());
+        }
+
+        @Test
+        @DisplayName("Given endType=compensation 缺 attachedTo,When fromAttrs,Then 抛错")
+        void compensation_missing_attached_to_throws() {
+            FlowExecutionException ex = assertThrows(FlowExecutionException.class,
+                () -> EndEventKind.fromAttrs(attrs("ruleforge:endType", "compensation")));
+            assertTrue(ex.getMessage().toLowerCase().contains("compensation")
+                    && ex.getMessage().toLowerCase().contains("attachedto"),
+                "msg should mention compensation+attachedTo, got: " + ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("Given endType=messageEnd 缺 eventName,When fromAttrs,Then 抛错")
+        void message_end_missing_event_name_throws() {
+            FlowExecutionException ex = assertThrows(FlowExecutionException.class,
+                () -> EndEventKind.fromAttrs(attrs("ruleforge:endType", "messageEnd")));
+            assertTrue(ex.getMessage().toLowerCase().contains("messageend")
+                    && ex.getMessage().toLowerCase().contains("eventname"),
+                "msg should mention messageEnd+eventName, got: " + ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("Given endType=signalEnd 缺 eventName,When fromAttrs,Then 抛错")
+        void signal_end_missing_event_name_throws() {
+            assertThrows(FlowExecutionException.class,
+                () -> EndEventKind.fromAttrs(attrs("ruleforge:endType", "signalEnd")));
+        }
+    }
 }
