@@ -27,7 +27,9 @@ import org.springframework.context.annotation.Configuration;
         "com.ruleforge.decision.flow.engine",
         "com.ruleforge.decision.flow.executor",
         "com.ruleforge.decision.flow.parser",
-        "com.ruleforge.decision.flow.state"
+        "com.ruleforge.decision.flow.state",
+        // V5.38 C0 — MessageBus SPI(MessageBus / InMemoryMessageBus / FlowResumer / Publisher)
+        "com.ruleforge.decision.flow.bus"
 })
 @MapperScan(basePackages = {
         "com.ruleforge.decision.mapper"
