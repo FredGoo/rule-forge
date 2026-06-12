@@ -16,7 +16,7 @@
 </div>
 
 > **⚠️ 项目状态：活跃开发中**
-> Phase 1-12 + V5.28-V5.38 已完成 (Rust 端 RETE 引擎 + Java 端 BPMN 2.0 完整化 + 多池协作 + 异步消息 — ParallelGateway JOIN / Multi-Instance / Error·Escalation·Terminate EndEvent / Compensation SAGA / Conditional·Link Intermediate Event / BPMN §12 Collaboration+Pool+Lane / BPMN §11 Choreography / MessageBus SPI / Send+Receive Task)。V5.39+ 规划中。详见 [路线图](docs/roadmap.md) 和 [更新日志](CHANGELOG.md)。
+> Phase 1-12 + V5.28-V5.39 已完成 (Rust 端 RETE 引擎 + Java 端 BPMN 2.0 完整化 + 多池协作 + 异步消息 + SPI 化 + 接口分离 — ParallelGateway JOIN / Multi-Instance / Error·Escalation·Terminate EndEvent / Compensation SAGA / Conditional·Link Intermediate Event / BPMN §12 Collaboration+Pool+Lane / BPMN §11 Choreography / MessageBus SPI 多实现 + Send+Receive Task / FlowContext 拆 4 角色 / StatelessExecutor vs StatefulFlow 接口分离)。V5.40+ 规划中。详见 [路线图](docs/roadmap.md) 和 [更新日志](CHANGELOG.md)。
 
 ---
 
@@ -100,6 +100,7 @@ graph TB
 - **V5.37 (多池协作)** — BPMN §12 Collaboration + Pool + Lane 完整支持,跨池 Message Flow 走 MessageBus transport
 - **V5.37 (对话协议)** — BPMN §11 Choreography IR + parser(纯协议层补完,executor 留给未来)
 - **V5.38 (异步消息)** — MessageBus SPI(InMemoryMessageBus) + FlowResumer 桥接 + Send Task / Receive Task 单 pool 异步回调节点(channel 命名空间 `message:<name>`,跟跨池 `pool:<from>_to_<to>:<name>` 隔离)
+- **V5.39 (SPI 化 + 角色化上下文 + 接口分离)** — `MessageBusProvider` + `MessageBusRegistry` 多实现优先级;`FlowContext` 20 字段 god-object 一次性拆 `FlowIdentity` + `BusinessVars` + `ReteSession` + `SuspendRegistry` 4 角色;`FlowEngine implements StatelessDecisionExecutor, StatefulDecisionFlow` — 纯函数式求值 vs 长生命周期在类型系统层面显式分
 
 ### 可视化 & 运维
 
@@ -260,7 +261,7 @@ mvn compile
 
 | 层 | 技术 |
 |----|------|
-| ☕ 后端 | Java 17 · Spring Boot 4.0.6 · MyBatis-Plus · MySQL · ANTLR4 · RETE · Flowable 8 |
+| ☕ 后端 | Java 17 · Spring Boot 4.0.6 · MyBatis-Plus · MySQL · ANTLR4 · RETE · 自建 BPMN 2.0 决策流引擎(V5.21+ 替代 Flowable) |
 | 🦀 后端(实验) | Rust 1.x · Tokio · Axum · sqlx · `experiments/server-rust/`(alpha,**不**进生产流量) |
 | 🎨 前端 | TypeScript · React · Vite 8 · Ant Design 5 · bpmn-js |
 | 🧠 AI/ML | PKL Model Service · Python · Agent 分析 |

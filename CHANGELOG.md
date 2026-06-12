@@ -273,6 +273,76 @@ V5.33-V5.38 是 Java 引擎把 V5.28-V5.32 在 Rust 端先走的契约全 mirror
 - 决定**不**做 V5.37 B2(Choreography executor)— B1 协议层补完已够
   普通决策流使用
 
+#### V5.39 — 决策引擎 SPI 化 + FlowContext 拆分 + 接口分离 (单 PR)
+
+V5.39 是 Java 决策引擎经历 V5.33-V5.38 大量字段叠加后的"技术债集中收口" —
+1 个 PR,3 个改动:
+
+- **A0 — `MessageBusProvider` + `MessageBusRegistry`**:
+  Spring 驱动的多实现优先级选择。`MessageBus` interface 继承 `MessageBusProvider`
+  (默认 `priority()=0`),`MessageBusRegistry` 注入 `List<MessageBus>` 选 priority 最大的作
+  为 primary,`all()` 返回全部(broadcast 场景用)。`MessageBusPublisher`
+  构造参数从 `InMemoryMessageBus` 改成 `MessageBusRegistry`。Kafka/NATS
+  接入零代码改动。
+- **A1 — `FlowContext` 拆 4 角色 + 调用方迁移**:
+  20 字段 god-object 一次性拆成 4 个 role-focused 类型 + 7 个 transient 字段
+  + per-token 状态上 Token:
+  - `FlowIdentity`(immutable record:`flowRunId` / `flowId` / `currentPoolId`)
+  - `BusinessVars`(vars map + `currentAwaitingField` / `thrownError` / `outputModel`)
+  - `ReteSession`(`KnowledgeSession` + `insertedEntities`,支持 `replace()`)
+  - `SuspendRegistry`(bus 订阅生命周期,`register()` / `all()` / `closeAll()`)
+  - `FlowContext` 4 参构造 + 4 个 handle 读方法 + 7 个 transient(multi-pool `currentPoolId` /
+    `currentDef` / `currentBpmn` / `activeTokens` / `currentToken` / `joinArrivals` / `joinedTokens`)
+  - `Token` 独立 — V5.33 A0 引入的 per-fork vars 不再走 ctx 委派 shim
+  - `MultiInstanceChildContext` 重写:has-a 父 ctx(共享 BusinessVars +
+    identity + rete + suspend),child 有自己 vars
+  - 40+ 文件调用方一次性切完(24 NodeExecutor + state/bus + executor-app)
+  - `effectiveVars()` 桥接 per-fork vs per-flowRunId vars
+- **B0 — `StatelessDecisionExecutor` / `StatefulDecisionFlow` 接口分离**:
+  FlowEngine 现在 implements 两个角色化接口:
+  - `StatelessDecisionExecutor#execute(def, vars) → Map` — 纯函数式,无 DB 写 / 无 bus 订阅 /
+    可重入。Shadow / 批测 dry-run 用。
+  - `StatefulDecisionFlow#start(def, vars) → flowRunId` /
+    `StatefulDecisionFlow#resume(flowRunId, flowId, nodeId, vars)` — 长生命周期,
+    写 `nd_decision_flow_state`,可异步挂起。
+  - `FlowEngine` 保留 4 参 `start(flowId, ctx)` / 多池 start / resume 内部 API,
+    engine-internal 调用方(FlowResumer / FlowStateRecoveryJob / 旧 controller)
+    继续用 4 参形参。
+
+**调用方迁移策略**:5 个 4 参 caller(Shadow / Decision / Test×3)保留在 `FlowEngine`
+上 — 它们都需要 rete session / outputModel 等 ctx-level wiring,新接口 `(def, vars)`
+形参不暴露这些。V5.40+ 单独 PR 改造。新接口当前服务于"类型层面的语义显式化" +
+"future caller 直接用接口"的两个价值。
+
+**新文件 (2) + 新测试 (10 BDD)**:
+- `MessageBusProvider.java` / `MessageBusRegistry.java` / `MessageBusRegistryTest.java` (5 BDD)
+- `FlowIdentity.java` / `BusinessVars.java` / `ReteSession.java` / `SuspendRegistry.java` +
+  对应 4 个测试文件
+- `MultiInstanceChildContext.java` 重写 + `FlowContextTest.java` 3 BDD
+- `StatelessDecisionExecutor.java` / `StatefulDecisionFlow.java` +
+  `StatelessDecisionExecutorTest.java` 5 BDD / `StatefulDecisionFlowTest.java` 5 BDD
+
+**架构定位**:
+- 参考阿里 `compileflow` / 滴滴 `turbo` BPMN 引擎的"显式 SPI + 角色化上下文 + 接口形态显式分"思想
+- 决策库 `ruleforge-decision` 从"单一 Spring `@Component` 直接依赖"迁到"接口化"
+- `FlowContext` 经过 V5.33-V5.38 多次扩字段已成 20 字段 god-object,再扩 1-2 个 V5.x 就会崩
+- 一次性切换,不做 additive facade(用户确认)
+
+**测试**:1064 tests pass(decision 352 + executor-app 60 + console-app 390 + core 262)
+
+#### 文档 / 状态
+
+- `README.md` — 头部状态行加 V5.39 完成清单;技术栈表加"V5.39 SPI 化 +
+  FlowContext 拆分 + 接口分离" 行;架构定位段加 "V5.39 类型层面接口分离" 段落
+
+#### 决定不做
+
+- 现有 4 参 `start(flowId, ctx)` caller 改造:Shadow / Decision / Test×3 都需
+  要 rete session / outputModel 等 ctx-level wiring,新接口 `(def, vars)` 不
+  暴露。V5.40+ 单独 PR 改造。
+- `VariableAssignAction` 的 act=Out 修复 — legacy rete,V5.40+ 单独 PR
+- `compileflow`-style codegen 加速 — 速度不是考虑
+
 ## [5.27.0] - 2026-06-11
 
 ### Added
