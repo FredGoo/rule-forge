@@ -475,12 +475,15 @@ public class FlowNodeRunner {
     private DecisionFlowState onSuspend(DecisionFlowState state, FlowContext ctx,
                                         Token token, AsyncNodeSuspendException ex) {
         // V5.33 A0:vars 委托给 currentToken;序列化由 V5.35 A4 接管
+        // V5.39 B0:即使 stateMapper 为 null(测试模式),也要在返回的 state 上设置
+        // STATUS_WAITING_CALLBACK + waitType,这样 StatelessDecisionExecutor.execute() 可以
+        // 检测到"挂起发生"并抛业务异常。无 stateMapper 时不写库(原契约不变)。
+        state.setCurrentNodeId(token.getCurrentNodeId());
+        state.setWaitRef(ex.getWaitRef());
+        state.setNextRetryAt(ex.getNextRetryAt() == null ? null : java.util.Date.from(ex.getNextRetryAt()));
+        state.setErrorMessage("WAIT_TYPE=" + ex.getWaitType());
+        state.setStatus(DecisionFlowState.STATUS_WAITING_CALLBACK);
         if (stateMapper != null) {
-            state.setCurrentNodeId(token.getCurrentNodeId());
-            state.setWaitRef(ex.getWaitRef());
-            state.setNextRetryAt(ex.getNextRetryAt() == null ? null : java.util.Date.from(ex.getNextRetryAt()));
-            state.setErrorMessage("WAIT_TYPE=" + ex.getWaitType());
-            state.setStatus(DecisionFlowState.STATUS_WAITING_CALLBACK);
             // V5.35 A4 — atomic update(suspend 单次写 rowVars + joinArrivals + waitRef)
             persistenceService.serializeForAtomicUpdate(state, ctx);
         }
