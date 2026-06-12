@@ -48,11 +48,10 @@ class IntermediateEventExecutorTest {
     }
 
     private FlowContext newCtx() {
-        FlowContext ctx = new FlowContext();
-        ctx.setFlowRunId("test-" + System.nanoTime());
+        FlowContext ctx = FlowContext.newDefault("test-flow");
         com.ruleforge.decision.flow.engine.Token t =
             new com.ruleforge.decision.flow.engine.Token("tok-" + System.nanoTime());
-        ctx.getActiveTokens().add(t);
+        ctx.activeTokens().add(t);
         ctx.setCurrentToken(t);
         return ctx;
     }

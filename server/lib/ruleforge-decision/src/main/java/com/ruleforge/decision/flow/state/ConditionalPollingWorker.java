@@ -146,10 +146,16 @@ public class ConditionalPollingWorker {
         log.info("[COND-POLL] flowRunId={} condition '{}' satisfied → resume", state.getFlowRunId(), condition);
         try {
             FlowDefinition def = repo.getOrLoad(state.getFlowId());
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId(state.getFlowRunId());
-            ctx.setCurrentNodeId(state.getCurrentNodeId());
-            ctx.setVars(vars);
+            FlowContext ctx = new FlowContext(
+                new com.ruleforge.decision.flow.engine.FlowIdentity(state.getFlowRunId(), state.getFlowId(), null),
+                com.ruleforge.decision.flow.engine.BusinessVars.from(vars),
+                new com.ruleforge.decision.flow.engine.ReteSession(),
+                new com.ruleforge.decision.flow.engine.SuspendRegistry());
+            com.ruleforge.decision.flow.engine.Token rootToken =
+                new com.ruleforge.decision.flow.engine.Token("tok-poll-" + state.getFlowRunId());
+            rootToken.setCurrentNodeId(state.getCurrentNodeId());
+            ctx.activeTokens().add(rootToken);
+            ctx.setCurrentToken(rootToken);
             persistence.deserializeJoinArrivals(state, ctx);
             engine.resume(def, ctx, state.getCurrentNodeId());
         } catch (Exception e) {

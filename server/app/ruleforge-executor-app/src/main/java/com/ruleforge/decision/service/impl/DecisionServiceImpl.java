@@ -368,11 +368,15 @@ public class DecisionServiceImpl implements IDecisionService {
 
         long stepStartTime = System.currentTimeMillis();
         try {
-            FlowContext flowCtx = new FlowContext();
-            flowCtx.setFlowRunId(UUID.randomUUID().toString());
-            flowCtx.setVars(new HashMap<>(params));
-            flowCtx.setSession(ctx.session);
-            flowCtx.setOutputModel(ctx.outputModel);
+            // V5.39 A1:4 参构造,re-engine.session → ctx.rete().replaceSession
+            FlowContext flowCtx = new FlowContext(
+                new com.ruleforge.decision.flow.engine.FlowIdentity(
+                    UUID.randomUUID().toString(), ctx.request.getFlowId(), null),
+                com.ruleforge.decision.flow.engine.BusinessVars.from(new HashMap<>(params)),
+                new com.ruleforge.decision.flow.engine.ReteSession(),
+                new com.ruleforge.decision.flow.engine.SuspendRegistry());
+            flowCtx.rete().replaceSession(ctx.session);
+            flowCtx.vars().setOutputModel(ctx.outputModel);
             // 同步主路径:从 startNodeId 推到 endEvent
             DecisionFlowState state = flowEngine.start(ctx.request.getFlowId(), flowCtx);
             if (DecisionFlowState.STATUS_WAITING_CALLBACK.equals(state.getStatus())

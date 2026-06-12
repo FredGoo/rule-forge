@@ -28,12 +28,11 @@ class EventNodeExecutorTest {
     private final BpmnXmlParser parser = new BpmnXmlParser();
     private final EventNodeExecutor executor = new EventNodeExecutor();
 
-    /** V5.33 A0:ctx.getVars() 委托 currentToken;init token 让 put 走 token.vars。 */
+    /** V5.33 A0:ctx.vars().getVars() 委托 currentToken;init token 让 put 走 token.vars。 */
     private FlowContext newCtx() {
-        FlowContext ctx = new FlowContext();
-        ctx.setFlowRunId("test-" + System.nanoTime());
+        FlowContext ctx = FlowContext.newDefault("test-flow");
         Token t = new Token("tok-" + System.nanoTime());
-        ctx.getActiveTokens().add(t);
+        ctx.activeTokens().add(t);
         ctx.setCurrentToken(t);
         return ctx;
     }
@@ -59,7 +58,7 @@ class EventNodeExecutorTest {
     void normal_end_does_not_throw() throws Exception {
         FlowContext ctx = newCtx();
         executor.execute(parseEnd(""), ctx);
-        assertNull(ctx.getThrownError());
+        assertNull(ctx.currentToken().getThrownError());
     }
 
     @Test
@@ -69,7 +68,7 @@ class EventNodeExecutorTest {
         FlowNode end = parseEnd("ruleforge:endType=\"error\" ruleforge:errorRef=\"REF_E\"");
         FlowExecutionException ex = assertThrows(FlowExecutionException.class,
             () -> executor.execute(end, ctx));
-        assertEquals("REF_E", ctx.getThrownError());
+        assertEquals("REF_E", ctx.currentToken().getThrownError());
         // msg 应包含 REF_E + "error" 关键词
         org.junit.jupiter.api.Assertions.assertTrue(
             ex.getMessage().contains("REF_E") || ex.getMessage().toLowerCase().contains("error"),
@@ -83,7 +82,7 @@ class EventNodeExecutorTest {
         FlowNode end = parseEnd("ruleforge:endType=\"escalation\" ruleforge:escalationRef=\"REF_S\"");
         FlowExecutionException ex = assertThrows(FlowExecutionException.class,
             () -> executor.execute(end, ctx));
-        assertEquals("REF_S", ctx.getThrownError());
+        assertEquals("REF_S", ctx.currentToken().getThrownError());
         org.junit.jupiter.api.Assertions.assertTrue(
             ex.getMessage().contains("REF_S") || ex.getMessage().toLowerCase().contains("escalation"),
             "msg should mention REF_S or escalation, got: " + ex.getMessage());
@@ -98,7 +97,7 @@ class EventNodeExecutorTest {
             () -> executor.execute(end, ctx));
         // V5.30 v0:terminate 跟 Error 同 path(Rust 端还没 token-kill,留 P1)
         // ctx.thrownError 应该是 null(terminate 不带 ref)
-        assertNull(ctx.getThrownError());
+        assertNull(ctx.currentToken().getThrownError());
         assertTrue(ex.getMessage().toLowerCase().contains("terminate"),
             "msg should contain 'terminate', got: " + ex.getMessage());
     }

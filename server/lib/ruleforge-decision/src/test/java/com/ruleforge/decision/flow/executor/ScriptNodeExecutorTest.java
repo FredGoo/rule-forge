@@ -67,12 +67,12 @@ class ScriptNodeExecutorTest {
             ScriptNodeExecutor executor = newExecutor(mgr);
 
             FlowNode node = makeNode("s1", "parameters.y = x * 2", "groovy");
-            FlowContext ctx = new FlowContext();
-            ctx.getVars().put("x", 10);
+            FlowContext ctx = FlowContext.newDefault("test-flow");
+            ctx.vars().getVars().put("x", 10);
 
             executor.execute(node, ctx);
 
-            assertEquals(20, ctx.getVars().get("y"));
+            assertEquals(20, ctx.vars().getVars().get("y"));
         }
 
         @Test
@@ -80,9 +80,9 @@ class ScriptNodeExecutorTest {
         void emptyScript() throws Exception {
             ScriptNodeExecutor executor = newExecutor(mock(ScriptEngineManager.class));
             FlowNode node = makeNode("s1", "", "groovy");
-            FlowContext ctx = new FlowContext();
+            FlowContext ctx = FlowContext.newDefault("test-flow");
             executor.execute(node, ctx);  // 不抛
-            assertTrue(ctx.getVars().isEmpty());
+            assertTrue(ctx.vars().getVars().isEmpty());
         }
 
         @Test
@@ -93,7 +93,7 @@ class ScriptNodeExecutorTest {
             ScriptNodeExecutor executor = newExecutor(mgr);
 
             FlowNode node = makeNode("s1", "x=1", "noSuchScriptEngineFormat");
-            FlowContext ctx = new FlowContext();
+            FlowContext ctx = FlowContext.newDefault("test-flow");
             assertThrows(FlowExecutionException.class, () -> {
                 try {
                     executor.execute(node, ctx);

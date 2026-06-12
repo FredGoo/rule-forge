@@ -5,6 +5,7 @@ import com.ruleforge.decision.exception.FlowExecutionException;
 import com.ruleforge.decision.flow.engine.ConditionEvaluator;
 import com.ruleforge.decision.flow.engine.FlowContext;
 import com.ruleforge.decision.flow.engine.FlowNodeRunner;
+import com.ruleforge.decision.flow.engine.SuspendRegistry;
 import com.ruleforge.decision.flow.engine.Token;
 import com.ruleforge.decision.flow.ir.FlowDefinition;
 import com.ruleforge.decision.flow.ir.FlowNode;
@@ -54,23 +55,23 @@ public final class CompensationRunner {
         CompensationTrace trace = new CompensationTrace();
 
         // V5.31 P0 v0 — pop 栈顶 scope(throw 是 BPMN "current scope" 默认)
-        List<String> stack = ctx.getCompensationStack();
+        List<String> stack = ctx.currentToken().getCompensationStack();
         if (stack.isEmpty()) {
             throw new FlowExecutionException(
-                "CompensationThrow with no open scope (empty stack) at flowRunId=" + ctx.getFlowRunId());
+                "CompensationThrow with no open scope (empty stack) at flowRunId=" + ctx.identity().flowRunId());
         }
         String poppedScope = stack.remove(stack.size() - 1);
         log.debug("[COMP-POP] flowRunId={} popped scope={}, remaining={}",
-            ctx.getFlowRunId(), poppedScope, stack.size());
+            ctx.identity().flowRunId(), poppedScope, stack.size());
 
         // 收集候选 handler pairs(活动 + handler ids,倒序,跳过已 dedup 的)
         List<HandlerPair> handlers = collectHandlerPairs(def, ctx);
-        log.debug("[COMP-CAND] flowRunId={} candidates={}", ctx.getFlowRunId(), handlers.size());
+        log.debug("[COMP-CAND] flowRunId={} candidates={}", ctx.identity().flowRunId(), handlers.size());
 
         for (HandlerPair pair : handlers) {
             // 先记 dedup,即使后续 handler 失败也不重跑(resume 透传 Suspend 时也跳过)
             String key = pair.activityId + "::" + pair.handlerNodeId;
-            ctx.getCompensatedHandlers().add(key);
+            ctx.currentToken().getCompensatedHandlers().add(key);
 
             String startNodeId = resolveSubFlowStart(def, pair.handlerNodeId);
             if (startNodeId == null) {
@@ -109,7 +110,7 @@ public final class CompensationRunner {
             Collections.reverse(reversed);
             for (String handlerId : reversed) {
                 String key = activityId + "::" + handlerId;
-                if (ctx.getCompensatedHandlers().contains(key)) continue;
+                if (ctx.currentToken().getCompensatedHandlers().contains(key)) continue;
                 out.add(new HandlerPair(activityId, handlerId));
             }
         }
@@ -131,31 +132,27 @@ public final class CompensationRunner {
     private static void runHandlerSubFlow(FlowDefinition def, String startNodeId,
                                           FlowContext outerCtx, NodeExecutorRegistry reg,
                                           HandlerPair pair) {
-        FlowContext subCtx = new FlowContext();
-        subCtx.setFlowRunId(outerCtx.getFlowRunId());
-        subCtx.setSession(outerCtx.getSession());
-        subCtx.setOutputModel(outerCtx.getOutputModel());
-        subCtx.setInsertedEntities(outerCtx.getInsertedEntities());
-
+        // V5.39 A1 — handler sub-flow 在 subCtx 上跑,**BusinessVars 共享** outer
+        // (handler 写"compensated"等累积 state 直接落到 outer,跨 handler 可见)。
+        // 其它 handle(identity / rete / suspend)从 outer 委派,新 SuspendRegistry
+        // (handler 内部不应污染 outer 的 bus 订阅)。
+        //
+        // subToken 用来推进 currentNodeId,handler 跑完 traverse 不会动 outer 的
+        // rootToken。
+        FlowContext subCtx = new FlowContext(
+            outerCtx.identity(),
+            outerCtx.vars(),       // 共享 BusinessVars(handler 写直接落到 outer)
+            outerCtx.rete(),
+            new SuspendRegistry());
         Token subToken = new Token("tok-comp-" + UUID.randomUUID());
         subToken.setCurrentNodeId(startNodeId);
-        subCtx.getActiveTokens().add(subToken);
+        subCtx.activeTokens().add(subToken);
         subCtx.setCurrentToken(subToken);
-        // 关键:setCurrentToken **之后** setVars,这样 vars 写到 subToken.vars
-        // (FlowContext.setVars 委托给 currentToken,若 currentToken==null 会写到 ctx 字段,导致后续 traverse 看不到)
-        subCtx.setVars(new java.util.HashMap<>(outerCtx.getVars()));
-        // compensationStack 留空(handler sub-flow 不递归 compensation,v0 简化)
 
         // stateMapper=null 走 stub(state 不持久化;handler sub-flow 失败就只 log,不影响 outer 状态)
         FlowNodeRunner runner = new FlowNodeRunner(reg, new ConditionEvaluator(), null);
         runner.traverse(def, subCtx, startNodeId);
-
-        // union-merge sub-flow 写回的 vars 进 outer ctx(同 key 末班胜出)
-        if (subCtx.getCurrentToken() != null) {
-            outerCtx.getVars().putAll(subCtx.getCurrentToken().getVars());
-        } else {
-            outerCtx.getVars().putAll(subCtx.getVars());
-        }
+        // vars 已经通过共享引用落到 outer.vars(),不用 merge。
     }
 
     /** handler(activity, handler_node) pair。 */
@@ -180,14 +177,14 @@ public final class CompensationRunner {
         CompensationTrace trace = new CompensationTrace();
         if (attachedTo == null || attachedTo.isBlank()) {
             log.warn("[COMP-A6] runHandlersForActivity called with blank attachedTo at flowRunId={}",
-                ctx.getFlowRunId());
+                ctx.identity().flowRunId());
             return trace;
         }
         Map<String, List<String>> attached = def.getAttachedCompensations();
         List<String> handlerIds = attached == null ? null : attached.get(attachedTo);
         if (handlerIds == null || handlerIds.isEmpty()) {
             log.warn("[COMP-A6] no handlers declared for activityId={} at flowRunId={}",
-                attachedTo, ctx.getFlowRunId());
+                attachedTo, ctx.identity().flowRunId());
             return trace;
         }
         // 倒序遍历(跟 runHandlers 行为一致)
@@ -195,8 +192,8 @@ public final class CompensationRunner {
         Collections.reverse(reversed);
         for (String handlerId : reversed) {
             String key = attachedTo + "::" + handlerId;
-            if (ctx.getCompensatedHandlers().contains(key)) continue;
-            ctx.getCompensatedHandlers().add(key);
+            if (ctx.currentToken().getCompensatedHandlers().contains(key)) continue;
+            ctx.currentToken().getCompensatedHandlers().add(key);
 
             String startNodeId = resolveSubFlowStart(def, handlerId);
             if (startNodeId == null) {

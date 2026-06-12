@@ -64,7 +64,7 @@ public class PackageNodeExecutor implements NodeExecutor {
 
         KnowledgeSession session = KnowledgeSessionFactory.newKnowledgeSession(knowledgePackage);
 
-        Map<String, Object> parameters = insertFacts(session, context.getVars());
+        Map<String, Object> parameters = insertFacts(session, context.effectiveVars());
 
         ExecutionResponseImpl response;
         try {
@@ -76,10 +76,10 @@ public class PackageNodeExecutor implements NodeExecutor {
             response.setFiredRules(new java.util.ArrayList<>());
         }
 
-        Map<String, Object> results = extractResults(session, context.getVars());
-        context.getVars().putAll(results);
-        context.getVars().put("_firedRules", response.getFiredRules().size());
-        context.getVars().put("_matchedRules", response.getMatchedRules().size());
+        Map<String, Object> results = extractResults(session, context.effectiveVars());
+        context.effectiveVars().putAll(results);
+        context.effectiveVars().put("_firedRules", response.getFiredRules().size());
+        context.effectiveVars().put("_matchedRules", response.getMatchedRules().size());
     }
 
     private Map<String, Object> insertFacts(KnowledgeSession session, Map<String, Object> variables) {

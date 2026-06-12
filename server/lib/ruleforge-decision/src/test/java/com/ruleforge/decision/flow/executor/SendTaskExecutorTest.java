@@ -3,6 +3,7 @@ package com.ruleforge.decision.flow.executor;
 import com.ruleforge.decision.exception.FlowExecutionException;
 import com.ruleforge.decision.flow.bus.InMemoryMessageBus;
 import com.ruleforge.decision.flow.bus.MessageBusPublisher;
+import com.ruleforge.decision.flow.bus.MessageBusRegistry;
 import com.ruleforge.decision.flow.engine.FlowContext;
 import com.ruleforge.decision.flow.ir.FlowNode;
 import com.ruleforge.decision.flow.ir.NodeType;
@@ -41,7 +42,7 @@ class SendTaskExecutorTest {
     @BeforeEach
     void setUp() {
         bus = new InMemoryMessageBus();
-        publisher = new MessageBusPublisher(bus);
+        publisher = new MessageBusPublisher(new MessageBusRegistry(java.util.List.of(bus)));
         executor = new SendTaskExecutor(publisher);
     }
 
@@ -62,9 +63,8 @@ class SendTaskExecutorTest {
             java.util.concurrent.atomic.AtomicInteger delivered = new java.util.concurrent.atomic.AtomicInteger();
             bus.subscribe("message:loan_approved", m -> delivered.incrementAndGet());
 
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-1");
-            ctx.setVars(new HashMap<>(Map.of("amount", 100)));
+            FlowContext ctx = FlowContext.forFlow("fr-1", "test-flow", null);
+            ctx.vars().getVars().putAll(new HashMap<>(Map.of("amount", 100)));
 
             executor.execute(sendNode("loan_approved"), ctx);
             // 不抛 = 通过 + 订阅者收到 1 次
@@ -78,12 +78,11 @@ class SendTaskExecutorTest {
             AtomicReference<Map<String, Object>> captured = new AtomicReference<>();
             bus.subscribe("message:loan_approved", m -> captured.set(new HashMap<>(m.payload())));
 
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-2");
+            FlowContext ctx = FlowContext.forFlow("fr-2", "test-flow", null);
             Map<String, Object> vars = new HashMap<>();
             vars.put("amount", 5000);
             vars.put("applicant", "alice");
-            ctx.setVars(vars);
+            ctx.vars().getVars().putAll(vars);
 
             executor.execute(sendNode("loan_approved"), ctx);
 
@@ -103,8 +102,7 @@ class SendTaskExecutorTest {
         @Test
         @DisplayName("Given SEND_TASK + messageRef=null, when execute, then 抛 FlowExecutionException")
         void missing_message_ref_throws() {
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-x");
+            FlowContext ctx = FlowContext.forFlow("fr-x", "test-flow", null);
             assertThrows(FlowExecutionException.class,
                 () -> executor.execute(sendNode(null), ctx));
         }
@@ -112,8 +110,7 @@ class SendTaskExecutorTest {
         @Test
         @DisplayName("Given SEND_TASK + messageRef='  ', when execute, then 抛 FlowExecutionException(空白视为缺)")
         void blank_message_ref_throws() {
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-x");
+            FlowContext ctx = FlowContext.forFlow("fr-x", "test-flow", null);
             assertThrows(FlowExecutionException.class,
                 () -> executor.execute(sendNode("   "), ctx));
         }
@@ -131,9 +128,8 @@ class SendTaskExecutorTest {
 
             Map<String, Object> vars = new HashMap<>();
             vars.put("v", 1);
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-3");
-            ctx.setVars(vars);
+            FlowContext ctx = FlowContext.forFlow("fr-3", "test-flow", null);
+            ctx.vars().getVars().putAll(vars);
 
             executor.execute(sendNode("audit"), ctx);
 

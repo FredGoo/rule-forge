@@ -60,16 +60,16 @@ public class RuleNodeExecutor implements NodeExecutor {
         KnowledgeSession session = KnowledgeSessionFactory.newKnowledgeSession(knowledgePackage);
 
         // 把 ctx.vars 当流程变量
-        Map<String, Object> variables = context.getVars();
+        Map<String, Object> variables = context.effectiveVars();
         Map<String, Object> parameters = insertFacts(session, variables);
 
         // V5.18 修法:OutputModel var-assign 走"包成 entity + fireRules + BeanUtils.populate 写回"
-        if (context.getOutputModel() != null) {
+        if (context.vars().getOutputModel() != null) {
             try {
-                GeneralEntity outputEntity = wrapOutputModelAsEntity(context.getOutputModel());
+                GeneralEntity outputEntity = wrapOutputModelAsEntity(context.vars().getOutputModel());
                 session.insert(outputEntity);
                 session.fireRules();
-                syncOutputModelFromEntity(context.getOutputModel(), outputEntity);
+                syncOutputModelFromEntity(context.vars().getOutputModel(), outputEntity);
             } catch (Exception e) {
                 log.warn("[RULE-NODE] OutputModel mutation 非致命异常: {}", e.getMessage());
             }
@@ -87,11 +87,11 @@ public class RuleNodeExecutor implements NodeExecutor {
 
         // 写回 ctx.vars
         Map<String, Object> results = extractResults(session, variables);
-        context.getVars().putAll(results);
+        context.effectiveVars().putAll(results);
 
         ExecutionResponseImpl res = (ExecutionResponseImpl) response;
-        context.getVars().put("_firedRules", res.getFiredRules().size());
-        context.getVars().put("_matchedRules", res.getMatchedRules().size());
+        context.effectiveVars().put("_firedRules", res.getFiredRules().size());
+        context.effectiveVars().put("_matchedRules", res.getMatchedRules().size());
 
         try {
             session.writeLogFile();

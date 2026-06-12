@@ -53,17 +53,17 @@ public class UserTaskNodeExecutor implements NodeExecutor {
         }
 
         // 把 awaiting field 写到 ctx,GatewayNodeExecutor 路由时读
-        context.setCurrentAwaitingField(decisionField);
+        context.vars().setCurrentAwaitingField(decisionField);
         // 同时把字段名写到 vars._decisionField,FlowDecisionController 恢复时反查用
         // (currentAwaitingField 不会序列化到 rowVars,_decisionField 才会)
-        context.getVars().put("_decisionField", decisionField);
+        context.effectiveVars().put("_decisionField", decisionField);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("decisionType", "binary");
         payload.put("decisionField", decisionField);
 
         log.info("[USER-TASK-SUSPEND] nodeId={} decisionField={} flowRunId={}",
-            node.getNodeId(), decisionField, context.getFlowRunId());
+            node.getNodeId(), decisionField, context.identity().flowRunId());
 
         throw new AsyncNodeSuspendException(
             node.getNodeId(),

@@ -117,12 +117,15 @@ public class ShadowExecutionServiceImpl implements IShadowExecutionService {
             inputParams = session.getParameters();
 
             stepStartTime = System.currentTimeMillis();
-            // V5.20+ 自建 FlowEngine(V5.21 起为唯一执行路径)
-            FlowContext flowCtx = new FlowContext();
-            flowCtx.setFlowRunId(UUID.randomUUID().toString());
-            flowCtx.setVars(new HashMap<>());
-            flowCtx.setSession(session);
-            flowCtx.setOutputModel(outputModel);
+            // V5.39 A1:4 参构造,shadow 路径 — V5.39 B0 起改用 StatelessDecisionExecutor
+            FlowContext flowCtx = new FlowContext(
+                new com.ruleforge.decision.flow.engine.FlowIdentity(
+                    UUID.randomUUID().toString(), shadowFlowId, null),
+                com.ruleforge.decision.flow.engine.BusinessVars.from(new HashMap<>()),
+                new com.ruleforge.decision.flow.engine.ReteSession(),
+                new com.ruleforge.decision.flow.engine.SuspendRegistry());
+            flowCtx.rete().replaceSession(session);
+            flowCtx.vars().setOutputModel(outputModel);
             DecisionFlowState state = flowEngine.start(shadowFlowId, flowCtx);
             if (DecisionFlowState.STATUS_FAILED.equals(state.getStatus())) {
                 throw new FlowExecutionException("Shadow flow failed: " + state.getErrorMessage());

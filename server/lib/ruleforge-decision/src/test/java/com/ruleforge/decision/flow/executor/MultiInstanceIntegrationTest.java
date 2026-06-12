@@ -40,8 +40,8 @@ class MultiInstanceIntegrationTest {
 
             @Override
             public void execute(FlowNode node, FlowContext context) {
-                Object item = context.getVars().get("item");
-                context.getVars().put("tag", item);
+                Object item = context.vars().getVars().get("item");
+                context.vars().getVars().put("tag", item);
             }
         };
 
@@ -75,23 +75,22 @@ class MultiInstanceIntegrationTest {
             """;
         FlowDefinition def = parser.parseSingleProcess(xml);
 
-        // V5.33 A0:ctx.getVars() 委托 currentToken;pre-init token + setCurrentNodeId,
+        // V5.33 A0:ctx.vars().getVars() 委托 currentToken;pre-init token + setCurrentNodeId,
         // 让 traverse 不重建根 token(保留 items vars)
-        FlowContext ctx = new FlowContext();
-        ctx.setFlowRunId("test-mi-" + System.nanoTime());
+        FlowContext ctx = FlowContext.newDefault("test-flow");
         Token t = new Token("tok-" + System.nanoTime());
         t.setCurrentNodeId(def.getStartNodeId());
-        ctx.getActiveTokens().add(t);
+        ctx.activeTokens().add(t);
         ctx.setCurrentToken(t);
-        ctx.getVars().put("items", Arrays.asList("a", "b", "c"));
+        ctx.vars().getVars().put("items", Arrays.asList("a", "b", "c"));
 
         FlowNodeRunner runner = new FlowNodeRunner(registry, new ConditionEvaluator(), null);
         // 注:V5.33 A0 测试场景下 stateMapper=null,traverse 返回 stub state
         // (status 永远 PENDING);我们断言 vars 已正确被 MI wrapper 处理即可
         DecisionFlowState state = runner.traverse(def, ctx, def.getStartNodeId());
 
-        assertEquals(Arrays.asList("a", "b", "c"), ctx.getVars().get("outputs"));
-        assertNotNull(ctx.getVars().get("tag"));
+        assertEquals(Arrays.asList("a", "b", "c"), ctx.vars().getVars().get("outputs"));
+        assertNotNull(ctx.vars().getVars().get("tag"));
         // 走完流程 — 没有任何异常,state 已返回
         assertNotNull(state);
     }

@@ -79,7 +79,7 @@ public class MultiInstanceExecutor implements NodeExecutor {
         }
 
         // 2. 读 collection(必须是 List)
-        Object collectionObj = ctx.getVars().get(collectionVar);
+        Object collectionObj = ctx.effectiveVars().get(collectionVar);
         if (!(collectionObj instanceof List)) {
             String actualType = collectionObj == null
                 ? "null"
@@ -94,7 +94,7 @@ public class MultiInstanceExecutor implements NodeExecutor {
         // 3. 空 collection
         if (items.isEmpty()) {
             if (outputVar != null && !outputVar.isBlank()) {
-                ctx.getVars().put(outputVar, new ArrayList<>());
+                ctx.effectiveVars().put(outputVar, new ArrayList<>());
             }
             log.debug("[MI-EMPTY] nodeId={} collection={} → Continue",
                 node.getNodeId(), collectionVar);
@@ -119,16 +119,16 @@ public class MultiInstanceExecutor implements NodeExecutor {
         List<Object> outputs = new ArrayList<>();
         for (int i = 0; i < items.size(); i++) {
             Object item = items.get(i);
-            ctx.getVars().put(elementVar, item);
+            ctx.effectiveVars().put(elementVar, item);
             inner.execute(node, ctx);  // Suspend 透传给 caller(Runner catch)
             if (outputVar != null && !outputVar.isBlank()) {
-                outputs.add(ctx.getVars().get(elementVar));
+                outputs.add(ctx.effectiveVars().get(elementVar));
             }
             log.debug("[MI-SEQ] nodeId={} iter={}/{} item={}",
                 node.getNodeId(), i + 1, items.size(), item);
         }
         if (outputVar != null && !outputVar.isBlank()) {
-            ctx.getVars().put(outputVar, outputs);
+            ctx.effectiveVars().put(outputVar, outputs);
         }
     }
 
@@ -139,7 +139,7 @@ public class MultiInstanceExecutor implements NodeExecutor {
     private void runParallelInline(FlowNode node, FlowContext ctx, List<Object> items,
                                    String elementVar, String outputVar) throws Exception {
         NodeExecutor inner = resolveInner(node);
-        Map<String, Object> parentVars = ctx.getVars();
+        Map<String, Object> parentVars = ctx.effectiveVars();
         Set<String> parentKeys = new HashSet<>(parentVars.keySet());
         List<Object> allOutputs = new ArrayList<>();
 

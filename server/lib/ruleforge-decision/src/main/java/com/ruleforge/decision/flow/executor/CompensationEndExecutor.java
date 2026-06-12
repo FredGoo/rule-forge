@@ -29,10 +29,10 @@ public class CompensationEndExecutor implements NodeExecutor {
         if (scopeId == null || scopeId.isBlank()) {
             scopeId = node.getNodeId();
         }
-        java.util.List<String> stack = context.getCompensationStack();
+        java.util.List<String> stack = context.currentToken().getCompensationStack();
         if (stack.isEmpty()) {
             log.warn("[COMP-END-EMPTY] flowRunId={} nodeId={} scopeId={} — empty stack, warn + noop",
-                context.getFlowRunId(), node.getNodeId(), scopeId);
+                context.identity().flowRunId(), node.getNodeId(), scopeId);
             return;
         }
         // 倒序找匹配 scopeId(V5.31 P0 v0:通常栈顶匹配;若不匹配 warn + 留 stack)
@@ -40,7 +40,7 @@ public class CompensationEndExecutor implements NodeExecutor {
         if (scopeId.equals(stack.get(topIdx))) {
             stack.remove(topIdx);
             log.info("[COMP-END-POP] flowRunId={} nodeId={} scopeId={}, stack size={}",
-                context.getFlowRunId(), node.getNodeId(), scopeId, stack.size());
+                context.identity().flowRunId(), node.getNodeId(), scopeId, stack.size());
         } else {
             // 倒序找前面是否匹配
             int matchIdx = -1;
@@ -53,10 +53,10 @@ public class CompensationEndExecutor implements NodeExecutor {
             if (matchIdx >= 0) {
                 stack.remove(matchIdx);
                 log.warn("[COMP-END-MID-POP] flowRunId={} nodeId={} scopeId={} — popped from non-top position (idx={})",
-                    context.getFlowRunId(), node.getNodeId(), scopeId, matchIdx);
+                    context.identity().flowRunId(), node.getNodeId(), scopeId, matchIdx);
             } else {
                 log.warn("[COMP-END-MISMATCH] flowRunId={} nodeId={} scopeId={} — top is '{}', warn + leave stack intact",
-                    context.getFlowRunId(), node.getNodeId(), scopeId, stack.get(topIdx));
+                    context.identity().flowRunId(), node.getNodeId(), scopeId, stack.get(topIdx));
             }
         }
     }

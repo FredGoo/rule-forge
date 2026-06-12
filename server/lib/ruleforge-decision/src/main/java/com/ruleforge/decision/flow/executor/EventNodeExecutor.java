@@ -63,12 +63,12 @@ public class EventNodeExecutor implements NodeExecutor {
         if (kind instanceof EndEventKind.None) {
             log.debug("[FLOW-END] {} (normal)", node.getName());
         } else if (kind instanceof EndEventKind.Error e) {
-            context.setThrownError(e.errorRef());
+            context.currentToken().setThrownError(e.errorRef());
             log.info("[FLOW-END] {} (error) ref={}", node.getName(), e.errorRef());
             throw new FlowExecutionException(
                 "ErrorEnd at node " + node.getNodeId() + " ref=" + e.errorRef());
         } else if (kind instanceof EndEventKind.Escalation e) {
-            context.setThrownError(e.escalationRef());
+            context.currentToken().setThrownError(e.escalationRef());
             log.info("[FLOW-END] {} (escalation) ref={}", node.getName(), e.escalationRef());
             throw new FlowExecutionException(
                 "EscalationEnd at node " + node.getNodeId() + " ref=" + e.escalationRef());
@@ -89,18 +89,18 @@ public class EventNodeExecutor implements NodeExecutor {
                 log.warn("[FLOW-END] {} (compensation) no registry available, skipping handler run",
                     node.getNodeId());
             } else {
-                CompensationRunner.runHandlersForActivity(context.getCurrentDef(), context, reg, ce.attachedTo());
+                CompensationRunner.runHandlersForActivity(context.currentDef(), context, reg, ce.attachedTo());
             }
             // 跟 None 一样自然结束(没 throw)
         } else if (kind instanceof EndEventKind.MessageEnd me) {
             // V5.36 A6 — thrownError = "message:<name>"
-            context.setThrownError(me.errorRef());
+            context.currentToken().setThrownError(me.errorRef());
             log.info("[FLOW-END] {} (messageEnd) ref={}", node.getNodeId(), me.errorRef());
             throw new FlowExecutionException(
                 "MessageEnd at node " + node.getNodeId() + " ref=" + me.errorRef());
         } else if (kind instanceof EndEventKind.SignalEnd se) {
             // V5.36 A6 — thrownError = "signal:<name>"
-            context.setThrownError(se.errorRef());
+            context.currentToken().setThrownError(se.errorRef());
             log.info("[FLOW-END] {} (signalEnd) ref={}", node.getNodeId(), se.errorRef());
             throw new FlowExecutionException(
                 "SignalEnd at node " + node.getNodeId() + " ref=" + se.errorRef());

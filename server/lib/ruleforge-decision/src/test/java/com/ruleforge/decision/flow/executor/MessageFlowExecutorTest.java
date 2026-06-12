@@ -5,6 +5,7 @@ import com.ruleforge.decision.exception.FlowExecutionException;
 import com.ruleforge.decision.flow.bus.FlowResumer;
 import com.ruleforge.decision.flow.bus.InMemoryMessageBus;
 import com.ruleforge.decision.flow.bus.MessageBusPublisher;
+import com.ruleforge.decision.flow.bus.MessageBusRegistry;
 import com.ruleforge.decision.flow.engine.FlowContext;
 import com.ruleforge.decision.flow.ir.BpmnDefinition;
 import com.ruleforge.decision.flow.ir.FlowNode;
@@ -51,7 +52,7 @@ class MessageFlowExecutorTest {
     void setUp() {
         parser = new BpmnXmlParser();
         bus = new InMemoryMessageBus();
-        publisher = new MessageBusPublisher(bus);
+        publisher = new MessageBusPublisher(new MessageBusRegistry(java.util.List.of(bus)));
         bpmn = parser.parse(BpmnCollaborationFixtures.TWO_POOL_LOAN_XML);
     }
 
@@ -80,12 +81,11 @@ class MessageFlowExecutorTest {
             assertNotNull(recvStart);
             assertEquals("MF1", recvStart.getMessageFlowId());
 
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-test-1");
+            FlowContext ctx = FlowContext.forFlow("fr-test-1", "test-flow", null);
             ctx.setCurrentBpmn(bpmn);
             ctx.setCurrentPoolId("p_uw");
             Map<String, Object> vars = new HashMap<>();
-            ctx.setVars(vars);
+            ctx.vars().getVars().putAll(vars);
 
             AsyncNodeSuspendException ex = assertThrows(AsyncNodeSuspendException.class,
                 () -> exec.execute(recvStart, ctx));
@@ -102,13 +102,12 @@ class MessageFlowExecutorTest {
             MessageFlowStartExecutor exec = newStart();
             FlowNode recvStart = bpmn.requireProcess("Process_UW").getNode("recvLoanDecision");
 
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-test-2");
+            FlowContext ctx = FlowContext.forFlow("fr-test-2", "test-flow", null);
             ctx.setCurrentBpmn(bpmn);
             ctx.setCurrentPoolId("p_uw");
 
             assertThrows(AsyncNodeSuspendException.class, () -> exec.execute(recvStart, ctx));
-            assertEquals(1, ctx.getBusSubscriptions().size(),
+            assertEquals(1, ctx.suspend().all().size(),
                 "subscription 应被 stash 进 ctx.busSubscriptions");
         }
     }
@@ -128,11 +127,10 @@ class MessageFlowExecutorTest {
             FlowNode sendEnd = bpmn.requireProcess("Process_Credit").getNode("sendLoanDecision");
             assertNotNull(sendEnd);
 
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-test-3");
+            FlowContext ctx = FlowContext.forFlow("fr-test-3", "test-flow", null);
             ctx.setCurrentBpmn(bpmn);
             ctx.setCurrentPoolId("p_credit");
-            ctx.setVars(new HashMap<>());
+            ctx.vars().getVars().putAll(new HashMap<>());
 
             // 不抛
             exec.execute(sendEnd, ctx);
@@ -145,7 +143,7 @@ class MessageFlowExecutorTest {
         void end_payload_includes_bridge_fields() {
             // 替换 publisher 记 payload
             Map<String, Object> capturedPayload = new HashMap<>();
-            MessageBusPublisher spyingPublisher = new MessageBusPublisher(bus) {
+            MessageBusPublisher spyingPublisher = new MessageBusPublisher(new MessageBusRegistry(java.util.List.of(bus))) {
                 // 重写困难(没 override 设计)— 退而求其次:用 subscriber 在 publish 时截 payload
             };
             bus.subscribe("pool:p_credit_to_p_uw:loan_approved",
@@ -154,11 +152,10 @@ class MessageFlowExecutorTest {
             MessageFlowEndExecutor exec = newEnd();
 
             FlowNode sendEnd = bpmn.requireProcess("Process_Credit").getNode("sendLoanDecision");
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-test-4");
+            FlowContext ctx = FlowContext.forFlow("fr-test-4", "test-flow", null);
             ctx.setCurrentBpmn(bpmn);
             ctx.setCurrentPoolId("p_credit");
-            ctx.setVars(new HashMap<>());
+            ctx.vars().getVars().putAll(new HashMap<>());
 
             exec.execute(sendEnd, ctx);
 
@@ -178,8 +175,7 @@ class MessageFlowExecutorTest {
                 Map.of(), null, null, java.util.List.of(), false,
                 null, "DOES_NOT_EXIST");
 
-            FlowContext ctx = new FlowContext();
-            ctx.setFlowRunId("fr-x");
+            FlowContext ctx = FlowContext.forFlow("fr-x", "test-flow", null);
             ctx.setCurrentBpmn(bpmn);
             ctx.setCurrentPoolId("p_credit");
 
