@@ -86,7 +86,7 @@ Deployable executor with RestTemplate config for console communication.
 - Java 17, Spring Boot 4.0.6, Spring Framework 7
 - MyBatis-Plus 3.5.9, MySQL, Flyway
 - ANTLR4, Jackson, fastjson2, HikariCP
-- Flowable 8 BPM engine for decision flow execution
+- V5.21+ 自建 BPMN 2.0 决策流引擎(`lib/ruleforge-decision/`,V5.33-V5.39 完整化);V5.20 之前是 Flowable 8
 - Frontend: TypeScript, React, Vite 8, Ant Design 5, bpmn-js for flow designer
 - Frontend HTTP: centralized `src/api/client.ts` (formPost, jsonPost, jsonPut, httpGet, httpDelete, save, saveNewVersion)
 - Frontend tests: Vitest unit tests, Playwright E2E tests
