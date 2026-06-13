@@ -7,6 +7,7 @@ import com.ruleforge.builder.table.CrosstabRulesBuilder;
 import com.ruleforge.builder.table.DecisionTableRulesBuilder;
 import com.ruleforge.builder.table.ScriptDecisionTableRulesBuilder;
 import com.ruleforge.dsl.DSLRuleSetBuilder;
+import com.ruleforge.exception.ResourceMigrationRequiredException;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.ir.dmn.DmnResourceDispatcher;
 import com.ruleforge.ir.pmml.PmmlResourceDispatcher;
@@ -76,6 +77,8 @@ public class KnowledgeBuilder extends AbstractBuilder {
         for (Resource resource : resourceBase.getResources()) {
             String path = resource.getPath(); // 获取资源路径
             try {
+                // V5.43.4 — 守卫:老 .ul / .xml rule 路径显式抛 ResourceMigrationRequiredException
+                this.gateLegacyPath(resource);
                 if (this.dslRuleSetBuilder.support(resource)) {
                     RuleSet ruleSet = this.dslRuleSetBuilder.build(resource.getContent());
                     this.addToLibraryMap(libMap, ruleSet.getLibraries());
@@ -246,6 +249,51 @@ public class KnowledgeBuilder extends AbstractBuilder {
                 if (!map.containsKey(path)) {
                     map.put(path, lib);
                 }
+            }
+        }
+    }
+
+    /**
+     * V5.43.4 — 守卫:KnowledgeBuilder 加载规则库时,遇到老 .xml rule / .ul DSL 资源显式失败。
+     *
+     * <p>V5.43 删老 .xml rule 解析链 + 老 .ul DSL 解析链后,运维**必须**先跑
+     * {@code LegacyXmlMigrator.migrate()} 把 .xml rule / .ul 转成 .drl,否则 KnowledgeBuilder
+     * 加载规则库会 silent 0 rule(全部资源被吞,业务停摆)。本守卫显式抛
+     * {@link ResourceMigrationRequiredException} 让运维知道漏跑迁移。
+     *
+     * <p>守卫**不**拦:library .xml(action / variable / constant / parameter)、
+     * table / scorecard / tree / crosstab .xml(V5.40 / V5.41 / V5.43 兜底)、.dmn、.pmml、
+     * .drl — 这些仍是当前 production 格式。
+     */
+    void gateLegacyPath(Resource resource) {
+        String path = resource.getPath();
+        if (path == null) {
+            return;
+        }
+        String lower = path.toLowerCase();
+        // .ul / .dsl / .dslrd 老 DSL 路径
+        if (lower.endsWith(".ul") || lower.endsWith(".dsl") || lower.endsWith(".dslrd")) {
+            throw new ResourceMigrationRequiredException(
+                "Resource '" + path + "' is in legacy .ul DSL format. " +
+                "Run LegacyXmlMigrator.migrate() to convert to .drl first. " +
+                "See CHANGELOG V5.43 for the migration runbook.");
+        }
+        // .xml rule / rule-set / ruleflow 根元素(peek)
+        if (lower.endsWith(".xml") && !lower.endsWith(".dmn") && !lower.endsWith(".pmml")) {
+            try {
+                Element root = parseResource(resource.getContent());
+                if (root != null) {
+                    String name = root.getName();
+                    if ("rule".equals(name) || "rule-set".equals(name) || "ruleflow".equals(name)) {
+                        throw new ResourceMigrationRequiredException(
+                            "Resource '" + path + "' is in legacy <" + name + "> XML format. " +
+                            "Run LegacyXmlMigrator.migrate() to convert to .drl first.");
+                    }
+                }
+            } catch (ResourceMigrationRequiredException re) {
+                throw re;
+            } catch (Exception ignored) {
+                // .xml parse 失败不是守卫关心的事,留给 .xml 兜底 builder 报
             }
         }
     }
