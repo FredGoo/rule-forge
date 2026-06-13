@@ -14,6 +14,8 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -170,7 +172,7 @@ class RulesRebuilderTest {
     }
 
     @Nested
-    @DisplayName("异常路径 — L96-98 语法错抛 RuleException")
+    @DisplayName("异常路径 — L96-98 语法错抛 RuleException(cause 必须保留)")
     class RuleExceptionPaths {
 
         @Test
@@ -182,6 +184,42 @@ class RulesRebuilderTest {
             Rule r = new Rule();
             r.setName("minimal-rule");
             assertDoesNotThrow(() -> rebuilder.convertNamedJunctions(Collections.singletonList(r)));
+        }
+
+        /**
+         * P1 — V5.47 之前 L96-98 throw new RuleException(errorMsg) 不传 cause,
+         * 导致 catch(RuleException) 拿不到根因(DrlParseException / ANTLR bail
+         * 错等被吞)。修复后 {@code new RuleException(msg, cause)} 传 e 进去。
+         *
+         * <p>触发完整 catch 链需要让 rebuildAction 抛错(私有方法,需 mock
+         * Criterion 复杂对象),投资回报不高。本测试改为直接锁定
+         * {@link com.ruleforge.exception.RuleException} 构造器合同:
+         * <ul>
+         *   <li>getMessage() 返业务描述(不是 cause 消息)— P1 构造器修复</li>
+         *   <li>getCause() 返原异常 — P1 L98 修复</li>
+         * </ul>
+         *
+         * <p>3 个 caller 受益:RulesRebuilder L98 / ScorecardParser L178 /
+         * KnowledgeServiceImpl L146。
+         */
+        @Test
+        @DisplayName("RuleException(String, Exception) 构造器:msg 进 getMessage,cause 进 getCause")
+        void ruleExceptionConstructorPreservesBoth() {
+            // Given
+            String businessMsg = "规则【syntax-broken-rule】包含语法错误";
+            RuntimeException rootCause = new IllegalArgumentException("antlr bail: missing semicolon");
+
+            // When
+            com.ruleforge.exception.RuleException ex =
+                new com.ruleforge.exception.RuleException(businessMsg, rootCause);
+
+            // Then
+            assertTrue(ex.getMessage().contains(businessMsg),
+                "P1 修复:getMessage() 应包含业务描述 (V5.47 之前是 cause 消息): " + ex.getMessage());
+            assertNotNull(ex.getCause(),
+                "P1 修复:getCause() 必须保留原异常 (V5.47 之前是 null)");
+            assertSame(rootCause, ex.getCause(),
+                "cause 应严格等于传入的原异常");
         }
     }
 }
