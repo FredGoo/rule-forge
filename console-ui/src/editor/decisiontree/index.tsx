@@ -48,6 +48,7 @@ import { createRoot } from 'react-dom/client';
 import { getParameter, buildProjectNameFromFile, loadEditorData, handleResponseError } from '../../Utils.js';
 import { save, saveNewVersion } from '../../api/client.js';
 import * as event from '../../components/componentEvent.js';
+import { detectPmmlDialectFromFilePath, pmmlDialectLabel } from '../../api/pmmlDialect.js';
 
 import {alert} from '@/utils/modal';
 document.addEventListener('DOMContentLoaded', function () {
@@ -101,6 +102,13 @@ document.addEventListener('DOMContentLoaded', function () {
             onSave={saveFile}
             onReady={(api: any) => { toolbarApi = api; }}
             extraButtons={[
+                <span key="dialect-badge" data-testid="dialect-badge"
+                      style={{alignSelf: 'center', marginRight: 8, padding: '4px 8px',
+                              borderRadius: 4, fontSize: 12,
+                              background: '#f0f0f0', color: '#555'}}
+                      title={pmmlDialectLabel(detectPmmlDialectFromFilePath(file))}>
+                    📄 {pmmlDialectLabel(detectPmmlDialectFromFilePath(file))}
+                </span>,
                 <button key="quicktest" type="button" className="btn btn-success"
                         onClick={function () {
                             const decodedFile = decodeURIComponent(file);

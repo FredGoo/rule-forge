@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rule-config>
+    <scorecard name="customer_score"
+               scoring-type="Sum" assign-target-type="Var"
+               var="score" var-label="客户评分" datatype="Integer"
+               salience="0" weight-support="true"
+               attr-col-name="Attribute" attr-col-width="200" attr-col-category=""
+               condition-col-name="Condition" condition-col-width="250"
+               score-col-name="Score" score-col-width="100">
+        <card-cell row="0" col="0" var="age" type="criteria" datatype="Integer"/>
+        <card-cell row="0" col="1" value=">=30"/>
+        <card-cell row="0" col="2" type="score" value="10"/>
+        <attribute-row row="0">
+            <condition-row row="0" col="0" value=">=30" col-op="GreaterThenEquals"/>
+            <condition-row row="0" col="1" value="100000" col-op="GreaterThenEquals"/>
+        </attribute-row>
+    </scorecard>
+</rule-config>

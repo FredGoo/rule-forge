@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rule-config>
+    <decision-tree name="loan_classifier" salience="0">
+        <variable-tree-node name="age" op="GreaterThen" value="30">
+            <condition-tree-node op="GreaterThen" value="50">
+                <action-tree-node>approve_high</action-tree-node>
+            </condition-tree-node>
+            <condition-tree-node op="LessThenEquals" value="30">
+                <action-tree-node>reject</action-tree-node>
+            </condition-tree-node>
+        </variable-tree-node>
+    </decision-tree>
+</rule-config>
