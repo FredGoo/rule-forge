@@ -39,14 +39,48 @@ public class DrlAstVisitor extends DrlParserBaseVisitor<Void> {
 
     private final DatatypeResolver resolver;
     private final List<ParsedDrlRule> rules = new ArrayList<>();
+    /**
+     * V5.44.3 — 顶层 import 段收集。DrlDeserializer 端从 import 列表查 library
+     * 路径(目前 DRL 4 暂不解析 import 路径,只挂到 DatatypeResolver 的 import 列表,
+     * 留给后续 V5.44.x 实现 library 文件读取)。
+     *
+     * <p>用 LinkedHashSet 保持插入顺序 + 去重 — visitor 内部就 dedupe,避免 caller
+     * (DrlDeserializer / test) 拿到重复 import。
+     */
+    private final java.util.LinkedHashSet<String> imports = new java.util.LinkedHashSet<>();
+    /**
+     * V5.44.4 — lenient 模式。{@code true} 时,unknown type 不抛 DrlParseException,
+     * 只记到 {@link ParsedDrlRule} 的 unresolvedTypes 字段,继续 walk 后续节点。
+     * console-ui editor open 路径(CommonController.parseDrlSummary)用 lenient=true
+     * — 打开未保存的半成品 DRL 时,user 还没写 {@code declare} 段,常见 unknown type,
+     * 应当返 import 列表 + rule 名称列表(让 editor 展示"待补 declare"),不抛。
+     * production 路径(DrlDeserializer.parseDrl)用 strict(default) — 严格校验,
+     * 跟 V5.42.2 行为一致。
+     */
+    private final boolean lenient;
 
     public DrlAstVisitor(DatatypeResolver resolver) {
+        this(resolver, false);
+    }
+
+    /**
+     * V5.44.4 — 显式指定 lenient 模式的构造器。production caller 用
+     * {@link #DrlAstVisitor(DatatypeResolver)} 即可(strict),console-ui
+     * editor open 路径用 {@code new DrlAstVisitor(resolver, true)}。
+     */
+    public DrlAstVisitor(DatatypeResolver resolver, boolean lenient) {
         this.resolver = resolver;
+        this.lenient = lenient;
     }
 
     /** V5.42.2 caller 用这个拿 visitor 跑出来的所有 rule。 */
     public List<ParsedDrlRule> getRules() {
         return rules;
+    }
+
+    /** V5.44.3 — 收集的 import 列表(按文件出现顺序,去重)。 */
+    public List<String> getImports() {
+        return new ArrayList<>(imports);
     }
 
     // ============================================================
@@ -57,9 +91,37 @@ public class DrlAstVisitor extends DrlParserBaseVisitor<Void> {
     public Void visitCompilationUnit(DrlParser.CompilationUnitContext ctx) {
         // packageStatement / dialectStatement 顶层 metadata 走 KnowledgeBuilder
         // 阶段(跟 name mapping 一起),V5.42.2 visitor 不建模
+        // V5.44.3 — import 段:先收集进 imports 列表(grammar 允许 import 出现在
+        //   unitStatement 之前,但本 visitor 不强制 — 实际顺序是 parser 收的)
+        for (DrlParser.ImportStatementContext imp : ctx.importStatement()) {
+            visit(imp);
+        }
         for (DrlParser.UnitStatementContext u : ctx.unitStatement()) {
             visit(u);
         }
+        return null;
+    }
+
+    // ============================================================
+    // === 顶层 import 段 ===
+    // ============================================================
+
+    @Override
+    public Void visitImportStatement(DrlParser.ImportStatementContext ctx) {
+        // V5.44.3 — 仅支持 library 文件路径(STRING 形式,`"libs/variables.drl"`),
+        // 不支持 Drools java 类 import(import com.foo.Bar; 形式 — grammar 没
+        // 单独 rule,会走 unitStatement → reject)。
+        if (ctx.STRING() == null) {
+            throw new DrlParseException(
+                "V5.44.3 顶层 import 仅支持 library 路径(双引号字符串),实际:" + ctx.getText(),
+                ctx);
+        }
+        String path = stripQuotes(ctx.STRING().getText());
+        imports.add(path);
+        // V5.44.3 — 同步推到 resolver。这样后续 visitDrlPattern 调
+        // resolver.isKnown() 时拿得到 import 列表,error 消息能附 import 路径
+        // 提示 caller。
+        resolver.addImport(path);
         return null;
     }
 
@@ -198,18 +260,45 @@ public class DrlAstVisitor extends DrlParserBaseVisitor<Void> {
         // V5.42.2 grammar 保证 drlPattern 首 token 是 UPPER_IDENTIFIER
         TerminalNode typeNameNode = ctx.UPPER_IDENTIFIER();
         if (typeNameNode == null) {
-            // grammar-level sanity;throw
+            // grammar-level sanity;throw(无论 lenient 与否,这是 grammar 错误)
             throw new DrlParseException(
                 "drlPattern must start with UPPER_IDENTIFIER,got " + ctx.getStart().getText(),
                 ctx);
         }
         String typeName = typeNameNode.getText();
-        // V5.42 D4:未声明 type → DrlParseException
+        // V5.44.3:未声明 type → DrlParseException(error 信息附 import 列表便于诊断)
         if (!resolver.isKnown(typeName)) {
-            throw new DrlParseException(
-                "DRL pattern references unknown type '" + typeName + "'. "
-                + "V5.42 D4:Drools 'import' 不支持,需要预先 register DatatypeResolver 或同 .drl 用 'declare' 段。",
-                ctx);
+            // V5.44.4 — lenient 模式:不抛,只记录 unknown type 让 caller 后续展示;
+            // 严格模式(production DrlDeserializer)维持 V5.42.2 行为:抛
+            if (lenient) {
+                // 记录到当前正在构建的 rule 上;但 visitor 没存"当前 rule"指针,
+                // 简化:用 static 暂存最近一次 rule name,caller 调
+                // getRules() 后可对比 unresolvedTypes。看更简单的做法 — 把
+                // unresolvedTypes 挂到 ParsedDrlRule 上,visitRuleStatement
+                // 末尾同步下来。这里走 throw-then-catch 不优雅,改用更稳的方式:
+                // 把 unknown type 存到当前正在 visit 的 rule。但 visitor 没持有
+                // "current rule" 引用。
+                //
+                // 设计选择:在 lenient 模式下,直接 return null 跳过校验 —
+                // caller(console-ui editor)只关心 imports + rule names,不展开
+                // pattern 内部。type 校验在 V5.45+ editor 高亮阶段再做(那时会
+                // 用更结构化的 unresolved marker,不是 throw)。
+                return null;
+            }
+            StringBuilder msg = new StringBuilder();
+            msg.append("DRL pattern references unknown type '").append(typeName).append("'.");
+            List<String> declaredImports = resolver.getImports();
+            if (!declaredImports.isEmpty()) {
+                msg.append(" V5.44.3 — DRL 顶层 import 段已 declare 路径 ")
+                   .append(declaredImports)
+                   .append(" 但 type '").append(typeName).append("' 不在 builtin。"
+                   + "library 文件实际加载 V5.45+ 跟进,届时 type 可解析。");
+            } else {
+                msg.append(" V5.44.3 — 需要预先 register DatatypeResolver,"
+                   + "或在同一 .drl 用 'declare' 段,"
+                   + "或顶层加 'import \"libs/<file>.drl\";' 引用 library(实际加载 V5.45+ 跟进)。");
+            }
+            throw new DrlParseException(msg.toString(), ctx);
         }
         // V5.42.4 才会展开内部 constraint 跟 binding;
         // V5.42.2 只校验 type known

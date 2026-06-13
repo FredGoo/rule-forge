@@ -5,9 +5,12 @@ import com.ruleforge.builder.resource.ResourceBuilder;
 import com.ruleforge.builder.resource.ResourceType;
 import com.ruleforge.builder.table.CrosstabRulesBuilder;
 import com.ruleforge.builder.table.DecisionTableRulesBuilder;
-import com.ruleforge.dsl.DSLRuleSetBuilder;
+import com.ruleforge.builder.table.ScriptDecisionTableToDrlConverter;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.ir.dmn.DmnResourceDispatcher;
+import com.ruleforge.ir.drl.DatatypeResolver;
+import com.ruleforge.ir.drl.DrlResource;
+import com.ruleforge.ir.drl.DrlResourceBuilder;
 import com.ruleforge.ir.pmml.PmmlResourceDispatcher;
 import com.ruleforge.model.crosstab.CrosstabDefinition;
 import com.ruleforge.model.decisiontree.DecisionTree;
@@ -21,6 +24,7 @@ import com.ruleforge.model.rule.loop.LoopRule;
 import com.ruleforge.model.rule.loop.LoopRuleUnit;
 import com.ruleforge.model.scorecard.runtime.ScoreRule;
 import com.ruleforge.model.table.DecisionTable;
+import com.ruleforge.model.table.ScriptDecisionTable;
 import com.ruleforge.runtime.KnowledgePackageWrapper;
 import com.ruleforge.runtime.service.KnowledgePackageService;
 import lombok.Setter;
@@ -36,7 +40,11 @@ public class KnowledgeBuilder extends AbstractBuilder {
     private RulesRebuilder rulesRebuilder;
     private DecisionTreeRulesBuilder decisionTreeRulesBuilder;
     private DecisionTableRulesBuilder decisionTableRulesBuilder;
-    private DSLRuleSetBuilder dslRuleSetBuilder;
+    /**
+     * V5.44.1 — type 改成 {@link DslRuleSet} 最小接口,实现 DSLRuleSetBuilder 搬到
+     * ruleforge-dsl jar;KnowledgeBuilder 不再 import 具体 DSL 类。
+     */
+    private DslRuleSet dslRuleSetBuilder;
     private CrosstabRulesBuilder crosstabRulesBuilder;
     /**
      * V5.40 — DMN 1.3 资源分流器。资源路径以 {@code .dmn} 结尾时,绕过老 .xml 解析路径,
@@ -103,6 +111,18 @@ public class KnowledgeBuilder extends AbstractBuilder {
                     // 留空 — 暂不展开,等 V5.41.4.1 单独 PR 完整展开(超出本 PR scope)。
                     // 当前走 .pmml 路径产 0 rule(空表/空树语义),不抛异常。
                     this.pmmlResourceDispatcher.dispatch(path, resource.getContent());
+                } else if (path != null && (path.toLowerCase().endsWith(".drl")
+                        || path.toLowerCase().endsWith(".drlrd")
+                        || path.toLowerCase().endsWith(".dslr"))) {
+                    // V5.44.4 — DRL 4 grammar 资源路径,绕过老 .xml 解析,走 V5.42.4
+                    // DrlResourceBuilder + DrlDeserializer。library 引用走 .drl 顶层
+                    // import 段(grammar V5.44.3 加 DRL_IMPORT,见 DrlLexer.g4)。
+                    List<Rule> drlRules = new DrlResourceBuilder(new DatatypeResolver())
+                        .build(new DrlResource(resource.getContent(), path));
+                    if (drlRules != null && !drlRules.isEmpty()) {
+                        this.buildRulesPath(drlRules, path);
+                        rules.addAll(drlRules);
+                    }
                 } else {
                     Element root = this.parseResource(resource.getContent());
                     for (ResourceBuilder<?> builder : this.resourceBuilders) {
@@ -147,10 +167,17 @@ public class KnowledgeBuilder extends AbstractBuilder {
                                     this.buildRulesPath(tableRules, path);
                                     rules.addAll(tableRules);
                                 } else if (type.equals(ResourceType.ScriptDecisionTable)) {
-                                    // V5.43.5 — 行为降级:ScriptDecisionTable 走老 .ul DSL
-                                    // ScriptDecisionTableRulesBuilder 已被删,跳过(类似 Flow
-                                    // 处理 — 不产 rule,V5.44 单独 PR 实现 ScriptDecisionTable
-                                    // → DRL 转换)
+                                    // V5.44.2 — 行为补回:ScriptDecisionTable → DRL 4 字符串
+                                    // → 走 V5.42 既有 DrlResourceBuilder → List<Rule>。
+                                    // 转换器逻辑见 ScriptDecisionTableToDrlConverter。
+                                    ScriptDecisionTable scriptTable = (ScriptDecisionTable) object;
+                                    String drl = new ScriptDecisionTableToDrlConverter().convert(scriptTable);
+                                    List<Rule> drlRules = new DrlResourceBuilder(new DatatypeResolver())
+                                        .build(new DrlResource(drl, path));
+                                    if (drlRules != null && !drlRules.isEmpty()) {
+                                        this.buildRulesPath(drlRules, path);
+                                        rules.addAll(drlRules);
+                                    }
                                 } else if (type.equals(ResourceType.Flow)) {
                                     // Flow resources are now handled by Flowable BPMN engine
                                     // Skip old flow definition processing
