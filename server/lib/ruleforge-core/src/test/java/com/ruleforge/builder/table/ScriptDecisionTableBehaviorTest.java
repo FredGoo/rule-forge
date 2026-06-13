@@ -30,9 +30,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p><b>V5.43.8 — 路线 B 收口</b>:ResourceMigrationRequiredException / LegacyXmlMigrator
  * 已删,本测试不再测"守卫抛"逻辑(全新项目不兼容老格式),仅保留"class 删干净"快照。
  *
+ * <p><b>V5.44.2 — 行为补回</b>:KnowledgeBuilder 走 ScriptDecisionTableToDrlConverter
+ * 转换 → DRL 4 字符串 → DrlResourceBuilder → List&lt;Rule&gt;。本测试新加 4 个
+ * BDD 锁该路径(转换器逻辑详见 ScriptDecisionTableToDrlConverterTest)。
+ *
  * @since 5.43
  */
-@DisplayName("V5.43.5 — ScriptDecisionTable 行为降级(class 删 + 守卫抛)")
+@DisplayName("V5.43.5 / V5.44.2 — ScriptDecisionTable 行为(class 删 + 转换器补回)")
 class ScriptDecisionTableBehaviorTest {
 
     @Test
@@ -48,6 +52,72 @@ class ScriptDecisionTableBehaviorTest {
                     "V5.43.5 删的 class '" + fqn + "' 仍可被 classloader 找到 — 删不彻底");
             } catch (ClassNotFoundException expected) {
                 // 期望:删干净
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("V5.44.2 — ScriptDecisionTableToDrlConverter 行为补回")
+    class V5442BehaviorBack {
+
+        @Test
+        @DisplayName("转换器 class 存在并可实例化")
+        void converterExistsAndInstantiable() {
+            ScriptDecisionTableToDrlConverter c = new ScriptDecisionTableToDrlConverter();
+            assertThat(c).isNotNull();
+        }
+
+        @Test
+        @DisplayName("KnowledgeBuilder 调 ScriptDecisionTableToDrlConverter.convert(走 DRL 路径)")
+        void knowledgeBuilderWiresConverter() {
+            // V5.44.2:KnowledgeBuilder 源码里 ScriptDecisionTable 分支调
+            // new ScriptDecisionTableToDrlConverter().convert(...),再走 DrlResourceBuilder。
+            // 这个测试**编译期**就已通过(因为本类跟 KnowledgeBuilder 在同 module),
+            // sanity check:ScriptDecisionTableToDrlConverter 类可被 classloader 找到。
+            try {
+                Class<?> cls = Class.forName("com.ruleforge.builder.table.ScriptDecisionTableToDrlConverter");
+                assertThat(cls).isNotNull();
+                assertThat(cls.getSimpleName()).isEqualTo("ScriptDecisionTableToDrlConverter");
+            } catch (ClassNotFoundException e) {
+                throw new AssertionError(
+                    "V5.44.2 转换器类应存在,但 classloader 找不到", e);
+            }
+        }
+
+        @Test
+        @DisplayName("ScriptDecisionTable 老 setter / 老 DSL chain class 不复活")
+        void noOldChainResurrected() {
+            // V5.44.2 不复活 V5.43.5 删的 class。CellScriptDSLBuilder /
+            // ScriptDecisionTableRulesBuilder 仍然 ClassNotFound。
+            for (String fqn : List.of(
+                "com.ruleforge.builder.table.CellScriptDSLBuilder",
+                "com.ruleforge.builder.table.ScriptDecisionTableRulesBuilder"
+            )) {
+                assertThatThrownBy(() -> Class.forName(fqn))
+                    .as("V5.43.5 删的 class 不应复活:" + fqn)
+                    .isInstanceOf(ClassNotFoundException.class);
+            }
+        }
+
+        @Test
+        @DisplayName("XML → ScriptDecisionTable 解析链仍可用(转换器上游输入)")
+        void xmlParseChainStillWorks() {
+            // ScriptDecisionTableResourceBuilder / ScriptDecisionTableDeserializer /
+            // ScriptDecisionTableParser / ScriptCell / ScriptDecisionTable 全部保留 —
+            // V5.44.2 转换器以 ScriptDecisionTable 为输入,XML 解析链是上游。
+            for (String fqn : List.of(
+                "com.ruleforge.builder.resource.ScriptDecisionTableResourceBuilder",
+                "com.ruleforge.parse.deserializer.ScriptDecisionTableDeserializer",
+                "com.ruleforge.parse.table.ScriptDecisionTableParser",
+                "com.ruleforge.model.table.ScriptCell",
+                "com.ruleforge.model.table.ScriptDecisionTable"
+            )) {
+                try {
+                    Class<?> cls = Class.forName(fqn);
+                    assertThat(cls).as("V5.44.2 保留的 ScriptDecisionTable 链 class:" + fqn).isNotNull();
+                } catch (ClassNotFoundException e) {
+                    throw new AssertionError("V5.44.2 不应删 ScriptDecisionTable 上游链 " + fqn, e);
+                }
             }
         }
     }

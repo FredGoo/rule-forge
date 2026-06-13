@@ -5,8 +5,12 @@ import com.ruleforge.builder.resource.ResourceBuilder;
 import com.ruleforge.builder.resource.ResourceType;
 import com.ruleforge.builder.table.CrosstabRulesBuilder;
 import com.ruleforge.builder.table.DecisionTableRulesBuilder;
+import com.ruleforge.builder.table.ScriptDecisionTableToDrlConverter;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.ir.dmn.DmnResourceDispatcher;
+import com.ruleforge.ir.drl.DatatypeResolver;
+import com.ruleforge.ir.drl.DrlResource;
+import com.ruleforge.ir.drl.DrlResourceBuilder;
 import com.ruleforge.ir.pmml.PmmlResourceDispatcher;
 import com.ruleforge.model.crosstab.CrosstabDefinition;
 import com.ruleforge.model.decisiontree.DecisionTree;
@@ -20,6 +24,7 @@ import com.ruleforge.model.rule.loop.LoopRule;
 import com.ruleforge.model.rule.loop.LoopRuleUnit;
 import com.ruleforge.model.scorecard.runtime.ScoreRule;
 import com.ruleforge.model.table.DecisionTable;
+import com.ruleforge.model.table.ScriptDecisionTable;
 import com.ruleforge.runtime.KnowledgePackageWrapper;
 import com.ruleforge.runtime.service.KnowledgePackageService;
 import lombok.Setter;
@@ -150,10 +155,17 @@ public class KnowledgeBuilder extends AbstractBuilder {
                                     this.buildRulesPath(tableRules, path);
                                     rules.addAll(tableRules);
                                 } else if (type.equals(ResourceType.ScriptDecisionTable)) {
-                                    // V5.43.5 — 行为降级:ScriptDecisionTable 走老 .ul DSL
-                                    // ScriptDecisionTableRulesBuilder 已被删,跳过(类似 Flow
-                                    // 处理 — 不产 rule,V5.44 单独 PR 实现 ScriptDecisionTable
-                                    // → DRL 转换)
+                                    // V5.44.2 — 行为补回:ScriptDecisionTable → DRL 4 字符串
+                                    // → 走 V5.42 既有 DrlResourceBuilder → List<Rule>。
+                                    // 转换器逻辑见 ScriptDecisionTableToDrlConverter。
+                                    ScriptDecisionTable scriptTable = (ScriptDecisionTable) object;
+                                    String drl = new ScriptDecisionTableToDrlConverter().convert(scriptTable);
+                                    List<Rule> drlRules = new DrlResourceBuilder(new DatatypeResolver())
+                                        .build(new DrlResource(drl, path));
+                                    if (drlRules != null && !drlRules.isEmpty()) {
+                                        this.buildRulesPath(drlRules, path);
+                                        rules.addAll(drlRules);
+                                    }
                                 } else if (type.equals(ResourceType.Flow)) {
                                     // Flow resources are now handled by Flowable BPMN engine
                                     // Skip old flow definition processing
