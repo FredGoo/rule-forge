@@ -8,6 +8,8 @@
 
 ## 一、核心架构问题:MPA 多页结构 → 应改为 SPA
 
+> 📋 **可执行落地计划见 [spa-migration-plan.md](./spa-migration-plan.md)**(6 阶段 / 4.5d / 每阶段独立 PR + 可回滚)
+
 ### 现状
 
 `console-ui` 是 **3 页 MPA(Multi-Page Application)**,每个页面是独立的 React 入口:
