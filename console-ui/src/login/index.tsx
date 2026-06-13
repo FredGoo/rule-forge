@@ -19,7 +19,7 @@ export default class LoginPage extends Component<object, LoginState> {
         formPost<{ status: boolean }>('/frame/login', {username, password}, { silent: true }).then((result) => {
             this.setState({loading: false});
             if (result.status) {
-                const redirect = new URLSearchParams(window.location.search).get('redirect') || '/html/frame.html';
+                const redirect = new URLSearchParams(window.location.search).get('redirect') || '/app';
                 window.location.href = redirect;
                 // SPA 模式(main.tsx 路由内)优先用 navigate('/app'),避免整页刷新;
                 // 但 LoginPage 不直接依赖 router(兼容 login.html 独立访问),阶段 2 在 /app 路由统一处理。

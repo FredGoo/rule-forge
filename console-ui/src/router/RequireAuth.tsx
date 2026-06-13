@@ -32,6 +32,8 @@ export function RequireAuth() {
         formPost<{status: boolean; user?: UserInfo}>('/frame/currentUser', {}, {silent: true})
             .then((res) => {
                 if (res.status && res.user) {
+                    // 兼容 frame 内部组件(TopBar/SidebarToolbar)读 window.__currentUser
+                    window.__currentUser = res.user;
                     setUser(res.user);
                     setState('ok');
                 } else {
