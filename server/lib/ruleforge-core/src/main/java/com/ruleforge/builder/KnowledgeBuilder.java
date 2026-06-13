@@ -43,10 +43,12 @@ public class KnowledgeBuilder extends AbstractBuilder {
     private DecisionTreeRulesBuilder decisionTreeRulesBuilder;
     private DecisionTableRulesBuilder decisionTableRulesBuilder;
     /**
-     * V5.44.1 — type 改成 {@link DslRuleSet} 最小接口,实现 DSLRuleSetBuilder 搬到
-     * ruleforge-dsl jar;KnowledgeBuilder 不再 import 具体 DSL 类。
+     * V5.45.4 — DSL chain runtime 真删:KnowledgeBuilder 不再持有
+     * {@link com.ruleforge.builder.DslRuleSet} 引用(老接口 V5.45.4 已删)。
+     * ruleforge-dsl module 仍存在作 archive(可加载 classpath),但 production
+     * runtime 不可达 — KnowledgeBuilder 不会再调 .support() / .build() 老 DSL 链。
+     * V5.43 行为兼容:遇到 .ul 老格式静默 0 rule,不抛错。
      */
-    private DslRuleSet dslRuleSetBuilder;
     private CrosstabRulesBuilder crosstabRulesBuilder;
     /**
      * V5.40 — DMN 1.3 资源分流器。资源路径以 {@code .dmn} 结尾时,绕过老 .xml 解析路径,
@@ -91,18 +93,11 @@ public class KnowledgeBuilder extends AbstractBuilder {
         for (Resource resource : resourceBase.getResources()) {
             String path = resource.getPath(); // 获取资源路径
             try {
-                // V5.43.8 — 路线 B 收口:删 V5.43.4 加的 gateLegacyPath() 守卫
-                // (用户确认"全新项目没历史包袱",V5.43 起 production 不再生成 /
-                //  不再接受老 .ul / .xml rule 格式;新代码遇到老格式静默 0 rule)
-                if (this.dslRuleSetBuilder.support(resource)) {
-                    RuleSet ruleSet = this.dslRuleSetBuilder.build(resource.getContent());
-                    this.addToLibraryMap(libMap, ruleSet.getLibraries());
-                    if (ruleSet.getRules() != null) {
-                        // 关联规则与路径
-                        this.buildRulesPath(ruleSet.getRules(), path);
-                        rules.addAll(ruleSet.getRules());
-                    }
-                } else if (path != null && path.toLowerCase().endsWith(".dmn")) {
+                // V5.45.4 — DSL chain runtime 真删:KnowledgeBuilder 不再调
+                // dslRuleSetBuilder.support() / .build() — 老 .ul 资源走 0 rule
+                // 静默跳过(跟 V5.43 行为一致),不抛错。ruleforge-dsl module 仍可
+                // 加载作 archive,但 production runtime 不可达。
+                if (path != null && path.toLowerCase().endsWith(".dmn")) {
                     // V5.40 — DMN 1.3 决策表路径,绕过老 .xml 解析,直接走 Kie DMN 编译
                     if (this.dmnResourceDispatcher == null) {
                         this.dmnResourceDispatcher = new DmnResourceDispatcher();
