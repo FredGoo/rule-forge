@@ -45,11 +45,9 @@ curl localhost:8080/actuator/health    # → {"status":"UP"}
 
 ## 📐 架构
 
-Java 侧:Console App(8180) + Executor App(8280) + Model Service(8501) + MySQL
+Java 侧:Console App(8180) + Executor App(8280) + Model Service(8501) Spring Boot 微服务
 
-三库(app_db / ruleforge_db / flowable_db),Spring Boot 微服务。Rust 侧:
-
-`experiments/server-rust/` 平行的 RETE 引擎 + BPMN 执行器,目前 alpha 阶段。
+三库(app_db / ruleforge_db / flowable_db)
 
 **完整架构图与执行流程** → [架构概览](docs-site/architecture/overview.md)。
 
