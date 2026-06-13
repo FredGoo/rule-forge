@@ -162,30 +162,39 @@ lhsUnary
     ;
 
 lhsFrom
-    : lhsAtomic DRL_FROM lhsAtomic
+    : drlPattern DRL_FROM drlPattern
+    | drlPattern DRL_FROM expr
+    | lhsAtomic DRL_FROM lhsAtomic
     | lhsAtomic DRL_FROM expr
     ;
 
 lhsCollect
-    : lhsAtomic DRL_FROM DRL_COLLECT LPAREN lhsPattern RPAREN
+    : drlPattern DRL_FROM DRL_COLLECT LPAREN lhsPattern RPAREN
     | DRL_COLLECT LPAREN lhsPattern RPAREN
     ;
 
 lhsAccumulate
-    : lhsAtomic DRL_FROM DRL_ACCUMULATE LPAREN lhsPattern SEMI
-                       accumulateInit SEMI
-                       accumulateAction SEMI
+    : drlPattern DRL_FROM DRL_ACCUMULATE LPAREN lhsPattern (SEMI | COMMA)
+                       accumulateInit (SEMI | COMMA)
+                       accumulateAction (SEMI | COMMA)
                        accumulateResult RPAREN
-    | DRL_ACCUMULATE LPAREN lhsPattern SEMI
-                       accumulateInit SEMI
-                       accumulateAction SEMI
+    | DRL_ACCUMULATE LPAREN lhsPattern (SEMI | COMMA)
+                       accumulateInit (SEMI | COMMA)
+                       accumulateAction (SEMI | COMMA)
                        accumulateResult RPAREN
     ;
 
 // D3:reverse 段 grammar rule 缺失 → accumulate 函数定义不包含 reverse
+// V5.50.1:initBody 3 alt(expr 链 / 标识符赋值链 / statementBlock)支持 lhsAccumulateCount 等 DRL
 accumulateInit
-    : DRL_INIT LPAREN expr RPAREN
-    | DRL_INIT LPAREN statementBlock RPAREN
+    : DRL_INIT LPAREN initBody RPAREN
+    ;
+
+initBody
+    : (IDENTIFIER | DRL_COUNT | DRL_SUM | DRL_AVG | DRL_MIN | DRL_MAX) ASSIGN expr (COMMA expr)*
+    | fieldType IDENTIFIER ASSIGN expr   // V5.50.3:int total := 0 typed decl
+    | statement (SEMI statement)*
+    | expr (COMMA expr)*
     ;
 
 accumulateAction
@@ -212,6 +221,7 @@ drlPattern
 constraint
     : IDENTIFIER operator expr
     | IDENTIFIER LBRACK stringMethod RBRACK
+    | IDENTIFIER (DRL_IN | DRL_NOT DRL_IN) LPAREN exprList RPAREN
     | IDENTIFIER operator LPAREN exprList RPAREN
     ;
 
@@ -222,14 +232,15 @@ operator
     | DRL_CONTAINS
     | DRL_SOUNDSLIKE
     | DRL_IN
+    | DRL_AND | DRL_OR
     // 'not in' 单独 alt(notInExpr)
     ;
 
 stringMethod
-    : DRL_MATCHES LPAREN expr RPAREN
-    | DRL_CONTAINS LPAREN expr RPAREN
-    | DRL_STARTS_WITH LPAREN expr RPAREN
-    | DRL_ENDS_WITH LPAREN expr RPAREN
+    : DRL_MATCHES (LPAREN expr RPAREN | expr)
+    | DRL_CONTAINS (LPAREN expr RPAREN | expr)
+    | DRL_STARTS_WITH (LPAREN expr RPAREN | expr)
+    | DRL_ENDS_WITH (LPAREN expr RPAREN | expr)
     | DRL_LENGTH
     ;
 
@@ -244,7 +255,13 @@ rhsConsequence
 statement
     : assignStatement
     | methodCallStatement
+    | returnStatement
     | expr
+    ;
+
+// V5.50.3: function body 内 `return expr;` 形式
+returnStatement
+    : DRL_RETURN expr?
     ;
 
 assignStatement
@@ -256,7 +273,8 @@ methodCallStatement
     ;
 
 methodChain
-    : methodChainHead (DOT methodCall)+
+    : methodChainHead (DOT methodCall)*
+    | methodCall
     ;
 
 methodChainHead
@@ -286,7 +304,9 @@ statementBlock
 
 expr
     : exprAtom (cmpOp exprAtom | addOp exprAtom | mulOp exprAtom
-              | DRL_AND exprAtom | DRL_OR exprAtom)*
+              | DRL_AND exprAtom | DRL_OR exprAtom
+              | DRL_IN LPAREN exprList RPAREN
+              | DRL_NOT DRL_IN LPAREN exprList RPAREN)*
     ;
 
 cmpOp
@@ -306,8 +326,10 @@ exprAtom
 atom
     : literal
     | methodChain
+    | IDENTIFIER LBRACK stringMethod RBRACK
     | IDENTIFIER
-    | DOLLAR IDENTIFIER
+    | DOLLAR (IDENTIFIER | DRL_COUNT | DRL_SUM | DRL_AVG | DRL_MIN | DRL_MAX)
+    | DRL_COUNT | DRL_SUM | DRL_AVG | DRL_MIN | DRL_MAX
     | PLACEHOLDER
     ;
 
@@ -330,7 +352,8 @@ exprList
 // ====================================================================
 
 queryStatement
-    : DRL_QUERY ruleName LPAREN parameters? RPAREN (ARROW queryBody)?
+    : DRL_QUERY ruleName LPAREN parameters? RPAREN (ARROW | DRL_WHEN) queryBody
+    | DRL_QUERY ruleName LPAREN parameters? RPAREN queryBody    // V5.50.3:无 ARROW 也行(裸 query,param 后直接 end)
     ;
 
 queryBody
@@ -342,8 +365,10 @@ parameters
     ;
 
 parameter
-    : IDENTIFIER COLON IDENTIFIER
-    | IDENTIFIER
+    : UPPER_IDENTIFIER DOLLAR (IDENTIFIER | DRL_COUNT | DRL_SUM | DRL_AVG | DRL_MIN | DRL_MAX)  // V5.50.3:Integer $min
+    | UPPER_IDENTIFIER (IDENTIFIER | DRL_COUNT | DRL_SUM | DRL_AVG | DRL_MIN | DRL_MAX)         // V5.50.3:Integer x
+    | IDENTIFIER COLON (IDENTIFIER | UPPER_IDENTIFIER)        // V5.50.3:min : Integer
+    | IDENTIFIER                            // V5.50.3:光 ident
     ;
 
 // ====================================================================
@@ -355,7 +380,8 @@ functionStatement
     ;
 
 returnType
-    : IDENTIFIER
+    : UPPER_IDENTIFIER  // V5.50.3:Integer / String
+    | IDENTIFIER
     ;
 
 functionBody

@@ -128,28 +128,25 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("lhs:from 形式 — V5.42.1 grammar 边缘,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — from binding prefix LL(*) 决策冲突,V5.42.5 再补")
+        @DisplayName("lhs:from 形式 — V5.50.1 收口")
         void lhsFrom() {
             String drl = "rule \"R1\" when $a : Applicant(age > 18) from $stream then end";
             assertParses(drl, 1, 1);
         }
 
         @Test
-        @DisplayName("lhs:collect 形式 — V5.42.1 grammar 边缘,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — collect 同 from,V5.42.5 再补")
+        @DisplayName("lhs:collect 形式 — V5.50.1 收口")
         void lhsCollect() {
             String drl = "rule \"R1\" when $xs : ArrayList() from collect(Applicant(age > 18)) then end";
             assertParses(drl, 1, 1);
         }
 
         @Test
-        @DisplayName("D3 决定:accumulate 5 内置 count + init/action/result 3 段,无 reverse — V5.42.1 边缘,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — accumulate 复杂多段,V5.42.5 再补")
+        @DisplayName("D3 决定:accumulate 5 内置 count + init/action/result 3 段,无 reverse — V5.50.1 收口")
         void lhsAccumulateCount() {
             String drl = "rule \"R1\" " +
                 "when $n : Number() from accumulate(Applicant(age > 18), " +
-                "init(count = 0), " +
+                "init(count := 0), " +
                 "action($n.setValue(count + 1)), " +
                 "result(count)) " +
                 "then end";
@@ -157,12 +154,11 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("accumulate 5 内置 sum — V5.42.1 边缘,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — accumulate V5.42.5")
+        @DisplayName("accumulate 5 内置 sum — V5.50.3 收口")
         void lhsAccumulateSum() {
             String drl = "rule \"R1\" " +
                 "when $s : Integer() from accumulate(Loan(amount > 1000), " +
-                "init(int total = 0), " +
+                "init(int total := 0), " +
                 "action($s.setValue(total + $loan.getAmount())), " +
                 "result(total)) " +
                 "then end";
@@ -170,8 +166,7 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("表达式 13 种 op 合并 pattern — V5.42.1 边缘,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — 13 op 全在 pattern 内,V5.42.5 再补")
+        @DisplayName("表达式 13 种 op 合并 pattern — V5.50.2 收口")
         void allOperators() {
             String drl = "rule \"R1\" when " +
                 "$a : Applicant(age > 18 && age <= 65, " +
@@ -195,8 +190,7 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("rhs 三种 statement:assign / methodCall / expr — V5.42.1 update() 边缘")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — update($a) 走 bare function,V5.42.5 再补")
+        @DisplayName("rhs 三种 statement:assign / methodCall / expr — V5.50.1 收口")
         void rhsStatements() {
             String drl = "rule \"R1\" " +
                 "when $a : Applicant(age > 18) " +
@@ -208,8 +202,7 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("query 基础子集 — V5.42.1 query grammar 简化版,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — query parameter type,V5.42.5 再补")
+        @DisplayName("query 基础子集 — V5.50.3 收口")
         void queryBasic() {
             String drl = "package com.ruleforge\n" +
                 "query \"Q1\"(Integer $min) $a : Applicant(age > $min) end";
@@ -217,8 +210,7 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("function 基础子集 — V5.42.1 grammar 简化,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — function returnType,V5.42.5 再补")
+        @DisplayName("function 基础子集 — V5.50.3 收口")
         void functionBasic() {
             String drl = "package com.ruleforge\n" +
                 "function Integer myFn(Integer x) { return x + 1; }";
@@ -226,11 +218,30 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("declare 基础子集 — V5.42.1 grammar 简化,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — declare UPPER_IDENTIFIER,V5.42.5 再补")
+        @DisplayName("declare 基础子集 — V5.50.4 收口")
         void declareBasic() {
             String drl = "package com.ruleforge\n" +
                 "declare Applicant extends Person name : String age : Integer end";
+            assertParses(drl, 1, 1);
+        }
+
+        @Test
+        @DisplayName("declare 多 primitive types:long / double / float / short / byte / char / boolean — V5.50.4 收口")
+        void declarePrimitiveTypes() {
+            // V5.45.1 fieldType 已扩 UPPER_IDENTIFIER + IDENTIFIER + DRL_TIMER_INT + DRL_TIMER_CRON,
+            // primitive 关键字(long / double / float / short / byte / char / boolean)走 IDENTIFIER alt。
+            // 本测试锁 V5.50.4 不回退。
+            String drl = "package com.ruleforge\n" +
+                "declare Person\n" +
+                "  age : int\n" +
+                "  salary : long\n" +
+                "  weight : double\n" +
+                "  height : float\n" +
+                "  yearBorn : short\n" +
+                "  flag : byte\n" +
+                "  initial : char\n" +
+                "  active : boolean\n" +
+                "end";
             assertParses(drl, 1, 1);
         }
 
@@ -244,8 +255,7 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("string method:starts-with / ends-with / length — V5.42.1 grammar 简化,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — stringMethod 在 pattern 内,V5.42.5 再补")
+        @DisplayName("string method:starts-with / ends-with / length — V5.50.1 收口")
         void stringMethods() {
             String drl = "rule \"R1\" when " +
                 "$a : Applicant(name[starts-with \"Mr\"]) " +
@@ -302,6 +312,134 @@ class DrlGrammarSmokeTest {
         void rejectsUnknownKeyword() {
             String drl = "rule \"R1\" when notDrools(Applicant()) then end";
             assertParseFails(drl);
+        }
+    }
+
+    // ============================================================
+    // === V5.50.1 P0 DRL grammar 收口 — BDD scaffold ===
+    // ============================================================
+    //
+    // 10 个 @Disabled DRL grammar 边缘中,V5.50.1 收 5 个 P0(lhsFrom / lhsCollect /
+    // rhsStatements / lhsAccumulateCount / stringMethods)。本 @Nested 锁 5 段 DRL
+    // 文本作为 grammar 期望,V5.50.1 commit 改完 DrlParser.g4 后这 5 个 @Test 全绿。
+    //
+    // 跟 Positive nested class 内 5 个 @Disabled 的区别:Positive 的 5 个 @Disabled
+    // 测的是同一段 DRL,但 V5.50.1 commit 删 @Disabled 时一并 unskip,本 nested 是
+    // 独立锁 — 防止后续 commit 不小心改 grammar 把这 5 段回退成"碰巧通过"。
+    //
+    // V5.50.1 风险:本 nested 在 V5.50.1 grammar 改完前全红(red),改完后全绿
+    // (green) — 这是 BDD 标准 TDD 循环,不视作 bug。
+
+    @Nested
+    @DisplayName("V5.50.1 P0 — 5 个 DRL grammar 边缘 grammar 层 lock-in")
+    class V5_50_1_P0_GrammarScaffold {
+
+        @Test
+        @DisplayName("Given DRL lhs:from 形式(Applicant from $stream),When 解析,Then 无 syntax error")
+        void lhsFromGrammarLockIn() {
+            String drl = "rule \"R1\" when $a : Applicant(age > 18) from $stream then end";
+            assertParses(drl, 1, 1);
+        }
+
+        @Test
+        @DisplayName("Given DRL lhs:collect 形式(ArrayList from collect(...)),When 解析,Then 无 syntax error")
+        void lhsCollectGrammarLockIn() {
+            String drl = "rule \"R1\" when $xs : ArrayList() from collect(Applicant(age > 18)) then end";
+            assertParses(drl, 1, 1);
+        }
+
+        @Test
+        @DisplayName("Given DRL rhs 多种 statement($a.setScore + $a.setApproved),When 解析,Then 无 syntax error")
+        void rhsStatementsGrammarLockIn() {
+            String drl = "rule \"R1\" " +
+                "when $a : Applicant(age > 18) " +
+                "then " +
+                "$a.setScore(100); " +
+                "$a.setApproved(true); " +
+                "end";
+            assertParses(drl, 1, 1);
+        }
+
+        @Test
+        @DisplayName("Given DRL accumulate count 3 段(init/action/result),When 解析,Then 无 syntax error")
+        void lhsAccumulateCountGrammarLockIn() {
+            String drl = "rule \"R1\" " +
+                "when $n : Number() from accumulate(Applicant(age > 18), " +
+                "init(count := 0), " +
+                "action($n.setValue(count + 1)), " +
+                "result(count)) " +
+                "then end";
+            assertParses(drl, 1, 1);
+        }
+
+        @Test
+        @DisplayName("Given DRL string method(name[starts-with \"Mr\"]),When 解析,Then 无 syntax error")
+        void stringMethodsGrammarLockIn() {
+            String drl = "rule \"R1\" when " +
+                "$a : Applicant(name[starts-with \"Mr\"]) " +
+                "then end";
+            assertParses(drl, 1, 1);
+        }
+    }
+
+    // ============================================================
+    // === V5.50.1 不变量 lock-in:accumulate reverse 段继续被拒绝(D3 决定) ===
+    // ============================================================
+    //
+    // V5.42.1 plan D3 决定:accumulate reverse 段 grammar 砍掉,reverse 段继续被拒绝。
+    // V5.50.1 改 accumulateInit 时,本 nested 锁这个不变量 — 反向测试,确保改 grammar
+    // 时没"顺手"加 reverse alt。
+
+    @Nested
+    @DisplayName("V5.50.1 不变量 — accumulate reverse 段继续被拒绝(D3 决定不变)")
+    class V5_50_1_AssertsAccumulateReverseStillRejected {
+
+        @Test
+        @DisplayName("Given DRL accumulate 含 reverse($s.setValue(t - $loan.getAmount())),When 解析,Then 报 syntax error")
+        void rejectsAccumulateReverse() {
+            String drl = "rule \"R1\" " +
+                "when $s : Integer() from accumulate(Loan(amount > 100), " +
+                "init(int t = 0), " +
+                "action($s.setValue(t + $loan.getAmount())), " +
+                "reverse($s.setValue(t - $loan.getAmount())), " +
+                "result(t)) " +
+                "then end";
+            assertParseFails(drl);
+        }
+    }
+
+    // ============================================================
+    // === V5.50.1 migration 收口:PENDING_LHS 标 @Deprecated,V5.51 才删 ===
+    // ============================================================
+    //
+    // DrlDeserializer.PENDING_LHS 静态 map(DrlDeserializer.java L68-73)是 V5.42.4
+    // 迁移期 hack。V5.50.1 的合同是:
+    //   - 字段标 @Deprecated(V5.51 才删)
+    //   - extractLhs 内部新写 from / collect / accumulate 时直接挂 Rule.lhs.criterion
+    //     链,不再 put 进 PENDING_LHS
+    // 本 nested 锁这个合同。
+
+    @Nested
+    @DisplayName("V5.50.1 migration — PENDING_LHS 标 @Deprecated(V5.51 才删)")
+    class V5_50_1_PendingLhsMigration {
+
+        @Test
+        @DisplayName("DrlDeserializer.PENDING_LHS 字段必须标 @Deprecated(V5.50.1 合同,V5.51 删)")
+        void pendingLhsFieldShouldBeDeprecated() {
+            // Given — 用反射读 DrlDeserializer.PENDING_LHS 字段
+            java.lang.reflect.Field f;
+            try {
+                Class<?> cls = Class.forName("com.ruleforge.ir.drl.DrlDeserializer");
+                f = cls.getDeclaredField("PENDING_LHS");
+            } catch (ClassNotFoundException | NoSuchFieldException e) {
+                fail("DrlDeserializer.PENDING_LHS 字段已不存在 — V5.51 删了?本 nested 是 V5.50.1 合同,删了说明跳号,可删本测试: " + e);
+                return;
+            }
+            // When/Then — 字段必须 @Deprecated
+            Deprecated dep = f.getAnnotation(Deprecated.class);
+            assertNotNull(dep,
+                "DrlDeserializer.PENDING_LHS 字段必须标 @Deprecated(V5.50.1 合同),"
+                + "V5.51 才会真正删。如果本测试失败:是 PR 没把 @Deprecated 标上。");
         }
     }
 
