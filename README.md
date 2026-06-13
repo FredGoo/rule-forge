@@ -2,8 +2,6 @@
 
 # RuleForge
 
-**面向金融场景的智能决策引擎** — 确定性规则 + ML 模型推理,每个决策可审计、可解释、可追溯
-
 [![Java](https://img.shields.io/badge/Java-17-blue.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.6-green.svg)](https://spring.io/projects/spring-boot)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg)](https://www.typescriptlang.org/)
@@ -13,10 +11,11 @@
 
 </div>
 
-> [!NOTE]
-> 金融级 Java 17 + Spring Boot 4 决策引擎,内嵌 **RETE 规则匹配** + **BPMN 2.0 决策流**双推理内核,  
-> 支持**信贷审批 / 反欺诈 / 评分卡 / 决策流**四大场景,Docker Compose 一键起栈,Web Console + CLI + REST API 全渠道接入。  
-> Rust 实验引擎(`experiments/server-rust/`)正在做热点路径性能验证,不进生产流量。
+**面向金融场景的智能决策引擎** — 确定性规则 + ML 模型推理,每个决策可审计、可解释、可追溯
+
+Java 17 + Spring Boot 4 决策引擎,内嵌 **RETE 规则匹配** + **BPMN 2.0 决策流**双推理内核
+
+支持**信贷审批 / 反欺诈 / 评分卡 / 决策流**四大场景
 
 ## 🎯 快速选择你的路径
 
@@ -70,21 +69,13 @@ Java 侧:Console App(8180) + Executor App(8280) + Model Service(8501) + MySQL
 | API | [docs-site/api/](docs-site/api/) — [Console API](docs-site/api/console-api.md) · [Executor API](docs-site/api/executor-api.md) · [决策 API](docs-site/api/decision-api.md) · [Model Service API](docs-site/api/model-service-api.md) |
 | 贡献 | [docs-site/development/contributing.md](docs-site/development/contributing.md) |
 
-## 📌 项目状态
-
-Java 引擎 5.0 系列稳定可生产;Rust 实验引擎 alpha 推进中;路线 B(IR 标准化
-
-DMN / PMML / DRL)V5.40-V5.42 已完成,后续聚焦"删老 .xml / .ul 路径 + Rust性能基线收敛"。
-
-**最近里程碑:V5.46.2**(2026-06) — README 重写为读者路径引导。
-
-完整版本演进→ [CHANGELOG.md](CHANGELOG.md)。
-
 ## 🗺️ 路线图
 
-Phase 1-12(数据源 / 灰度 / 陪跑 / 监控)已完成;Rust 引擎 GA → 规则市场
+Phase 1-12(数据源 / 灰度 / 陪跑 / 监控)已完成
 
-→ 多租户 是下一阶段方向。详细路线图 → [docs/roadmap.md](docs/roadmap.md)。
+Rust 引擎 GA → 规则市场→ 多租户 是下一阶段方向。
+
+详细路线图 → [docs/roadmap.md](docs/roadmap.md)。
 
 ---
 
