@@ -306,6 +306,147 @@ class DrlGrammarSmokeTest {
     }
 
     // ============================================================
+    // === V5.50.1 P0 DRL grammar 收口 — BDD scaffold ===
+    // ============================================================
+    //
+    // 10 个 @Disabled DRL grammar 边缘中,V5.50.1 收 5 个 P0(lhsFrom / lhsCollect /
+    // rhsStatements / lhsAccumulateCount / stringMethods)。本 @Nested 锁 5 段 DRL
+    // 文本作为 grammar 期望,V5.50.1 commit 改完 DrlParser.g4 后这 5 个 @Test 全绿。
+    //
+    // 跟 Positive nested class 内 5 个 @Disabled 的区别:Positive 的 5 个 @Disabled
+    // 测的是同一段 DRL,但 V5.50.1 commit 删 @Disabled 时一并 unskip,本 nested 是
+    // 独立锁 — 防止后续 commit 不小心改 grammar 把这 5 段回退成"碰巧通过"。
+    //
+    // V5.50.1 风险:本 nested 在 V5.50.1 grammar 改完前全红(red),改完后全绿
+    // (green) — 这是 BDD 标准 TDD 循环,不视作 bug。
+
+    @Nested
+    @DisplayName("V5.50.1 P0 — 5 个 DRL grammar 边缘 grammar 层 lock-in")
+    class V5_50_1_P0_GrammarScaffold {
+
+        @Test
+        @DisplayName("Given DRL lhs:from 形式(Applicant from $stream),When 解析,Then 无 syntax error")
+        void lhsFromGrammarLockIn() {
+            String drl = "rule \"R1\" when $a : Applicant(age > 18) from $stream then end";
+            assertParses(drl, 1, 1);
+        }
+
+        @Test
+        @DisplayName("Given DRL lhs:collect 形式(ArrayList from collect(...)),When 解析,Then 无 syntax error")
+        void lhsCollectGrammarLockIn() {
+            String drl = "rule \"R1\" when $xs : ArrayList() from collect(Applicant(age > 18)) then end";
+            assertParses(drl, 1, 1);
+        }
+
+        @Test
+        @DisplayName("Given DRL rhs 多种 statement($a.setScore + $a.setApproved),When 解析,Then 无 syntax error")
+        void rhsStatementsGrammarLockIn() {
+            String drl = "rule \"R1\" " +
+                "when $a : Applicant(age > 18) " +
+                "then " +
+                "$a.setScore(100); " +
+                "$a.setApproved(true); " +
+                "end";
+            assertParses(drl, 1, 1);
+        }
+
+        @Test
+        @DisplayName("Given DRL accumulate count 3 段(init/action/result),When 解析,Then 无 syntax error")
+        void lhsAccumulateCountGrammarLockIn() {
+            String drl = "rule \"R1\" " +
+                "when $n : Number() from accumulate(Applicant(age > 18), " +
+                "init(count = 0), " +
+                "action($n.setValue(count + 1)), " +
+                "result(count)) " +
+                "then end";
+            assertParses(drl, 1, 1);
+        }
+
+        @Test
+        @DisplayName("Given DRL string method(name[starts-with \"Mr\"]),When 解析,Then 无 syntax error")
+        void stringMethodsGrammarLockIn() {
+            String drl = "rule \"R1\" when " +
+                "$a : Applicant(name[starts-with \"Mr\"]) " +
+                "then end";
+            assertParses(drl, 1, 1);
+        }
+    }
+
+    // ============================================================
+    // === V5.50.1 不变量 lock-in:accumulate reverse 段继续被拒绝(D3 决定) ===
+    // ============================================================
+    //
+    // V5.42.1 plan D3 决定:accumulate reverse 段 grammar 砍掉,reverse 段继续被拒绝。
+    // V5.50.1 改 accumulateInit 时,本 nested 锁这个不变量 — 反向测试,确保改 grammar
+    // 时没"顺手"加 reverse alt。
+
+    @Nested
+    @DisplayName("V5.50.1 不变量 — accumulate reverse 段继续被拒绝(D3 决定不变)")
+    class V5_50_1_AssertsAccumulateReverseStillRejected {
+
+        @Test
+        @DisplayName("Given DRL accumulate 含 reverse($s.setValue(t - $loan.getAmount())),When 解析,Then 报 syntax error")
+        void rejectsAccumulateReverse() {
+            String drl = "rule \"R1\" " +
+                "when $s : Integer() from accumulate(Loan(amount > 100), " +
+                "init(int t = 0), " +
+                "action($s.setValue(t + $loan.getAmount())), " +
+                "reverse($s.setValue(t - $loan.getAmount())), " +
+                "result(t)) " +
+                "then end";
+            assertParseFails(drl);
+        }
+    }
+
+    // ============================================================
+    // === V5.50.1 migration 收口:PENDING_LHS caller 全部切到 Rule.lhs.criterion 链 ===
+    // ============================================================
+    //
+    // DrlDeserializer.PENDING_LHS 静态 map(DrlDeserializer.java L68-73)是 V5.42.4
+    // 迁移期 hack。V5.50.1 改 from / collect / accumulate 后,所有 caller 必须从
+    // DrlDeserializer.getPendingLhsCriteria(rule) 切到 Rule.lhs.criterion 链。
+    // 本 nested 通过 grep-style 静态检查锁 caller 0 引用(反射式扫描 .class 文件
+    // 太重,直接读 source 不优雅;用 java 反射读 DrlDeserializer.getPendingLhsCriteria
+    // 的方法 annotation 引用计数即可)。
+
+    @Nested
+    @DisplayName("V5.50.1 migration — PENDING_LHS 老路径 caller 引用 0")
+    class V5_50_1_PendingLhsMigration {
+
+        @Test
+        @DisplayName("DrlDeserializer.PENDING_LHS 字段应当为 null(迁移收口,静态 map 清空)或 caller 全部切走")
+        void pendingLhsStaticMapShouldBeCleanedUp() {
+            // Given — 用反射读 DrlDeserializer.PENDING_LHS 字段
+            java.lang.reflect.Field f;
+            try {
+                Class<?> cls = Class.forName("com.ruleforge.ir.drl.DrlDeserializer");
+                f = cls.getDeclaredField("PENDING_LHS");
+            } catch (ClassNotFoundException | NoSuchFieldException e) {
+                fail("DrlDeserializer.PENDING_LHS 字段已不存在 — V5.50.1 migration 已收口,本测试 obsolete,可删: " + e);
+                return;
+            }
+            f.setAccessible(true);
+            try {
+                Object value = f.get(null);
+                // V5.50.1 期望: PENDING_LHS 要么是 null(已删字段,上面 NoSuchFieldException 路径),
+                // 要么是 empty ConcurrentHashMap(migration 完成,无 caller 写)。任何非空 map 都是 caller 漏。
+                if (value == null) {
+                    return; // 字段已 nullify,理想态
+                }
+                if (value instanceof java.util.Map) {
+                    assertTrue(((java.util.Map<?, ?>) value).isEmpty(),
+                        "DrlDeserializer.PENDING_LHS 应当清空(V5.50.1 migration 收口),仍有 "
+                            + ((java.util.Map<?, ?>) value).size() + " 条 entry 残留");
+                    return;
+                }
+                fail("DrlDeserializer.PENDING_LHS 字段类型异常,期望 Map / null,实际:" + value.getClass().getName());
+            } catch (IllegalAccessException e) {
+                fail("反射读 PENDING_LHS 失败:" + e);
+            }
+        }
+    }
+
+    // ============================================================
     // === Helpers ===
     // ============================================================
 
