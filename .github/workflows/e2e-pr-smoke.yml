@@ -1,0 +1,81 @@
+name: e2e-pr-smoke
+
+# V5.50.5 — frontend E2E PR smoke gate。
+# 7 spec smoke 子集,自托管 runner sit-336,失败 info-only 不挡 merge。
+# 详见 docs-site/ci/e2e-and-soak.md。
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'console-ui/**'
+      - '.github/workflows/e2e-pr-smoke.yml'
+      - 'console-ui/playwright.config.smoke.js'
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-pr-smoke-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    # V5.50.5:PR smoke 失败仅 info,不挡 merge
+    continue-on-error: true
+    runs-on: [self-hosted, linux, x64, sit-336]
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: console-ui/package-lock.json
+
+      - name: Install deps
+        working-directory: console-ui
+        run: npm ci
+
+      - name: Install Playwright chromium
+        working-directory: console-ui
+        run: npx playwright install --with-deps chromium
+
+      - name: Start backend stack
+        run: |
+          docker compose up -d mysql console-app executor-app
+          echo "等待 console-app 健康..."
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8180/ruleforge/ >/dev/null 2>&1; then
+              echo "Backend ready after ${i} attempts"
+              break
+            fi
+            sleep 2
+          done
+          curl -sf http://localhost:8180/ruleforge/ >/dev/null 2>&1 \
+            || (echo "Backend not ready, aborting"; exit 1)
+
+      - name: Run smoke (7 spec, chromium only)
+        working-directory: console-ui
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost
+        run: npx playwright test --config=playwright.config.smoke.ts --reporter=line
+
+      - name: Comment PR on failure
+        if: failure() && github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            ❌ E2E PR smoke failed. Trace.zip 在 workflow run artifact。
+            本次失败**不挡 merge**(V5.50.5 设计:info-only gate),但请 dev 复跑
+            `npm run test:e2e:smoke` 修掉再 merge。
+
+      - name: Upload playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke-${{ github.run_number }}
+          path: console-ui/playwright-report/
+          retention-days: 7
