@@ -276,11 +276,6 @@
         <property name="valueParser" ref="ruleforge.valueParser"/>
     </bean>
     <bean id="ruleforge.otherParser" class="com.ruleforge.parse.OtherParser"/>
-    <bean id="ruleforge.ruleSetParser" class="com.ruleforge.parse.RuleSetParser">
-        <property name="ruleParser" ref="ruleforge.ruleParser"/>
-        <property name="loopRuleParser" ref="ruleforge.loopRuleParser"/>
-        <property name="rulesRebuilder" ref="ruleforge.rulesRebuilder"/>
-    </bean>
     <bean id="ruleforge.variableAssignActionParser" class="com.ruleforge.parse.VariableAssignActionParser">
         <property name="valueParser" ref="ruleforge.valueParser"/>
     </bean>
