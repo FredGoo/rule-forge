@@ -84,6 +84,11 @@ public class Criteria extends BaseCriterion implements BaseCriteria {
             } else if (leftPart instanceof CommonFunctionLeftPart) {
                 CommonFunctionLeftPart part = (CommonFunctionLeftPart) leftPart;
                 leftValue = part.evaluate(context, obj, allMatchedObjects);
+            } else if (leftPart instanceof FromLeftPart) {
+                // V5.52.1:DRL from $stream / from collect(...) / from accumulate(...) 路由
+                // 走 FromLeftPart.evaluate 三分支(stream/collect/accumulate)。
+                FromLeftPart fromPart = (FromLeftPart) leftPart;
+                leftValue = fromPart.evaluate(context, obj, allMatchedObjects);
             }
 
             leftResult = leftValue;

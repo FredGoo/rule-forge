@@ -12,10 +12,14 @@ import com.ruleforge.model.rule.Value;
 import com.ruleforge.model.rule.ValueType;
 import com.ruleforge.model.rule.lhs.And;
 import com.ruleforge.model.rule.lhs.Criteria;
+import com.ruleforge.model.rule.lhs.FromLeftPart;
+import com.ruleforge.model.rule.lhs.JunctionType;
 import com.ruleforge.model.rule.lhs.Left;
 import com.ruleforge.model.rule.lhs.LeftType;
 import com.ruleforge.model.rule.lhs.Lhs;
+import com.ruleforge.model.rule.lhs.MultiCondition;
 import com.ruleforge.model.rule.lhs.PropertyCriteria;
+import com.ruleforge.model.rule.lhs.StatisticType;
 import com.ruleforge.model.rule.lhs.VariableLeftPart;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
@@ -267,17 +271,48 @@ public class DrlDeserializer {
         if (p.getLhsParseTree() == null) {
             return lhs;
         }
-        List<PropertyCriteria> pcs = new LhsPropertyVisitor(resolver).extract(p.getLhsParseTree());
-        if (pcs.isEmpty()) {
+        LhsPropertyVisitor visitor = new LhsPropertyVisitor(resolver);
+        visitor.extract(p.getLhsParseTree());
+        List<PropertyCriteria> pcs = visitor.getPropertyCriterias();
+        List<FromLeftPart> fromParts = visitor.getFromLeftParts();
+        if (pcs.isEmpty() && fromParts.isEmpty()) {
             return lhs;
         }
         // V5.51.2:PropertyCriteria → Criteria(Left=VariableLeftPart(property))→ And Junction
+        // V5.52.1:FromLeftPart(DRL from/collect/accumulate) → Criteria(Left.leftPart=FromLeftPart)
         And and = new And();
         for (PropertyCriteria pc : pcs) {
             and.addCriterion(toCriteria(pc));
         }
+        for (FromLeftPart fp : fromParts) {
+            and.addCriterion(toFromCriteria(fp));
+        }
         lhs.setCriterion(and);
         return lhs;
+    }
+
+    /**
+     * V5.52.1:把 FromLeftPart 包成 lhs model {@link Criteria}。Left 用
+     * {@code LeftType.variable} 作占位(FromLeftPart 没有专属 LeftType 值,
+     * {@code BuildContextImpl.getObjectType} 看 {@code leftPart instanceof AbstractLeftPart}
+     * 路由,不看 type)。
+     *
+     * <p>op = {@link Op#NotEquals} + value = null(语义:"from-source 求出非 null
+     * 即 binding 成功")。{@link com.ruleforge.runtime.assertor.NotEqualsAssertor}
+     * 在 right=null 时返 left != null,正是"binding 成功"的判定。
+     */
+    private static Criteria toFromCriteria(FromLeftPart fp) {
+        Criteria c = new Criteria();
+        Left left = new Left();
+        left.setLeftPart(fp);
+        left.setType(LeftType.variable);
+        c.setLeft(left);
+        c.setOp(Op.NotEquals);
+        ConstantValue nullVal = new ConstantValue();
+        nullVal.setConstantName("null");
+        nullVal.setConstantCategory("Null");
+        c.setValue(nullVal);
+        return c;
     }
 
     /**
@@ -315,6 +350,8 @@ public class DrlDeserializer {
     static class LhsPropertyVisitor {
         private final DatatypeResolver resolver;
         private final List<PropertyCriteria> result = new ArrayList<>();
+        /** V5.52.1:DRL from / collect / accumulate 产出的 FromLeftPart(走 AbstractLeftPart 链) */
+        private final List<FromLeftPart> fromParts = new ArrayList<>();
 
         LhsPropertyVisitor(DatatypeResolver resolver) {
             this.resolver = resolver;
@@ -326,8 +363,19 @@ public class DrlDeserializer {
             return result;
         }
 
+        /** V5.52.1:暴露 FromLeftPart 给外层 extractLhs 包 Criteria。 */
+        List<FromLeftPart> getFromLeftParts() {
+            return fromParts;
+        }
+
+        /** V5.51.2:暴露 PropertyCriteria 给外层(读 result 跟 getFromLeftParts 同形态)。 */
+        List<PropertyCriteria> getPropertyCriterias() {
+            return result;
+        }
+
         private void walk(org.antlr.v4.runtime.tree.ParseTree node) {
-            // 反射式走 children — 用 ctx.getChild(i) 找 DrlPatternContext
+            // 反射式走 children — 用 ctx.getChild(i) 找 DrlPatternContext / LhsFromContext /
+            //   LhsCollectContext / LhsAccumulateContext
             if (!(node instanceof ParserRuleContext)) {
                 return;
             }
@@ -337,10 +385,94 @@ public class DrlDeserializer {
                 org.antlr.v4.runtime.tree.ParseTree child = ctx.getChild(i);
                 if (child instanceof DrlParser.DrlPatternContext) {
                     handleDrlPattern((DrlParser.DrlPatternContext) child);
+                } else if (child instanceof DrlParser.LhsFromContext) {
+                    // V5.52.1:DRL from $stream
+                    handleLhsFrom((DrlParser.LhsFromContext) child);
+                } else if (child instanceof DrlParser.LhsCollectContext) {
+                    // V5.52.2:DRL from collect(...)
+                    handleLhsCollect((DrlParser.LhsCollectContext) child);
+                } else if (child instanceof DrlParser.LhsAccumulateContext) {
+                    // V5.52.3:DRL from accumulate(...)
+                    handleLhsAccumulate((DrlParser.LhsAccumulateContext) child);
                 } else if (child instanceof ParserRuleContext) {
                     walk(child);
                 }
             }
+        }
+
+        /**
+         * V5.52.1:DRL {@code $a : X(field op value) from $stream} 形态。
+         *
+         * <p>grammar LhsFrom 4 alt:
+         * <ol>
+         *   <li>{@code drlPattern FROM drlPattern} — 源是另一 type ref(`from applicants`)</li>
+         *   <li>{@code drlPattern FROM expr} — 源是表达式(`from $stream` /
+         *       `from $loan.getApplicants()`)— 本 sprint 接</li>
+         *   <li>{@code lhsAtomic FROM lhsAtomic} — 老 binding-only 形式(本 sprint 不接)</li>
+         *   <li>{@code lhsAtomic FROM expr} — 同 3(本 sprint 不接)</li>
+         * </ol>
+         * 本 sprint **接 alt 1 + alt 2**。alt 3/4 deferred 到 V5.53+。
+         *
+         * <p>binding source({@code $stream})的 source resolution 是 runtime 责任
+         * (Utils.getObjectProperty 在 obj 上找 {@code $stream})。本 sprint **接受
+         * 静默失效**:deserializer 不验,陪跑测试时真用会显式抛 RuleException(R1)。
+         */
+        private void handleLhsFrom(DrlParser.LhsFromContext ctx) {
+            List<DrlParser.DrlPatternContext> dps = ctx.drlPattern();
+            DrlParser.ExprContext sourceExpr = ctx.expr();
+            // grammar LhsFrom 4 alt:
+            //   alt 1: drlPattern FROM drlPattern → dps.size==2, sourceExpr==null
+            //   alt 2: drlPattern FROM expr         → dps.size==1, sourceExpr!=null
+            //   alt 3: lhsAtomic FROM lhsAtomic     → dps empty
+            //   alt 4: lhsAtomic FROM expr          → dps empty
+            // 本 sprint 接 alt 1 + alt 2(最常见 DRL 形态)— alt 3/4 deferred 到 V5.53+。
+            if (dps.isEmpty()) {
+                throw new DrlParseException("V5.52.1 only supports 'drlPattern FROM drlPattern|expr' "
+                    + "for LhsFrom (DRL 'from $stream' 形态),"
+                    + "line " + ctx.getStart().getLine() + " 实际 'lhsAtomic' 形态(alt 3/4) — 等 V5.53+");
+            }
+            if (dps.size() != 1 || sourceExpr == null) {
+                throw new DrlParseException("V5.52.1 LhsFrom alt 解析异常:"
+                    + " dps.size=" + dps.size() + " expr=" + (sourceExpr != null)
+                    + " line " + ctx.getStart().getLine());
+            }
+            DrlParser.DrlPatternContext outer = dps.get(0);
+
+            FromLeftPart fp = new FromLeftPart();
+            // outer type 来源:UPPER_IDENTIFIER
+            String outerType = outer.UPPER_IDENTIFIER().getText();
+            // 校验 outer type 已在 resolver 注册(visitor 走完之后,DatatypeResolver 已经
+            //   看过 outer,UPPER_IDENTIFIER 已 resolve 过)
+            if (!resolver.isKnown(outerType)) {
+                throw new DrlParseException("from $stream 外层 type '" + outerType
+                    + "' 未注册,line " + outer.getStart().getLine());
+            }
+            fp.setVariableCategory(outerType);
+            // variableName 走 source expr 的字面 text 例 "$stream" / "$loan.getApplicants()"
+            //   简化:取 expr.getText()(涵盖 methodChain 整段)— runtime 端
+            //   Utils.getObjectProperty 在父 fact 上找这个属性失败就抛 RuleException(R1)。
+            fp.setVariableName(sourceExpr.getText());
+            fp.setFromSource("stream");
+
+            fromParts.add(fp);
+        }
+
+        /**
+         * V5.52.2 留位:DRL {@code $xs : List() from collect(InnerPattern)}。
+         * 本 sprint **不在 V5.52.1 接** — 抛 DrlParseException 提示,等 V5.52.2 补。
+         */
+        private void handleLhsCollect(DrlParser.LhsCollectContext ctx) {
+            throw new DrlParseException("V5.52.1 不接 DRL 'from collect(...)' — 等 V5.52.2"
+                + " (line " + ctx.getStart().getLine() + ")");
+        }
+
+        /**
+         * V5.52.3 留位:DRL {@code $n : Number() from accumulate(...)}。
+         * 本 sprint **不在 V5.52.1 接** — 抛 DrlParseException 提示,等 V5.52.3 补。
+         */
+        private void handleLhsAccumulate(DrlParser.LhsAccumulateContext ctx) {
+            throw new DrlParseException("V5.52.1 不接 DRL 'from accumulate(...)' — 等 V5.52.3"
+                + " (line " + ctx.getStart().getLine() + ")");
         }
 
         private void handleDrlPattern(DrlParser.DrlPatternContext dp) {
