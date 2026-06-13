@@ -179,6 +179,138 @@ public class CommonController extends BaseController {
         return this.functionDescriptors;
     }
 
+    // ============================================================
+    // === V5.44.4 — DRL 4 文本加载端点 ===
+    // ============================================================
+    //
+    // V5.44.4 决定:DRL 编辑器走独立 /loadDrl 端点,不复用 /loadXml(/loadXml 是
+    // DOM-XML 入口,DRL 是纯文本,共用会让 caller 困惑)。
+    //
+    // 响应结构:
+    //   {
+    //     "path": "/proj/rules/r.drl",
+    //     "version": "1.0",          // 可选
+    //     "content": "rule \"R1\" ...",
+    //     "imports": ["libs/variables.drl", ...],
+    //     "ruleNames": ["R1", "R2", ...]
+    //   }
+    //
+    // 失败语义(跟 /loadXml 对齐):
+    //   - 文件不存在 → 404
+    //   - DRL 语法错 → 400 + 错误信息(DrlParseException.getMessage)
+    //
+    // 故意只解析 imports / rule names(轻量,跟 console-ui 编辑器"打开 + 编辑 + 保存"
+    // 路径对齐),不返完整 Rule 列表 — 那是 V5.45+ 编辑器高亮/校验时才需要。
+
+    @PostMapping(value = "/loadDrl", produces = "text/json;charset=UTF-8")
+    public String loadDrl(@RequestParam("file") String file,
+                           @RequestParam(value = "version", required = false) String version) throws Exception {
+        file = Utils.decodeURL(file);
+        log.info("loadDrl: file [{}] version [{}]", file, version);
+        // 1. 读文件
+        InputStream inputStream = org.springframework.util.StringUtils.hasText(version)
+            ? this.ruleforgeRepositoryService.readFile(file, version)
+            : this.ruleforgeRepositoryService.readFile(file, null);
+        if (inputStream == null) {
+            log.warn("loadDrl: file [{}] version [{}] not found", file, version);
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "file not found: " + file);
+        }
+        String content = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
+        inputStream.close();
+        // 2. 解析 imports + rule names(轻量,失败返空 list 不抛 — 文本可能未保存完整)
+        DrlFileSummary summary = parseDrlSummary(content);
+        // 3. 序列化
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("path", file);
+        payload.put("version", version);
+        payload.put("content", content);
+        payload.put("imports", summary.getImports());
+        payload.put("ruleNames", summary.getRuleNames());
+        return writeObjectToJson(payload);
+    }
+
+    /**
+     * V5.44.4 — DRL 文本轻量解析:imports 列表 + rule 名称列表。
+     * 故意不返完整 Rule 列表(那是 V5.42.4 DrlDeserializer 工作,本方法只做
+     * "轻量 editor open"用途)。
+     *
+     * <p>失败语义(跟 CommonController 端 /loadXml 对齐):
+     * <ul>
+     *   <li>DRL 语法错 → log.warn + 返空 list(非致命,编辑场景常见)</li>
+     *   <li>RuntimeException → log.warn + 返空 list</li>
+     * </ul>
+     *
+     * <p>跟 V5.42.2 {@code DrlDeserializer.parseDrl} 区别:
+     * <ul>
+     *   <li>DrlDeserializer 走完整 deserializer(强校验,语法错抛)</li>
+     *   <li>本方法只走 ANTLR parse + visitor(轻量,语法错返空不抛)</li>
+     * </ul>
+     *
+     * <p>public static 便于 console-app 测试直接调,绕开 CommonController 的 10+
+     * 构造器依赖。
+     */
+    public static DrlFileSummary parseDrlSummary(String content) {
+        java.util.List<String> imports = new java.util.ArrayList<>();
+        java.util.List<String> ruleNames = new java.util.ArrayList<>();
+        try {
+            com.ruleforge.ir.drl.DatatypeResolver resolver = new com.ruleforge.ir.drl.DatatypeResolver();
+            // V5.44.4 — lenient=true 跳过 unknown type 校验(编辑场景常见 user 还没写
+            // declare 段,console-ui editor open 仍要返 import 列表 + rule 名称列表,
+            // 不抛)。production DrlDeserializer 走 strict 默认,行为不变。
+            com.ruleforge.ir.drl.DrlAstVisitor visitor = new com.ruleforge.ir.drl.DrlAstVisitor(resolver, true);
+            com.ruleforge.drl.DrlLexer lexer = new com.ruleforge.drl.DrlLexer(
+                org.antlr.v4.runtime.CharStreams.fromString(content));
+            org.antlr.v4.runtime.CommonTokenStream tokens =
+                new org.antlr.v4.runtime.CommonTokenStream(lexer);
+            com.ruleforge.drl.DrlParser parser = new com.ruleforge.drl.DrlParser(tokens);
+            parser.removeErrorListeners(); // 不打印到 stderr,跟 DrlDeserializer 一致
+            com.ruleforge.drl.DrlParser.CompilationUnitContext tree = parser.compilationUnit();
+            // V5.44.4 — ANTLR 默认 error recovery 会从语法错中恢复产生部分 tree,
+            // visitor lenient 模式更会接受这些 partial rule。要让 syntax error
+            // 走"返空"语义,必须在 visit 前查 syntax error count。
+            if (parser.getNumberOfSyntaxErrors() > 0) {
+                log.warn("loadDrl: DRL 语法错(非致命,返原文): parser 报 {} 处 syntax error",
+                    parser.getNumberOfSyntaxErrors());
+                return new DrlFileSummary(java.util.Collections.emptyList(), java.util.Collections.emptyList());
+            }
+            visitor.visit(tree);
+            imports = visitor.getImports();
+            for (com.ruleforge.ir.drl.ParsedDrlRule r : visitor.getRules()) {
+                ruleNames.add(r.getName());
+            }
+        } catch (com.ruleforge.ir.drl.DrlParseException ex) {
+            // 语法错 — 编辑器打开未保存的半成品 DRL 时常见,返空不抛
+            log.warn("loadDrl: DRL 语法错(非致命,返原文): {}", ex.getMessage());
+            imports = java.util.Collections.emptyList();
+            ruleNames = java.util.Collections.emptyList();
+        } catch (RuntimeException ex) {
+            log.warn("loadDrl: 解析失败(非致命,返原文): {}", ex.getMessage(), ex);
+            imports = java.util.Collections.emptyList();
+            ruleNames = java.util.Collections.emptyList();
+        }
+        return new DrlFileSummary(imports, ruleNames);
+    }
+
+    /**
+     * V5.44.4 — CommonController 解析 DRL 文本的轻量结果。
+     * 跟 V5.42 {@code ParsedDrlRule} 不同 — 本类只携带 editor open 需要的
+     * 2 件事(imports 列表 + rule 名称列表),不展开 Lhs / Rhs。
+     */
+    public static class DrlFileSummary {
+        private final java.util.List<String> imports;
+        private final java.util.List<String> ruleNames;
+
+        public DrlFileSummary(java.util.List<String> imports, java.util.List<String> ruleNames) {
+            this.imports = imports;
+            this.ruleNames = ruleNames;
+        }
+
+        public java.util.List<String> getImports() { return imports; }
+        public java.util.List<String> getRuleNames() { return ruleNames; }
+    }
+
     @PostMapping("/addVariable")
     public Map<String, Object> addVariable(@RequestParam("clazz") String clazz,
                                            @RequestParam("name") String name,

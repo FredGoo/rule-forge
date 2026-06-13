@@ -111,6 +111,18 @@ public class KnowledgeBuilder extends AbstractBuilder {
                     // 留空 — 暂不展开,等 V5.41.4.1 单独 PR 完整展开(超出本 PR scope)。
                     // 当前走 .pmml 路径产 0 rule(空表/空树语义),不抛异常。
                     this.pmmlResourceDispatcher.dispatch(path, resource.getContent());
+                } else if (path != null && (path.toLowerCase().endsWith(".drl")
+                        || path.toLowerCase().endsWith(".drlrd")
+                        || path.toLowerCase().endsWith(".dslr"))) {
+                    // V5.44.4 — DRL 4 grammar 资源路径,绕过老 .xml 解析,走 V5.42.4
+                    // DrlResourceBuilder + DrlDeserializer。library 引用走 .drl 顶层
+                    // import 段(grammar V5.44.3 加 DRL_IMPORT,见 DrlLexer.g4)。
+                    List<Rule> drlRules = new DrlResourceBuilder(new DatatypeResolver())
+                        .build(new DrlResource(resource.getContent(), path));
+                    if (drlRules != null && !drlRules.isEmpty()) {
+                        this.buildRulesPath(drlRules, path);
+                        rules.addAll(drlRules);
+                    }
                 } else {
                     Element root = this.parseResource(resource.getContent());
                     for (ResourceBuilder<?> builder : this.resourceBuilders) {
