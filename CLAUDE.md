@@ -100,6 +100,17 @@ Deployable executor with RestTemplate config for console communication.
   2. Write test code directly after annotations — no need to confirm with user before writing test code
 - Follow Test Driven Development: never write business/implementation code before writing tests
 
+### Sub-task 工作流(plan mode 9 个 sub-task 或类似)
+
+- **BDD/TDD 硬规则不破**:每个 sub-task 仍按"先写 BDD → 写实现 → 跑全量回归 → mark complete"循环
+- **不打断主流程**:sub-task 完成 → 内部 mark complete → 直接做下一个,**不**等用户确认
+- **大分支 + 多次 commit + 一次性 PR**:
+  - 一个特性(V5.x.y)开**一个**分支 `feature/V5.x.y-<slug>`
+  - 内部 N 个 sub-task 各自独立 commit(commit message 标 `V5.x.y.N <title>`)
+  - **所有** sub-task 跑完 → `git push -u origin` → `gh pr create` → `gh pr merge --squash --delete-branch`(**自**合并,走 GitHub PR API,**不**本地 merge)
+  - 合并后 `git checkout main && git pull` 回到主干,继续下一个特性
+- **何时拆独立 PR**(不走大分支模式):跨周跨月的多 PR 系列、热修复、纯文档/规则改动(CLAUDE.md 之类)
+
 ### Versioning Convention (V5.16 起)
 
 **格式: `Major.Feature.Fix` — 迁移文件 `V{MAJOR}.{FEATURE}.{FIX}__*.sql`,分支 `feature/{MAJOR}.{FEATURE}-{slug}`,CHANGELOG 标签 `v{MAJOR}.{FEATURE}.{FIX}`**
