@@ -4,6 +4,7 @@ import com.ruleforge.action.Action;
 import com.ruleforge.action.ConsolePrintAction;
 import com.ruleforge.action.ExecuteMethodAction;
 import com.ruleforge.action.VariableAssignAction;
+import com.ruleforge.builder.rebuild.RulesRebuilderFacade;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.model.library.Datatype;
 import com.ruleforge.model.library.ResourceLibrary;
@@ -36,6 +37,15 @@ import java.util.*;
 public class RulesRebuilder {
     private ResourceLibraryBuilder resourceLibraryBuilder;
 
+    /**
+     * V5.48 — 5+1 facade 路由层。
+     * <p>持有 5 个 {@link com.ruleforge.builder.rebuild.RuleTypeRebuilder}
+     * (向导式/表/树/评分卡/DRL),{@link #rebuildRules} / {@link #rebuildRulesForDSL}
+     * 的 per-rule 循环委托给它。DrlRuleRebuilder 放最后,fallback(supports 永远 true)。
+     * <p>facade 是 stateless(只持有 5 个 rebuilder 引用),eager init 安全。
+     */
+    private final RulesRebuilderFacade facade = new RulesRebuilderFacade(this);
+
     public void rebuildRules(List<Library> libraries, List<Rule> rules) {
         rebuildRules(libraries, rules, false);
     }
@@ -51,47 +61,7 @@ public class RulesRebuilder {
         for (Rule rule : rules) {
             try {
                 Map<String, String> namedMap = new HashMap<>();
-                if (rule.getLhs() != null) {
-                    Criterion criterion = rule.getLhs().getCriterion();
-                    rebuildCriterion(criterion, resLibraries, namedMap, false);
-                }
-                Rhs rhs = rule.getRhs();
-                List<Action> actions = rhs.getActions();
-                if (actions != null) {
-                    for (Action action : actions) {
-                        rebuildAction(action, resLibraries, namedMap, false);
-                    }
-                }
-                Other other = rule.getOther();
-                if (other != null) {
-                    List<Action> otherActions = other.getActions();
-                    if (otherActions != null) {
-                        for (Action action : otherActions) {
-                            rebuildAction(action, resLibraries, namedMap, false);
-                        }
-                    }
-                }
-                if (rule instanceof LoopRule) {
-                    LoopRule loopRule = (LoopRule) rule;
-                    LoopTarget target = loopRule.getLoopTarget();
-                    if (target != null) {
-                        Value value = target.getValue();
-                        rebuildValue(value, resLibraries, namedMap, false);
-                    }
-
-                    LoopStart start = loopRule.getLoopStart();
-                    if (start != null && start.getActions() != null) {
-                        for (Action action : start.getActions()) {
-                            rebuildAction(action, resLibraries, namedMap, false);
-                        }
-                    }
-                    LoopEnd end = loopRule.getLoopEnd();
-                    if (end != null && end.getActions() != null) {
-                        for (Action action : end.getActions()) {
-                            rebuildAction(action, resLibraries, namedMap, false);
-                        }
-                    }
-                }
+                facade.dispatchRebuild(rule, resLibraries, namedMap, false);
             } catch (Exception e) {
                 // P1 — 保留 root cause 链。V5.47 之前 throw new RuleException(errorMsg)
                 // 不传 cause,生产侧 catch RuleException 后拿不到根因(DrlParseException /
@@ -115,47 +85,8 @@ public class RulesRebuilder {
         ResourceLibrary resLibraries = resourceLibraryBuilder.buildResourceLibrary(libraries);
         for (Rule rule : rules) {
             Map<String, String> namedMap = new HashMap<>();
-            if (rule.getLhs() != null) {
-                Criterion criterion = rule.getLhs().getCriterion();
-                rebuildCriterion(criterion, resLibraries, namedMap, true);
-            }
-            Rhs rhs = rule.getRhs();
-            List<Action> actions = rhs.getActions();
-            if (actions != null) {
-                for (Action action : actions) {
-                    rebuildAction(action, resLibraries, namedMap, true);
-                }
-            }
-            Other other = rule.getOther();
-            if (other != null) {
-                List<Action> otherActions = other.getActions();
-                if (otherActions != null) {
-                    for (Action action : otherActions) {
-                        rebuildAction(action, resLibraries, namedMap, true);
-                    }
-                }
-            }
-            if (rule instanceof LoopRule) {
-                LoopRule loopRule = (LoopRule) rule;
-                LoopTarget target = loopRule.getLoopTarget();
-                if (target != null) {
-                    Value value = target.getValue();
-                    rebuildValue(value, resLibraries, namedMap, true);
-                }
-
-                LoopStart start = loopRule.getLoopStart();
-                if (start != null && start.getActions() != null) {
-                    for (Action action : start.getActions()) {
-                        rebuildAction(action, resLibraries, namedMap, true);
-                    }
-                }
-                LoopEnd end = loopRule.getLoopEnd();
-                if (end != null && end.getActions() != null) {
-                    for (Action action : end.getActions()) {
-                        rebuildAction(action, resLibraries, namedMap, true);
-                    }
-                }
-            }
+            // DSL path 不走 try/catch(V5.47 老行为,DSL 错由调用方自己 catch)
+            facade.dispatchRebuild(rule, resLibraries, namedMap, true);
         }
     }
 
