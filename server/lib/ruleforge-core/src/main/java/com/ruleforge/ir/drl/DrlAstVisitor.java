@@ -187,6 +187,72 @@ public class DrlAstVisitor extends DrlParserBaseVisitor<Void> {
     }
 
     // ============================================================
+    // === V5.50.1 P0 DRL batch — 5 个 visit override(grammar 扩 alts 后,显式 walk 触发
+    //     子校验,目前只走 default visitChildren 够,真正转 FromLeftPart / CollectLeftPart
+    //     / CommonFunctionLeftPart 走 V5.50.3 P2 重构 DrlDeserializer.extractLhs 时再补)
+    // ============================================================
+
+    @Override
+    public Void visitLhsFrom(DrlParser.LhsFromContext ctx) {
+        // V5.50.1 grammar 扩 4 alt 后,首 alt 走 drlPattern(以前只有 lhsAtomic 形式)。
+        // 显式 visit 触发 visitDrlPattern 的 type-declared 校验。
+        // drlPattern() 在 LhsFromContext 返回 List(grammar 中可能 1 或 2 个 instance)
+        for (DrlParser.DrlPatternContext p : ctx.drlPattern()) {
+            visit(p);
+        }
+        for (DrlParser.LhsAtomicContext a : ctx.lhsAtomic()) {
+            visit(a);
+        }
+        return visitChildren(ctx);
+    }
+
+    @Override
+    public Void visitLhsCollect(DrlParser.LhsCollectContext ctx) {
+        // V5.50.1 grammar 把 lhsAtomic 改成 drlPattern(ArrayList() 是 drlPattern 不是 lhsAtomic)
+        if (ctx.drlPattern() != null) {
+            visit(ctx.drlPattern());
+        }
+        if (ctx.lhsPattern() != null) {
+            visitChildren(ctx.lhsPattern());
+        }
+        return visitChildren(ctx);
+    }
+
+    @Override
+    public Void visitLhsAccumulate(DrlParser.LhsAccumulateContext ctx) {
+        // V5.50.1 grammar 首 alt 改 lhsAtomic → drlPattern + accumulateInit 用 initBody 3 alt
+        if (ctx.drlPattern() != null) {
+            visit(ctx.drlPattern());
+        }
+        if (ctx.lhsPattern() != null) {
+            visitChildren(ctx.lhsPattern());
+        }
+        return visitChildren(ctx);
+    }
+
+    @Override
+    public Void visitRhsConsequence(DrlParser.RhsConsequenceContext ctx) {
+        // V5.50.1 rhs 多 statement 解析(`update($a); $a.setScore(100);`),
+        // 显式 visit 每条 statement 触发后续 methodCall 等子校验
+        for (DrlParser.StatementContext s : ctx.statement()) {
+            visit(s);
+        }
+        return null;
+    }
+
+    @Override
+    public Void visitMethodChain(DrlParser.MethodChainContext ctx) {
+        // V5.50.1 grammar:`+` → `*` + 单 methodCall alt,显式 walk 全部 methodCall
+        if (ctx.methodChainHead() != null) {
+            visit(ctx.methodChainHead());
+        }
+        for (DrlParser.MethodCallContext mc : ctx.methodCall()) {
+            visit(mc);
+        }
+        return null;
+    }
+
+    // ============================================================
     // === 单 rule:产出 ParsedDrlRule ===
     // ============================================================
 

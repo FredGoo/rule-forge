@@ -162,30 +162,38 @@ lhsUnary
     ;
 
 lhsFrom
-    : lhsAtomic DRL_FROM lhsAtomic
+    : drlPattern DRL_FROM drlPattern
+    | drlPattern DRL_FROM expr
+    | lhsAtomic DRL_FROM lhsAtomic
     | lhsAtomic DRL_FROM expr
     ;
 
 lhsCollect
-    : lhsAtomic DRL_FROM DRL_COLLECT LPAREN lhsPattern RPAREN
+    : drlPattern DRL_FROM DRL_COLLECT LPAREN lhsPattern RPAREN
     | DRL_COLLECT LPAREN lhsPattern RPAREN
     ;
 
 lhsAccumulate
-    : lhsAtomic DRL_FROM DRL_ACCUMULATE LPAREN lhsPattern SEMI
-                       accumulateInit SEMI
-                       accumulateAction SEMI
+    : drlPattern DRL_FROM DRL_ACCUMULATE LPAREN lhsPattern (SEMI | COMMA)
+                       accumulateInit (SEMI | COMMA)
+                       accumulateAction (SEMI | COMMA)
                        accumulateResult RPAREN
-    | DRL_ACCUMULATE LPAREN lhsPattern SEMI
-                       accumulateInit SEMI
-                       accumulateAction SEMI
+    | DRL_ACCUMULATE LPAREN lhsPattern (SEMI | COMMA)
+                       accumulateInit (SEMI | COMMA)
+                       accumulateAction (SEMI | COMMA)
                        accumulateResult RPAREN
     ;
 
 // D3:reverse 段 grammar rule 缺失 → accumulate 函数定义不包含 reverse
+// V5.50.1:initBody 3 alt(expr 链 / 标识符赋值链 / statementBlock)支持 lhsAccumulateCount 等 DRL
 accumulateInit
-    : DRL_INIT LPAREN expr RPAREN
-    | DRL_INIT LPAREN statementBlock RPAREN
+    : DRL_INIT LPAREN initBody RPAREN
+    ;
+
+initBody
+    : (IDENTIFIER | DRL_COUNT | DRL_SUM | DRL_AVG | DRL_MIN | DRL_MAX) ASSIGN expr (COMMA expr)*
+    | statement (SEMI statement)*
+    | expr (COMMA expr)*
     ;
 
 accumulateAction
@@ -226,10 +234,10 @@ operator
     ;
 
 stringMethod
-    : DRL_MATCHES LPAREN expr RPAREN
-    | DRL_CONTAINS LPAREN expr RPAREN
-    | DRL_STARTS_WITH LPAREN expr RPAREN
-    | DRL_ENDS_WITH LPAREN expr RPAREN
+    : DRL_MATCHES (LPAREN expr RPAREN | expr)
+    | DRL_CONTAINS (LPAREN expr RPAREN | expr)
+    | DRL_STARTS_WITH (LPAREN expr RPAREN | expr)
+    | DRL_ENDS_WITH (LPAREN expr RPAREN | expr)
     | DRL_LENGTH
     ;
 
@@ -256,7 +264,8 @@ methodCallStatement
     ;
 
 methodChain
-    : methodChainHead (DOT methodCall)+
+    : methodChainHead (DOT methodCall)*
+    | methodCall
     ;
 
 methodChainHead
@@ -306,8 +315,10 @@ exprAtom
 atom
     : literal
     | methodChain
+    | IDENTIFIER LBRACK stringMethod RBRACK
     | IDENTIFIER
     | DOLLAR IDENTIFIER
+    | DRL_COUNT | DRL_SUM | DRL_AVG | DRL_MIN | DRL_MAX
     | PLACEHOLDER
     ;
 

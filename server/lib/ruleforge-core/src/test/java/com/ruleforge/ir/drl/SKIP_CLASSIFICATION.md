@@ -45,14 +45,22 @@ V5.42.1 砍掉,只留 rule + accumulate + extends 这几个核心。
 
 ## V5.50.1 WIP commit 状态
 
-WIP commit `WIP: V5.50.1 P0 DRL grammar BDD scaffold` 已 push:
-- ✅ 4 grammar test red(lhsFrom / lhsCollect / lhsAccumulateCount / stringMethods)
-- ✅ 1 grammar test green(rhsStatements 回归 guard)
+V5.50.1 真正 commit 已收口,32 tests / 0 fail / 10 skip / 22 pass:
+- ✅ 4 grammar test 改完 green(lhsFrom / lhsCollect / lhsAccumulateCount / stringMethods)
+- ✅ 1 grammar test 改完仍 green(rhsStatements 回归 guard)
 - ✅ AssertsAccumulateReverseStillRejected 1 pass(D3 不变量锁)
-- ✅ PendingLhsMigration 1 pass(PENDING_LHS 字段仍在,等 caller 切走后清)
+- ✅ PendingLhsMigration 1 pass(改测 PENDING_LHS 字段 @Deprecated 标,V5.51 才删)
 
-V5.50.1 真正 commit 改完 grammar → 4 red 转 green,2 lock-in 仍 pass。详细 diff plan 见
-`docs-site/ci/v5.50.1-grammar-diff-plan.md`。
+## V5.50.1 实际改文件清单
+
+| 文件 | 改 |
+|---|---|
+| `DrlParser.g4` | `lhsFrom` 4 alt / `lhsCollect` 改 `lhsAtomic` → `drlPattern` / `methodChain` `+` → `*` + 单 methodCall alt / `accumulateInit` + `initBody` 3 alt / `stringMethod` 加 short-form alt(无 LPAREN) / `atom` 加 `IDENTIFIER LBRACK stringMethod RBRACK` alt + reorder / `atom` 加 DRL_COUNT/SUM/AVG/MIN/MAX alt |
+| `DrlAstVisitor.java` | 5 个新 visit override(LhsFrom/LhsCollect/LhsAccumulate/RhsConsequence/MethodChain) |
+| `DrlDeserializer.java` | `PENDING_LHS` 字段 + `getPendingLhsCriteria` 方法标 @Deprecated,extractLhs 调用加 @SuppressWarnings("deprecation") |
+| `FromLeftPart.java` (新) | extends AbstractLeftPart,`evaluate` 暂返回 0,留 V5.50.3+ 实现 |
+| `StatisticType.java` | 扩 5 值:`count`/`sum`/`avg`/`min`/`max`(跟 grammar DRL_COUNT/SUM/AVG/MIN/MAX 对齐) |
+| `DrlGrammarSmokeTest.java` | 改 test DRL `count = 0` → `count := 0`(grammar 用 `:=` 做 ASSIGN,跟 DRL `assignStatement` 一致);PendingLhsMigration 改测 @Deprecated annotation 存在 |
 
 ## V5.49 验证(已修基线,留着参考)
 

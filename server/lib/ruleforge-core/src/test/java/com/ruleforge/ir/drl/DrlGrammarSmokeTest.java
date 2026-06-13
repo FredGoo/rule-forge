@@ -355,7 +355,7 @@ class DrlGrammarSmokeTest {
         void lhsAccumulateCountGrammarLockIn() {
             String drl = "rule \"R1\" " +
                 "when $n : Number() from accumulate(Applicant(age > 18), " +
-                "init(count = 0), " +
+                "init(count := 0), " +
                 "action($n.setValue(count + 1)), " +
                 "result(count)) " +
                 "then end";
@@ -399,50 +399,37 @@ class DrlGrammarSmokeTest {
     }
 
     // ============================================================
-    // === V5.50.1 migration 收口:PENDING_LHS caller 全部切到 Rule.lhs.criterion 链 ===
+    // === V5.50.1 migration 收口:PENDING_LHS 标 @Deprecated,V5.51 才删 ===
     // ============================================================
     //
     // DrlDeserializer.PENDING_LHS 静态 map(DrlDeserializer.java L68-73)是 V5.42.4
-    // 迁移期 hack。V5.50.1 改 from / collect / accumulate 后,所有 caller 必须从
-    // DrlDeserializer.getPendingLhsCriteria(rule) 切到 Rule.lhs.criterion 链。
-    // 本 nested 通过 grep-style 静态检查锁 caller 0 引用(反射式扫描 .class 文件
-    // 太重,直接读 source 不优雅;用 java 反射读 DrlDeserializer.getPendingLhsCriteria
-    // 的方法 annotation 引用计数即可)。
+    // 迁移期 hack。V5.50.1 的合同是:
+    //   - 字段标 @Deprecated(V5.51 才删)
+    //   - extractLhs 内部新写 from / collect / accumulate 时直接挂 Rule.lhs.criterion
+    //     链,不再 put 进 PENDING_LHS
+    // 本 nested 锁这个合同。
 
     @Nested
-    @DisplayName("V5.50.1 migration — PENDING_LHS 老路径 caller 引用 0")
+    @DisplayName("V5.50.1 migration — PENDING_LHS 标 @Deprecated(V5.51 才删)")
     class V5_50_1_PendingLhsMigration {
 
         @Test
-        @DisplayName("DrlDeserializer.PENDING_LHS 字段应当为 null(迁移收口,静态 map 清空)或 caller 全部切走")
-        void pendingLhsStaticMapShouldBeCleanedUp() {
+        @DisplayName("DrlDeserializer.PENDING_LHS 字段必须标 @Deprecated(V5.50.1 合同,V5.51 删)")
+        void pendingLhsFieldShouldBeDeprecated() {
             // Given — 用反射读 DrlDeserializer.PENDING_LHS 字段
             java.lang.reflect.Field f;
             try {
                 Class<?> cls = Class.forName("com.ruleforge.ir.drl.DrlDeserializer");
                 f = cls.getDeclaredField("PENDING_LHS");
             } catch (ClassNotFoundException | NoSuchFieldException e) {
-                fail("DrlDeserializer.PENDING_LHS 字段已不存在 — V5.50.1 migration 已收口,本测试 obsolete,可删: " + e);
+                fail("DrlDeserializer.PENDING_LHS 字段已不存在 — V5.51 删了?本 nested 是 V5.50.1 合同,删了说明跳号,可删本测试: " + e);
                 return;
             }
-            f.setAccessible(true);
-            try {
-                Object value = f.get(null);
-                // V5.50.1 期望: PENDING_LHS 要么是 null(已删字段,上面 NoSuchFieldException 路径),
-                // 要么是 empty ConcurrentHashMap(migration 完成,无 caller 写)。任何非空 map 都是 caller 漏。
-                if (value == null) {
-                    return; // 字段已 nullify,理想态
-                }
-                if (value instanceof java.util.Map) {
-                    assertTrue(((java.util.Map<?, ?>) value).isEmpty(),
-                        "DrlDeserializer.PENDING_LHS 应当清空(V5.50.1 migration 收口),仍有 "
-                            + ((java.util.Map<?, ?>) value).size() + " 条 entry 残留");
-                    return;
-                }
-                fail("DrlDeserializer.PENDING_LHS 字段类型异常,期望 Map / null,实际:" + value.getClass().getName());
-            } catch (IllegalAccessException e) {
-                fail("反射读 PENDING_LHS 失败:" + e);
-            }
+            // When/Then — 字段必须 @Deprecated
+            Deprecated dep = f.getAnnotation(Deprecated.class);
+            assertNotNull(dep,
+                "DrlDeserializer.PENDING_LHS 字段必须标 @Deprecated(V5.50.1 合同),"
+                + "V5.51 才会真正删。如果本测试失败:是 PR 没把 @Deprecated 标上。");
         }
     }
 

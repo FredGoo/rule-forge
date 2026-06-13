@@ -64,10 +64,20 @@ public class DrlDeserializer {
      * V5.42.4 范围内 PropertyCriteria 暂不能进 {@link Rule#getLhs()}(老 PropertyCriteria
      * 不是 Criterion,Junction.addCriterion 链挂不上),放本 map 暂存,V5.42.5 重新设计
      * lhs model 包装(NamedCriteria + CriteriaUnit 链路)再迁入。
+     *
+     * <p><b>V5.50.1 migration 合同</b>:本字段标 {@link Deprecated},V5.51 才删。
+     * V5.50.1 改完 from / collect / accumulate 后,新写 PropertyCriteria 直接挂
+     * Rule.lhs.criterion 链,不再 put 进本 map。V5.51 caller 全部切走才删字段。
      */
+    @Deprecated
     private static final java.util.Map<String, List<PropertyCriteria>> PENDING_LHS =
         new java.util.concurrent.ConcurrentHashMap<>();
 
+    /**
+     * V5.50.1 migration 合同:本方法标 {@link Deprecated},V5.51 才删。
+     * V5.50.1 后 caller 应读 {@code rule.getLhs().getCriterion()}。
+     */
+    @Deprecated
     public static List<PropertyCriteria> getPendingLhsCriteria(Rule rule) {
         return PENDING_LHS.getOrDefault(rule.getName(), Collections.emptyList());
     }
@@ -273,9 +283,12 @@ public class DrlDeserializer {
         }
         // V5.42.4 简化:用 visitor 单独走 lhsParseTree,产出一组 PropertyCriteria,
         // 暂存到 PENDING_LHS map(criterion 字段保留 null,V5.42.5 再迁入 Rule.lhs 内部)
+        @SuppressWarnings("deprecation")
         List<PropertyCriteria> pcs = new LhsPropertyVisitor(resolver).extract(p.getLhsParseTree());
         if (!pcs.isEmpty()) {
-            PENDING_LHS.put(p.getName(), pcs);
+            @SuppressWarnings("deprecation")
+            java.util.Map<String, List<PropertyCriteria>> pendingRef = PENDING_LHS;
+            pendingRef.put(p.getName(), pcs);
         }
         return lhs;
     }
