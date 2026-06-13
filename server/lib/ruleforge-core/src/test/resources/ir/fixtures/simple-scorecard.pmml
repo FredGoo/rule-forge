@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PMML xmlns="http://www.dmg.org/PMML-4_4" version="4.4">
+    <Header copyright="RuleForge" description="Single attr scorecard (V5.41 sample)"/>
+
+    <DataDictionary numberOfFields="2">
+        <DataField name="age"    dataType="double" optype="continuous"/>
+        <DataField name="predicted_score" dataType="double" optype="continuous"/>
+    </DataDictionary>
+
+    <Scorecard modelName="customer_score" functionName="regression"
+               initialScore="0.0" useReasonCodes="false" baselineMethod="max">
+        <MiningSchema>
+            <MiningField name="age"    usageType="active" optype="continuous"/>
+            <MiningField name="predicted_score"  usageType="predicted"/>
+        </MiningSchema>
+        <Output>
+            <OutputField name="predicted_score" optype="continuous" dataType="double"
+                         feature="predictedValue"/>
+        </Output>
+        <Characteristics>
+            <Characteristic name="ageScore" baselineScore="0">
+                <Attribute partialScore="10.0">
+                    <SimplePredicate field="age" operator="greaterThan" value="30"/>
+                </Attribute>
+                <Attribute partialScore="0.0">
+                    <True/>
+                </Attribute>
+            </Characteristic>
+        </Characteristics>
+    </Scorecard>
+</PMML>

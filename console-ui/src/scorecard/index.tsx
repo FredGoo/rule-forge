@@ -44,6 +44,7 @@ import QuickTestDialog from '../components/dialog/component/QuickTestDialog.jsx'
 import ConfigLibraryDialog from '../components/dialog/component/ConfigLibraryDialog.jsx';
 import EditorToolbar from '../components/editor-toolbar/EditorToolbar.jsx';
 import {saveNewVersion} from "../api/client.js";
+import {detectPmmlDialectFromFilePath, pmmlDialectLabel} from "../api/pmmlDialect.js";
 
 import {buildProjectNameFromFile, getParameter, loadEditorData} from '../Utils.js';
 import {save} from '../api/client.js';
@@ -96,6 +97,13 @@ document.addEventListener('DOMContentLoaded', function () {
             onSave={doSave}
             onReady={(api: any) => { toolbarApi = api; }}
             extraButtons={[
+                <span key="dialect-badge" data-testid="dialect-badge"
+                      style={{alignSelf: 'center', marginRight: 8, padding: '4px 8px',
+                              borderRadius: 4, fontSize: 12,
+                              background: '#f0f0f0', color: '#555'}}
+                      title={pmmlDialectLabel(detectPmmlDialectFromFilePath(file))}>
+                    📄 {pmmlDialectLabel(detectPmmlDialectFromFilePath(file))}
+                </span>,
                 <button key="addAttr" type="button" className="btn btn-default"
                         onClick={() => cardTable.addAttributeRow()}>
                     <i className="glyphicon glyphicon-plus"/> 添加属性行

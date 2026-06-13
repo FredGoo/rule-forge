@@ -9,6 +9,7 @@ import com.ruleforge.builder.table.ScriptDecisionTableRulesBuilder;
 import com.ruleforge.dsl.DSLRuleSetBuilder;
 import com.ruleforge.exception.RuleException;
 import com.ruleforge.ir.dmn.DmnResourceDispatcher;
+import com.ruleforge.ir.pmml.PmmlResourceDispatcher;
 import com.ruleforge.model.crosstab.CrosstabDefinition;
 import com.ruleforge.model.decisiontree.DecisionTree;
 import com.ruleforge.model.library.ResourceLibrary;
@@ -46,6 +47,12 @@ public class KnowledgeBuilder extends AbstractBuilder {
      * V5.41/V5.42 推 V5.40 这一刀不删 .xml)。
      */
     private DmnResourceDispatcher dmnResourceDispatcher;
+    /**
+     * V5.41 — PMML 4.4 资源分流器。资源路径以 {@code .pmml} 结尾时,绕过老 .xml 解析路径,
+     * 走 pmml4s 编译 + 反序列化。{@code .xml} 评分卡/树老路径**完全保留**(V5.41 这一刀
+     * 跟 V5.40 同款,只加并行新格式,删 .xml 路径是 V5.42/V5.43 后置 PR)。
+     */
+    private PmmlResourceDispatcher pmmlResourceDispatcher;
     public static final String BEAN_ID = "ruleforge.knowledgeBuilder";
 
     public KnowledgeBuilder() {
@@ -87,6 +94,15 @@ public class KnowledgeBuilder extends AbstractBuilder {
                     List tableRules = this.decisionTableRulesBuilder.buildRules(table);
                     this.buildRulesPath(tableRules, path);
                     rules.addAll(tableRules);
+                } else if (path != null && path.toLowerCase().endsWith(".pmml")) {
+                    // V5.41 — PMML 4.4 评分卡/树路径,绕过老 .xml 解析,走 pmml4s 编译
+                    if (this.pmmlResourceDispatcher == null) {
+                        this.pmmlResourceDispatcher = new PmmlResourceDispatcher();
+                    }
+                    // V5.41.3 顶层字段阶段:pmmlModel 顶层已填,子结构(cells/rows/<Node> 树)
+                    // 留空 — 暂不展开,等 V5.41.4.1 单独 PR 完整展开(超出本 PR scope)。
+                    // 当前走 .pmml 路径产 0 rule(空表/空树语义),不抛异常。
+                    this.pmmlResourceDispatcher.dispatch(path, resource.getContent());
                 } else {
                     Element root = this.parseResource(resource.getContent());
                     for (ResourceBuilder<?> builder : this.resourceBuilders) {

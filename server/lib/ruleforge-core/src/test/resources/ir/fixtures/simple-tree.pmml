@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PMML xmlns="http://www.dmg.org/PMML-4_4" version="4.4">
+    <Header copyright="RuleForge" description="Simple age/income classifier tree (V5.41 sample)"/>
+
+    <DataDictionary numberOfFields="3">
+        <DataField name="age"    dataType="double" optype="continuous"/>
+        <DataField name="income" dataType="double" optype="continuous"/>
+        <DataField name="predicted_class" dataType="string" optype="categorical">
+            <Value value="APPROVE"/>
+            <Value value="REJECT"/>
+            <Value value="REVIEW"/>
+        </DataField>
+    </DataDictionary>
+
+    <TreeModel modelName="loan_classifier" functionName="classification"
+               missingValueStrategy="lastPrediction" noTrueChildStrategy="returnLastPrediction">
+        <MiningSchema>
+            <MiningField name="age"    usageType="active" optype="continuous"/>
+            <MiningField name="income" usageType="active" optype="continuous"/>
+            <MiningField name="predicted_class"  usageType="predicted"/>
+        </MiningSchema>
+        <Output>
+            <OutputField name="predicted_class" optype="categorical" dataType="string"
+                         feature="predictedValue"/>
+        </Output>
+        <Node id="root" score="REVIEW" recordCount="1000">
+            <True/>
+            <Node id="age_split" score="REVIEW" recordCount="1000">
+                <SimplePredicate field="age" operator="greaterThan" value="30"/>
+                <Node id="approve_high" score="APPROVE" recordCount="200">
+                    <CompoundPredicate booleanOperator="and">
+                        <SimplePredicate field="age" operator="greaterThan" value="50"/>
+                        <SimplePredicate field="income" operator="greaterThan" value="100000"/>
+                    </CompoundPredicate>
+                </Node>
+                <Node id="reject_low" score="REJECT" recordCount="100">
+                    <SimplePredicate field="age" operator="lessOrEqual" value="30"/>
+                </Node>
+            </Node>
+        </Node>
+    </TreeModel>
+</PMML>

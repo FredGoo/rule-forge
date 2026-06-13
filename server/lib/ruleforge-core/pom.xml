@@ -100,6 +100,18 @@
             <artifactId>kie-dmn-feel</artifactId>
             <version>10.1.0</version>
         </dependency>
+        <!--
+            V5.41 — 评分卡 + 决策树 → PMML 4.4 切格式。
+            pmml4s 1.5.6 (2025-02, BSD-2-Clause) 提供 PMML 4.4 Scorecard/TreeModel 解析 +
+            编译 + 求值。Apache 2.0 不兼容的 jpmml 不引(jpmml 是 AGPL-3.0,污染)。
+            pmml4s 内部用 Scala 2.13,只让它产 org.pmml4s.pmml.Model,我们写薄 facade 转
+            RuleForge model(不直接用 pmml4s 的内部对象)。
+        -->
+        <dependency>
+            <groupId>org.pmml4s</groupId>
+            <artifactId>pmml4s_2.13</artifactId>
+            <version>1.5.6</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

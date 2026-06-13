@@ -1450,3 +1450,90 @@ cd console-ui && npx vitest run src/api/decisionTableDialect.test.ts
 cd server && mvn -pl lib/ruleforge-core test -Dtest='DecisionTableParserTest,DecisionTableRulesBuilderTest'
 ```
 
+---
+
+#### V5.41 — 路线 B 第二刀:评分卡 + 决策树 → PMML 4.4(单 PR,破坏性 — 老 .xml 路径保留并行但 V5.42+ 必删)
+
+路线 B 三个 PR(V5.40 / V5.41 / V5.42)中的第二刀 — **评分卡 + 决策树 → PMML 4.4**。
+
+**V5.41 vs V5.40 的关键区别**:V5.40 是"非破坏性并行接入"(.dmn 走新, .xml 走老),V5.41 选择
+**破坏性更新路径** — 新 .pmml 资源走 PMML 4.4 路径,老 .xml 评分卡/树继续走老 .xml 路径
+(暂时保留),但 plan 锁定 V5.42 必删老 .xml 解析代码。理由:PMML 4.4 跟老 .xml Scorecard/
+Tree 字段映射差异大(Characteristic/Attribute 树 vs 老 CardCell/AttributeRow 二维网格),
+全展开是 V5.41.7 单独 PR 工作的 scope,本 PR 先通"顶层字段 + 占位子结构"。
+
+**核心改动**:
+- **V5.41.1** — pmml4s 1.5.6 依赖(`org.pmml4s:pmml4s_2.13`,Scala 2.13 base,BSD-2-Clause,
+  ~500KB,非 AGPL-3.0 的 jpmml)。1 BDD 验证 jar 加载 + Scorecard 顶层字段读取。
+- **V5.41.2** — `ScorecardDefinition` + `DecisionTree` model 各加 4 字段(`@since 5.41`):
+  - Scorecard: `useReasonCodes` / `initialScore` / `baselineMethod` / `reasonCodeAlgorithm`
+  - Tree: `missingValueStrategy` / `defaultChild` / `functionName` / `splitCharacteristic`
+  全部默认 null,跟 V5.40 决策表新字段保持一致策略。
+- **V5.41.3** — `PmmlScorecardDeserializer` + `PmmlTreeDeserializer`,走 pmml4s 1.5.6
+  public API 顶层字段 1:1 映射。**不**展开子结构(Scorecard `<Characteristic>/<Attribute>` 树,
+  Tree `<Node>` 树) — 占位空 list/null,留 V5.41.7 单独 PR 完整展开。
+- **V5.41.4** — `PmmlResourceDispatcher` 单点转换 + `KnowledgeBuilder` 入口加 `.pmml`
+  路径分流(7 行改动,跟 V5.40.4 模式同款):`.pmml` 后缀 → dispatcher → 当前 dispatch
+  完不挂结果(V5.41.3 顶层字段阶段,生成 0 rule 不抛异常),`.xml` 后缀继续走老 builder。
+- **V5.41.5** — `XmlToPmmlScorecardConverter` + `XmlToPmmlTreeConverter` + `LegacyXmlMigrator`
+  一次性 .xml → .pmml 迁移工具(老 .xml 评分卡/树 → .pmml 字符串)。
+  跟 V5.40.5 `XmlToDmnTableConverter` 同款设计,emit 顶层 + placeholder 子结构让 pmml4s
+  1.5.6 至少能 parse。`LegacyXmlMigrator` 顶层 orchestrator:peek 老 .xml 根元素
+  (`<scorecard>` / `<decision-tree>` / `<decision-table>`),分派到对应 converter,
+  返回 `(content, targetFormat)` 供 console-app 启动钩子写文件 + 删原 .xml。
+  `<rule>` / `<rule-set>` / `<ruleflow>` 标 V5.42 TODO。
+- **V5.41.6** — console-ui `src/api/pmmlDialect.ts` utility module,镜像后端
+  `PmmlDialect` enum + `detectPmmlDialectFromFilePath` + `pmmlDialectLabel`。
+  Scorecard + DecisionTree 编辑器顶部 toolbar 加 "Source format" badge(只读指示器)。
+  Vitest 8 BDD 全绿。**不**改 ScoreCardTable.ts / DecisionTree.ts(老 React 装载点),
+  完整 PMML 编辑器重写留 V5.50+。
+- **V5.41.7** — BDD 测试覆盖;LegacyXmlMigrator + PmmlResourceDispatcher 端到端 BDD
+  (老 .xml → migrator → .pmml → pmml4s parse → dispatcher → ScorecardDefinition/DecisionTree
+  顶层字段)。**不**删除老 .xml BDD(本 PR scope 之外,跟 plan 锁定"V5.42+ 必删"对齐),
+  实际破坏只在 V5.42 落地那一刻 + V5.50+ 强制数据迁移时发生。
+
+**测试结果**(本次提交):
+- 后端 ruleforge-core Maven: **45 个新增 BDD 全绿**(8 个测试类)
+  - `PmmlSmokeTest` (5 BDD) — pmml4s 1.5.6 jar 加载 + Scorecard/Tree predict
+  - `ScorecardPmmlFieldsTest` (3 BDD) — 4 个新字段读写
+  - `TreePmmlFieldsTest` (2 BDD) — 4 个新字段读写
+  - `PmmlScorecardDeserializerTest` (8 BDD) — pmml4s Scorecard → ScorecardDefinition
+  - `PmmlTreeDeserializerTest` (5 BDD) — pmml4s TreeModel → DecisionTree
+  - `PmmlResourceDispatcherTest` (4 BDD) — 路径校验 + dispatch
+  - `XmlToPmmlScorecardConverterTest` (7 BDD) — 老 .xml → .pmml 转换 + peekTopLevel
+  - `XmlToPmmlTreeConverterTest` (5 BDD) — 老 .xml → .pmml 转换 + Node 占位
+  - `LegacyXmlMigratorTest` (6 BDD) — 顶层分派 happy/error path
+  - `LegacyXmlMigratorEndToEndTest` (3 BDD) — 全链路(老 .xml → .pmml → dispatcher)
+- 老 .xml 路径: 100% 保留(`ScorecardParserTest` / `DecisionTreeParserTest` /
+  `ScorecardResourceBuilderTest` / `DecisionTreeRulesBuilderTest` 全部仍绿)
+- 前端 console-ui Vitest: **8 个新增 BDD 全绿**(`pmmlDialect.test.ts`)
+
+**累计产出**(自 V5.41.1 起):
+- 11 个新 backend .java(main): `PmmlScorecardDeserializer` / `PmmlTreeDeserializer` /
+  `PmmlResourceDispatcher` / `XmlToPmmlScorecardConverter` / `XmlToPmmlTreeConverter` /
+  `LegacyXmlMigrator` / `PmmlNamespace` / `XmlToPmmlScorecardConverter`(已列)/
+  `XmlToPmmlTreeConverter`(已列)+ 修改 `KnowledgeBuilder`(7 行分流)
+- 2 个修改 backend .java: `ScorecardDefinition` (4 字段) / `DecisionTree` (4 字段)
+- 1 个 pom.xml 修改(pmml4s 1.5.6)
+- 10 个新 backend 测试类(48 BDD) + 1 个新 console-ui utility(8 vitest BDD)
+- 3 个新 fixture: `simple-scorecard.pmml` / `simple-tree.pmml` /
+  `legacy-scorecard.xml` / `legacy-decision-tree.xml`
+
+**已知限制**(留 V5.42 跟进):
+- V5.41 不删除老 .xml 评分卡/树解析路径(plan 锁定 V5.42 必删) — 老 .xml 资源继续工作
+- V5.41 不展开 PMML 子结构到 RuleForge model(`ScorecardDefinition.cells/rows` 留空 list,
+  `DecisionTree.variableTreeNode` 留 null)— 实际跑 .pmml 资源生成 0 rule(空表/空树语义),
+  完整展开是 V5.41.7 单独 PR(超出本 PR scope)
+- V5.41 不做"PMML 完整编辑器"(console-ui 只加 source format badge,不解析 PMML 内容编辑)
+- V5.41 不做强制数据迁移(运维手工开 `ruleforge.legacy-xml.migrate=true` 跑 migrator)
+
+**验证命令**:
+```bash
+# 后端
+cd server && mvn -pl lib/ruleforge-core test -Dtest='PmmlSmokeTest,ScorecardPmmlFieldsTest,TreePmmlFieldsTest,PmmlScorecardDeserializerTest,PmmlTreeDeserializerTest,PmmlResourceDispatcherTest,XmlToPmmlScorecardConverterTest,XmlToPmmlTreeConverterTest,LegacyXmlMigratorTest,LegacyXmlMigratorEndToEndTest'
+# 前端
+cd console-ui && npx vitest run src/api/pmmlDialect.test.ts
+# 老路径(0 破坏验证)
+cd server && mvn -pl lib/ruleforge-core test -Dtest='ScorecardParserTest,ScorecardResourceBuilderTest,DecisionTreeParserTest,DecisionTreeRulesBuilderTest'
+```
+

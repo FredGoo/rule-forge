@@ -44,6 +44,43 @@ public class ScorecardDefinition {
 	private List<CustomCol> customCols;
 	private List<AttributeRow> rows;
 	private List<Library> libraries;
+
+	/**
+	 * V5.41 — PMML 4.4 {@code <Scorecard useReasonCodes="...">} 映射。
+	 * 老 .xml 决策表 → PMML 迁移时,V5.41.5 XmlToPmmlScorecardConverter
+	 * 把 rule output 里的 reason 字段合并成 reason codes。{@code null} = V5.40
+	 * 老用法不关心 PMML 特有语义,走默认 {@code false}。
+	 *
+	 * @since 5.41
+	 */
+	private Boolean useReasonCodes;
+
+	/**
+	 * V5.41 — PMML 4.4 {@code <Scorecard initialScore="...">} 映射。
+	 * 给所有 characteristic baseline score 的兜底常量(不写则每个 characteristic
+	 * 各自 baselineScore 字段兜底)。{@code null} = V5.40 老用法。
+	 *
+	 * @since 5.41
+	 */
+	private Double initialScore;
+
+	/**
+	 * V5.41 — PMML 4.4 {@code <Scorecard baselineMethod="...">} 映射。
+	 * 多个 characteristic 之间聚合方式:{@code max / min / sum / none}(pmml4s 1.5.6
+	 * enum 不认 {@code other / median})。{@code null} = V5.40 老用法走默认 {@code max}。
+	 *
+	 * @since 5.41
+	 */
+	private String baselineMethod;
+
+	/**
+	 * V5.41 — PMML 4.4 {@code <Scorecard reasonCodeAlgorithm="...">} 映射。
+	 * reason code 生成算法:{@code pointsAbove / pointsBelow / none}。
+	 * {@code null} = 不关心,pmml4s 1.5.6 默认 {@code pointsAbove}。
+	 *
+	 * @since 5.41
+	 */
+	private String reasonCodeAlgorithm;
 	
 	
 	public String getName() {
@@ -207,5 +244,69 @@ public class ScorecardDefinition {
 	}
 	public void setCells(List<CardCell> cells) {
 		this.cells = cells;
+	}
+
+	/**
+	 * V5.41 — PMML 4.4 useReasonCodes 字段读取。
+	 * @since 5.41
+	 */
+	public Boolean getUseReasonCodes() {
+		return useReasonCodes;
+	}
+
+	/**
+	 * V5.41 — PMML 4.4 useReasonCodes 字段写入。
+	 * @since 5.41
+	 */
+	public void setUseReasonCodes(Boolean useReasonCodes) {
+		this.useReasonCodes = useReasonCodes;
+	}
+
+	/**
+	 * V5.41 — PMML 4.4 initialScore 字段读取。
+	 * @since 5.41
+	 */
+	public Double getInitialScore() {
+		return initialScore;
+	}
+
+	/**
+	 * V5.41 — PMML 4.4 initialScore 字段写入。
+	 * @since 5.41
+	 */
+	public void setInitialScore(Double initialScore) {
+		this.initialScore = initialScore;
+	}
+
+	/**
+	 * V5.41 — PMML 4.4 baselineMethod 字段读取。
+	 * @since 5.41
+	 */
+	public String getBaselineMethod() {
+		return baselineMethod;
+	}
+
+	/**
+	 * V5.41 — PMML 4.4 baselineMethod 字段写入。
+	 * @since 5.41
+	 */
+	public void setBaselineMethod(String baselineMethod) {
+		this.baselineMethod = baselineMethod;
+	}
+
+	/**
+	 * V5.41 — PMML 4.4 reasonCodeAlgorithm 字段读取。
+	 * @since 5.41
+	 */
+	public String getReasonCodeAlgorithm() {
+		return reasonCodeAlgorithm;
+	}
+
+	/**
+	 * V5.41 — PMML 4.4 reasonCodeAlgorithm 字段写入。
+	 * @since 5.41
+	 */
+	public void setReasonCodeAlgorithm(String reasonCodeAlgorithm) {
+		this.reasonCodeAlgorithm = reasonCodeAlgorithm;
 	}
 }

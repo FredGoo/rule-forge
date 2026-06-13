@@ -16,7 +16,7 @@
 </div>
 
 > **⚠️ 项目状态：活跃开发中**
-> Phase 1-12 + V5.28-V5.40 已完成 (Rust 端 RETE 引擎 + Java 端 BPMN 2.0 完整化 + 多池协作 + 异步消息 + SPI 化 + 接口分离 + **决策表 → DMN 1.3 切格式(V5.40 路线 B 第一刀,Kie DMN 10.1.0,DmnTableDeserializer/Serializer + DmnResourceDispatcher + XmlToDmnTableConverter 一次性迁移工具,老 .xml 路径保留并行 — V5.41/V5.42 再删**))。V5.41+ 规划中。详见 [路线图](docs/roadmap.md) 和 [更新日志](CHANGELOG.md)。
+> Phase 1-12 + V5.28-V5.41 已完成 (Rust 端 RETE 引擎 + Java 端 BPMN 2.0 完整化 + 多池协作 + 异步消息 + SPI 化 + 接口分离 + **决策表 → DMN 1.3 (V5.40 路线 B 第一刀,Kie DMN 10.1.0)** + **评分卡 + 决策树 → PMML 4.4 (V5.41 路线 B 第二刀,pmml4s 1.5.6,BSD-2-Clause,非 AGPL-3.0 的 jpmml)**)。V5.42+ 规划中(规则 + DSL → DRL 自研 ANTLR4 grammar)。详见 [路线图](docs/roadmap.md) 和 [更新日志](CHANGELOG.md)。
 
 ---
 
@@ -102,6 +102,7 @@ graph TB
 - **V5.38 (异步消息)** — MessageBus SPI(InMemoryMessageBus) + FlowResumer 桥接 + Send Task / Receive Task 单 pool 异步回调节点(channel 命名空间 `message:<name>`,跟跨池 `pool:<from>_to_<to>:<name>` 隔离)
 - **V5.39 (SPI 化 + 角色化上下文 + 接口分离)** — `MessageBusProvider` + `MessageBusRegistry` 多实现优先级;`FlowContext` 20 字段 god-object 一次性拆 `FlowIdentity` + `BusinessVars` + `ReteSession` + `SuspendRegistry` 4 角色;`FlowEngine implements StatelessDecisionExecutor, StatefulDecisionFlow` — 纯函数式求值 vs 长生命周期在类型系统层面显式分
 - **V5.40 (路线 B 第一刀:决策表 → DMN 1.3)** — Kie DMN 10.1.0 依赖(`kie-dmn-core` / `kie-dmn-api` / `kie-dmn-feel`)+ `DmnTableDeserializer` (DMN → DecisionTable) + `DmnTableSerializer` (DecisionTable → DMN 1.3 XML) + `DmnResourceDispatcher` (.dmn 单点转换) + `XmlToDmnTableConverter` (一次性 .xml → .dmn 迁移工具);`DecisionTable` model 加 4 字段(`hitPolicy` / `aggregation` / `dialect` / `variableName`)+ 3 个新 enum(`HitPolicy` 7 种 / `Aggregation` 5 种 / `TableDialect` RULEFORGE_NATIVE|DMN);`KnowledgeBuilder.buildKnowledgeBase()` 入口加 `.dmn` 路径分流(7 行改动,老 .xml 路径完全保留并行 0 破坏);console-ui 加 `decisionTableDialect.ts` utility module 镜像后端 enum
+- **V5.41 (路线 B 第二刀:评分卡 + 决策树 → PMML 4.4)** — pmml4s 1.5.6 依赖(`org.pmml4s:pmml4s_2.13`,Scala 2.13 base,BSD-2-Clause,非 jpmml AGPL-3.0)+ `PmmlScorecardDeserializer` / `PmmlTreeDeserializer` (PMML → model 顶层字段)+ `PmmlResourceDispatcher` (.pmml 单点转换)+ `XmlToPmmlScorecardConverter` / `XmlToPmmlTreeConverter` + `LegacyXmlMigrator` (一次性 .xml → .pmml 迁移工具,peek 根元素分派到 scorecard/tree/decision-table converter);`ScorecardDefinition` + `DecisionTree` model 各加 4 字段(`useReasonCodes` / `initialScore` / `baselineMethod` / `reasonCodeAlgorithm` 和 `missingValueStrategy` / `defaultChild` / `functionName` / `splitCharacteristic`);`KnowledgeBuilder` 加 `.pmml` 路径分流(跟 V5.40.4 同款 7 行改动);console-ui 加 `pmmlDialect.ts` utility module + Scorecard/DecisionTree 编辑器顶部 "Source format" badge(V5.41 这一刀不删老 .xml 路径,跟 V5.40 一样保留并行 — V5.42 跟 DRL 一起删)
 
 ### 可视化 & 运维
 
