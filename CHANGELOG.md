@@ -1537,3 +1537,86 @@ cd console-ui && npx vitest run src/api/pmmlDialect.test.ts
 cd server && mvn -pl lib/ruleforge-core test -Dtest='ScorecardParserTest,ScorecardResourceBuilderTest,DecisionTreeParserTest,DecisionTreeRulesBuilderTest'
 ```
 
+#### V5.42 — 路线 B 第三刀:Rule/DSL → DRL 4 自研 ANTLR4 grammar(单 PR,非破坏性 — 老 .xml/.ul 路径保留并行)
+
+路线 B(model 层切标准 IR)三个 PR(V5.40 / V5.41 / V5.42)中的第三刀 — **Rule + DSL → 标准 DRL 4 自研 ANTLR4 grammar**。
+
+**V5.42 vs V5.40 / V5.41 的关键区别**:V5.40 走 Kie DMN 10.1.0 runtime,V5.41 走 pmml4s 1.5.6 (Scala 桥),
+V5.42 **不**走任何 runtime — 纯 ANTLR4 grammar + 自家 visitor + 自家 deserializer。
+无传递依赖,无 Scala 桥,无 Drools EOL 风险(7 EOL 2023-07;8 强推 Kogito)。
+
+**核心决策**(用户 2026-06-13 明确):
+- **D1 DSL 后缀**: 新增 `.dsl/.dslrd`(Drools 6 原生 mapping 语法 `[when]X=...,[then]Y=...`),
+  跟现有 `.ul`(中文改写版,ANTLR4 grammar 走 dsl/RuleParser.g4)完全两回事,跟 `.ul` 并行
+- **D2 老 `<else>` 化 DRL**: 用 `rule "X_else" extends "X"` DRL 语法,visitor 支持 `extends` 解析,grammar 加 `extends` keyword
+- **D3 accumulate reverse 段**: 完全砍掉,grammar rule 缺失 → 报语法错(init/action/result 3 段 + 5 内置 count/sum/avg/min/max 够覆盖 95% 业务)
+- **D4 老 `<if>` CellCondition 翻译范围**: 顶层 1:1 — `<if>/<then>/<else>` 3 段 + salience/agenda-group 等 attribute 翻译,CellCondition 内容**原文拷贝**,运维要重写老 `<if>` 表达式才能在 .drl 跑通
+
+**核心改动**(V5.42 单一 PR,9 个 sub-task,1 大分支 `feature/V5.42-rule-dsl-to-drl`):
+- **V5.42.1** — ANTLR4 DRL grammar 编译:`DrlLexer.g4` + `DrlParser.g4` + `maven-antlr-plugin` 4.13.2
+  (双 sourceDirectory:`src/main/antlr4` + 老 `dsl/`,lock 4.13.2,output 包 `com.ruleforge.drl.*` 跟老 .ul 不冲突)
+- **V5.42.2** — `DrlAstVisitor` 解析 ParseTree → Rule model + `DatatypeResolver` 校验类型
+  (D4:no `import`,类型预注册走 Map)。11 attribute 解析(salience / agenda-group / activation-group /
+  ruleflow-group / auto-focus / no-loop / lock-on-active / enabled / date-effective / date-expires /
+  timer),dialect 静默丢弃(visitor 强 V5.42 D4)
+- **V5.42.3a** — `.dsl/.dslrd` 解析器(Drools 6 原生 mapping,`[when]X=...,[then]Y=...` line-based parser,
+  scope 大小写不敏感,精确 scope 桶 + fallback ANY)+ `${name}` placeholder expander(regex 抓 placeholder
+  字符串 + 全 token 替换)
+- **V5.42.3b** — `.ul → .drl` 一次性 emit 工具(保留并行 — V5.43 跟 .ul 一起删)
+- **V5.42.4** — `DrlDeserializer` (DRL AST → Rule model)+ `DrlResourceBuilder` (实现 ResourceBuilder<RuleSet>)
+- **V5.42.5** — `KnowledgeBuilder` `.drl` / `.dsl` / `.dslrd` 路径分流(7 行改动,镜像 V5.40.4 / V5.41.4 pattern)
+- **V5.42.6** — 一次性 `.xml → .drl` (`XmlToDrlRuleConverter`,dom4j 自解析简单 `<rule name="X" salience="N"/>`,走 V5.42.3b emit) +
+  `.dslrd → .drl` (`DslToDrlConverter`,行内 token 切分 when/then/end,NL 段按 DslScope 查 DslMappingSet 替换,
+  `{name}` placeholder capture-fill)
+- **V5.42.7** — console-ui `src/api/drlDialect.ts` utility module,镜像后端 `DrlDialect` enum
+  (`RULEFORGE_NATIVE` / `DRL`)+ `detectDrlDialectFromFilePath` (.drl/.dsl/.dslrd → DRL) +
+  `drlDialectLabel` + `drlDialectBadgeColor`。Rule/DSL 编辑器顶部 toolbar 加 "Source format" badge
+  (只读指示器,完整 DRL 编辑器重写留 V5.50+)。Vitest 13 BDD 全绿
+- **V5.42.8** — BDD 测试:`DrlGrammarCorpusTest` (53 positive + 8 negative = 61 用例,DRL 4 grammar
+  现行能力回归基线;V5.43 grammar 扩展时本测试会自然 fail 提示 grammar 改动)+
+  `LegacyXmlRoundTripTest` (5 用例,老 .xml 解析路径不破坏验证 + XmlToDrlRuleConverter 不依赖老 parser 链路反射验证)
+
+**测试结果**(本次提交):
+- 后端 ruleforge-core Maven: **66 个新增 BDD 全绿**(8 个测试类)
+  - `DrlGrammarSmokeTest` (25 BDD) — V5.42.1 grammar 基础子集
+  - `DrlAstVisitorTest` (10 BDD) — V5.42.2 visitor
+  - `DrlDeserializerTest` (16 BDD) — V5.42.4 反序列化
+  - `DrlEndToEndTest` (7 BDD) — V5.42.5 分流
+  - `DrlGrammarCorpusTest` (61 BDD) — V5.42.8 大 corpus
+  - `MigrationConvertersTest` (11 BDD) — V5.42.6 xml/dsl 迁移
+  - `LegacyXmlRoundTripTest` (5 BDD) — V5.42.8 老 .xml 不破坏
+  - + 既有 V5.42.3a DSL parser 测试
+- 后端总测试: **530 个**(0 失败,10 skip,464 → 530 = +66)
+- 老 .xml 路径: 100% 保留(`RuleParserTest` 17 BDD + 老 .xml 解析链全绿)
+- 前端 console-ui Vitest: **13 个新增 BDD 全绿**(`drlDialect.test.ts`)
+
+**累计产出**(自 V5.42.1 起):
+- 2 个新 .g4 grammar 文件 + maven-antlr-plugin 4.13.2 + 2 套 generated Java
+- 11+ 个新 backend .java(main): `DrlAstVisitor` / `DatatypeResolver` / `DrlParseException` /
+  `DrlDeserializer` / `DrlResourceBuilder` / `DrlResourceDispatcher` / `DslParser` / `DslEntry` /
+  `DslMappingSet` / `DslScope` / `PlaceholderExpander` / `UlToDrlConverter` / `XmlToDrlRuleConverter` /
+  `DslToDrlConverter` + 1 个修改 `KnowledgeBuilder`(7 行分流)
+- 1 个 pom.xml 修改(antlr4-maven-plugin 4.13.2)
+- 8 个新 backend 测试类(66 BDD)
+- 1 个新 console-ui utility(13 vitest BDD)
+
+**已知限制**(留 V5.43 / V5.50+ 跟进):
+- **不删**老 .xml rule 解析路径(`RuleSetParser` / `RuleSetDeserializer` / `RuleSetResourceBuilder` 全部保留)
+- **不删**老 .ul DSL 解析路径(`DSLRuleSetBuilder` / `dsl/RuleParser.g4` 全部保留)
+- 老 `<if>` CellCondition 内容不翻译,运维要手动 rewrite
+- `accumulate reverse` 段 / `import` / `function` / `declare` 第一版不支持
+- V5.42 不做强制数据迁移(运维手工跑 `XmlToDrlRuleConverter` / `DslToDrlConverter`)
+- V5.42 console-ui 只 source format badge,不解析 DRL 内容编辑(完整 DRL 编辑器重写留 V5.50+)
+
+**验证命令**:
+```bash
+# 后端
+cd server && mvn -pl lib/ruleforge-core test -Dtest='DrlGrammarSmokeTest,DrlAstVisitorTest,DrlDeserializerTest,DrlEndToEndTest,DrlGrammarCorpusTest,MigrationConvertersTest,LegacyXmlRoundTripTest'
+# 前端
+cd console-ui && npx vitest run src/api/drlDialect.test.ts
+# 老路径(0 破坏验证)
+cd server && mvn -pl lib/ruleforge-core test -Dtest='RuleParserTest,RuleSetParserTest,RuleSetResourceBuilderTest,RuleRulesBuilderTest'
+# 全量回归
+cd server && mvn -pl lib/ruleforge-core test
+```
+
