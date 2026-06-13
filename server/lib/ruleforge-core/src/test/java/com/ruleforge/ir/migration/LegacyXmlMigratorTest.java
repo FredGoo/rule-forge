@@ -60,13 +60,16 @@ class LegacyXmlMigratorTest {
     }
 
     @Test
-    @DisplayName("Given 老 .xml rule(root=rule),When migrate,Then 抛 XmlMigrationException 标 V5.42 TODO")
-    void rejectsRuleRootWithV42Todo() {
+    @DisplayName("Given 老 .xml rule(root=rule),When migrate,Then V5.43.1 走 XmlToDrlRuleConverter + targetFormat=\"drl\"")
+    void migratesRuleRoot() {
+        // V5.41.5 留的 V5.42 TODO 在 V5.43.1 填了 — 不再抛 XmlMigrationException,
+        // 走 XmlToDrlRuleConverter 产出 drl
         String xml = "<?xml version=\"1.0\"?><rule-config><rule name=\"r1\"></rule></rule-config>";
-        XmlMigrationException ex = assertThrows(XmlMigrationException.class,
-            () -> migrator.migrate(xml));
-        assertTrue(ex.getMessage().contains("V5.42"),
-            "expected message to mention V5.42, got: " + ex.getMessage());
+        LegacyXmlMigrator.MigrationResult r = migrator.migrate(xml);
+        assertNotNull(r);
+        assertEquals("drl", r.getTargetFormat());
+        assertTrue(r.getContent().contains("rule \"r1\""),
+            "expected rule \"r1\" in DRL output, got: " + r.getContent());
     }
 
     @Test

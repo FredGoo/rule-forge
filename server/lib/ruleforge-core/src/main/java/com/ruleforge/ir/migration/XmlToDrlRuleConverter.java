@@ -23,8 +23,8 @@ import java.util.List;
  * 大量 Spring bean,集成成本大于收益;第一版范围是"运维一次性导出",简单 .xml 节点
  * 自解析足够,复杂 rule 内容(老 .xml 含 lhs / actions / Library 引用等)留 V5.42.8+。
  *
- * <p>本类**不**是老 .xml 的 hot path — 老 {@code RuleSetResourceBuilder} 仍走老
- * parser 给 runtime 用,V5.42.6 只是给运维一个"老 .xml 文本 → DRL 文本"review 工具。
+ * <p>本类**不**是老 .xml 的 hot path — V5.43.2 后老 {@code RuleSetResourceBuilder} 已删
+ * (RuleSet 走 DRL 路径),V5.42.6 只是给运维一个"老 .xml 文本 → DRL 文本"review 工具。
  *
  * @since 5.42
  */

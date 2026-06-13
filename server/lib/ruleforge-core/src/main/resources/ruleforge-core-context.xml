@@ -177,10 +177,6 @@
         <property name="actionLibraryDeserializer" ref="ruleforge.actionLibraryDeserializer"/>
     </bean>
 
-    <bean id="ruleforge.ruleSetResourceBuilder" class="com.ruleforge.builder.resource.RuleSetResourceBuilder">
-        <property name="ruleSetDeserializer" ref="ruleforge.ruleSetDeserializer"/>
-    </bean>
-
     <bean id="ruleforge.variableLibraryResourceBuilder"
           class="com.ruleforge.builder.resource.VariableLibraryResourceBuilder">
         <property name="variableLibraryDeserializer" ref="ruleforge.variableLibraryDeserializer"/>
@@ -291,10 +287,6 @@
     <bean id="ruleforge.criteriaBuilder" class="com.ruleforge.model.rete.builder.CriteriaBuilder"/>
     <bean id="ruleforge.andBuilder" class="com.ruleforge.model.rete.builder.AndBuilder"/>
     <bean id="ruleforge.orBuilder" class="com.ruleforge.model.rete.builder.OrBuilder"/>
-
-    <bean id="ruleforge.ruleSetDeserializer" class="com.ruleforge.parse.deserializer.RuleSetDeserializer">
-        <property name="ruleSetParser" ref="ruleforge.ruleSetParser"/>
-    </bean>
 
     <bean id="ruleforge.commonFunctionActionParser" class="com.ruleforge.parse.CommonFunctionActionParser">
         <property name="valueParser" ref="ruleforge.valueParser"/>
