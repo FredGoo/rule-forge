@@ -107,6 +107,20 @@ public enum Op {
         public String toString() {
             return "不包含";
         }
+    },
+    // V5.51.1 — DRL 13 op 全收补完:memberOf / soundsLike
+    // 之前 V5.42.4 简化版把 memberOf / soundsLike 都降级到 Match,
+    // 现在 Op enum 扩 2 值,跟 DrlLexer DRL_MEMBEROF / DRL_SOUNDSLIKE 对齐
+    MemberOf {
+        @Override
+        public String toString() {
+            return "属于集合";
+        }
+    }, SoundsLike {
+        @Override
+        public String toString() {
+            return "发音相似";
+        }
     };
 
     public static Op parse(String op) {
@@ -150,6 +164,10 @@ public enum Op {
             return Contain;
         } else if (op.equals("NotContain")) {
             return NotContain;
+        } else if (op.equals("MemberOf")) {
+            return MemberOf;
+        } else if (op.equals("SoundsLike")) {
+            return SoundsLike;
         }
         throw new RuleException("Unsupport op " + op + "");
     }
