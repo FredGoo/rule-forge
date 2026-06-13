@@ -17,20 +17,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * V5.52.1 — DRL deserializer → FromLeftPart 链路 BDD。
+ * V5.52 — DRL deserializer → FromLeftPart 链路 BDD。
  *
  * <p>覆盖:
  * <ul>
- *   <li>from $stream:解析产出 FromLeftPart(fromSource="stream"),挂在 Lhs.criterion 链</li>
- *   <li>from $stream 语法 / parse 端校验</li>
- *   <li>from collect(...) / from accumulate(...) 在 V5.52.1 阶段显式抛
- *       {@link DrlParseException}(给 V5.52.2 / V5.52.3 留位)</li>
+ *   <li>V5.52.1:from $stream 解析产出 FromLeftPart(fromSource="stream"),挂 Lhs.criterion 链</li>
+ *   <li>V5.52.2:from collect(InnerPattern) 解析产出 FromLeftPart(fromSource="collect",
+ *       multiCondition 装 inner pattern)</li>
+ *   <li>V5.52.3:from accumulate(...) 5 内置(count/sum/avg/min/max)解析产出
+ *       FromLeftPart(fromSource="accumulate", statisticType=对应)</li>
+ *   <li>每 sub-task 各加 outer type 校验失败 / 拒收路径</li>
  * </ul>
  *
  * <p>每 sub-task (V5.52.1/2/3) 加新 {@code @Nested} 扩本类 — 集中所有 from-clause 端
  * deserializer 断言。
  */
-@DisplayName("V5.52.1 — DRL deserializer → FromLeftPart 链路")
+@DisplayName("V5.52 — DRL deserializer → FromLeftPart 链路")
 class DrlLhsWiringTest {
 
     private DatatypeResolver resolver;
@@ -95,21 +97,51 @@ class DrlLhsWiringTest {
     }
 
     // ============================================================
-    // === from collect(...) — V5.52.1 显式拒收 ===
+    // === from collect(...) ===
     // ============================================================
 
     @Nested
-    @DisplayName("Given DRL '$xs : List() from collect(...)',When deserialize in V5.52.1,Then DrlParseException")
-    class FromCollectDeferred {
+    @DisplayName("Given DRL '$xs : List() from collect(InnerPattern)',When deserialize,Then FromLeftPart(fromSource='collect', multiCondition)")
+    class FromCollect {
 
         @Test
-        @DisplayName("from collect(...) 在 V5.52.1 抛 DrlParseException(V5.52.2 才接)")
-        void fromCollectThrowsInV5521() {
+        @DisplayName("from collect(Applicant(age > 18)) → FromLeftPart 1 个 multiCondition 1 个 PropertyCriteria(age > 18)")
+        void fromCollectYieldsFromLeftPartWithMultiCondition() {
+            List<Rule> rules = DrlDeserializer.parseDrl(
+                "rule \"R1\" when $xs : ArrayList() from collect(Applicant(age > 18)) then end",
+                resolver);
+            assertThat(rules).hasSize(1);
+            Lhs lhs = rules.get(0).getLhs();
+            And and = (And) lhs.getCriterion();
+            // V5.52.2:从外层 LHS 看只有 1 个 criterion(FromLeftPart wrapping collect)—
+            //   内层 'age > 18' 被装进 FromLeftPart.multiCondition,不作为顶层 criterion
+            assertThat(and.getCriterions()).hasSize(1);
+
+            Criteria c = (Criteria) and.getCriterions().get(0);
+            assertThat(c.getLeft().getLeftPart()).isInstanceOf(FromLeftPart.class);
+            FromLeftPart fp = (FromLeftPart) c.getLeft().getLeftPart();
+            assertThat(fp.getFromSource()).isEqualTo("collect");
+            assertThat(fp.getVariableCategory()).isEqualTo("ArrayList");
+            assertThat(fp.getMultiCondition()).isNotNull();
+            assertThat(fp.getMultiCondition().getConditions()).hasSize(1);
+            assertThat(fp.getMultiCondition().getConditions().get(0).getProperty()).isEqualTo("age");
+            assertThat(fp.getMultiCondition().getConditions().get(0).getOp())
+                .isEqualTo(com.ruleforge.model.rule.Op.GreaterThen);
+            assertThat(fp.getMultiCondition().getType())
+                .isEqualTo(com.ruleforge.model.rule.lhs.JunctionType.and);
+        }
+
+        @Test
+        @DisplayName("from collect 外层 type 未注册 → DrlParseException")
+        void fromCollectUnknownOuterTypeFails() {
+            DatatypeResolver fresh = new DatatypeResolver();
+            // ArrayList 不注册
+            fresh.register("Applicant",
+                DatatypeResolver.TypeInfo.fact("Applicant", Arrays.asList("age")));
             assertThatThrownBy(() -> DrlDeserializer.parseDrl(
                 "rule \"R1\" when $xs : ArrayList() from collect(Applicant(age > 18)) then end",
-                resolver))
-                .isInstanceOf(DrlParseException.class)
-                .hasMessageContaining("V5.52.2");
+                fresh))
+                .isInstanceOf(DrlParseException.class);
         }
     }
 

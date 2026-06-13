@@ -458,12 +458,54 @@ public class DrlDeserializer {
         }
 
         /**
-         * V5.52.2 留位:DRL {@code $xs : List() from collect(InnerPattern)}。
-         * 本 sprint **不在 V5.52.1 接** — 抛 DrlParseException 提示,等 V5.52.2 补。
+         * V5.52.2:DRL {@code $xs : List() from collect(InnerPattern)} 形态。
+         *
+         * <p>grammar alt 1 (LhsCollect 2 alt 中第一个) = {@code drlPattern FROM COLLECT(lhsPattern)};
+         * 本 sprint **只接 alt 1**。alt 2 = {@code COLLECT(lhsPattern)} 无 binding — deferred。
+         *
+         * <p>流程:
+         * <ol>
+         *   <li>外层 drlPattern binding type 走 resolver 校验</li>
+         *   <li>内层 lhsPattern 走 walk() 抽出 List&lt;PropertyCriteria&gt;</li>
+         *   <li>包成 MultiCondition(type=AND, conditions=...)挂 FromLeftPart.multiCondition</li>
+         *   <li>FromLeftPart.fromSource="collect",property 走 V5.51.3 sum 语义</li>
+         * </ol>
          */
         private void handleLhsCollect(DrlParser.LhsCollectContext ctx) {
-            throw new DrlParseException("V5.52.1 不接 DRL 'from collect(...)' — 等 V5.52.2"
-                + " (line " + ctx.getStart().getLine() + ")");
+            DrlParser.DrlPatternContext outer = ctx.drlPattern();
+            DrlParser.LhsPatternContext innerPattern = ctx.lhsPattern();
+            if (outer == null || innerPattern == null) {
+                // alt 2 (无 binding) — 本 sprint 不接
+                throw new DrlParseException("V5.52.2 only supports 'drlPattern FROM COLLECT(lhsPattern)' "
+                    + "alt for LhsCollect,line " + ctx.getStart().getLine());
+            }
+
+            // 1. 外层 type 校验
+            String outerType = outer.UPPER_IDENTIFIER().getText();
+            if (!resolver.isKnown(outerType)) {
+                throw new DrlParseException("from collect 外层 type '" + outerType
+                    + "' 未注册,line " + outer.getStart().getLine());
+            }
+
+            // 2. 抓 inner PropertyCriteria — 临时用本 visitor 抓后清空 result 列表避免污染
+            int savedSize = result.size();
+            walk(innerPattern);
+            List<PropertyCriteria> innerPcs = new ArrayList<>(result.subList(savedSize, result.size()));
+            // 清掉 inner 抓出来的(它们是 inner pattern 的,不是 LHS 顶层 criteria)
+            result.subList(savedSize, result.size()).clear();
+
+            // 3. 装 MultiCondition
+            MultiCondition mc = new MultiCondition();
+            mc.setType(JunctionType.and);
+            mc.setConditions(innerPcs);
+
+            // 4. FromLeftPart
+            FromLeftPart fp = new FromLeftPart();
+            fp.setVariableCategory(outerType);
+            // variableName 留 null(runtime 在 collect 分支不读 variableName,走 multiCondition 路径)
+            fp.setMultiCondition(mc);
+            fp.setFromSource("collect");
+            fromParts.add(fp);
         }
 
         /**
