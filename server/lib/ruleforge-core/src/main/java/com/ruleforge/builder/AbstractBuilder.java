@@ -40,6 +40,8 @@ public abstract class AbstractBuilder implements ApplicationContextAware {
         resourceBuilders = applicationContext.getBeansOfType(ResourceBuilder.class).values();
         providers = applicationContext.getBeansOfType(ResourceProvider.class).values();
         this.applicationContext = applicationContext;
-        applicationContext.getBeansWithAnnotation(SuppressWarnings.class);
+        // V5.48: 删除 L43 dead code `applicationContext.getBeansWithAnnotation(SuppressWarnings.class);`
+        // — 该调用返 Map<String, Object> 未赋值,纯 side-effect-free,全 unused。
+        // plan 风险 R10(P0 Task 2 已验,Task 3 正式删)
     }
 }

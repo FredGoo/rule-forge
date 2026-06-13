@@ -584,4 +584,212 @@ class KnowledgeSessionTest {
             }
         }
     }
+
+    /**
+     * V5.48 — EffectiveDateWindow 补全。KnowledgeSessionImpl L327-328:
+     * <pre>
+     *   effectiveDate = insUnit.getEffectiveDate();
+     * } while (effectiveDate != null && effectiveDate.getTime() > (new Date()).getTime());
+     * </pre>
+     * 规则 effectiveDate 未来 → 不 fire。
+     *
+     * <p>策略:
+     * <ol>
+     *   <li>helper 拆 inner/outer 两个 Rete — inner 是 rule 实际图(OTN→Terminal),
+     *       outer 是 groupMap 容器(有 OTN 占位让 reteInstanceList 非空,触发 evaluationRete
+     *       走 activation group 路径)。早期版本让 ReteUnit 引 outer 触发 newReteInstance()
+     *       互递归。</li>
+     *   <li>日期偏移 1 天(相对 `new Date()`),`mockStatic` 不可 mock 构造器,
+     *       V5.48 改用相对时间。</li>
+     * </ol>
+     */
+    @Nested
+    @DisplayName("effectiveDate window — KnowledgeSessionImpl L327-328 do-while 过滤")
+    class EffectiveDateWindow {
+
+        private KnowledgePackage buildPackageWithActivationGroup(Date effectiveDate) throws Exception {
+            // 1) inner Rete(rule 实际图)
+            List<ObjectTypeNode> innerOtns = new ArrayList<>();
+            AtomicBoolean fired = new AtomicBoolean(false);
+            buildRuleWithFlagAction("date-window-rule", "User", innerOtns, fired);
+            Rete innerRete = new Rete(innerOtns, new ResourceLibrary());
+
+            // 2) ReteUnit 引 innerRete + setEffectiveDate
+            com.ruleforge.model.rete.ReteUnit reteUnit =
+                new com.ruleforge.model.rete.ReteUnit(innerRete, "date-window-rule");
+            reteUnit.setEffectiveDate(effectiveDate);
+
+            // 3) outer Rete(groupMap 容器,无 OTN — reteInstanceList 仍 +1,因为
+            //    KnowledgeSessionImpl L64 总加 1 个 package.newReteInstance())
+            Rete outerRete = new Rete(new ArrayList<>(), new ResourceLibrary());
+
+            java.util.Map<String, java.util.List<com.ruleforge.model.rete.ReteUnit>> groupMap = new java.util.HashMap<>();
+            java.util.List<com.ruleforge.model.rete.ReteUnit> units = new java.util.ArrayList<>();
+            units.add(reteUnit);
+            groupMap.put("default", units);
+            outerRete.setActivationGroupRetesMap(groupMap);
+
+            KnowledgePackageImpl pkg = new KnowledgePackageImpl();
+            pkg.setRete(outerRete);
+            return pkg;
+        }
+
+        // Given rule effectiveDate = now + 1 day(未来)
+        // When fireRules
+        // Then rule 不应 fire(do-while 跳过)
+        @Test
+        @DisplayName("effectiveDate 未来 → rule 不 fire")
+        void futureEffectiveDateShouldNotFire() throws Exception {
+            // Given
+            long oneDayMs = 24L * 60 * 60 * 1000;
+            Date future = new Date(System.currentTimeMillis() + oneDayMs);
+            KnowledgePackage pkg = buildPackageWithActivationGroup(future);
+
+            // When
+            KnowledgeSession session = KnowledgeSessionFactory.newKnowledgeSession(pkg);
+            GeneralEntity entity = new GeneralEntity("User");
+            entity.put("name", "test");
+            session.insert(entity);
+            RuleExecutionResponse response = session.fireRules();
+
+            // Then
+            assertThat(response.getFiredRules() == null ? 0 : response.getFiredRules().size())
+                .as("effectiveDate 未来时 fire 计数")
+                .isEqualTo(0);
+        }
+
+        // Given rule effectiveDate = now - 1 day(过去)
+        // When fireRules
+        // Then rule 应 fire(放行)
+        @Test
+        @DisplayName("effectiveDate 过去 → rule 正常 fire")
+        void pastEffectiveDateShouldFire() throws Exception {
+            // Given
+            long oneDayMs = 24L * 60 * 60 * 1000;
+            Date past = new Date(System.currentTimeMillis() - oneDayMs);
+            KnowledgePackage pkg = buildPackageWithActivationGroup(past);
+
+            // When
+            KnowledgeSession session = KnowledgeSessionFactory.newKnowledgeSession(pkg);
+            GeneralEntity entity = new GeneralEntity("User");
+            entity.put("name", "test");
+            session.insert(entity);
+            RuleExecutionResponse response = session.fireRules();
+
+            // Then
+            assertThat(response.getFiredRules() == null ? 0 : response.getFiredRules().size())
+                .as("effectiveDate 过去时 fire 计数")
+                .isEqualTo(1);
+        }
+
+        // Given rule effectiveDate = null
+        // When fireRules
+        // Then rule 应 fire(null 跳过 do-while)
+        @Test
+        @DisplayName("effectiveDate == null → rule 正常 fire(无日期约束)")
+        void nullEffectiveDateShouldFire() throws Exception {
+            // Given
+            KnowledgePackage pkg = buildPackageWithActivationGroup(null);
+
+            // When
+            KnowledgeSession session = KnowledgeSessionFactory.newKnowledgeSession(pkg);
+            GeneralEntity entity = new GeneralEntity("User");
+            entity.put("name", "test");
+            session.insert(entity);
+            RuleExecutionResponse response = session.fireRules();
+
+            // Then
+            assertThat(response.getFiredRules() == null ? 0 : response.getFiredRules().size())
+                .as("effectiveDate null 时 fire 计数")
+                .isEqualTo(1);
+        }
+    }
+
+    /**
+     * V5.48 — ExpiresDateWindow 补全。KnowledgeSessionImpl L330-331:
+     * <pre>
+     *   expiresDate = insUnit.getExpiresDate();
+     * } while (expiresDate != null && expiresDate.getTime() < (new Date()).getTime());
+     * </pre>
+     * 规则 expiresDate 过去 → 不 fire。
+     */
+    @Nested
+    @DisplayName("expiresDate window — KnowledgeSessionImpl L330-331 do-while 过滤")
+    class ExpiresDateWindow {
+
+        private KnowledgePackage buildPackageWithActivationGroup(Date expiresDate) throws Exception {
+            // 1) inner Rete(rule 实际图)
+            List<ObjectTypeNode> innerOtns = new ArrayList<>();
+            AtomicBoolean fired = new AtomicBoolean(false);
+            buildRuleWithFlagAction("date-window-rule", "User", innerOtns, fired);
+            Rete innerRete = new Rete(innerOtns, new ResourceLibrary());
+
+            // 2) ReteUnit 引 innerRete + setExpiresDate
+            com.ruleforge.model.rete.ReteUnit reteUnit =
+                new com.ruleforge.model.rete.ReteUnit(innerRete, "date-window-rule");
+            reteUnit.setExpiresDate(expiresDate);
+
+            // 3) outer Rete(groupMap 容器,无 OTN — reteInstanceList 仍 +1,因为
+            //    KnowledgeSessionImpl L64 总加 1 个 package.newReteInstance())
+            Rete outerRete = new Rete(new ArrayList<>(), new ResourceLibrary());
+
+            java.util.Map<String, java.util.List<com.ruleforge.model.rete.ReteUnit>> groupMap = new java.util.HashMap<>();
+            java.util.List<com.ruleforge.model.rete.ReteUnit> units = new java.util.ArrayList<>();
+            units.add(reteUnit);
+            groupMap.put("default", units);
+            outerRete.setActivationGroupRetesMap(groupMap);
+
+            KnowledgePackageImpl pkg = new KnowledgePackageImpl();
+            pkg.setRete(outerRete);
+            return pkg;
+        }
+
+        // Given rule expiresDate = now - 1 day(过去)
+        // When fireRules
+        // Then rule 不应 fire
+        @Test
+        @DisplayName("expiresDate 过去 → rule 不 fire")
+        void pastExpiresDateShouldNotFire() throws Exception {
+            // Given
+            long oneDayMs = 24L * 60 * 60 * 1000;
+            Date past = new Date(System.currentTimeMillis() - oneDayMs);
+            KnowledgePackage pkg = buildPackageWithActivationGroup(past);
+
+            // When
+            KnowledgeSession session = KnowledgeSessionFactory.newKnowledgeSession(pkg);
+            GeneralEntity entity = new GeneralEntity("User");
+            entity.put("name", "test");
+            session.insert(entity);
+            RuleExecutionResponse response = session.fireRules();
+
+            // Then
+            assertThat(response.getFiredRules() == null ? 0 : response.getFiredRules().size())
+                .as("expiresDate 过去时 fire 计数")
+                .isEqualTo(0);
+        }
+
+        // Given rule expiresDate = now + 1 day(未来)
+        // When fireRules
+        // Then rule 应 fire
+        @Test
+        @DisplayName("expiresDate 未来 → rule 正常 fire")
+        void futureExpiresDateShouldFire() throws Exception {
+            // Given
+            long oneDayMs = 24L * 60 * 60 * 1000;
+            Date future = new Date(System.currentTimeMillis() + oneDayMs);
+            KnowledgePackage pkg = buildPackageWithActivationGroup(future);
+
+            // When
+            KnowledgeSession session = KnowledgeSessionFactory.newKnowledgeSession(pkg);
+            GeneralEntity entity = new GeneralEntity("User");
+            entity.put("name", "test");
+            session.insert(entity);
+            RuleExecutionResponse response = session.fireRules();
+
+            // Then
+            assertThat(response.getFiredRules() == null ? 0 : response.getFiredRules().size())
+                .as("expiresDate 未来时 fire 计数")
+                .isEqualTo(1);
+        }
+    }
 }

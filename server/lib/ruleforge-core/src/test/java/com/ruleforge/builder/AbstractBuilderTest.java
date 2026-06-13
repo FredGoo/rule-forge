@@ -23,8 +23,9 @@ import static org.mockito.Mockito.when;
  *   <li>{@code newResourceBase()} 返非 null {@link ResourceBase}</li>
  *   <li>{@code setApplicationContext(null)} 抛 NPE(getBeansOfType 解引用)</li>
  *   <li>{@code parseResource(xml)} 错 XML 抛 {@link RuleException}</li>
- *   <li>L43 dead-code {@code getBeansWithAnnotation(SuppressWarnings.class)} —
- *       当前行为保留,标 TODO(P2 验证全 unused 后再删)</li>
+ * </ol>
+ * <p>V5.48: L43 dead-code {@code getBeansWithAnnotation(SuppressWarnings.class)} 已删
+ * (P0 验证全 unused,Task 3 删 + 移 test 里 mock 桩)。
  * </ol>
  */
 @DisplayName("P0 — AbstractBuilder 公共契约")
@@ -68,7 +69,7 @@ class AbstractBuilderTest {
             ApplicationContext ctx = mock(ApplicationContext.class);
             when(ctx.getBeansOfType(ResourceBuilder.class)).thenReturn(java.util.Collections.emptyMap());
             when(ctx.getBeansOfType(ResourceProvider.class)).thenReturn(java.util.Collections.emptyMap());
-            when(ctx.getBeansWithAnnotation(SuppressWarnings.class)).thenReturn(java.util.Collections.emptyMap());
+            // V5.48: 删 L43 dead code 后不再需要 mock getBeansWithAnnotation
 
             assertDoesNotThrow(() -> b.setApplicationContext(ctx));
             // 字段注入后可访问(同 package,Field 反射跳过)
