@@ -387,10 +387,10 @@ public class DrlDeserializer {
                 case "<=": return Op.LessThenEquals;
                 case "in": return Op.In;
                 case "not in": return Op.NotIn;
-                case "memberOf": return Op.Match; // 老 Op 没 MemberOf,降级到 Match(V5.42.5 扩展)
+                case "memberOf": return Op.MemberOf;        // V5.51.1:Op 扩 2 值
                 case "matches": return Op.Match;
                 case "contains": return Op.Contain;
-                case "soundslike": return Op.Match; // 老 Op 没 SoundsLike,降级 Match
+                case "soundslike": return Op.SoundsLike;    // V5.51.1:Op 扩 2 值
                 default:
                     throw new DrlParseException("未知 cmpOp '" + text + "'");
             }
