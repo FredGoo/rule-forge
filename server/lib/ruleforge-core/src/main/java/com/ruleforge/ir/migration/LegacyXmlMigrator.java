@@ -12,7 +12,8 @@ package com.ruleforge.ir.migration;
  *         <li>{@code <decision-table>} → XmlToDmnTableConverter(V5.40.5)</li>
  *         <li>{@code <scorecard>} → XmlToPmmlScorecardConverter(V5.41.5)</li>
  *         <li>{@code <decision-tree>} → XmlToPmmlTreeConverter(V5.41.5)</li>
- *         <li>{@code <rule>} / {@code <rule-set>} / {@code <ruleflow>} → V5.42 DRL(留 TODO)</li>
+ *         <li>{@code <rule>} / {@code <rule-set>} / {@code <ruleflow>} →
+ *             XmlToDrlRuleConverter(V5.42.6,V5.43.1 填 V5.41.5 留的 TODO)</li>
  *       </ul>
  *   </li>
  *   <li>写 .dmn / .pmml / .drl 到 Git 仓库同目录,新文件跟老 .xml 同 basename 不同后缀</li>
@@ -33,6 +34,8 @@ public class LegacyXmlMigrator {
     private final XmlToDmnTableConverter tableConverter = new XmlToDmnTableConverter();
     private final XmlToPmmlScorecardConverter scorecardConverter = new XmlToPmmlScorecardConverter();
     private final XmlToPmmlTreeConverter treeConverter = new XmlToPmmlTreeConverter();
+    // V5.43.1 — 接 V5.42.6 XmlToDrlRuleConverter 取代 V5.41.5 留的 TODO
+    private final XmlToDrlRuleConverter ruleConverter = new XmlToDrlRuleConverter();
 
     /**
      * Given 老 .xml 字符串,When migrate,Then 产生新格式 XML 字符串(分派到对应 converter)。
@@ -58,9 +61,10 @@ public class LegacyXmlMigrator {
             case "rule":
             case "rule-set":
             case "ruleflow":
-                // V5.42 DRL 转换器尚未实现,留 TODO
-                throw new XmlMigrationException(
-                    "Migration of <" + rootName + "> to DRL is V5.42 scope; not yet implemented");
+                // V5.43.1 — 填 V5.41.5 留的 TODO,接 V5.42.6 XmlToDrlRuleConverter
+                // 老 .xml 顶层 1:1 emit 为 DRL 文本(顶层 metadata 已 emit;
+                // lhs / rhs 内部由 V5.42.6 留 TODO 注释,运维手工 review)
+                return new MigrationResult(ruleConverter.convert(xmlContent), "drl");
             default:
                 throw new XmlMigrationException(
                     "Unrecognized legacy .xml root element: <" + rootName + ">");

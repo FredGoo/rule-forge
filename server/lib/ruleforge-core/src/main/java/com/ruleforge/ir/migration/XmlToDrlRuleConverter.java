@@ -48,10 +48,15 @@ public class XmlToDrlRuleConverter {
         }
         Element root = doc.getRootElement();
         List<Rule> rules = new ArrayList<>();
-        // 找所有 rule 子节点(无论 root 是 rule-set / ruleSet / rules 等形式)
-        for (Element ele : (List<Element>) root.elements()) {
-            if ("rule".equals(ele.getName())) {
-                rules.add(parseRuleElement(ele));
+        // V5.43.1 — 如果 root 本身就是 <rule>,直接 parse 它(老 .xml 也允许 <rule> 单独成根)
+        if ("rule".equals(root.getName())) {
+            rules.add(parseRuleElement(root));
+        } else {
+            // 否则找所有 rule 子节点(无论 root 是 rule-set / ruleflow / rules 等形式)
+            for (Element ele : (List<Element>) root.elements()) {
+                if ("rule".equals(ele.getName())) {
+                    rules.add(parseRuleElement(ele));
+                }
             }
         }
         RuleSet rs = new RuleSet();
