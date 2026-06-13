@@ -220,6 +220,7 @@ drlPattern
 constraint
     : IDENTIFIER operator expr
     | IDENTIFIER LBRACK stringMethod RBRACK
+    | IDENTIFIER (DRL_IN | DRL_NOT DRL_IN) LPAREN exprList RPAREN
     | IDENTIFIER operator LPAREN exprList RPAREN
     ;
 
@@ -230,6 +231,7 @@ operator
     | DRL_CONTAINS
     | DRL_SOUNDSLIKE
     | DRL_IN
+    | DRL_AND | DRL_OR
     // 'not in' 单独 alt(notInExpr)
     ;
 
@@ -295,7 +297,9 @@ statementBlock
 
 expr
     : exprAtom (cmpOp exprAtom | addOp exprAtom | mulOp exprAtom
-              | DRL_AND exprAtom | DRL_OR exprAtom)*
+              | DRL_AND exprAtom | DRL_OR exprAtom
+              | DRL_IN LPAREN exprList RPAREN
+              | DRL_NOT DRL_IN LPAREN exprList RPAREN)*
     ;
 
 cmpOp

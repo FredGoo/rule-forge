@@ -128,28 +128,25 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("lhs:from 形式 — V5.42.1 grammar 边缘,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — from binding prefix LL(*) 决策冲突,V5.42.5 再补")
+        @DisplayName("lhs:from 形式 — V5.50.1 收口")
         void lhsFrom() {
             String drl = "rule \"R1\" when $a : Applicant(age > 18) from $stream then end";
             assertParses(drl, 1, 1);
         }
 
         @Test
-        @DisplayName("lhs:collect 形式 — V5.42.1 grammar 边缘,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — collect 同 from,V5.42.5 再补")
+        @DisplayName("lhs:collect 形式 — V5.50.1 收口")
         void lhsCollect() {
             String drl = "rule \"R1\" when $xs : ArrayList() from collect(Applicant(age > 18)) then end";
             assertParses(drl, 1, 1);
         }
 
         @Test
-        @DisplayName("D3 决定:accumulate 5 内置 count + init/action/result 3 段,无 reverse — V5.42.1 边缘,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — accumulate 复杂多段,V5.42.5 再补")
+        @DisplayName("D3 决定:accumulate 5 内置 count + init/action/result 3 段,无 reverse — V5.50.1 收口")
         void lhsAccumulateCount() {
             String drl = "rule \"R1\" " +
                 "when $n : Number() from accumulate(Applicant(age > 18), " +
-                "init(count = 0), " +
+                "init(count := 0), " +
                 "action($n.setValue(count + 1)), " +
                 "result(count)) " +
                 "then end";
@@ -170,8 +167,7 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("表达式 13 种 op 合并 pattern — V5.42.1 边缘,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — 13 op 全在 pattern 内,V5.42.5 再补")
+        @DisplayName("表达式 13 种 op 合并 pattern — V5.50.2 收口")
         void allOperators() {
             String drl = "rule \"R1\" when " +
                 "$a : Applicant(age > 18 && age <= 65, " +
@@ -195,8 +191,7 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("rhs 三种 statement:assign / methodCall / expr — V5.42.1 update() 边缘")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — update($a) 走 bare function,V5.42.5 再补")
+        @DisplayName("rhs 三种 statement:assign / methodCall / expr — V5.50.1 收口")
         void rhsStatements() {
             String drl = "rule \"R1\" " +
                 "when $a : Applicant(age > 18) " +
@@ -244,8 +239,7 @@ class DrlGrammarSmokeTest {
         }
 
         @Test
-        @DisplayName("string method:starts-with / ends-with / length — V5.42.1 grammar 简化,留给 V5.42.5")
-        @org.junit.jupiter.api.Disabled("V5.42.1 grammar edge — stringMethod 在 pattern 内,V5.42.5 再补")
+        @DisplayName("string method:starts-with / ends-with / length — V5.50.1 收口")
         void stringMethods() {
             String drl = "rule \"R1\" when " +
                 "$a : Applicant(name[starts-with \"Mr\"]) " +
