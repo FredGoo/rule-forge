@@ -10,10 +10,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * V5.43.6 — com.ruleforge.dsl.* 删 dead code 后的"类消失"快照测试。
  *
- * <p>V5.43 删老 .ul DSL 链后,production 运行时不再需要大部分 dsl/ 文件。但
- * {@code DSLRuleSetBuilder} 仍被运维 {@code LegacyXmlMigrator} 工具 jar 引用
- * (一次性的 .xml rule / .ul → .drl 迁移),所以 production jar 仍需保留
- * {@code DSLRuleSetBuilder} 及其 transitive 编译依赖。
+ * <p>V5.43 删老 .ul DSL 链后,production 运行时不再需要大部分 dsl/ 文件。
+ * {@code DSLRuleSetBuilder} 本身**无** caller(production runtime 不可达),
+ * 但其 transitive 编译依赖(ANTLR 生成物 + dsl/builder/)仍合法保留 — 删
+ * DSLRuleSetBuilder 等会同时牵连 ANTLR parser/lexer 编译,得 V5.44 单独
+ * PR 拆出 production 独立 jar。
  *
  * <p>本测试锁**只**删真死代码(无任何 caller 引用,且不是 ANTLR transitive 编译依赖):
  * <ul>
@@ -56,7 +57,7 @@ class DslDeadCodeDeleteTest {
     }
 
     @Test
-    @DisplayName("DSLRuleSetBuilder + RuleParser* ANTLR 生成物 + BuildRulesVisitor + 2 listener 仍保留(LegacyXmlMigrator transitive 依赖)")
+    @DisplayName("DSLRuleSetBuilder + RuleParser* ANTLR 生成物 + BuildRulesVisitor + 2 listener 仍保留(transitive 编译依赖,V5.44 拆出独立 jar)")
     void keptDslClassesStillExist() {
         for (String fqn : List.of(
             "com.ruleforge.dsl.DSLRuleSetBuilder",

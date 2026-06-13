@@ -1,7 +1,6 @@
 package com.ruleforge.builder.table;
 
 import com.ruleforge.builder.resource.Resource;
-import com.ruleforge.exception.ResourceMigrationRequiredException;
 import com.ruleforge.model.table.ScriptDecisionTable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -21,15 +20,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <ul>
  *   <li>删 {@code CellScriptDSLBuilder} / {@code ScriptDecisionTableRulesBuilder} 整文件
  *       — 这两个 class 不再被 classloader 找到</li>
- *   <li>KnowledgeBuilder 遇到 ScriptDecisionTable 资源时,走"老 DSL 链"已被删 — 改为
- *       抛 {@code ResourceMigrationRequiredException} 让运维显式知道要走迁移(暂未实现
- *       ScriptDecisionTable → DRL 转换器,V5.44 单独 PR 补回)</li>
+ *   <li>KnowledgeBuilder 遇到 ScriptDecisionTable 资源时,走"老 DSL 链"已被删 — 走
+ *       V5.42 DRL eval() 替代(暂未实现 ScriptDecisionTable → DRL 转换器,
+ *       V5.44 单独 PR 补回)</li>
  *   <li>KnowledgeBuilder 上下文里 {@code scriptDecisionTableRulesBuilder} setter / field
  *       被移除(bean 在 ruleforge-core-context.xml 也删)</li>
  * </ul>
  *
- * <p>本测试**只**覆盖"删干净" + "KnowledgeBuilder 知道该抛异常",不验证 ScriptDecisionTable
- * → DRL 转换(留 V5.44 单独 PR)。
+ * <p><b>V5.43.8 — 路线 B 收口</b>:ResourceMigrationRequiredException / LegacyXmlMigrator
+ * 已删,本测试不再测"守卫抛"逻辑(全新项目不兼容老格式),仅保留"class 删干净"快照。
  *
  * @since 5.43
  */
