@@ -15,8 +15,19 @@
 
 </div>
 
-> **⚠️ 项目状态：活跃开发中**
-> Phase 1-12 + V5.28-V5.42 已完成 (Rust 端 RETE 引擎 + Java 端 BPMN 2.0 完整化 + 多池协作 + 异步消息 + SPI 化 + 接口分离 + **决策表 → DMN 1.3 (V5.40 路线 B 第一刀,Kie DMN 10.1.0)** + **评分卡 + 决策树 → PMML 4.4 (V5.41 路线 B 第二刀,pmml4s 1.5.6,BSD-2-Clause,非 AGPL-3.0 的 jpmml)** + **规则 + DSL → DRL 4 (V5.42 路线 B 第三刀,自研 ANTLR4 grammar,Apache 2.0 clean,无 Drools runtime)**)。V5.43+ 规划中(删老 .xml/.ul 路径,DRL/PMML/DMN 全标准 IR)。详见 [路线图](docs/roadmap.md) 和 [更新日志](CHANGELOG.md)。
+> **⚠️ 项目状态:活跃开发中。** 路线 B(IR 标准化)V5.40-V5.42 已完成,V5.46/V5.46.1 RETE perf baseline 已落地。V5.43+ 规划中。详见 [路线图](docs/roadmap.md) · [更新日志](CHANGELOG.md)。
+
+### 📌 最近里程碑
+
+| 版本 | 主题 | 一句话 |
+|---|---|---|
+| **V5.46.1** | Rust RETE cache 修 | `EvaluationContext` 跨 fact 缓存污染修,1-shot bench 落到 2.12ms / 1000 fact 真实数字 |
+| V5.46 | RETE perf baseline | Java vs Rust 横向对比,Java 0.16ms / 2000 fact,Rust 2.12ms / 1000 fact |
+| V5.45 | 路线 B 收口 | DRL UI 完整化 + V5.22 AI 收口 |
+| V5.42 | 路线 B 第三刀:DRL 4 | 自研 ANTLR4 grammar(Apache 2.0 clean,无 Drools runtime) |
+| V5.41 | 路线 B 第二刀:PMML 4.4 | scorecard / tree 走 pmml4s 1.5.6(BSD-2-Clause,非 jpmml) |
+| V5.40 | 路线 B 第一刀:DMN 1.3 | decision table 走 Kie DMN 10.1.0 |
+| V5.33-V5.39 | Java 端 BPMN 2.0 完整化 | ParallelGateway / 多池协作 / 异步消息 / SPI 化 / 接口分离 |
 
 ---
 
@@ -96,14 +107,18 @@ graph TB
 - 🧩 **多类型规则** — 向导式规则集、脚本式规则集、决策表、决策树、评分卡、决策流
 - 🔄 **Flowable 8 BPM** — 基于 Flowable 8 的 BPMN 2.0 决策流引擎
 - 🔥 **热部署** — 规则动态更新，无需重启服务
-- **V5.33-V5.36 (Java 端 BPMN 2.0 完整化)** — ParallelGateway 真 JOIN + Multi-Instance parallel + Error/Escalation/Terminate/Cancel/Compensation/Message/Signal EndEvent 严格化 + Compensation SAGA + IntermediateEvent (Message/Signal/Timer/Link/Conditional) + UEL 表达式 + Polling worker
-- **V5.37 (多池协作)** — BPMN §12 Collaboration + Pool + Lane 完整支持,跨池 Message Flow 走 MessageBus transport
-- **V5.37 (对话协议)** — BPMN §11 Choreography IR + parser(纯协议层补完,executor 留给未来)
-- **V5.38 (异步消息)** — MessageBus SPI(InMemoryMessageBus) + FlowResumer 桥接 + Send Task / Receive Task 单 pool 异步回调节点(channel 命名空间 `message:<name>`,跟跨池 `pool:<from>_to_<to>:<name>` 隔离)
-- **V5.39 (SPI 化 + 角色化上下文 + 接口分离)** — `MessageBusProvider` + `MessageBusRegistry` 多实现优先级;`FlowContext` 20 字段 god-object 一次性拆 `FlowIdentity` + `BusinessVars` + `ReteSession` + `SuspendRegistry` 4 角色;`FlowEngine implements StatelessDecisionExecutor, StatefulDecisionFlow` — 纯函数式求值 vs 长生命周期在类型系统层面显式分
-- **V5.40 (路线 B 第一刀:决策表 → DMN 1.3)** — Kie DMN 10.1.0 依赖(`kie-dmn-core` / `kie-dmn-api` / `kie-dmn-feel`)+ `DmnTableDeserializer` (DMN → DecisionTable) + `DmnTableSerializer` (DecisionTable → DMN 1.3 XML) + `DmnResourceDispatcher` (.dmn 单点转换) + `XmlToDmnTableConverter` (一次性 .xml → .dmn 迁移工具);`DecisionTable` model 加 4 字段(`hitPolicy` / `aggregation` / `dialect` / `variableName`)+ 3 个新 enum(`HitPolicy` 7 种 / `Aggregation` 5 种 / `TableDialect` RULEFORGE_NATIVE|DMN);`KnowledgeBuilder.buildKnowledgeBase()` 入口加 `.dmn` 路径分流(7 行改动,老 .xml 路径完全保留并行 0 破坏);console-ui 加 `decisionTableDialect.ts` utility module 镜像后端 enum
-- **V5.41 (路线 B 第二刀:评分卡 + 决策树 → PMML 4.4)** — pmml4s 1.5.6 依赖(`org.pmml4s:pmml4s_2.13`,Scala 2.13 base,BSD-2-Clause,非 jpmml AGPL-3.0)+ `PmmlScorecardDeserializer` / `PmmlTreeDeserializer` (PMML → model 顶层字段)+ `PmmlResourceDispatcher` (.pmml 单点转换)+ `XmlToPmmlScorecardConverter` / `XmlToPmmlTreeConverter` + `LegacyXmlMigrator` (一次性 .xml → .pmml 迁移工具,peek 根元素分派到 scorecard/tree/decision-table converter);`ScorecardDefinition` + `DecisionTree` model 各加 4 字段(`useReasonCodes` / `initialScore` / `baselineMethod` / `reasonCodeAlgorithm` 和 `missingValueStrategy` / `defaultChild` / `functionName` / `splitCharacteristic`);`KnowledgeBuilder` 加 `.pmml` 路径分流(跟 V5.40.4 同款 7 行改动);console-ui 加 `pmmlDialect.ts` utility module + Scorecard/DecisionTree 编辑器顶部 "Source format" badge(V5.41 这一刀不删老 .xml 路径,跟 V5.40 一样保留并行 — V5.42 跟 DRL 一起删)
-- **V5.42 (路线 B 第三刀:规则 + DSL → DRL 4 自研 ANTLR4 grammar)** — **不**走任何 runtime(无 Kie DMN,无 pmml4s,无 Drools — 7 EOL 2023-07,8 强推 Kogito,均不接),纯 ANTLR4 grammar + 自家 visitor + 自家 deserializer;`DrlLexer.g4` + `DrlParser.g4` + maven-antlr-plugin 4.13.2(双 sourceDirectory 跟老 `dsl/` 共存,output 包 `com.ruleforge.drl.*` 隔离);`DrlAstVisitor` 11 attribute 解析(D4:no `import`,类型走 `DatatypeResolver` Map 预注册) + D2 `rule "X_else" extends "X"`;`.dsl/.dslrd` 解析(Drools 6 原生 mapping `[when]X=...,[then]Y=...`,D1 + 跟现有 `.ul` 中文改写版完全平行)+ `${name}` placeholder expander;`UlToDrlConverter`(.ul → .drl,V5.42.3b 保留并行,V5.43 跟 .ul 一起删)+ `XmlToDrlRuleConverter` / `DslToDrlConverter`(老 .xml/.dslrd → .drl 一次性 emit 工具,运维手工跑);`KnowledgeBuilder` `.drl`/`.dsl`/`.dslrd` 路径分流(7 行改动,跟 V5.40.4 / V5.41.4 同款);console-ui `drlDialect.ts` utility + Rule/DSL 编辑器顶部 "Source format" badge;**D3 砍 accumulate reverse 段**(init/action/result 3 段 + 5 内置 count/sum/avg/min/max 够 95% 业务)。老 .xml rule + 老 .ul DSL 路径 100% 保留,530 total tests pass(0 失败,10 skip,464 → 530 = +66)
+
+#### Java 端规则引擎演进
+
+| 版本 | 主题 | 关键交付 |
+|---|---|---|
+| **V5.33-V5.36** | BPMN 2.0 完整化 | ParallelGateway 真 JOIN · Multi-Instance parallel · Error/Escalation/Terminate/Cancel/Compensation/Message/Signal EndEvent 严格化 · Compensation SAGA · IntermediateEvent(Message/Signal/Timer/Link/Conditional)· UEL 表达式 · Polling worker |
+| **V5.37** | 多池协作 + Choreography | BPMN §12 Collaboration + Pool + Lane · 跨池 Message Flow 走 MessageBus · §11 Choreography IR + parser(纯协议层补完) |
+| **V5.38** | 异步消息 | MessageBus SPI(InMemoryMessageBus)· FlowResumer 桥接 · Send Task / Receive Task 异步回调(`message:<name>` / `pool:<from>_to_<to>:<name>` 双命名空间) |
+| **V5.39** | SPI 化 + 接口分离 | `MessageBusProvider` + `MessageBusRegistry` 多实现优先级 · `FlowContext` 20 字段 god-object 拆 `FlowIdentity` + `BusinessVars` + `ReteSession` + `SuspendRegistry` 4 角色 · `StatelessDecisionExecutor` / `StatefulDecisionFlow` 类型系统分 |
+| **V5.40** | 路线 B 第一刀:DMN 1.3 | Kie DMN 10.1.0 · `DmnTableDeserializer/Serializer` · `DmnResourceDispatcher` · `XmlToDmnTableConverter` 迁移工具 · `HitPolicy` × 7 / `Aggregation` × 5 / `TableDialect` enum |
+| **V5.41** | 路线 B 第二刀:PMML 4.4 | pmml4s 1.5.6(BSD-2-Clause,非 jpmml AGPL-3.0)· `PmmlScorecard/TreeDeserializer` · `LegacyXmlMigrator` · Scorecard/DecisionTree 编辑器 "Source format" badge |
+| **V5.42** | 路线 B 第三刀:DRL 4 自研 | ANTLR4 grammar(Apache 2.0 clean,无 Drools runtime)· `DrlLexer.g4` + `DrlParser.g4` + `DrlAstVisitor` 11 attribute · `.dsl` / `.dslrd` / `.ul` → `.drl` 转换器 · 530 tests pass(+66) |
 
 ### 可视化 & 运维
 
@@ -111,6 +126,18 @@ graph TB
 - 🔌 **数据源管理** — REST API、JDBC、Advance AI 多类型数据源接入
 - 📊 **监控与告警** — 决策执行全链路可观测，Micrometer + Prometheus 指标采集
 - 🤖 **Agent 分析** — 决策日志聚合、规则覆盖率、偏差检测，CLI + Skills 供外部 Agent 调用
+
+## 📊 性能(RETE 引擎 · Java vs Rust 横向对比)
+
+> **V5.46/V5.46.1** — 镜像 `mariofusco/drools-benchmark` `EvalBenchmark.run()` workload(1000 fact + 3 rule),Java + Rust 两端跑出 baseline,作为以后改 RETE 代码的对照基线。
+
+| 引擎 | workload | 总时间 | per-fact | 备注 |
+|---|---|---:|---:|---|
+| **RuleForge Java RETE** | 2000 fact + 3 rule fire(1-shot) | **0.16-0.27 ms** | **0.08-0.13 μs** | p50;`no_eval` 0.16ms / `eval` 0.27ms |
+| **RuleForge Rust `rf-rule`** | 1000 fact + 3 rule fire(1-shot) | **2.12 ms** | **2.12 μs** | V5.46.1+;Criterion 0.5 optimized |
+| Drools 7.31 | EvalBenchmark | 0.5-2 ms(估) | 0.25-1 μs | 社区数据,未 own 测 |
+
+> **结论**:Java RETE 已够快(production decision < 0.01 ms),Rust 升格 production **0 收益**。Rust 慢 17-26x 原因:`Arc<dyn Activity>` 动态分发、缺 alpha index、per-fact `HashMap::clean()` 重建。后续 follow-up(V5.47+)只做功能 gap,不做 perf 优化。详见 [RETE perf 完整报告](server/lib/ruleforge-core/src/test/java/com/ruleforge/rete/perf/README.md)。
 
 ## 📦 模块结构
 
