@@ -37,6 +37,29 @@ use serde_json::json;
 
 // ---------- helpers ----------
 
+/// V5.46.1 — `Applicant(name == <name>)` for the multi-fact regression test.
+fn name_eq_crit(name: &str) -> Criteria {
+    Criteria {
+        op: Op::Equals,
+        left: Left {
+            left_type: LeftType::Variable,
+            left_part: LeftPart::Variable {
+                variable_category: Some("Applicant".into()),
+                variable_label: Some("name".into()),
+                variable_name: Some("name".into()),
+                datatype: Some("String".into()),
+            },
+            arithmetic: None,
+        },
+        value: Some(Value::Constant {
+            constant_name: None,
+            constant_label: None,
+            constant_category: None,
+            constant_value: Some(json!(name)),
+        }),
+    }
+}
+
 fn age_crit(min: i64) -> Criteria {
     Criteria {
         op: Op::GreaterThenEquals,
@@ -534,5 +557,80 @@ fn empty_vars_yields_no_activations() {
         // No assert_fact — WorkingMemory is empty.
         let res = engine.fire_rules(&mut ctx).await.unwrap();
         assert!(res.fired_rules.is_empty());
+    });
+}
+
+#[test]
+fn one_shot_fire_evaluates_each_fact_independently() {
+    // V5.46.1 regression lock — without `clean()` between facts
+    // in `fire_rules`, the first fact's `false` would be cached
+    // in `EvaluationContext.criteria_value_map` and all
+    // subsequent facts would be misclassified.
+    //
+    // 4 facts in 1 `fire_rules()`:
+    //   - "uuid-rand-99"  → no rule matches
+    //   - "Mario"         → r-Mario matches
+    //   - "Duncan"        → r-Duncan matches
+    //   - "Toshiya"       → r-Toshiya matches
+    // Expected: 3 fired rules (the non-matching fact's criteria
+    // must not poison the 3 matching facts that follow).
+    let crits = vec![
+        (2, 5, "Mario"),
+        (3, 6, "Duncan"),
+        (4, 7, "Toshiya"),
+    ];
+    let mut nodes: Vec<ReteNode> = Vec::new();
+    let mut otn_lines: Vec<Line> = Vec::new();
+    for (cid, tid, name) in &crits {
+        otn_lines.push(Line { from_node_id: 1, to_node_id: *cid, from: None, to: None });
+        nodes.push(ReteNode::Criteria {
+            id: *cid,
+            debug: false,
+            criteria: name_eq_crit(name),
+            lines: vec![Line { from_node_id: *cid, to_node_id: *tid, from: None, to: None }],
+        });
+        nodes.push(ReteNode::Terminal {
+            id: *tid,
+            rule: simple_rule(&format!("r-{}", name)),
+        });
+    }
+    let otn = ReteNode::ObjectType {
+        id: 1,
+        object_type_class: Some("Applicant".into()),
+        lines: otn_lines,
+    };
+    let kp = KnowledgePackage {
+        rete: Rete {
+            object_type_nodes: vec![otn],
+            activation_group_retes_map: Default::default(),
+            agenda_group_retes_map: Default::default(),
+        },
+        with_else_rules: Default::default(),
+    };
+    let mut wrap = KnowledgePackageWrapper::from_parts("t", kp, nodes, None);
+    wrap.build_deserialize();
+    let engine = ReteRuleEngine::from_wrapper(&wrap);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    rt.block_on(async {
+        let mut ctx = FlowContext::new("t");
+        // Insert 1 non-matching + 3 matching facts in a single
+        // FlowContext, then fire_rules once.
+        ctx.vars.assert_fact("Applicant", json!({"name": "uuid-rand-99"}));
+        ctx.vars.assert_fact("Applicant", json!({"name": "Mario"}));
+        ctx.vars.assert_fact("Applicant", json!({"name": "Duncan"}));
+        ctx.vars.assert_fact("Applicant", json!({"name": "Toshiya"}));
+        let res = engine.fire_rules(&mut ctx).await.unwrap();
+        assert_eq!(
+            res.fired_rules.len(),
+            3,
+            "expected 3 rules fired (one per matching fact), got {:?}",
+            res.fired_rules
+        );
+        assert!(res.fired_rules.contains(&"r-Mario".to_string()));
+        assert!(res.fired_rules.contains(&"r-Duncan".to_string()));
+        assert!(res.fired_rules.contains(&"r-Toshiya".to_string()));
     });
 }

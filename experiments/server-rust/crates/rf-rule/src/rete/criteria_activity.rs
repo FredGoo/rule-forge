@@ -435,7 +435,14 @@ mod tests {
     }
 
     #[test]
-    fn enter_uses_cached_response_on_second_fact() {
+    fn enter_evaluates_freshly_per_fact_when_cleaned() {
+        // V5.46.1 regression lock — without `clean()` between facts
+        // (now called by `ReteRuleEngine::fire_rules` per-fact
+        // production path), the first fact's `EvaluateResponse`
+        // would be reused for the second fact even though its
+        // property values differ. Java's `EvaluationContextImpl`
+        // calls `clean()` end-of-cycle; Rust does it per-fact
+        // since the `EvaluationContext` is local to `fire_rules`.
         use crate::rete::terminal_activity::TerminalActivity;
         let mut a = CriteriaActivity::new(
             make_criteria(Op::GreaterThen, "age", json!(18)),
@@ -448,8 +455,11 @@ mod tests {
         let fact1 = GeneralEntity::new("Applicant").with_field("age", json!(25));
         let out1 = a.enter(&fact1, &mut ctx);
         assert_eq!(out1.len(), 1);
+        // Production path equivalent: `fire_rules` calls `clean()`
+        // between facts.
+        ctx.clean();
         let fact2 = GeneralEntity::new("Applicant").with_field("age", json!(5));
         let out2 = a.enter(&fact2, &mut ctx);
-        assert_eq!(out2.len(), 1, "cached response should be reused");
+        assert_eq!(out2.len(), 0, "age=5 should not match age>18");
     }
 }

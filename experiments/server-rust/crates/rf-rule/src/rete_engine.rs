@@ -137,6 +137,15 @@ impl RuleEngine for ReteRuleEngine {
             for class in otn_classes {
                 let facts: Vec<JsonValue> = wm.borrow().facts_of_class(&class);
                 for v in facts {
+                    // V5.46.1 — clear per-fact caches so the first
+                    // fact's `false` doesn't poison subsequent
+                    // facts. Java has the same cache design but
+                    // calls `clean()` end-of-cycle in
+                    // `KnowledgeSessionImpl.java:279`; Rust does
+                    // the cleanup per-fact instead because
+                    // `EvaluationContext` is local to
+                    // `fire_rules`.
+                    eval.clean();
                     let Some(entity) = fact_from_value(&class, &v) else {
                         continue;
                     };

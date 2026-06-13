@@ -33,31 +33,30 @@ eval     (Person(), Address(), eval(true)):     min=0.22ms  p50=0.27ms  mean=0.2
 ### Rust(`cargo bench -p rf-rule --bench rete_fire`,optimized)
 
 ```
-fire_3_rules_1000_facts_per_fire       (per-fact fresh ctx,correct): 2.34 ms
-fire_3_rules_1000_facts_oneshot_buggy  (1-shot,有 cache bug):       1.72 ms
+fire_3_rules_1000_facts_oneshot  (1-shot,V5.46.1 cache bug 修后): 2.12 ms
 ```
 
 - 100 samples / 3s warmup / Criterion 0.5
-- per-fact-fresh:每个 fact 单独 fresh `FlowContext` + fire 一次(模拟
-  production per-request 模式,workaround Rust engine 的 cache bug)
-- 1000 fact = 2.34 ms,平均 **2.34 μs / fact**
+- 1-shot:insert 1000 fact 一次,fire_rules 一次(跟 Java workload
+  模式一致)— V5.46.1 修 `EvaluationContext::clean()` per-fact 后,
+  跨 fact 缓存污染被切,1-shot 数字有意义
+- 1000 fact = 2.12 ms,平均 **2.12 μs / fact**
 
 ## 对比
 
 | 引擎 | workload | 时间 | per-fact |
 |---|---|---|---|
 | **RuleForge Java RETE 5.0.0** | 2000 fact insert + 3 rule fire(1-shot) | **0.16-0.27ms** | **0.08-0.13 μs** |
-| RuleForge Rust `rf-rule` rete | 1000 fact + 3 rule fire(per-fact fresh) | **2.34ms** | **2.34 μs** |
-| RuleForge Rust `rf-rule` rete | 1000 fact + 3 rule fire(1-shot, buggy) | 1.72ms | 1.72 μs |
+| RuleForge Rust `rf-rule` rete | 1000 fact + 3 rule fire(1-shot, V5.46.1+) | **2.12ms** | **2.12 μs** |
 | Drools 7.31 | EvalBenchmark | 0.5-2ms(估) | 0.25-1 μs |
 | Drools 8/9 | EvalBenchmark | 应比 7.31 快(社区 benchmark 数量级一致) | 没具体数字 |
 
 **结论**:
 - **RuleForge Java RETE 跟 Drools 7.31 同档,甚至略快**。0.16ms / 2000 fact
   production 完全可接受 — 实际 single decision 场景 < 50 fact,< 0.01ms。
-- **Rust `rf-rule` 比 Java 慢 ~20-30x** per fact(2.34 μs vs 0.08 μs)。
+- **Rust `rf-rule` 比 Java 慢 ~17-26x** per fact(2.12 μs vs 0.08 μs)。
   原因猜测(未深挖):Rust 端 dynamic dispatch(`Arc<dyn Activity>`)开销
-  + criteria_value_map cache bug 强制 per-fact fresh ctx + 没用 alpha index。
+  + 没用 alpha index + HashMap `clean()` per-fact。
 - **结论:Rust 路径升格 production 不划算**。Java 已经够快,Rust 迁移成本
   4 周+,0 收益。
 
@@ -83,11 +82,11 @@ V5.46 阶段发现 **Rust 端 workload 比 Java 端更简化**:
   最简 workload。
 - **Rust 端不 insert Address fact**。简化后 Address 不参与匹配,OTN 是
   no-op decoration,insert 也无意义,徒增 bench 时间。
-- **Rust 端 per-fact-fresh ctx workaround**。`EvaluationContext::clean()`
-  只在 unit test 里调,production 路径不调,多 fact 一次 fire_rules 时
-  `criteria_value_map` 缓存第一个 fact 的 `false` 一直复用,后面 999 条
-  全错判。这是 Rust engine 真 bug,留 V5.46+ 单独 PR 修。本 bench 用
-  per-fact fresh ctx workaround,模拟 production per-request 模式。
+
+**V5.46.1 update** — `EvaluationContext::clean()` bug 已修:
+`ReteRuleEngine::fire_rules` per-fact 内层循环顶部调 `eval.clean()`,
+跨 fact 缓存污染被切。V5.46 阶段的 per-fact-fresh `FlowContext` workaround
+不再需要,bench 1-shot 数字现在有意义(2.12ms / 1000 fact)。
 
 ## 跑法
 
@@ -112,30 +111,29 @@ cargo bench -p rf-rule --bench rete_fire
 
 输出:
 ```
-fire_3_rules_1000_facts_per_fire       time:   [2.32 ms 2.34 ms 2.35 ms]
-fire_3_rules_1000_facts_oneshot_buggy  time:   [1.71 ms 1.72 ms 1.72 ms]
+fire_3_rules_1000_facts_oneshot  time:   [2.10 ms 2.12 ms 2.13 ms]
 ```
 
 ## 已知限制 / 未来扩展
 
 - [x] **Rust baseline**(V5.46 完成)— `experiments/server-rust/crates/rf-rule/benches/rete_fire.rs`
   criterion dep + 1000-fact / 3-rule workload + Java vs Rust 直接数字对比
-- [ ] **Rust `EvaluationContext::clean()` bug fix** — production 路径也要
-  `clean()`(`fire_rules` 每次开始前),否则多 fact 一次 fire_rules 错判
+- [x] **Rust `EvaluationContext::clean()` bug fix**(V5.46.1 完成)— `ReteRuleEngine::fire_rules`
+  per-fact 内层循环顶部加 `eval.clean()`,切跨 fact 缓存污染;1-shot
+  bench 从"有 bug 不量"变成"2.12ms 量级正确数字";`cross_impl_test.rs`
+  加 multi-fact 1-shot BDD 锁行为
 - [ ] **Rust alpha index 优化** — 跟 Java 一样为 hot criteria 加 alpha
   index。可能让 Rust 跑到跟 Java 同一量级(0.1-0.3 ms)
-- [ ] **Rust bench 1-shot 模式** — 等 cache bug 修后,跟 Java 1-shot 直接对比
 - [ ] **大 fact 规模** stress test:100k / 1M fact,看 O(n) 退化情况
 - [ ] **复杂 rule** stress test:5-alpha-node deep join chain + shared beta memory
 - [ ] **replace 没用 JMH** 是个简化:加 JMH dep 走 `mvn jmh:benchmark` 更标准
 - [ ] **Drools 真 baseline**:实际跑 Drools 7.31 jar + EvalBenchmark,出真实数字
   (本 README 估的 0.5-2ms 是社区数据,不是我们 own 测的)
 
-## 不在 V5.46 范围
+## 不在 V5.46.1 范围
 
 - alpha index 优化(Java 端):**不需要**。1.7x 提升 = 0.1ms 节省,不抵
   1 周改 + 回归测试
 - Rust 路径升格 production:**不需要**。Java 现状够快,Rust 迁移成本 4 周+ 0 收益
-- DRL 4 binding 提取:跟性能无关,**功能 gap**,留 V5.46+ 单独 PR(2 周)
-- Rust `EvaluationContext::clean()` bug fix:留 V5.46+ 单独 PR(1 天)
-- Rust alpha index 优化:留 V5.46+ 单独 PR,值得做(2.34ms → 0.3ms 量级)
+- DRL 4 binding 提取:跟性能无关,**功能 gap**,留 V5.47+ 单独 PR(2 周)
+- Rust alpha index 优化:留 V5.47+ 单独 PR,值得做(2.12ms → 0.3ms 量级)

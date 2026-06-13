@@ -155,30 +155,12 @@ fn prepare_facts() -> Vec<JsonValue> {
     persons
 }
 
-/// 单次 run(per-fact-fresh 模式):每个 fact 单独 fire 一次,模拟
-/// production per-request 模式。
-///
-/// **V5.46 limitation** — Rust `rf-rule` `EvaluationContext::clean()` 只在
-/// unit test 里调,production 路径**不**调 — 也就是多 fact 一次 fire_rules
-/// 时,criteria_value_map 缓存第一个 fact 的 `false` 一直复用,后面的
-/// fact 全被错判为不匹配。这是 Rust engine 真 bug,留 V5.46+ 单独 PR 修。
-/// 本 bench workaround:每个 fact 单独 fire 一次(用 fresh `FlowContext`),
-/// 模拟 production per-request 模式。
-async fn run_once_per_fire(engine: &ReteRuleEngine, persons: &[JsonValue]) -> usize {
-    let mut total = 0;
-    for p in persons {
-        let mut ctx = FlowContext::new("bench");
-        ctx.vars.assert_fact("Person", p.clone());
-        let res = engine.fire_rules(&mut ctx).await.unwrap();
-        total += res.fired_rules.len();
-    }
-    total
-}
-
 /// 单次 run(1-shot 模式):insert 1000 fact 一次,fire_rules 一次。
-/// **有 bug** — 第一条 fact 不匹配时,cached false 复用,后面 999 条
-/// 全错判。只用来跟 Java 端 1-shot 数字对比,期望差几个数量级。
-async fn run_once_oneshot(engine: &ReteRuleEngine, persons: &[JsonValue]) -> usize {
+///
+/// **V5.46.1** — `EvaluationContext::clean()` 现在在 `fire_rules` per-fact
+/// 循环顶部调,跨 fact 缓存污染被切。1-shot 现在等价于"1000 次连续
+/// 1-fact 评估"的总和,跟 per-fact-fresh 模式行为一致。
+async fn run_once(engine: &ReteRuleEngine, persons: &[JsonValue]) -> usize {
     let mut ctx = FlowContext::new("bench");
     for p in persons {
         ctx.vars.assert_fact("Person", p.clone());
@@ -195,23 +177,14 @@ fn bench_fire(c: &mut Criterion) {
         .build()
         .unwrap();
 
-    // sanity: per-fact-fresh 模式应 fire 3 次
-    let fired = rt.block_on(run_once_per_fire(&engine, &persons));
-    assert_eq!(fired, 3, "V5.46 bench per-fire 应 fire 3 条 rule,实际 {fired}");
+    // sanity: 应 fire 3 次(3 个 special Person:Mario / Duncan / Toshiya)
+    let fired = rt.block_on(run_once(&engine, &persons));
+    assert_eq!(fired, 3, "V5.46.1 bench 应 fire 3 条 rule,实际 {fired}");
 
-    c.bench_function("fire_3_rules_1000_facts_per_fire", |b| {
+    c.bench_function("fire_3_rules_1000_facts_oneshot", |b| {
         b.iter(|| {
             let n = rt.block_on(async {
-                run_once_per_fire(black_box(&engine), black_box(&persons)).await
-            });
-            black_box(n);
-        });
-    });
-
-    c.bench_function("fire_3_rules_1000_facts_oneshot_buggy", |b| {
-        b.iter(|| {
-            let n = rt.block_on(async {
-                run_once_oneshot(black_box(&engine), black_box(&persons)).await
+                run_once(black_box(&engine), black_box(&persons)).await
             });
             black_box(n);
         });
