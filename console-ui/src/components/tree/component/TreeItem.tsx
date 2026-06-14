@@ -147,12 +147,46 @@ class TreeItem extends Component<TreeItemProps, TreeItemState> {
                 <li>
                     <span id={spanId} onContextMenu={this._handleContextMenu} onClick={(e) => {
                         if (isFile) {
-                            // 规则集 (.rs.xml) 走 React SPA 编辑器:新标签打开 /app/editor/ruleset,
-                            // 不走原 iframe (editor.html?type=ruleset)。其他 type 完全不变。
+                            // 已完成 SPA 化的 React 编辑器集合:新标签打开 /app/editor/<type>,
+                            // 不走原 iframe (editor.html?type=...)。判断优先级:data.type 直配 >
+                            // 文件扩展名 > public 资源树(treeType==='public')。
+                            // - ruleset (rule / .rs.xml) → /app/editor/ruleset
+                            // - variable (.vl.xml) / constant (.cl.xml) / parameter (.pl.xml)
+                            //   / action (.al.xml) → 对应 /app/editor/<type>
+                            // - public 资源 (treeType==='public',原 /html/editor.html?type=resource)
+                            //   → /app/editor/resource
                             const isRuleset = data.type === 'rule'
                                 || (typeof data.fullPath === 'string' && data.fullPath.endsWith('.rs.xml'));
                             if (isRuleset) {
                                 window.open('/app/editor/ruleset?file=' + encodeURIComponent(data.fullPath), '_blank');
+                                return;
+                            }
+
+                            // 变量库 / 常量库 / 参数库 / 动作库:按 data.type + 完整文件后缀双判定
+                            // (注意是 .vl.xml / .cl.xml / .pl.xml / .al.xml 这种双扩展名)
+                            const libTypeByData: string | null =
+                                data.type === 'variable' ? 'variable'
+                                : data.type === 'constant' ? 'constant'
+                                : data.type === 'parameter' ? 'parameter'
+                                : data.type === 'action' ? 'action'
+                                : null;
+                            const libTypeByExt: string | null = typeof data.fullPath === 'string'
+                                ? (data.fullPath.endsWith('.vl.xml') ? 'variable'
+                                    : data.fullPath.endsWith('.cl.xml') ? 'constant'
+                                    : data.fullPath.endsWith('.pl.xml') ? 'parameter'
+                                    : data.fullPath.endsWith('.al.xml') ? 'action'
+                                    : null)
+                                : null;
+                            const libType = libTypeByData || libTypeByExt;
+                            if (libType) {
+                                window.open('/app/editor/' + libType + '?file=' + encodeURIComponent(data.fullPath), '_blank');
+                                return;
+                            }
+
+                            // 公共资源树(treeType==='public'):原走 /html/editor.html?type=resource,
+                            // 现 SPA 化为 /app/editor/resource
+                            if (this.props.treeType === 'public') {
+                                window.open('/app/editor/resource?file=' + encodeURIComponent(data.fullPath), '_blank');
                                 return;
                             }
 

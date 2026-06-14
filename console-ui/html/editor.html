@@ -28,7 +28,7 @@
             analysis: '决策分析', ruleset: '决策集编辑器', decisiontable: '决策表编辑器',
             scriptdecisiontable: '脚本式决策表编辑器', decisiontree: '决策树编辑器',
             crosstab: '交叉决策表编辑器', complexscorecard: '复杂评分卡编辑器',
-            flowbpmn: '决策流设计器', scorecard: '评分卡编辑器', ul: '脚本编辑器'
+            flowbpmn: '决策流设计器', scorecard: '评分卡编辑器'
         };
         document.title = titles[T] || 'Editor';
 
@@ -103,11 +103,6 @@
             // toolbar + tableContainer + actionContainer + dialog
             case 'scorecard':
                 dom = '<div id="toolbarContainer"></div><div id="tableContainer" style="margin-top:5px;margin-left:3px"></div><div id="actionContainer"></div><div id="dialogContainer"></div>';
-                break;
-
-            // toolbar + textarea + dialog
-            case 'ul':
-                dom = '<div id="toolbarContainer"></div><textarea id="codeEditor"></textarea><div id="dialogContainer"></div>';
                 break;
         }
         if (dom) document.body.insertAdjacentHTML('afterbegin', dom);

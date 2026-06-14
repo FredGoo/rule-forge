@@ -18,6 +18,11 @@ import {RequireAuth} from '@/router/RequireAuth';
  */
 const FrameApp = lazy(() => import('@/frame'));
 const EditorRoute = lazy(() => import('@/editor/ruleforge/react/EditorRoute'));
+const VariableEditorRoute = lazy(() => import('@/variable/EditorRoute'));
+const ConstantEditorRoute = lazy(() => import('@/constant/EditorRoute'));
+const ParameterEditorRoute = lazy(() => import('@/parameter/EditorRoute'));
+const ActionEditorRoute = lazy(() => import('@/action/EditorRoute'));
+const ResourceEditorRoute = lazy(() => import('@/resource/EditorRoute'));
 
 createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
@@ -27,6 +32,11 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/app" element={<RequireAuth/>}>
                 <Route index element={<Suspense fallback={<div style={{padding: 24}}>加载中…</div>}><FrameApp/></Suspense>}/>
                 <Route path="editor/ruleset" element={<EditorRoute/>}/>
+                <Route path="editor/variable" element={<VariableEditorRoute/>}/>
+                <Route path="editor/constant" element={<ConstantEditorRoute/>}/>
+                <Route path="editor/parameter" element={<ParameterEditorRoute/>}/>
+                <Route path="editor/action" element={<ActionEditorRoute/>}/>
+                <Route path="editor/resource" element={<ResourceEditorRoute/>}/>
             </Route>
         </Routes>
     </BrowserRouter>,

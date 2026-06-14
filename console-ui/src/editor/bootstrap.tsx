@@ -26,7 +26,6 @@ const editors: Record<string, () => Promise<unknown>> = {
     drl:                   () => import('./drleditor/index.jsx'),
     flowbpmn:              () => import('../flow-bpmn/index.jsx'),
     scorecard:             () => import('../scorecard/index.jsx'),
-    ul:                    () => import('./ul/index.jsx'),
 };
 
 const loader = editors[type];
