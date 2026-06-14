@@ -171,6 +171,34 @@ class TreeItem extends Component<TreeItemProps, TreeItemState> {
                                 return;
                             }
 
+                            // 脚本式决策表 (scriptDecisionTable / .sdt.xml) → /app/editor/scriptdecisiontable
+                            // React 重写,替代原 iframe editor.html?type=scriptdecisiontable。
+                            // 与决策表共享列/行/库结构,单元格内容是 UL 脚本(CDATA)。
+                            const isScriptDecisionTable = data.type === 'scriptDecisionTable'
+                                || (typeof data.fullPath === 'string' && data.fullPath.endsWith('.sdt.xml'));
+                            if (isScriptDecisionTable) {
+                                window.open('/app/editor/scriptdecisiontable?file=' + encodeURIComponent(data.fullPath), '_blank');
+                                return;
+                            }
+
+                            // 评分卡 (scorecard / .sc.xml) → /app/editor/scorecard
+                            // React 重写,替代原 iframe editor.html?type=scorecard。
+                            const isScoreCard = data.type === 'scorecard'
+                                || (typeof data.fullPath === 'string' && data.fullPath.endsWith('.sc.xml'));
+                            if (isScoreCard) {
+                                window.open('/app/editor/scorecard?file=' + encodeURIComponent(data.fullPath), '_blank');
+                                return;
+                            }
+
+                            // 交叉决策表 (crosstab / .ct.xml) → /app/editor/crosstab
+                            // React 重写,替代原 iframe editor.html?type=crosstab。
+                            const isCrosstab = data.type === 'crosstab'
+                                || (typeof data.fullPath === 'string' && data.fullPath.endsWith('.ct.xml'));
+                            if (isCrosstab) {
+                                window.open('/app/editor/crosstab?file=' + encodeURIComponent(data.fullPath), '_blank');
+                                return;
+                            }
+
                             // 变量库 / 常量库 / 参数库 / 动作库:按 data.type + 完整文件后缀双判定
                             // (注意是 .vl.xml / .cl.xml / .pl.xml / .al.xml 这种双扩展名)
                             const libTypeByData: string | null =

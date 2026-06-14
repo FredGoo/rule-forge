@@ -103,14 +103,26 @@ function parseProperties(root: Element): TableProperty[] {
   return props;
 }
 
-function parseRow(el: Element): Row {
+/**
+ * Parse a `<row num height/>` element.
+ *
+ * Exported so the script-decision-table model can reuse it — the row wire
+ * format is identical between the two rule types.
+ */
+export function parseRow(el: Element): Row {
   return {
     num: parseInt(el.getAttribute('num') ?? '0', 10),
     height: parseInt(el.getAttribute('height') ?? '40', 10),
   };
 }
 
-function parseColumn(el: Element): Column {
+/**
+ * Parse a `<col num width type [var-category var var-label datatype]/>` element.
+ *
+ * Exported so the script-decision-table model can reuse it — the column wire
+ * format is identical between the two rule types.
+ */
+export function parseColumn(el: Element): Column {
   const col: Column = {
     num: parseInt(el.getAttribute('num') ?? '0', 10),
     type: (el.getAttribute('type') ?? 'Criteria') as ColumnType,

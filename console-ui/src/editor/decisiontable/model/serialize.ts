@@ -53,8 +53,13 @@ function serializeProperty(prop: TableProperty): string {
   return prop.name + '="' + esc(prop.value) + '"';
 }
 
-/** `<import-{type}-library path="…"/>` for one of the four library kinds. */
-function serializeLibrary(lib: LibraryImport): string {
+/**
+ * `<import-{type}-library path="…"/>` for one of the four library kinds.
+ *
+ * Exported so the script-decision-table model can reuse it — the library wire
+ * format is identical between the two rule types.
+ */
+export function serializeLibrary(lib: LibraryImport): string {
   const tag =
     lib.type === 'Variable' ? 'import-variable-library'
       : lib.type === 'Constant' ? 'import-constant-library'
@@ -63,8 +68,13 @@ function serializeLibrary(lib: LibraryImport): string {
   return '<' + tag + ' path="' + esc(lib.path) + '"/>';
 }
 
-/** `<col num width type [var-category var var-label datatype]/>`. */
-function serializeColumn(col: Column): string {
+/**
+ * `<col num width type [var-category var var-label datatype]/>`.
+ *
+ * Exported so the script-decision-table model can reuse it — the column wire
+ * format is identical between the two rule types.
+ */
+export function serializeColumn(col: Column): string {
   let attrs =
     ' num="' + col.num + '"' +
     ' width="' + col.width + '"' +
@@ -79,8 +89,13 @@ function serializeColumn(col: Column): string {
   return '<col' + attrs + '/>';
 }
 
-/** `<row num height/>`. */
-function serializeRow(row: Row): string {
+/**
+ * `<row num height/>`.
+ *
+ * Exported so the script-decision-table model can reuse it — the row wire
+ * format is identical between the two rule types.
+ */
+export function serializeRow(row: Row): string {
   return '<row num="' + row.num + '" height="' + row.height + '"/>';
 }
 
