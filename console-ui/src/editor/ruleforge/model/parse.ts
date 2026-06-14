@@ -204,7 +204,7 @@ function parseAtom(el: Element): Extract<ConditionNode, { kind: 'atom' }> {
   return atom;
 }
 
-function parseLeft(el: Element): LeftValue {
+export function parseLeft(el: Element): LeftValue {
   const type = (el.getAttribute('type') ?? 'variable') as LeftValue['type'];
   const left: LeftValue = { type };
   switch (type) {

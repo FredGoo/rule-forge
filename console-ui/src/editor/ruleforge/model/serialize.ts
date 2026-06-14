@@ -202,8 +202,12 @@ function serializeAtom(node: Extract<ConditionNode, { kind: 'atom' }>): string {
  *
  * For method/commonfunction lefts the parameters/parameter children go inside
  * the `<left>` element, before any `<simple-arith>`.
+ *
+ * Exported because the decisiontree editor reuses the exact same `<left>`
+ * wire format inside <variable-tree-node> — sharing this function keeps the
+ * two editors byte-for-byte consistent.
  */
-function serializeLeft(left: LeftValue): string {
+export function serializeLeft(left: LeftValue): string {
   let attrs = '';
   switch (left.type) {
     case 'variable':

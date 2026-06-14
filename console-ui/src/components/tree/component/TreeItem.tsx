@@ -162,6 +162,16 @@ class TreeItem extends Component<TreeItemProps, TreeItemState> {
                                 return;
                             }
 
+                            // 决策树 (decisionTree / .dtree.xml) → /app/editor/decisiontree
+                            // React 重写,替代原 iframe + Raphael 画布 editor.html?type=decisiontree。
+                            // 注意:.dtree.xml 是决策树,.dt.xml 是决策表(不同扩展名)。
+                            const isDecisionTree = data.type === 'decisionTree'
+                                || (typeof data.fullPath === 'string' && data.fullPath.endsWith('.dtree.xml'));
+                            if (isDecisionTree) {
+                                window.open('/app/editor/decisiontree?file=' + encodeURIComponent(data.fullPath), '_blank');
+                                return;
+                            }
+
                             // 决策表 (decisionTable / .dt.xml) → /app/editor/decisiontable
                             // React 重写,替代原 iframe editor.html?type=decisionTable。
                             const isDecisionTable = data.type === 'decisionTable'
@@ -187,6 +197,17 @@ class TreeItem extends Component<TreeItemProps, TreeItemState> {
                                 || (typeof data.fullPath === 'string' && data.fullPath.endsWith('.sc.xml'));
                             if (isScoreCard) {
                                 window.open('/app/editor/scorecard?file=' + encodeURIComponent(data.fullPath), '_blank');
+                                return;
+                            }
+
+                            // 复杂评分卡 (complexscorecard / .complexscorecard) → /app/editor/complexscorecard
+                            // React 重写,替代原 iframe editor.html?type=complexscorecard。
+                            // 文件后缀 = FileType.ComplexScorecard.toString().toLowerCase() = "complexscorecard"
+                            // (后端 ComplexScorecardFileRefactor.support 用 path.toLowerCase().endsWith("complexscorecard") 判定)。
+                            const isComplexScoreCard = data.type === 'complexscorecard'
+                                || (typeof data.fullPath === 'string' && data.fullPath.toLowerCase().endsWith('.complexscorecard'));
+                            if (isComplexScoreCard) {
+                                window.open('/app/editor/complexscorecard?file=' + encodeURIComponent(data.fullPath), '_blank');
                                 return;
                             }
 

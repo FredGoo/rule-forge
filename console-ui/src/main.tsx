@@ -30,7 +30,9 @@ const DrlEditorRoute = lazy(() => import('@/editor/drleditor/EditorRoute'));
 const DecisionTableEditorRoute = lazy(() => import('@/editor/decisiontable/react/EditorRoute'));
 const ScriptDecisionTableEditorRoute = lazy(() => import('@/editor/scriptdecisiontable/react/EditorRoute'));
 const ScoreCardEditorRoute = lazy(() => import('@/editor/scorecard/react/EditorRoute'));
+const ComplexScoreCardEditorRoute = lazy(() => import('@/editor/complexscorecard/react/EditorRoute'));
 const CrosstabEditorRoute = lazy(() => import('@/editor/crosstab/react/EditorRoute'));
+const DecisionTreeEditorRoute = lazy(() => import('@/editor/decisiontree/react/EditorRoute'));
 
 createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
@@ -52,7 +54,9 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="editor/decisiontable" element={<DecisionTableEditorRoute/>}/>
                 <Route path="editor/scriptdecisiontable" element={<ScriptDecisionTableEditorRoute/>}/>
                 <Route path="editor/scorecard" element={<ScoreCardEditorRoute/>}/>
+                <Route path="editor/complexscorecard" element={<ComplexScoreCardEditorRoute/>}/>
                 <Route path="editor/crosstab" element={<CrosstabEditorRoute/>}/>
+                <Route path="editor/decisiontree" element={<DecisionTreeEditorRoute/>}/>
             </Route>
         </Routes>
     </BrowserRouter>,
