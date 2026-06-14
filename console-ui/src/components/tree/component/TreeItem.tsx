@@ -258,6 +258,16 @@ class TreeItem extends Component<TreeItemProps, TreeItemState> {
                                 return;
                             }
 
+                            // 决策流 (flow / bpmn-js / .rl.xml) → /app/editor/flow
+                            // SPA 化,替代原 iframe editor.html?type=flowbpmn。
+                            // FlowEditor.tsx (bpmn-js React 包装) + EditorRoute 复现 index.tsx 挂载。
+                            const isFlow = data.type === 'flow'
+                                || (typeof data.fullPath === 'string' && data.fullPath.endsWith('.rl.xml'));
+                            if (isFlow) {
+                                window.open('/app/editor/flow?file=' + encodeURIComponent(data.fullPath), '_blank');
+                                return;
+                            }
+
                             const editorBasePath = this.props.treeType === 'public' ? '/html/editor.html?type=resource' : data.editorPath;
 
                             let url = buildEditorUrl(editorBasePath, data.fullPath);
