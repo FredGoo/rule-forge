@@ -93,6 +93,15 @@ Deployable executor with RestTemplate config for console communication.
 
 ## Development Principles
 
+### 最高优先级:agent 连续性 & 长时间自主
+
+本项目的工程规则围绕一个最高优先级:**让 agent 能连续、长时间自主运行,不被不必要的中断打断**。下面所有规则(BDD/TDD、Sub-task 工作流、分支策略、模块边界)都服务于它;**任何规则与之冲突时,以连续性为准**。
+
+- **默认不中断**:写测试、写实现、推进 sub-task、写文档都不 ask user,直接做
+- **一个特性一个分支连续做完再一次 PR**,不中途拆(拆 = 合并→切 main→开分支,中断推进)
+- **只有这三种情况才中断问用户**:① 方案选型影响大、有多种合理路径 ② 破坏性/不可逆风险 ③ 缺关键信息无法继续 —— 三种之外不问
+- **长时间运行管 context**:接近上限主动 `/compact`,或每个 sub-task 完成立即 commit(即使 context 丢失,也能从 commit 继续,不丢进度)
+
 ### BDD/TDD
 
 - Follow Behavior Driven Development practices for test writing:
@@ -121,10 +130,7 @@ Deployable executor with RestTemplate config for console communication.
 | **Feature** | 任意特性(feature) | **不**要求严格 +1,可以跳号(3.1.3 → 3.1.4 → 3.5.3,跳过未做的小版本) |
 | **Fix** | 修小 bug / 增量迁移 | 同 Feature 内的后续微调(补字段、bugfix) |
 
-跟标准 SemVer 的区别:
-- Feature 位不严格递增 — 项目里跳号是历史事实,延续这个习惯
-- Major 不绑定"破坏性" — V3 → V5 是 2024-2025 里程碑(gr_* 换 rf_*,MyBatis-Plus 升级),不是 API breaking
-- Flyway 跟 Maven 版本号不强绑定 — Maven version 是 1.0.0 / 4.0.6(Spring Boot),Flyway migration 用项目自己的节奏
+跟标准 SemVer 的区别:Feature 位可跳号(历史习惯)、Major 不绑定"破坏性"(V3→V5 是里程碑,非 API breaking)、Flyway 跟 Maven 版本号不强绑定。
 
 **硬规则:已发布在 dev / 生产 DB 上的版本号不允许改写**(改了 Flyway checksum 校验失败);要"修"已发布的版本只能再发一个 `V{同号}.{+1}__*.sql`。
 
@@ -149,15 +155,9 @@ Deployable executor with RestTemplate config for console communication.
 - `com.ruleforge.decision.entity.*`    → executor-app / `ruleforgeDataSource` 在 executor 侧
 - `com.ruleforge.console.*` (storage / flow / batchtest / migration / observability) → console 模块,可在 console-app 直接用
 
-**一次性批处理工具(回填 / 迁移 / dual-write 补偿)的实现准则**:
-- **优先 raw JDBC + `PreparedStatement`**,不要套 MyBatis-Plus `@Mapper` + `Entity`
-- 抽象成本 ≥ 实际收益:这类工具跑一次就完事,以后改 schema 改 1-2 个文件比维护一套 mapper 注解省事
-- 不要借其他 app 的 entity(强制规则同 Module Boundaries)— 用本地 `record` DTO 镜像行结构
-- `BATCH_SIZE` + lastId 分页是 MySQL 大表标准打法
-- 单行失败 catch + `log.warn` 跳过,不要让一条脏数据中断整个 batch
-- 写测试锁边界:构造器签名 = 期望的 DataSource 类型 + 字段不出现跨模块 import — 防止以后 PR 又把跨模块引用塞回来
+**一次性批处理工具(回填/迁移/dual-write 补偿)准则**:优先 raw JDBC + `PreparedStatement`(不套 @Mapper/Entity,跑一次就完事)、不借其他 app entity(用本地 `record` DTO)、`BATCH_SIZE`+lastId 分页、单行失败 catch+log.warn 跳过、测试锁构造器签名(DataSource 类型 + 无跨模块 import)。
 
-**反面教材**:`ClickHouseBackfillRunner` (Phase 8) 同时违反上面三条 — console 借 executor 的 entity、注入错的 DataSource、用 mapper 而不是 JDBC。结果 main 合并后 `mvn package` 直接失败,生产 jar 一直打不出来。修法见 CHANGELOG `fix/phase8-clickhouse-backfill-self-contained`。
+**反面教材**:`ClickHouseBackfillRunner`(Phase 8)违反三条 → main 合并后 `mvn package` 失败,生产 jar 打不出。修法见 CHANGELOG `fix/phase8-clickhouse-backfill-self-contained`。
 
 ## Rule Types
 
