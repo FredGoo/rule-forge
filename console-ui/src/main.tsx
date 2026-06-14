@@ -17,6 +17,7 @@ import {RequireAuth} from '@/router/RequireAuth';
  * <p>{@code login.html}/{@code frame.html} 仍可独立访问(MPA 回退,editor 阶段 3 前必需)。
  */
 const FrameApp = lazy(() => import('@/frame'));
+const EditorRoute = lazy(() => import('@/editor/ruleforge/react/EditorRoute'));
 
 createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
@@ -25,6 +26,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/login" element={<LoginPage/>}/>
             <Route path="/app" element={<RequireAuth/>}>
                 <Route index element={<Suspense fallback={<div style={{padding: 24}}>加载中…</div>}><FrameApp/></Suspense>}/>
+                <Route path="editor/ruleset" element={<EditorRoute/>}/>
             </Route>
         </Routes>
     </BrowserRouter>,
