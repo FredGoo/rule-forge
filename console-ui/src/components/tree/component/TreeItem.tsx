@@ -147,6 +147,15 @@ class TreeItem extends Component<TreeItemProps, TreeItemState> {
                 <li>
                     <span id={spanId} onContextMenu={this._handleContextMenu} onClick={(e) => {
                         if (isFile) {
+                            // 规则集 (.rs.xml) 走 React SPA 编辑器:新标签打开 /app/editor/ruleset,
+                            // 不走原 iframe (editor.html?type=ruleset)。其他 type 完全不变。
+                            const isRuleset = data.type === 'rule'
+                                || (typeof data.fullPath === 'string' && data.fullPath.endsWith('.rs.xml'));
+                            if (isRuleset) {
+                                window.open('/app/editor/ruleset?file=' + encodeURIComponent(data.fullPath), '_blank');
+                                return;
+                            }
+
                             const editorBasePath = this.props.treeType === 'public' ? '/html/editor.html?type=resource' : data.editorPath;
 
                             let url = buildEditorUrl(editorBasePath, data.fullPath);
