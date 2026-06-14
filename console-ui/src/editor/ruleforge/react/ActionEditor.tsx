@@ -17,6 +17,7 @@ import { DeleteOutlined } from '@ant-design/icons';
 import type { Action, MethodParam, ValueExpr } from '../model/types';
 import { ACTION_KIND_OPTIONS, VAR_ASSIGN_TYPE_OPTIONS } from './constants';
 import { ValueEditor } from './ValueEditor';
+import { FieldLabel } from './FieldLabel';
 
 export interface ActionEditorProps {
   /** The current action (controlled). */
@@ -79,7 +80,7 @@ export function ActionEditor({ value, onChange, onDelete }: ActionEditorProps) {
           <div style={{ marginBottom: 8 }}>
             <Input
               size="small"
-              addonBefore="变量分类"
+              prefix={<FieldLabel>变量分类</FieldLabel>}
               placeholder="如 客户.客户"
               value={value.varCategory}
               onChange={(e) => onChange({ ...value, varCategory: e.target.value })}
@@ -88,7 +89,7 @@ export function ActionEditor({ value, onChange, onDelete }: ActionEditorProps) {
           <div style={{ marginBottom: 8 }}>
             <Input
               size="small"
-              addonBefore="变量名"
+              prefix={<FieldLabel>变量名</FieldLabel>}
               placeholder="如 result"
               value={value.var}
               onChange={(e) => onChange({ ...value, var: e.target.value })}
@@ -97,7 +98,7 @@ export function ActionEditor({ value, onChange, onDelete }: ActionEditorProps) {
           <div style={{ marginBottom: 8 }}>
             <Input
               size="small"
-              addonBefore="标签"
+              prefix={<FieldLabel>标签</FieldLabel>}
               placeholder="如 结果"
               value={value.varLabel}
               onChange={(e) => onChange({ ...value, varLabel: e.target.value })}
@@ -121,7 +122,7 @@ export function ActionEditor({ value, onChange, onDelete }: ActionEditorProps) {
           <div style={{ marginBottom: 8 }}>
             <Input
               size="small"
-              addonBefore="bean"
+              prefix={<FieldLabel>bean</FieldLabel>}
               placeholder="bean-name"
               value={value.bean}
               onChange={(e) => onChange({ ...value, bean: e.target.value })}
@@ -130,7 +131,7 @@ export function ActionEditor({ value, onChange, onDelete }: ActionEditorProps) {
           <div style={{ marginBottom: 8 }}>
             <Input
               size="small"
-              addonBefore="方法"
+              prefix={<FieldLabel>方法</FieldLabel>}
               placeholder="method-name"
               value={value.methodName}
               onChange={(e) => onChange({ ...value, methodName: e.target.value })}
@@ -139,7 +140,7 @@ export function ActionEditor({ value, onChange, onDelete }: ActionEditorProps) {
           <div style={{ marginBottom: 8 }}>
             <Input
               size="small"
-              addonBefore="标签"
+              prefix={<FieldLabel>标签</FieldLabel>}
               placeholder="method-label"
               value={value.methodLabel}
               onChange={(e) => onChange({ ...value, methodLabel: e.target.value })}
@@ -157,7 +158,7 @@ export function ActionEditor({ value, onChange, onDelete }: ActionEditorProps) {
           <div style={{ marginBottom: 8 }}>
             <Input
               size="small"
-              addonBefore="函数"
+              prefix={<FieldLabel>函数</FieldLabel>}
               placeholder="function-name"
               value={value.functionName}
               onChange={(e) => onChange({ ...value, functionName: e.target.value })}
@@ -166,7 +167,7 @@ export function ActionEditor({ value, onChange, onDelete }: ActionEditorProps) {
           <div style={{ marginBottom: 8 }}>
             <Input
               size="small"
-              addonBefore="标签"
+              prefix={<FieldLabel>标签</FieldLabel>}
               placeholder="function-label"
               value={value.functionLabel}
               onChange={(e) => onChange({ ...value, functionLabel: e.target.value })}

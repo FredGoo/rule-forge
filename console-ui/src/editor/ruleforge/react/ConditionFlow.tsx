@@ -202,7 +202,7 @@ function ConditionNodeBody({ id, data, selected }: NodeBodyProps) {
     const junction = node;
     return (
       <div style={containerStyle} data-testid="rf-node" data-rf-id={id} data-rf-kind="junction">
-        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={4} style={{ width: '100%' }}>
           <Space>
             <Tag color={junction.type === 'and' ? 'blue' : 'orange'} style={{ margin: 0 }}>
               {junction.type === 'and' ? '并且' : '或者'}
@@ -255,7 +255,7 @@ function ConditionNodeBody({ id, data, selected }: NodeBodyProps) {
     const named = node;
     return (
       <div style={containerStyle} data-testid="rf-node" data-rf-id={id} data-rf-kind="named">
-        <Space direction="vertical" size={2} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={2} style={{ width: '100%' }}>
           <Tag color="purple" style={{ margin: 0 }}>
             命名联合
           </Tag>
@@ -289,7 +289,7 @@ function ConditionNodeBody({ id, data, selected }: NodeBodyProps) {
       onDoubleClick={() => data.onEditAtom?.(id)}
       title="双击编辑"
     >
-      <Space direction="vertical" size={2} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={2} style={{ width: '100%' }}>
         <div>{summary}</div>
         {data.parentPath && (
           <Button

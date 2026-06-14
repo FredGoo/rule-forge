@@ -14,23 +14,14 @@
  *   save button → serializeRuleset(state) → formPost(/common/saveFile)
  *
  * ── Loading note ─────────────────────────────────────────────────────────
- * The existing /common/loadXml endpoint deserializes the file server-side
- * and returns a JSON object (not the raw XML). For rulesets there is no
- * ruleset XML deserializer registered server-side (CommonController.init
- * lists only decision-table / scorecard / decision-tree / crosstab
- * deserializers), so the endpoint currently returns an empty list for rule
- * files.
+ * /common/loadXml deserializes the file server-side for most types
+ * (decision-table / scorecard / decision-tree / crosstab …). Rulesets have
+ * NO registered deserializer, so the backend now (ruleset passthrough branch
+ * in CommonController.loadXml) returns the raw XML text under
+ * `editorData.xml` for `.rs.xml` files instead of a deserialized object.
  *
- * To wire raw XML loading, one of two paths is required (TODO — backend):
- *   (a) expose a raw-content endpoint (e.g. GET /common/loadFile?file=…),
- *       or
- *   (b) register a ruleset XML passthrough deserializer on /common/loadXml
- *       that puts the raw XML under `editorData.xml`.
- *
- * Until then, this editor loads from `editorData.xml` if present, otherwise
- * starts from an empty ruleset. Saving always works (it's a one-shot POST),
- * so once a rule is saved, subsequent opens see the saved XML only if path
- * (a) or (b) is wired.
+ * This editor reads `editorData.xml` (falling back to `editorData.content`)
+ * and feeds it to parseRuleset. An empty string means a fresh file.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Input, Space, Spin, Typography, message } from 'antd';
@@ -83,12 +74,10 @@ function emptyRule(name: string): Rule {
 }
 
 /**
- * Default server loader. Hits /common/loadXml (existing endpoint) and reads
- * the raw XML from `editorData.xml` if the backend exposes it. Returns an
- * empty string when no XML is available, which the editor interprets as
- * "fresh file".
- *
- * TODO: switch to a raw-content endpoint when one exists (see file header).
+ * Default server loader. Hits /common/loadXml and reads the raw XML from
+ * `editorData.xml` (backend ruleset passthrough branch returns the verbatim
+ * file text there for `.rs.xml` files). Returns an empty string when no XML
+ * is available, which the editor interprets as "fresh file".
  */
 async function loadFromServer(file: string): Promise<string> {
   type EditorDataLike = { xml?: string; content?: string };
@@ -191,7 +180,7 @@ export function RulesetEditor({ file, onLoad = loadFromServer, onSave = saveToSe
   if (loading) {
     return (
       <div style={{ padding: 24, textAlign: 'center' }}>
-        <Spin tip="加载规则集…" />
+        <Spin description="加载规则集…" />
       </div>
     );
   }
@@ -215,10 +204,9 @@ export function RulesetEditor({ file, onLoad = loadFromServer, onSave = saveToSe
           type="warning"
           showIcon
           style={{ marginBottom: 12 }}
-          message="加载规则集失败,以空白规则集启动"
+          title="加载规则集失败,以空白规则集启动"
           description={loadError}
-          closable
-          onClose={() => setLoadError(null)}
+          closable={{ onClose: () => setLoadError(null) }}
         />
       )}
 
@@ -235,7 +223,7 @@ export function RulesetEditor({ file, onLoad = loadFromServer, onSave = saveToSe
         <Alert
           type="info"
           showIcon
-          message="还没有规则"
+          title="还没有规则"
           description='点击右上角"添加规则"开始。'
         />
       )}

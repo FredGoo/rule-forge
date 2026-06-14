@@ -144,16 +144,33 @@ public class CommonController extends BaseController {
                                     org.springframework.http.HttpStatus.NOT_FOUND,
                                     "file not found: " + path);
                         }
-                        Element element = parseXml(inputStream);
+                        // 先把原文读出来 — 两个用途:(1) parseXml 需要 InputStream,
+                        // (2) ruleset(.rs.xml)没有注册 deserializer,要透传原文给前端
+                        // React RulesetEditor(它自己 parseRuleset,后端不做反序列化)。
+                        String rawXml = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
+                        inputStream.close();
+                        Element element = parseXml(new ByteArrayInputStream(
+                                rawXml.getBytes(StandardCharsets.UTF_8)));
+                        boolean matched = false;
                         for (Deserializer<?> des : this.deserializers) {
                             if (des.support(element)) {
                                 result.add(des.deserialize(element, true));
                                 // V5.44.3 — 4 library deserializer 已删,isaction 不再由
                                 // ActionLibraryDeserializer 触发;保留 isaction 字段但不再赋值。
+                                matched = true;
                                 break;
                             }
                         }
-                        inputStream.close();
+                        // ruleset(.rs.xml)没注册 deserializer — 透传原文,前端
+                        // RulesetEditor 走 parseRuleset 自己解析(editorData.xml 字段)。
+                        // 不复用 core 的 RuleSetParser 做 deserialize→serialize(会丢格式)。
+                        // 注意:文件实际扩展名是 ".rs.xml"(见 FileTypeUtils.EXTENSION_MAP),
+                        // 不是 FileType.Ruleset.name()="Ruleset"。
+                        if (!matched && path.toLowerCase().endsWith(".rs.xml")) {
+                            Map<String, Object> passthrough = new LinkedHashMap<>();
+                            passthrough.put("xml", rawXml);
+                            result.add(passthrough);
+                        }
                     } catch (org.springframework.web.server.ResponseStatusException ex) {
                         throw ex;
                     } catch (Exception ex) {
